@@ -1,0 +1,112 @@
+services:
+  # ==================== Infrastructure ====================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bitrun-postgres
+    environment:
+      POSTGRES_DB: bitrun
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bitrun"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - bitrun-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bitrun-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - bitrun-net
+
+  # ==================== Application ====================
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: bitrun-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bitrun
+      # Redis
+      REDIS_URL: redis://redis:6379
+      # App
+      APP_NAME: BITRUN
+      ENVIRONMENT: development
+      DEBUG: "true"
+      # Security (override in production)
+      JWT_SECRET_KEY: dev-secret-key-change-in-production
+      DATA_ENCRYPTION_KEY: dev-encryption-key-32-chars-long!
+      # CORS
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - bitrun-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: bitrun-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # API URL (container internal network)
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000/api/ws
+      # Disable telemetry
+      NEXT_TELEMETRY_DISABLED: 1
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - bitrun-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bitrun-net:
+    driver: bridge

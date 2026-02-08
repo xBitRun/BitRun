@@ -1,0 +1,98 @@
+# Rules
+
+## 0. Workflow
+- **Proposal First**: Propose solution -> Wait for approval -> Implement.
+- **Docs First**: Check `docs/` for existing patterns before coding. Update docs if arch changes.
+
+## 1. Internationalization (i18n) Standards (CRITICAL)
+
+### General Rules
+- **NEVER hardcode user-facing text** in `.tsx` files
+- **ALL visible text** must use `useTranslations()` hook from `next-intl`
+- Translation files: `frontend/src/messages/zh.json` and `frontend/src/messages/en.json`
+
+### Implementation Pattern
+```tsx
+// ✅ Correct
+import { useTranslations } from "next-intl";
+
+export function MyComponent() {
+  const t = useTranslations("myModule");
+  return <Button>{t("buttonLabel")}</Button>;
+}
+
+// ❌ Wrong
+export function MyComponent() {
+  return <Button>Click me</Button>;
+}
+```
+
+### What Must Be Translated
+- Button labels, menu items, titles, descriptions
+- Toast messages (`toast.success()`, `toast.error()`)
+- Error messages, loading states, placeholders
+- Form labels, validation messages
+- Empty states, fallback text
+
+### What Does NOT Need Translation
+- Technical identifiers (IDs, keys)
+- URLs, file paths
+- Code/debug output
+- Currency symbols ($), units (%, x)
+
+### Translation Key Naming
+- Use dot notation: `module.section.key`
+- Group by feature: `accounts.toast.success`, `agents.error.loadFailed`
+- Common keys in `common.*`: `common.loading`, `common.retry`, `common.cancel`
+
+### Adding New Text
+1. First add keys to BOTH `zh.json` and `en.json`
+2. Then use `t("key")` in component
+3. For dynamic content: `t("key", { count: 5 })`
+
+### Checklist Before Commit
+- [ ] No hardcoded Chinese text in `.tsx` files
+- [ ] No hardcoded English text in `.tsx` files
+- [ ] All toast messages use translation keys
+- [ ] Error/retry buttons use translation keys
+- [ ] Empty states use translation keys
+
+## 2. Documentation Standards
+- **Location**: All docs in `docs/` folder. Flat structure.
+- **Language**: Simplified Chinese (zh-CN) for content.
+- **Style**: Technical specifications (what/how/why), NOT chronological logs.
+- **Format**: Clean Markdown. No Jekyll headers. No changelogs inside docs.
+- **Process**: Update docs -> Code implementation.
+
+## 3. Git Commit Standards (CRITICAL)
+- **Format**: `<emoji> <type>: <主标题>`
+- **Emoji Mapping**:
+  - ✨ `feat`: 新功能（新增功能、页面、组件）
+  - 🐛 `fix`: 修复（Bug 修复）
+  - 🎨 `style`: 样式（UI 样式调整）
+  - ♻️ `refactor`: 重构（代码重构）
+  - 📝 `docs`: 文档（文档更新）
+  - 🔧 `chore`: 配置（配置/依赖更新）
+  - ✅ `test`: 测试（测试相关）
+  - 🚀 `perf`: 性能（性能优化）
+- **Title Rules**:
+  - 使用中文
+  - 简洁明了，不超过 50 字符
+  - 动词开头（新增/修复/优化/调整/重构）
+- **Body Rules**:
+  - 列表形式，每项以 `-` 开头
+  - 说明具体改动点
+- **Examples**:
+  ```bash
+  ✨ feat: 新增用户登录功能
+  ✨ feat: 新增交易模块 UI
+  - 实现 Spot 现货交易面板
+  - 实现 Equities 权益交易面板
+  🐛 fix: 修复订单提交失败问题
+  - 修正签名参数格式
+  ```
+- **Requirements**:
+  - 每次提交只做一件事
+  - 提交前确保代码可运行
+  - 相关联的改动合并为一次提交
+  - **ALWAYS** follow this format when making commits

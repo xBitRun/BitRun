@@ -1,0 +1,1839 @@
+{
+  "metadata": {
+    "title": "BITRUN | AI 智能交易代理",
+    "description": "基于提示词驱动的 AI 自动化交易系统"
+  },
+  "auth": {
+    "welcome": "欢迎回来",
+    "description": "请登录以继续。",
+    "login": "登录",
+    "register": "注册",
+    "name": "用户名",
+    "namePlaceholder": "输入您的用户名",
+    "email": "邮箱",
+    "emailPlaceholder": "输入您的邮箱",
+    "password": "密码",
+    "passwordPlaceholder": "输入您的密码",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "再次输入密码",
+    "loginButton": "登录",
+    "registerButton": "创建账户",
+    "continue": "继续",
+    "loading": "请稍候...",
+    "forgotPassword": "忘记密码？",
+    "resetPassword": "重置密码",
+    "noAccount": "还没有账户？",
+    "hasAccount": "已有账户？",
+    "createAccount": "创建账户",
+    "registerDescription": "注册开始使用。",
+    "termsPrefix": "继续即表示您同意我们的",
+    "termsOfService": "服务条款",
+    "privacyPolicy": "隐私政策",
+    "and": "和",
+    "errors": {
+      "required": "请填写所有必填字段",
+      "invalidEmail": "请输入有效的邮箱地址",
+      "passwordLength": "密码至少需要 8 个字符",
+      "nameRequired": "请输入用户名",
+      "passwordMismatch": "两次输入的密码不一致",
+      "AUTH_INVALID_CREDENTIALS": "邮箱或密码错误，剩余 {remaining} 次尝试机会",
+      "AUTH_INVALID_CREDENTIALS_GENERIC": "邮箱或密码错误",
+      "AUTH_ACCOUNT_LOCKED": "账户已锁定，请 {minutes} 分钟后重试",
+      "AUTH_RATE_LIMITED": "请求过于频繁，请稍后再试",
+      "AUTH_EMAIL_EXISTS": "该邮箱已被注册",
+      "SERVICE_UNAVAILABLE": "服务暂时不可用，请稍后重试",
+      "LOGIN_FAILED": "登录失败，请重试",
+      "REGISTER_FAILED": "注册失败，请重试"
+    }
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "agents": "代理策略",
+    "strategies": "量化策略",
+    "accounts": "账户",
+    "models": "模型",
+    "backtest": "回测",
+    "settings": "设置",
+    "collapse": "收起"
+  },
+  "header": {
+    "search": "搜索代理、决策...",
+    "systemOnline": "系统在线",
+    "myAccount": "我的账户",
+    "profile": "个人资料",
+    "settings": "设置",
+    "logout": "退出登录"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "subtitle": "实时监控您的 AI 交易代理",
+    "newAgent": "新建代理",
+    "empty": {
+      "title": "还没有运行中的 AI 代理",
+      "description": "连接你的交易所账户，创建你的第一个 AI 交易代理，开始自动化交易。",
+      "feature1Title": "自然语言",
+      "feature1Desc": "用自然语言描述策略",
+      "feature2Title": "24/7 执行",
+      "feature2Desc": "AI 全天候自动交易",
+      "feature3Title": "全程追溯",
+      "feature3Desc": "每笔决策都有记录",
+      "getStarted": "开始设置",
+      "viewTutorial": "查看教程",
+      "watchDemo": "观看演示"
+    },
+    "stats": {
+      "totalEquity": "总权益",
+      "dailyPL": "日盈亏",
+      "activeStrategies": "活跃策略",
+      "openPositions": "持仓数量",
+      "executing": "执行中",
+      "inProfit": "盈利中"
+    },
+    "recentDecisions": {
+      "title": "最近 AI 决策",
+      "viewAll": "查看全部",
+      "time": "时间",
+      "strategy": "策略",
+      "action": "操作",
+      "confidence": "置信度",
+      "status": "状态",
+      "executed": "已执行",
+      "skipped": "已跳过"
+    },
+    "positions": {
+      "title": "当前持仓",
+      "active": "活跃",
+      "entry": "开仓价",
+      "mark": "标记价",
+      "size": "数量",
+      "pnl": "盈亏",
+      "long": "做多",
+      "short": "做空",
+      "empty": "暂无持仓"
+    },
+    "activity": {
+      "title": "实时动态",
+      "monitoring": "正在监控市场状况...",
+      "analyzing": "AI 代理正在实时分析中",
+      "viewDetail": "查看详情"
+    },
+    "timeAgo": {
+      "minAgo": "{count} 分钟前",
+      "hrAgo": "{count} 小时前"
+    },
+    "agentStrategies": {
+      "title": "代理策略盈亏与胜率",
+      "totalPnl": "累计盈亏",
+      "winRate": "胜率",
+      "trades": "成交笔数",
+      "noData": "暂无策略或暂无成交数据",
+      "viewAgent": "查看详情"
+    },
+    "quantStrategies": {
+      "title": "量化策略盈亏与胜率",
+      "totalPnl": "累计盈亏",
+      "winRate": "胜率",
+      "trades": "成交笔数",
+      "noData": "暂无策略或暂无成交数据",
+      "viewStrategy": "查看详情"
+    }
+  },
+  "agents": {
+    "title": "代理策略",
+    "subtitle": "创建和管理由 AI 代理驱动的交易策略",
+    "createAgent": "创建代理策略",
+    "searchPlaceholder": "搜索代理策略...",
+    "filter": {
+      "allStatus": "全部状态",
+      "active": "运行中",
+      "paused": "已暂停",
+      "draft": "草稿",
+      "stopped": "已停止"
+    },
+    "status": {
+      "active": "运行中",
+      "paused": "已暂停",
+      "stopped": "已停止",
+      "error": "错误",
+      "draft": "草稿"
+    },
+    "mode": {
+      "aggressive": "激进型",
+      "conservative": "保守型",
+      "balanced": "均衡型",
+      "custom": "自定义"
+    },
+    "timeHorizon": {
+      "scalp": "超短线",
+      "swing": "波段",
+      "position": "中长线"
+    },
+    "stats": {
+      "totalPL": "总盈亏",
+      "winRate": "胜率",
+      "maxLeverage": "最大杠杆"
+    },
+    "actions": {
+      "edit": "编辑",
+      "duplicate": "复制",
+      "viewDecisions": "查看决策",
+      "delete": "删除",
+      "pause": "暂停",
+      "start": "启动",
+      "resume": "恢复",
+      "stop": "停止",
+      "stopConfirmTitle": "确认停止",
+      "stopConfirmDesc": "停止操作不可逆，代理将永久停止且无法恢复运行。确定要停止吗？",
+      "closePositionsOption": "平仓所有持仓",
+      "closePositionsHint": "自动平掉该策略在交易所的所有持仓",
+      "confirmStop": "确认停止",
+      "cancel": "取消",
+      "deleteRequireStopped": "需要先停止才能删除",
+      "viewDetails": "查看详情"
+    },
+    "info": {
+      "title": "AI 代理策略",
+      "description": "创建并管理由 AI 代理驱动的交易策略，每个策略 7×24 自动运行，支持自然语言配置与完整决策审计。"
+    },
+    "empty": {
+      "title": "还没有代理策略",
+      "description": "创建你的第一个由 AI 代理驱动的交易策略",
+      "feature1Title": "自然语言",
+      "feature1Desc": "描述策略",
+      "feature2Title": "自动执行",
+      "feature2Desc": "7×24小时",
+      "feature3Title": "全程追溯",
+      "feature3Desc": "决策透明",
+      "createFirst": "创建第一个代理策略",
+      "searchHint": "尝试调整搜索条件或筛选器",
+      "noDescription": "暂无描述"
+    },
+    "toast": {
+      "started": "代理策略已启动",
+      "paused": "代理策略已暂停",
+      "stopped": "代理策略已停止",
+      "updateFailed": "更新代理策略失败",
+      "deleteSuccess": "代理策略已删除",
+      "deleteFailed": "删除代理策略失败"
+    },
+    "error": {
+      "loadFailed": "加载代理策略失败"
+    },
+    "retry": "重试",
+    "create": {
+      "title": "创建代理策略",
+      "description": "配置由 AI 代理驱动的交易策略",
+      "name": "代理名称",
+      "namePlaceholder": "例如：我的 BTC 策略",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选的代理描述",
+      "account": "交易所账户",
+      "accountPlaceholder": "选择账户",
+      "noAccounts": "没有可用账户",
+      "noAccountsHint": "请先在账户页面添加交易所账户",
+      "tradingMode": "交易模式",
+      "symbols": "交易标的",
+      "symbolsHint": "逗号分隔的交易标的列表（例如：BTC, ETH, SOL）",
+      "prompt": "交易 Prompt",
+      "promptPlaceholder": "用自然语言描述您的交易策略。例如：专注于 BTC 趋势跟踪。当价格突破 20 日高点且成交量放大时做多。设置 2% 止损和 5% 止盈...",
+      "promptHint": "AI 将根据这些指令做出交易决策，支持 Markdown 格式",
+      "aiModel": "AI 模型",
+      "aiModelPlaceholder": "选择 AI 模型",
+      "aiModelRequired": "请选择 AI 模型",
+      "noModels": "暂无可用模型",
+      "addModelLink": "前往模型管理添加模型",
+      "riskSettings": "风险设置",
+      "maxLeverage": "最大杠杆",
+      "interval": "决策间隔",
+      "maxPosition": "最大仓位",
+      "cancel": "取消",
+      "submit": "创建代理"
+    },
+    "confirmDelete": "确定要删除这个代理吗？",
+    "edit": {
+      "title": "编辑策略",
+      "description": "更新您的交易策略配置。"
+    },
+    "newPage": {
+      "backToAgents": "返回代理列表",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置代理名称和交易账户",
+      "tradingConfig": "交易配置",
+      "tradingConfigDesc": "定义 AI 代理的交易方式",
+      "riskSettingsDesc": "设置 AI 永远不会超越的硬性限制",
+      "addAccountLink": "添加账户",
+      "promptTips": "提示",
+      "insertExample": "插入示例",
+      "tipSpecific": "具体明确",
+      "tipSpecificDesc": "清晰描述入场/出场条件、时间周期和指标。",
+      "tipRisk": "定义风险",
+      "tipRiskDesc": "包含止损百分比和止盈目标。",
+      "tipConditions": "市场条件",
+      "tipConditionsDesc": "指定何时交易，何时观望。",
+      "examplePrompt": "示例策略",
+      "examplePromptText": "专注于 BTC 趋势跟踪。当价格突破 20 日高点且成交量放大时做多。设置 2% 止损和 5% 止盈。在低波动期避免交易。",
+      "riskWarningTitle": "风险提示",
+      "riskWarningDesc": "请从测试网和保守设置开始。",
+      "errorNoSymbols": "至少需要一个交易标的",
+      "errorNoAccount": "请选择账户",
+      "errorNoPrompt": "请输入策略指令或打开预览标签页生成",
+      "errorShortPrompt": "交易指令至少需要 10 个字符",
+      "success": "代理创建成功",
+      "failed": "创建代理失败"
+    },
+    "editPage": {
+      "backToAgent": "返回代理详情",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "更新代理的名称和描述",
+      "tradingConfig": "交易配置",
+      "tradingConfigDesc": "更新 AI 代理的交易方式",
+      "riskSettingsDesc": "更新 AI 永远不会超越的硬性限制",
+      "unknownAccount": "未知账户",
+      "accountNote": "创建后无法更改账户",
+      "agentInfo": "代理信息",
+      "status": "状态",
+      "created": "创建时间",
+      "changeWarningTitle": "更改立即生效",
+      "changeWarningDesc": "任何更改将应用于下一次交易决策。",
+      "saveChanges": "保存更改",
+      "notFound": "未找到代理",
+      "errorShortPrompt": "交易指令至少需要 10 个字符",
+      "success": "代理更新成功",
+      "failed": "更新代理失败"
+    }
+  },
+  "backtest": {
+    "title": "回测",
+    "subtitle": "使用历史数据测试您的策略",
+    "newBacktest": "新建回测",
+    "runBacktest": "运行回测",
+    "running": "运行中...",
+    "configuration": "配置",
+    "dataSource": "数据源交易所",
+    "selectExchange": "选择交易所",
+    "selectAgent": "选择代理",
+    "selectAgentPlaceholder": "选择要回测的代理",
+    "tradingPair": "交易对",
+    "selectPair": "选择交易对（可多选）",
+    "searchPair": "搜索交易对...",
+    "loadingPairs": "加载交易对中...",
+    "noMatch": "无匹配交易对",
+    "timeRange": "时间范围",
+    "startDate": "开始日期",
+    "endDate": "结束日期",
+    "initialBalance": "初始余额",
+    "results": "回测结果",
+    "noResults": "暂无回测结果",
+    "noResultsHint": "运行回测以查看性能指标",
+    "metrics": {
+      "totalReturn": "总收益",
+      "maxDrawdown": "最大回撤",
+      "sharpeRatio": "夏普比率",
+      "sortinoRatio": "索提诺比率",
+      "calmarRatio": "卡尔马比率",
+      "totalTrades": "总交易数",
+      "winRate": "胜率",
+      "profitFactor": "盈亏比",
+      "initialBalance": "初始余额",
+      "finalBalance": "最终余额",
+      "totalFees": "总手续费",
+      "expectancy": "期望收益",
+      "recoveryFactor": "恢复因子",
+      "averageWin": "平均盈利",
+      "averageLoss": "平均亏损",
+      "largestWin": "最大单笔盈利",
+      "largestLoss": "最大单笔亏损",
+      "grossProfit": "总盈利",
+      "grossLoss": "总亏损",
+      "avgHoldingHours": "平均持仓时间",
+      "maxConsecutiveWins": "最大连胜",
+      "maxConsecutiveLosses": "最大连亏"
+    },
+    "tabs": {
+      "overview": "概览",
+      "tradeAnalysis": "交易分析",
+      "timeAnalysis": "时间分析",
+      "symbolBreakdown": "品种分析",
+      "tradeList": "交易明细"
+    },
+    "charts": {
+      "equityCurve": "权益曲线",
+      "drawdownCurve": "回撤曲线",
+      "equity": "权益",
+      "balance": "余额",
+      "drawdown": "回撤",
+      "positions": "持仓数",
+      "pnlDistribution": "盈亏分布",
+      "tradeCount": "交易次数",
+      "pnl": "盈亏",
+      "monthlyReturns": "月度收益",
+      "returnPercent": "收益率",
+      "cumulativeReturn": "累计收益",
+      "symbolComparison": "品种收益对比"
+    },
+    "tradeAnalysis": {
+      "longVsShort": "多空对比",
+      "longTrades": "多头交易",
+      "shortTrades": "空头交易",
+      "consecutiveAnalysis": "连续盈亏",
+      "holdingTimeDistribution": "持仓时间分布",
+      "lessThan1h": "< 1小时",
+      "1hTo4h": "1-4小时",
+      "4hTo24h": "4-24小时",
+      "1dTo7d": "1-7天",
+      "moreThan7d": "> 7天",
+      "trades": "笔"
+    },
+    "tradeList": {
+      "symbol": "品种",
+      "side": "方向",
+      "leverage": "杠杆",
+      "entryPrice": "入场价",
+      "exitPrice": "出场价",
+      "pnl": "盈亏",
+      "pnlPercent": "盈亏%",
+      "duration": "持仓时长",
+      "exitReason": "退出原因",
+      "openTime": "开仓时间",
+      "closeTime": "平仓时间",
+      "long": "多",
+      "short": "空",
+      "manual": "手动",
+      "stopLoss": "止损",
+      "takeProfit": "止盈",
+      "liquidation": "强平",
+      "noTrades": "暂无交易记录"
+    },
+    "symbolBreakdown": {
+      "symbol": "品种",
+      "trades": "交易数",
+      "winRate": "胜率",
+      "totalPnl": "总盈亏",
+      "avgPnl": "平均盈亏",
+      "noData": "暂无品种数据"
+    },
+    "history": {
+      "title": "回测历史",
+      "empty": "暂无历史回测",
+      "agent": "代理",
+      "pair": "交易对",
+      "period": "周期",
+      "return": "收益",
+      "date": "日期"
+    },
+    "toast": {
+      "completed": "回测完成",
+      "failed": "回测失败"
+    }
+  },
+  "accounts": {
+    "title": "交易所账户",
+    "subtitle": "安全管理您连接的交易所账户",
+    "addAccount": "添加账户",
+    "confirmDelete": "确定要删除这个账户吗？",
+    "security": {
+      "title": "安全第一",
+      "description": "所有 API 凭证均采用端到端加密。建议使用有限权限的子账户并启用 IP 白名单。"
+    },
+    "info": {
+      "title": "交易所账户连接",
+      "description": "连接 Hyperliquid、Binance、Bybit、OKX 等交易所，凭证加密存储，可使用测试网免实盘试运行。"
+    },
+    "dialog": {
+      "title": "添加交易所账户",
+      "description": "您的 API 凭证在存储前会被加密",
+      "accountName": "账户名称",
+      "accountNamePlaceholder": "例如：主交易账户",
+      "exchange": "交易所",
+      "testnetMode": "测试网模式",
+      "testnetDescription": "使用测试网进行模拟交易",
+      "importType": "导入方式",
+      "privateKey": "私钥",
+      "mnemonic": "助记词",
+      "mnemonicPlaceholder": "输入您的 12 或 24 个助记词",
+      "mnemonicHint": "输入您钱包的助记词（12 或 24 个单词，用空格分隔）",
+      "apiKey": "API Key",
+      "apiSecret": "API Secret",
+      "enterApiKey": "输入 API Key",
+      "enterApiSecret": "输入 API Secret",
+      "encryptionNote": "凭证使用 AES-256-GCM 加密后存储",
+      "cancel": "取消",
+      "addAccount": "添加账户"
+    },
+    "newPage": {
+      "backToAccounts": "返回账户列表",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置账户名称和交易所",
+      "credentials": "凭证信息",
+      "credentialsDesc": "安全输入您的交易所凭证",
+      "privateKeyDesc": "使用私钥导入",
+      "mnemonicDesc": "使用助记词导入",
+      "securityTitle": "安全信息",
+      "securitySubtitle": "了解我们如何保护您的凭证",
+      "encryptionTitle": "端到端加密",
+      "testnet": "测试网",
+      "mainnet": "主网",
+      "tips": "提示",
+      "tipTestnet": "从测试网开始",
+      "tipTestnetDesc": "使用测试网模式熟悉平台，无需真实资金。",
+      "tipSubaccount": "使用子账户",
+      "tipSubaccountDesc": "对于 CEX，创建权限受限的子账户以提高安全性。",
+      "tipWhitelist": "IP 白名单",
+      "tipWhitelistDesc": "在交易所启用 IP 白名单以获得额外保护。",
+      "hyperliquidInfo": "Hyperliquid 是去中心化永续合约交易所。您可以使用私钥或助记词导入钱包。",
+      "cexInfo": "从您的交易所设置中生成 API 凭证。确保启用交易权限但禁用提现。",
+      "success": "账户添加成功",
+      "failed": "添加账户失败",
+      "createError": "创建账户失败",
+      "creating": "正在创建...",
+      "testingConnection": "正在测试连接...",
+      "connectionOk": "连接测试通过",
+      "connectionFailed": "账户已创建，但连接测试未通过，请检查凭证"
+    },
+    "card": {
+      "testnet": "测试网",
+      "status": "状态",
+      "connected": "已连接",
+      "disconnected": "已断开",
+      "notConnected": "未连接",
+      "availableBalance": "可用余额",
+      "totalEquity": "总权益",
+      "unrealizedPnl": "未实现盈亏",
+      "positions": "持仓",
+      "balanceError": "加载失败",
+      "lastSynced": "最后同步于",
+      "added": "添加于"
+    },
+    "menu": {
+      "testConnection": "测试连接",
+      "refreshBalance": "刷新余额",
+      "openExchange": "打开交易所",
+      "removeAccount": "删除账户"
+    },
+    "addCard": {
+      "title": "添加新账户",
+      "subtitle": "连接另一个交易所"
+    },
+    "empty": {
+      "title": "暂无账户",
+      "description": "连接你的第一个交易所账户，开始使用 AI 代理交易。",
+      "createFirst": "添加账户"
+    },
+    "toast": {
+      "removeSuccess": "账户删除成功",
+      "removeFailed": "删除账户失败",
+      "connectionSuccess": "连接成功",
+      "connectionFailed": "连接失败",
+      "testFailed": "连接测试失败"
+    },
+    "error": {
+      "loadFailed": "加载账户失败"
+    },
+    "retry": "重试"
+  },
+  "decisions": {
+    "title": "AI 决策",
+    "subtitle": "查看 AI 推理和决策历史",
+    "searchPlaceholder": "搜索决策...",
+    "filter": {
+      "allDecisions": "全部决策",
+      "executed": "已执行",
+      "skipped": "已跳过"
+    },
+    "card": {
+      "decision": "决策",
+      "executed": "已执行",
+      "skipped": "已跳过",
+      "confidence": "置信度"
+    },
+    "details": {
+      "marketAssessment": "市场评估",
+      "chainOfThought": "思维链",
+      "tradingDecisions": "交易决策",
+      "leverage": "杠杆",
+      "size": "规模",
+      "stopLoss": "止损",
+      "takeProfit": "止盈"
+    },
+    "executionRecords": "执行记录",
+    "execution": {
+      "success": "订单成功",
+      "failed": "订单失败",
+      "skipped": "已跳过",
+      "orderId": "订单 ID",
+      "filledSize": "成交数量",
+      "filledPrice": "成交价格",
+      "requestedSize": "请求仓位",
+      "actualSize": "实际仓位",
+      "reason": "原因",
+      "status": "状态",
+      "noRecords": "无执行记录"
+    }
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "retry": "重试"
+  },
+  "editor": {
+    "source": "源码",
+    "preview": "阅读",
+    "empty": "暂无内容"
+  },
+  "strategies": {
+    "title": "策略",
+    "subtitle": "管理您的交易策略",
+    "createStrategy": "创建策略",
+    "searchPlaceholder": "搜索策略...",
+    "confirmDelete": "确定要删除这个策略吗？",
+    "filter": {
+      "allStatus": "全部状态",
+      "active": "运行中",
+      "paused": "已暂停",
+      "draft": "草稿",
+      "stopped": "已停止"
+    },
+    "status": {
+      "active": "运行中",
+      "paused": "已暂停",
+      "stopped": "已停止",
+      "error": "错误",
+      "draft": "草稿"
+    },
+    "mode": {
+      "aggressive": "激进型",
+      "conservative": "保守型",
+      "balanced": "均衡型"
+    },
+    "stats": {
+      "totalPL": "总盈亏",
+      "winRate": "胜率",
+      "maxLeverage": "最大杠杆"
+    },
+    "actions": {
+      "edit": "编辑",
+      "duplicate": "复制",
+      "viewDecisions": "查看决策",
+      "delete": "删除",
+      "pause": "暂停",
+      "start": "启动",
+      "resume": "恢复",
+      "viewDetails": "查看详情"
+    },
+    "empty": {
+      "title": "还没有策略",
+      "searchHint": "尝试调整搜索条件或筛选器",
+      "createHint": "创建你的第一个策略",
+      "noDescription": "暂无描述"
+    },
+    "error": {
+      "loadFailed": "加载策略失败"
+    },
+    "retry": "重试"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "管理您的账户和偏好设置",
+    "saveChanges": "保存更改",
+    "tabs": {
+      "profile": "个人资料",
+      "notifications": "通知",
+      "ai": "AI 设置",
+      "appearance": "外观"
+    },
+    "profile": {
+      "title": "个人信息",
+      "description": "更新您的个人信息",
+      "name": "姓名",
+      "namePlaceholder": "输入您的姓名",
+      "email": "邮箱",
+      "emailPlaceholder": "输入您的邮箱"
+    },
+    "security": {
+      "title": "安全",
+      "description": "管理您的账户安全设置",
+      "changePassword": "修改密码",
+      "twoFactor": "双因素认证",
+      "twoFactorDescription": "为您的账户添加额外的安全保护"
+    },
+    "notifications": {
+      "email": {
+        "title": "邮件通知",
+        "description": "配置您接收的邮件类型",
+        "decisions": "交易决策",
+        "decisionsDescription": "AI 做出交易决策时通知您",
+        "dailySummary": "每日摘要",
+        "dailySummaryDescription": "接收每日交易活动摘要"
+      },
+      "push": {
+        "title": "推送通知",
+        "description": "配置浏览器通知",
+        "alerts": "重要警报",
+        "alertsDescription": "重要的系统警报和警告",
+        "positions": "持仓更新",
+        "positionsDescription": "您的持仓变动通知"
+      }
+    },
+    "ai": {
+      "title": "AI 代理设置",
+      "description": "配置 AI 代理的决策方式",
+      "confidenceThreshold": "默认置信度阈值",
+      "confidenceThresholdDescription": "执行交易所需的最低置信度",
+      "moreFrequent": "更频繁",
+      "moreSelective": "更谨慎",
+      "autoExecute": "自动执行交易",
+      "autoExecuteDescription": "自动执行超过阈值的 AI 决策",
+      "riskLevel": "风险等级",
+      "riskLevelDescription": "设置您的风险偏好",
+      "riskLevels": {
+        "conservative": "保守",
+        "moderate": "适中",
+        "aggressive": "激进"
+      },
+      "riskLevelDescriptions": {
+        "conservative": "低风险，小仓位",
+        "moderate": "平衡策略",
+        "aggressive": "高风险，大仓位"
+      }
+    },
+    "appearance": {
+      "title": "外观",
+      "description": "自定义 BITRUN 的外观",
+      "theme": "主题",
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    }
+  },
+  "agentDetail": {
+    "backToAgents": "返回代理列表",
+    "notFound": "代理未找到",
+    "refresh": "刷新",
+    "status": {
+      "active": "运行中",
+      "paused": "已暂停",
+      "stopped": "已停止",
+      "error": "错误",
+      "draft": "草稿"
+    },
+    "actions": {
+      "start": "启动",
+      "pause": "暂停",
+      "resume": "恢复",
+      "stop": "停止",
+      "stopConfirmTitle": "确认停止",
+      "stopConfirmDesc": "停止操作不可逆，代理将永久停止且无法恢复运行。确定要停止吗？",
+      "confirmStop": "确认停止",
+      "cancel": "取消",
+      "runNow": "立即执行"
+    },
+    "tabs": {
+      "overview": "概览",
+      "decisions": "决策",
+      "performance": "性能",
+      "settings": "设置"
+    },
+    "toast": {
+      "started": "代理已启动",
+      "paused": "代理已暂停",
+      "stopped": "代理已停止",
+      "updateFailed": "更新代理失败",
+      "runNowSuccess": "手动执行已触发",
+      "runNowFailed": "手动执行失败"
+    },
+    "tradingModeValue": {
+      "conservative": "保守型",
+      "balanced": "均衡型",
+      "aggressive": "激进型"
+    },
+    "overview": {
+      "totalPnl": "总盈亏",
+      "winRate": "胜率",
+      "totalTrades": "总交易数",
+      "maxDrawdown": "最大回撤",
+      "noData": "暂无数据",
+      "configuration": "配置",
+      "tradingMode": "交易模式",
+      "aiModel": "AI 模型",
+      "executionInterval": "执行间隔",
+      "everyMinutes": "每 {minutes} 分钟",
+      "maxLeverage": "最大杠杆",
+      "maxPosition": "最大仓位",
+      "minConfidence": "最低置信度",
+      "createdAt": "创建时间",
+      "lastRun": "上次运行",
+      "never": "从未运行",
+      "symbolsAndTimeframes": "交易对 & 时间周期",
+      "symbols": "交易对",
+      "timeframes": "时间周期",
+      "noSymbols": "未配置交易对",
+      "indicators": "技术指标",
+      "noIndicators": "未配置指标",
+      "emaPeriods": "EMA 周期",
+      "rsiPeriod": "RSI 周期",
+      "macdParams": "MACD（快/慢/信号）",
+      "atrPeriod": "ATR 周期",
+      "riskControls": "风险控制",
+      "maxTotalExposure": "最大总敞口",
+      "minRiskReward": "最小风险回报比",
+      "maxDrawdownLimit": "最大回撤限制",
+      "stopLoss": "默认止损",
+      "debate": "辩论设置",
+      "debateEnabled": "辩论已启用",
+      "debateModels": "参与模型",
+      "consensusMode": "共识模式",
+      "consensusModes": {
+        "majority_vote": "多数投票",
+        "highest_confidence": "最高置信度",
+        "weighted_average": "加权平均",
+        "unanimous": "一致同意"
+      },
+      "minParticipants": "最少参与者",
+      "instructions": "交易指令",
+      "noInstructions": "未定义交易指令",
+      "promptSections": "Prompt 分段",
+      "roleDefinition": "角色定义",
+      "tradingFrequency": "交易频率",
+      "entryStandards": "入场标准",
+      "decisionProcess": "决策流程",
+      "noPromptSections": "未定义 Prompt 分段",
+      "chart": "行情图表",
+      "recentTrades": "最近交易执行",
+      "viewAllDecisions": "查看全部决策",
+      "noRecentTrades": "暂无交易执行记录",
+      "noRecentTradesHint": "代理开始运行后，交易记录将显示在这里",
+      "tradeTime": "时间",
+      "tradeSymbol": "交易对",
+      "tradeAction": "方向",
+      "tradeLeverage": "杠杆",
+      "tradeAmount": "金额",
+      "tradeConfidence": "置信度",
+      "tradeStatus": "状态",
+      "tradeEntryPrice": "挂价",
+      "tradeFilledPrice": "开仓价",
+      "tradeMarkPrice": "标记价",
+      "tradePnl": "盈亏",
+      "tradeRealizedPnl": "已实现盈亏",
+      "tradeUnrealizedPnl": "未实现盈亏",
+      "tradeLong": "LONG",
+      "tradeShort": "SHORT",
+      "tradeCloseLong": "平多",
+      "tradeCloseShort": "平空",
+      "tradeNA": "N/A",
+      "tradeFilterAll": "全部操作",
+      "strategyInfo": "策略信息",
+      "profitSummary": "盈亏摘要",
+      "profits": "盈利"
+    },
+    "decisions": {
+      "empty": "暂无决策",
+      "emptyHint": "代理开始运行后，决策将显示在这里",
+      "decision": "决策",
+      "executed": "已执行",
+      "skipped": "已跳过",
+      "confidence": "置信度",
+      "marketAssessment": "市场评估",
+      "chainOfThought": "思维链",
+      "tradingDecisions": "交易决策",
+      "leverage": "杠杆",
+      "size": "规模",
+      "stopLoss": "止损",
+      "takeProfit": "止盈",
+      "model": "模型",
+      "tokens": "Token",
+      "latency": "延迟",
+      "more": "更多 +{count}",
+      "analytics": "AI 决策分析",
+      "totalDecisions": "总决策数",
+      "executionRate": "执行率",
+      "avgConfidence": "平均置信度",
+      "avgLatency": "平均延迟",
+      "totalTokens": "总 Token 数",
+      "actionDistribution": "操作分布",
+      "executionRecords": "执行记录",
+      "execution": {
+        "success": "订单成功",
+        "failed": "订单失败",
+        "skipped": "已跳过",
+        "orderId": "订单 ID",
+        "filledSize": "成交数量",
+        "filledPrice": "成交价格",
+        "requestedSize": "请求仓位",
+        "actualSize": "实际仓位",
+        "reason": "原因",
+        "status": "状态",
+        "noRecords": "无执行记录"
+      },
+      "marketSnapshot": {
+        "title": "市场数据快照",
+        "symbol": "个交易对",
+        "symbols": "个交易对",
+        "bid": "买入价",
+        "ask": "卖出价",
+        "spread": "点差",
+        "volume24h": "24h 成交量",
+        "fundingRate": "资金费率",
+        "avgFunding24h": "24h 平均资金费率",
+        "bullishBias": "多头偏向",
+        "bearishBias": "空头偏向",
+        "neutral": "中性",
+        "indicators": "技术指标",
+        "macdLine": "MACD",
+        "signalLine": "信号线",
+        "histogram": "柱状图",
+        "fundingHistory": "资金费率历史",
+        "recentKlines": "近期 K 线",
+        "time": "时间",
+        "rate": "费率",
+        "open": "开盘",
+        "high": "最高",
+        "low": "最低",
+        "close": "收盘",
+        "volume": "成交量",
+        "change": "涨跌幅"
+      },
+      "accountSnapshot": {
+        "title": "账户快照",
+        "equity": "总权益",
+        "availableBalance": "可用余额",
+        "marginUsed": "已用保证金",
+        "unrealizedPnl": "未实现盈亏",
+        "positionCount": "持仓数量",
+        "positions": "持仓详情",
+        "noPositions": "暂无持仓",
+        "entry": "开仓价",
+        "mark": "标记价",
+        "leverage": "杠杆",
+        "pnl": "盈亏",
+        "liquidation": "强平价",
+        "size": "仓位"
+      },
+      "prevPage": "上一页",
+      "nextPage": "下一页",
+      "pageInfo": "第 {page} 页，共 {total} 页",
+      "filterAll": "全部",
+      "filterExecuted": "已执行",
+      "filterSkipped": "已跳过",
+      "filterAction": "操作类型",
+      "filterActionAll": "全部操作"
+    },
+    "performance": {
+      "title": "性能分析",
+      "comingSoon": "详细的性能图表和分析即将推出",
+      "totalPnl": "总盈亏",
+      "winRate": "胜率",
+      "totalTrades": "总交易数",
+      "maxDrawdown": "最大回撤",
+      "aiAnalytics": "AI 决策分析",
+      "aiAnalyticsDesc": "AI 决策过程的指标数据",
+      "totalDecisions": "总决策数",
+      "executionRate": "执行率",
+      "avgConfidence": "平均置信度",
+      "avgLatency": "平均延迟",
+      "totalTokens": "总 Token 数",
+      "actionDistribution": "操作分布",
+      "actionDistributionDesc": "按操作类型分类的 AI 交易决策",
+      "recentActivity": "最近决策活动"
+    },
+    "settings": {
+      "title": "代理设置",
+      "quickSettings": "快速设置",
+      "quickSettingsDesc": "调整运营参数，无需更改核心策略",
+      "strategyConfig": "策略配置",
+      "strategyConfigDesc": "核心策略参数在此为只读。如需完整修改，请进入编辑页面。",
+      "editStrategy": "编辑策略",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "更新代理的名称、描述和核心设置",
+      "agentName": "代理名称",
+      "description": "描述",
+      "descriptionPlaceholder": "为此代理添加可选描述",
+      "tradingMode": "交易模式",
+      "aiModel": "AI 模型",
+      "aiModelPlaceholder": "选择 AI 模型",
+      "noModels": "暂无可用模型，请先配置服务商。",
+      "executionInterval": "执行间隔",
+      "minutes": "分钟",
+      "autoExecute": "自动执行交易",
+      "autoExecuteDesc": "自动执行 AI 做出的交易决策",
+      "symbolsAndTimeframes": "交易对 & 时间周期",
+      "symbolsAndTimeframesDesc": "配置要分析的交易对和时间周期",
+      "symbols": "交易对",
+      "symbolsHint": "最多 10 个交易对",
+      "addSymbol": "添加",
+      "symbolPlaceholder": "如 BTC",
+      "popularSymbols": "热门",
+      "timeframes": "时间周期",
+      "timeframesHint": "最多 5 个时间周期",
+      "indicators": "技术指标",
+      "indicatorsDesc": "配置技术分析指标",
+      "emaEnabled": "EMA（指数移动平均线）",
+      "emaPeriod1": "周期 1",
+      "emaPeriod2": "周期 2",
+      "emaPeriod3": "周期 3",
+      "rsiEnabled": "RSI（相对强弱指数）",
+      "rsiPeriod": "周期",
+      "macdEnabled": "MACD",
+      "macdFast": "快线",
+      "macdSlow": "慢线",
+      "macdSignal": "信号线",
+      "atrEnabled": "ATR（平均真实范围）",
+      "atrPeriod": "周期",
+      "riskControls": "风险控制",
+      "riskControlsDesc": "这些是 AI 永远不会超越的硬性限制",
+      "maxLeverage": "最大杠杆",
+      "maxPositionSize": "最大仓位比例",
+      "minConfidence": "最低置信度",
+      "maxDrawdown": "最大回撤",
+      "maxTotalExposure": "最大总敞口",
+      "minRiskReward": "最小风险回报比",
+      "instructions": "交易指令",
+      "instructionsDesc": "AI 将遵循这些指令进行交易决策",
+      "instructionsPlaceholder": "用自然语言描述您的交易策略...",
+      "customPrompt": "自定义 Prompt",
+      "customPromptDesc": "追加到系统提示词的额外指令",
+      "customPromptPlaceholder": "额外的自定义指令...",
+      "promptSections": "Prompt 分段",
+      "promptSectionsDesc": "精细调整 AI 系统提示词的各个部分",
+      "roleDefinition": "角色定义",
+      "tradingFrequency": "交易频率",
+      "entryStandards": "入场标准",
+      "decisionProcess": "决策流程",
+      "debate": "辩论设置",
+      "debateDesc": "启用多模型辩论以获得更稳健的决策",
+      "debateEnabled": "启用辩论",
+      "debateEnabledDesc": "多个 AI 模型将在做出决策前进行辩论",
+      "debateModels": "参与模型",
+      "debateModelsHint": "选择 2-5 个模型参与辩论",
+      "consensusMode": "共识模式",
+      "consensusModes": {
+        "majority_vote": "多数投票",
+        "highest_confidence": "最高置信度",
+        "weighted_average": "加权平均",
+        "unanimous": "一致同意"
+      },
+      "minParticipants": "最少参与者",
+      "saveChanges": "保存更改",
+      "saved": "设置保存成功",
+      "dangerZone": "危险区域",
+      "dangerZoneDesc": "此代理的不可逆操作",
+      "deleteAgent": "删除代理",
+      "deleteConfirm": "确定要删除此代理吗？此操作无法撤消。",
+      "deleteRequireStopped": "需要先停止代理才能删除",
+      "cancel": "取消",
+      "confirmDelete": "确认删除"
+    }
+  },
+  "onboarding": {
+    "common": {
+      "back": "返回",
+      "next": "下一步",
+      "skip": "跳过"
+    },
+    "welcome": {
+      "title": "让 AI 为你交易",
+      "subtitle": "用自然语言描述你的交易策略，AI 24/7 自动执行。",
+      "feature1Title": "自然语言",
+      "feature1Desc": "无需编程",
+      "feature2Title": "硬性风控",
+      "feature2Desc": "永不超限",
+      "feature3Title": "全程追溯",
+      "feature3Desc": "每笔决策可查",
+      "getStarted": "开始设置"
+    },
+    "account": {
+      "title": "连接交易所",
+      "description": "连接你的交易所账户以启用交易",
+      "selectExchange": "选择交易所",
+      "accountName": "账户名称",
+      "accountNamePlaceholder": "例如：我的交易账户",
+      "testnetMode": "测试网模式",
+      "testnetDescription": "推荐新手先用测试网熟悉",
+      "importType": "导入方式",
+      "privateKey": "私钥",
+      "mnemonic": "助记词",
+      "mnemonicPlaceholder": "输入您的 12 或 24 个助记词",
+      "mnemonicHint": "输入您钱包的助记词（12 或 24 个单词，用空格分隔）",
+      "apiKey": "API Key",
+      "apiSecret": "API Secret",
+      "enterApiKey": "输入 API Key",
+      "enterApiSecret": "输入 API Secret",
+      "securityNote": "你的凭证使用 <highlight>AES-256-GCM</highlight> 加密存储"
+    },
+    "agent": {
+      "title": "创建 AI 代理",
+      "description": "配置你的第一个交易代理",
+      "agentName": "代理名称",
+      "agentNamePlaceholder": "例如：我的首个策略",
+      "tradingPairs": "交易对",
+      "tradingMode": "交易风格",
+      "modes": {
+        "conservative": "保守型",
+        "moderate": "均衡型",
+        "aggressive": "激进型"
+      },
+      "instructions": "交易指令",
+      "instructionsPlaceholder": "关注 BTC 和 ETH 的价格趋势，在明确的趋势中顺势开仓，在震荡行情中保持观望。止损控制在 2% 以内，盈利目标 5-10%。",
+      "instructionsHint": "写得越具体，AI 执行越精准"
+    },
+    "risk": {
+      "title": "风险控制",
+      "description": "这些是硬性限制，AI 永远不会突破",
+      "maxLeverage": "最大杠杆",
+      "maxPositionSize": "单笔仓位上限（占总资金比例）",
+      "maxExposure": "最大总敞口",
+      "confidenceThreshold": "置信度阈值（低于此值不执行）",
+      "recommendation": "推荐新手使用：杠杆 ≤ 3x，仓位 ≤ 10%，置信度 ≥ 75%"
+    },
+    "launch": {
+      "title": "准备启动",
+      "description": "检查配置并启动交易",
+      "agentName": "代理名称",
+      "exchange": "交易所",
+      "pairs": "交易对",
+      "mode": "交易风格",
+      "maxLeverage": "最大杠杆",
+      "maxPosition": "最大仓位",
+      "confidence": "最低置信度",
+      "confirmTestnet": "我理解这是测试网，不涉及真实资金",
+      "launchAgent": "启动代理",
+      "launching": "启动中...",
+      "modifyConfig": "修改配置",
+      "skipForNow": "暂不启动"
+    }
+  },
+  "language": {
+    "en": "English",
+    "zh": "中文",
+    "switch": "语言"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "profile": {
+    "title": "个人资料",
+    "description": "管理您的个人信息和安全设置",
+    "name": "姓名",
+    "namePlaceholder": "输入您的姓名",
+    "email": "邮箱",
+    "emailPlaceholder": "输入您的邮箱",
+    "emailReadonly": "邮箱不可修改",
+    "profileUpdated": "个人资料更新成功",
+    "security": "安全",
+    "changePassword": "修改密码",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认新密码",
+    "passwordRequirements": "密码至少需要8个字符",
+    "passwordMismatch": "两次输入的密码不一致",
+    "passwordTooShort": "密码至少需要8个字符",
+    "passwordChanged": "密码修改成功",
+    "updatePassword": "更新密码",
+    "twoFactor": "双因素认证",
+    "twoFactorDescription": "为您的账户添加额外的安全保护",
+    "twoFactorComingSoon": "双因素认证即将推出",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "管理您的账户和偏好设置",
+    "tabs": {
+      "profile": "个人资料",
+      "notifications": "通知",
+      "security": "安全"
+    },
+    "save": "保存更改",
+    "saved": "已保存",
+    "profile": {
+      "title": "个人信息",
+      "description": "更新您的个人资料",
+      "email": "邮箱地址",
+      "emailHint": "邮箱不可修改",
+      "name": "显示名称",
+      "namePlaceholder": "输入您的名称"
+    },
+    "notifications": {
+      "channels": "通知渠道",
+      "channelsDescription": "配置您接收通知的方式",
+      "preferences": "通知偏好",
+      "preferencesDescription": "选择您想接收的通知类型",
+      "telegramDescription": "通过 Telegram 机器人接收即时通知",
+      "discordDescription": "通过 Discord Webhook 接收通知",
+      "emailDescription": "通过电子邮件接收通知",
+      "serverConfig": "服务端配置",
+      "configHint": "通知渠道在服务端配置。如需启用请联系管理员。",
+      "decisionAlerts": "决策通知",
+      "decisionAlertsDescription": "当 AI 做出交易决策时收到通知",
+      "tradeAlerts": "交易通知",
+      "tradeAlertsDescription": "当交易执行时收到通知",
+      "riskAlerts": "风险通知",
+      "riskAlertsDescription": "收到风险警告和限制提醒"
+    },
+    "security": {
+      "changePassword": "修改密码",
+      "changePasswordDescription": "更新您的账户密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "updatePassword": "更新密码",
+      "apiAccess": "API 访问",
+      "apiAccessDescription": "API 访问和安全信息",
+      "apiNote": "BITRUN 使用安全的 JWT 认证。访问令牌 1 小时后过期。",
+      "exchangeKeysNote": "交易所 API 密钥使用 AES-256-GCM 加密安全存储。您可以在账户页面管理交易所账户。"
+    },
+    "password": {
+      "mismatch": "两次输入的密码不一致",
+      "tooShort": "密码至少需要 8 个字符",
+      "failed": "修改密码失败"
+    }
+  },
+  "setupGuide": {
+    "title": "快速开始",
+    "subtitle": "完成设置以开始交易",
+    "go": "前往",
+    "optional": "可选",
+    "steps": {
+      "account": {
+        "title": "连接账户",
+        "desc": "关联您的交易所账户"
+      },
+      "agent": {
+        "title": "创建 AI 代理",
+        "desc": "设置您的第一个交易代理"
+      },
+      "models": {
+        "title": "配置模型",
+        "desc": "添加 AI 供应商 API Key"
+      }
+    }
+  },
+  "models": {
+    "title": "模型管理",
+    "subtitle": "配置和管理 AI 供应商",
+    "addProvider": "添加供应商",
+    "confirmDelete": "确定要删除这个供应商吗？",
+    "deleteSuccess": "供应商删除成功",
+    "deleteError": "删除供应商失败",
+    "testSuccess": "连接测试成功",
+    "testFailed": "连接测试失败",
+    "updateError": "更新供应商失败",
+    "retry": "重试",
+    "error": {
+      "loadFailed": "加载供应商失败"
+    },
+    "info": {
+      "title": "AI 供应商配置",
+      "description": "配置您的 AI 供应商 API Key 和端点，用于 AI 交易代理的决策分析。"
+    },
+    "card": {
+      "apiKey": "API Key",
+      "configured": "已配置",
+      "notConfigured": "未配置",
+      "apiFormat": "API 格式",
+      "endpoint": "API 端点",
+      "enabled": "启用",
+      "disabled": "已禁用",
+      "vision": "视觉",
+      "json": "JSON"
+    },
+    "menu": {
+      "testConnection": "测试连接",
+      "openWebsite": "打开官网",
+      "delete": "删除"
+    },
+    "addCard": {
+      "title": "添加新供应商",
+      "subtitle": "配置更多 AI 服务"
+    },
+    "empty": {
+      "title": "暂无配置的供应商",
+      "description": "添加一个 AI 供应商以启用 AI 交易代理功能。"
+    },
+    "dialog": {
+      "title": "添加新供应商",
+      "description": "配置 AI 供应商的 API 凭证",
+      "selectProvider": "选择供应商",
+      "customConfig": "自定义配置",
+      "presetHint": "选择预设供应商或自定义配置",
+      "providerName": "供应商名称",
+      "namePlaceholder": "例如：Claude 官方",
+      "note": "备注",
+      "notePlaceholder": "例如：公司专用账号",
+      "websiteUrl": "官网链接",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入您的 API Key",
+      "baseUrl": "请求地址",
+      "baseUrlHint": "填写兼容 API 的服务端点地址，不要以斜杠结尾",
+      "apiFormat": "API 格式",
+      "apiFormatHint": "选择供应商 API 的输入格式",
+      "cancel": "取消",
+      "add": "添加供应商",
+      "error": "错误",
+      "requiredFields": "请填写必填字段",
+      "success": "成功",
+      "providerAdded": "供应商添加成功"
+    },
+    "newPage": {
+      "configuration": "供应商配置",
+      "configurationDesc": "配置供应商详情和 API 凭证",
+      "tips": "提示",
+      "tipApiKey": "API Key 安全",
+      "tipApiKeyDesc": "您的 API Key 会被加密安全存储。请勿与他人分享您的 API Key。",
+      "tipFormat": "API 格式",
+      "tipFormatDesc": "大多数供应商使用 OpenAI 兼容格式。如有疑问，请查阅供应商文档。",
+      "tipTest": "测试连接",
+      "tipTestDesc": "添加供应商后，使用测试连接功能验证您的配置是否正确。",
+      "officialEndpoint": "使用官方 API 端点",
+      "advancedSettings": "高级设置",
+      "advancedSettingsDesc": "自托管或代理服务的自定义端点配置",
+      "securityTitle": "安全存储",
+      "securityDesc": "所有 API Key 在存储前都会使用 AES-256 加密。您的凭证绝不会被记录或泄露。"
+    },
+    "modelList": {
+      "title": "可用模型",
+      "test": "测试",
+      "testSuccess": "模型测试成功",
+      "testFailed": "模型测试失败",
+      "deleteSuccess": "模型删除成功",
+      "deleteFailed": "删除模型失败",
+      "empty": "此供应商暂无可用模型",
+      "loadFailed": "加载可用模型失败",
+      "retry": "重试",
+      "testError": {
+        "no_api_key": "未配置 API Key，请在「模型 / 供应商」中为该供应商添加并启用 API Key",
+        "no_base_url": "自定义模型需要配置 Base URL，请在该供应商配置中填写 API 端点地址",
+        "connection_error": "无法连接至服务，请检查网络、代理或目标地址是否可达",
+        "auth_error": "API Key 无效或已过期，请检查并更新密钥",
+        "model_not_found": "当前模型在目标服务上不存在，请核对模型 ID 与供应商支持的模型列表",
+        "rate_limit": "请求过于频繁或被限流，请稍后再试",
+        "api_error": "接口返回错误，请查看详情或稍后重试",
+        "unknown": "连接测试失败，请检查配置后重试"
+      }
+    },
+    "customModel": {
+      "add": "添加模型",
+      "title": "添加模型",
+      "description": "添加一个新的 AI 模型到此供应商",
+      "modelId": "模型 ID",
+      "modelIdPlaceholder": "例如：deepseek-chat",
+      "name": "显示名称",
+      "namePlaceholder": "例如：DeepSeek V3",
+      "modelDescription": "描述",
+      "descriptionPlaceholder": "可选的模型描述",
+      "contextWindow": "上下文窗口",
+      "maxOutput": "最大输出 Token",
+      "supportsJsonMode": "支持 JSON 模式",
+      "addModel": "添加模型",
+      "success": "模型添加成功",
+      "error": "添加模型失败",
+      "cancel": "取消"
+    }
+  },
+  "strategyStudio": {
+    "tabs": {
+      "coins": "交易对",
+      "indicators": "指标",
+      "risk": "风控",
+      "prompt": "提示词",
+      "debate": "辩论",
+      "preview": "预览"
+    },
+    "coinSelector": {
+      "title": "交易对选择",
+      "description": "选择您要交易的加密货币对",
+      "selectedCoins": "已选币种",
+      "noCoinsSelected": "未选择币种，请在下方添加",
+      "popularCoins": "热门币种",
+      "searchPlaceholder": "搜索币种...",
+      "noResults": "未找到匹配的币种",
+      "addCustom": "添加自定义符号",
+      "customPlaceholder": "例如：ARB",
+      "add": "添加"
+    },
+    "timeframes": {
+      "title": "时间周期",
+      "description": "选择市场分析的时间周期",
+      "selected": "已选择",
+      "hint": "点击切换，至少需要 1 个",
+      "presets": "快速预设",
+      "presetSwing": "波段",
+      "presetScalp": "超短线",
+      "presetPosition": "中长线"
+    },
+    "indicators": {
+      "title": "技术指标",
+      "description": "配置市场分析的技术指标",
+      "ema": {
+        "title": "指数移动平均线",
+        "description": "趋势跟踪指标，对近期价格赋予更高权重",
+        "period": "周期"
+      },
+      "rsi": {
+        "title": "相对强弱指数",
+        "description": "衡量价格变动速度和幅度的动量振荡器",
+        "period": "周期"
+      },
+      "macd": {
+        "title": "MACD",
+        "description": "显示两条 EMA 关系的趋势跟踪动量指标",
+        "fast": "快线",
+        "slow": "慢线",
+        "signal": "信号线"
+      },
+      "atr": {
+        "title": "平均真实波幅",
+        "description": "衡量市场波动性的指标",
+        "period": "周期"
+      }
+    },
+    "riskControls": {
+      "title": "风险控制",
+      "description": "设置 AI 永远不会超越的硬性限制",
+      "riskLevel": "风险等级",
+      "levels": {
+        "low": "低风险",
+        "medium": "中风险",
+        "high": "高风险"
+      },
+      "maxLeverage": "最大杠杆",
+      "maxLeverageTooltip": "AI 可以使用的最大杠杆倍数",
+      "maxPositionRatio": "最大仓位比例",
+      "maxPositionRatioTooltip": "单个仓位占总权益的最大百分比",
+      "maxTotalExposure": "最大总敞口",
+      "maxTotalExposureTooltip": "所有持仓的最大总敞口",
+      "minRiskReward": "最小风险回报比",
+      "minRiskRewardTooltip": "交易所需的最小风险回报比",
+      "maxDrawdown": "最大回撤阈值",
+      "maxDrawdownTooltip": "回撤超过此阈值时暂停交易",
+      "minConfidence": "最低执行置信度",
+      "minConfidenceTooltip": "低于此置信度的交易将被跳过",
+      "recommended": "推荐",
+      "highRiskWarning": "当前设置显示高风险，请考虑降低杠杆和仓位大小。",
+      "modeMismatchConservative": "当前风控设置偏激进，与保守模式不一致。",
+      "modeMismatchAggressive": "当前风控设置偏保守，与激进模式不一致。",
+      "modeMismatchBalanced": "当前风控设置与均衡模式建议范围不一致。",
+      "presetMismatch": "当前风控参数与所选策略预设（{preset}）有较大偏差：{details}。如果是有意调整可忽略此提示。",
+      "deviationLeverage": "杠杆 {actual}x vs 推荐 {expected}x",
+      "deviationPosition": "仓位 {actual}% vs 推荐 {expected}%",
+      "deviationExposure": "敞口 {actual}% vs 推荐 {expected}%",
+      "deviationConfidence": "置信度 {actual}% vs 推荐 {expected}%"
+    },
+    "capitalAllocation": {
+      "title": "资金分配",
+      "description": "为该策略分配独立的资金额度，防止多策略间相互干扰",
+      "mode": "分配方式",
+      "modeFixed": "固定金额",
+      "modePercent": "账户百分比",
+      "modeNone": "不限制",
+      "fixedAmount": "分配金额 (USDT)",
+      "fixedAmountPlaceholder": "输入金额，如 5000",
+      "percentAmount": "分配比例",
+      "percentAmountTooltip": "占账户权益的百分比，如 30% 表示使用账户 30% 的资金",
+      "warning": "当前账户资金分配已超过安全阈值，新仓位将被阻止",
+      "remainingBudget": "账户剩余可分配额度",
+      "totalAllocated": "已分配总额"
+    },
+    "promptEditor": {
+      "title": "提示词构建器",
+      "description": "自定义 AI 的交易行为和决策流程",
+      "templates": "快速模板",
+      "templateMomentum": "动量策略",
+      "templateMeanReversion": "均值回归",
+      "templateConservative": "保守型",
+      "customPrompt": "自定义交易指令",
+      "customPromptPlaceholder": "用自然语言描述您的交易策略。请具体说明入场/出场条件、风险管理和市场状况...",
+      "customPromptHint": "此内容将附加到系统提示词。请具体说明您的交易风格和偏好。",
+      "advancedSections": "高级提示词设置",
+      "customized": "已自定义",
+      "sections": {
+        "roleDefinition": "AI 角色定义",
+        "tradingFrequency": "交易频率",
+        "entryStandards": "入场标准",
+        "decisionProcess": "决策流程"
+      },
+      "placeholders": {
+        "roleDefinition": "定义 AI 的角色和专业领域...",
+        "tradingFrequency": "指定交易频率...",
+        "entryStandards": "定义入场标准...",
+        "decisionProcess": "概述决策过程..."
+      },
+      "hints": {
+        "roleDefinition": "留空使用默认角色定义",
+        "tradingFrequency": "留空使用默认频率指南",
+        "entryStandards": "留空使用默认入场标准",
+        "decisionProcess": "留空使用默认决策流程"
+      },
+      "conflictWithConservative": "自定义指令中的表述与当前「保守」交易模式可能矛盾，系统将优先遵循交易模式。",
+      "conflictWithAggressive": "自定义指令中的表述与当前「激进」交易模式可能矛盾，系统将优先遵循交易模式。",
+      "conflictWithBalanced": "自定义指令中的表述与当前「均衡」交易模式可能矛盾，系统将优先遵循交易模式。",
+      "suggestTradingModeConservativeTitle": "建议同步交易模式",
+      "suggestTradingModeConservative": "已应用保守型模板，建议将上方交易模式切换为「保守」以保持一致。",
+      "suggestTradingModeMomentumTitle": "建议同步交易模式",
+      "suggestTradingModeMomentum": "已应用动量策略模板，若需更积极交易可考虑将交易模式切换为「适中」或「激进」。"
+    },
+    "preview": {
+      "title": "提示词预览",
+      "description": "预览将发送给 AI 的完整系统提示词",
+      "fullPrompt": "完整提示词",
+      "role": "角色",
+      "mode": "模式",
+      "frequency": "频率",
+      "entry": "入场",
+      "process": "流程",
+      "custom": "自定义",
+      "usingDefault": "使用默认值",
+      "noPreview": "暂无预览",
+      "generate": "生成预览",
+      "testAI": "测试 AI 响应",
+      "testing": "测试中...",
+      "testHint": "使用模拟市场数据测试 AI 的响应"
+    },
+    "debate": {
+      "title": "多模型辩论",
+      "description": "让多个 AI 模型同时分析市场并通过投票达成共识",
+      "enable": "启用辩论模式",
+      "enableDescription": "多个 AI 模型将并行分析市场并对决策进行投票",
+      "selectModels": "选择 AI 模型",
+      "selectModelsDescription": "选择 2-5 个 AI 模型参与辩论",
+      "minModelsWarning": "辩论模式至少需要 2 个模型",
+      "modelsLoadFailed": "加载可用模型失败",
+      "retry": "重试",
+      "noModels": "暂无可用模型",
+      "addModelLink": "前往模型管理添加模型",
+      "validate": "验证模型",
+      "consensusMode": "共识算法",
+      "minParticipants": "最少成功响应数",
+      "minParticipantsDescription": "有效辩论所需的最少成功响应模型数量",
+      "models": "个模型",
+      "estimatedCost": "预估成本",
+      "perCycle": "每周期",
+      "resultTitle": "辩论结果",
+      "successfulModels": "成功",
+      "failedModels": "失败",
+      "agreement": "一致性",
+      "modelAgreement": "模型一致性评分",
+      "consensusDecisions": "共识决策",
+      "confidence": "置信度",
+      "viewModelResponses": "查看各模型响应",
+      "consensusModes": {
+        "majorityVote": "多数投票",
+        "highestConfidence": "最高置信度",
+        "weightedAverage": "加权平均",
+        "unanimous": "全票通过"
+      }
+    }
+  },
+  "quantStrategies": {
+    "title": "量化策略",
+    "subtitle": "创建和管理传统量化交易策略",
+    "createStrategy": "创建策略",
+    "searchPlaceholder": "搜索策略...",
+    "confirmDelete": "确定要删除这个策略吗？",
+    "info": {
+      "title": "传统量化策略",
+      "description": "基于规则的自动化交易：网格、DCA 和 RSI 策略执行确定性交易逻辑，无需 AI 参与。"
+    },
+    "filter": {
+      "allStatus": "全部状态",
+      "active": "运行中",
+      "paused": "已暂停",
+      "draft": "草稿",
+      "stopped": "已停止",
+      "allTypes": "全部类型"
+    },
+    "status": {
+      "active": "运行中",
+      "paused": "已暂停",
+      "stopped": "已停止",
+      "error": "错误",
+      "draft": "草稿"
+    },
+    "types": {
+      "grid": "网格交易",
+      "dca": "DCA 定投",
+      "rsi": "RSI 策略"
+    },
+    "typeDescriptions": {
+      "grid": "通过在价格区间内创建买卖订单网格，从市场波动中获利。",
+      "dca": "分批下单以平均入场价格，达到止盈条件时卖出。",
+      "rsi": "根据 RSI 指标值下单 — 超卖时买入，超买时卖出。"
+    },
+    "stats": {
+      "totalPL": "总盈亏",
+      "winRate": "胜率",
+      "trades": "交易次数"
+    },
+    "actions": {
+      "edit": "编辑",
+      "delete": "删除",
+      "pause": "暂停",
+      "start": "启动",
+      "resume": "恢复",
+      "stop": "停止",
+      "stopConfirmTitle": "确认停止",
+      "stopConfirmDesc": "停止操作不可逆，策略将永久停止且无法恢复运行。确定要停止吗？",
+      "closePositionsOption": "平仓所有持仓",
+      "closePositionsHint": "自动平掉该策略在交易所的所有持仓",
+      "confirmStop": "确认停止",
+      "cancel": "取消",
+      "deleteRequireStopped": "需要先停止才能删除",
+      "viewDetails": "查看详情"
+    },
+    "empty": {
+      "title": "还没有策略",
+      "description": "创建你的第一个量化交易策略",
+      "createFirst": "创建第一个策略",
+      "searchHint": "尝试调整搜索条件或筛选器"
+    },
+    "toast": {
+      "started": "策略已启动",
+      "paused": "策略已暂停",
+      "stopped": "策略已停止",
+      "updateFailed": "更新策略失败",
+      "deleteSuccess": "策略删除成功",
+      "deleteFailed": "删除策略失败",
+      "createSuccess": "策略创建成功",
+      "createFailed": "创建策略失败"
+    },
+    "error": {
+      "loadFailed": "加载策略失败"
+    },
+    "retry": "重试",
+    "create": {
+      "title": "创建量化策略",
+      "description": "选择策略类型并配置参数",
+      "selectType": "选择策略类型",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置策略名称和交易对",
+      "parameters": "策略参数",
+      "parametersDesc": "配置策略特定参数",
+      "name": "策略名称",
+      "namePlaceholder": "例如：BTC 网格策略",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选的策略描述",
+      "symbol": "交易对",
+      "symbolPlaceholder": "例如：BTC",
+      "account": "交易所账户",
+      "accountPlaceholder": "选择账户",
+      "noAccounts": "没有可用账户",
+      "cancel": "取消",
+      "submit": "创建策略",
+      "back": "返回",
+      "next": "下一步"
+    },
+    "grid": {
+      "title": "网格交易参数",
+      "upperPrice": "价格上限",
+      "lowerPrice": "价格下限",
+      "gridCount": "网格数量",
+      "totalInvestment": "总投入金额 (USD)",
+      "leverage": "杠杆"
+    },
+    "dca": {
+      "title": "DCA 定投参数",
+      "orderAmount": "每次下单金额 (USD)",
+      "intervalMinutes": "下单间隔（分钟）",
+      "takeProfitPercent": "止盈百分比 (%)",
+      "totalBudget": "总预算 (USD, 0 = 无限制)",
+      "maxOrders": "最大下单次数 (0 = 无限制)"
+    },
+    "rsi": {
+      "title": "RSI 策略参数",
+      "rsiPeriod": "RSI 周期",
+      "overboughtThreshold": "超买阈值",
+      "oversoldThreshold": "超卖阈值",
+      "orderAmount": "下单金额 (USD)",
+      "timeframe": "时间周期",
+      "leverage": "杠杆"
+    },
+    "detail": {
+      "backToStrategies": "返回策略列表",
+      "notFound": "策略未找到",
+      "refresh": "刷新",
+      "tabs": {
+        "overview": "概览",
+        "trades": "交易",
+        "settings": "设置"
+      },
+      "overview": {
+        "configuration": "配置",
+        "strategyType": "策略类型",
+        "symbol": "交易对",
+        "status": "状态",
+        "createdAt": "创建时间",
+        "lastRun": "上次运行",
+        "never": "从未运行",
+        "performance": "性能指标",
+        "totalPnl": "总盈亏",
+        "winRate": "胜率",
+        "totalTrades": "总交易数",
+        "maxDrawdown": "最大回撤",
+        "runtimeState": "运行状态",
+        "chart": "行情图表",
+        "strategyInfo": "策略信息",
+        "profitSummary": "盈亏摘要",
+        "profits": "盈利",
+        "tradeList": "交易执行",
+        "noTradeData": "暂无交易数据",
+        "noTradeDataHint": "策略运行后交易记录将显示在这里",
+        "gridLevels": "网格级别",
+        "gridLevel": "级别",
+        "gridPrice": "价格",
+        "gridBuyStatus": "买入",
+        "gridSellStatus": "卖出",
+        "gridFilled": "已成交",
+        "gridPending": "等待中",
+        "gridTotalInvested": "总投入",
+        "gridTotalReturned": "总回收",
+        "gridLastPrice": "最新价格",
+        "dcaOrdersPlaced": "已下单数",
+        "dcaTotalInvested": "总投入",
+        "dcaTotalQuantity": "持有数量",
+        "dcaAvgCost": "平均成本",
+        "dcaLastOrderTime": "最近下单时间",
+        "rsiHasPosition": "当前持仓",
+        "rsiEntryPrice": "入场价",
+        "rsiPositionSize": "仓位大小",
+        "rsiLastRsi": "最新 RSI",
+        "rsiLastSignal": "最新信号",
+        "rsiLastPrice": "最新价格",
+        "rsiYes": "是",
+        "rsiNo": "否",
+        "rsiBuySignal": "买入信号",
+        "rsiSellSignal": "卖出信号",
+        "lastCheck": "最后检查"
+      },
+      "settings": {
+        "title": "策略设置",
+        "saveChanges": "保存更改",
+        "dangerZone": "危险区域",
+        "deleteStrategy": "删除策略",
+        "deleteConfirm": "确定要删除此策略吗？此操作无法撤消。",
+        "deleteRequireStopped": "需要先停止策略才能删除",
+        "cancel": "取消",
+        "confirmDelete": "确认删除"
+      }
+    }
+  },
+  "strategyPreset": {
+    "title": "策略风格",
+    "description": "选择投资风格和时间周期，系统将自动预填所有参数",
+    "riskProfile": {
+      "title": "投资风格",
+      "conservative": "保守型",
+      "conservativeDesc": "低杠杆、小仓位、高置信度门槛，稳健为主",
+      "balanced": "均衡型",
+      "balancedDesc": "中等参数，攻守兼备，适合大多数用户",
+      "aggressive": "激进型",
+      "aggressiveDesc": "高杠杆、大仓位、低置信度门槛，追求高收益"
+    },
+    "timeHorizon": {
+      "title": "时间周期",
+      "scalp": "超短线",
+      "scalpDesc": "1m/5m/15m 高频决策，快进快出",
+      "swing": "波段",
+      "swingDesc": "15m/1h/4h 日内到数日，顺势而为",
+      "position": "中长线",
+      "positionDesc": "4h/1d 持仓数周，把握大趋势"
+    },
+    "summary": {
+      "title": "预设参数摘要",
+      "leverage": "最大杠杆",
+      "positionSize": "仓位上限",
+      "exposure": "总敞口",
+      "confidence": "置信度门槛",
+      "interval": "决策间隔",
+      "timeframes": "分析周期"
+    },
+    "custom": "自定义配置",
+    "customDesc": "跳过预设，手动配置所有参数",
+    "applied": "已应用策略模板: {profile} · {horizon}",
+    "resetToPreset": "重新应用模板",
+    "presetActive": "当前预设",
+    "customized": "参数已自定义调整"
+  },
+  "landing": {
+    "nav": {
+      "login": "登录",
+      "getStarted": "立即开始",
+      "ariaLabel": "主导航"
+    },
+    "hero": {
+      "badgeTag": "AI",
+      "badgeText": "驱动的智能交易平台",
+      "titleLine1": "AI 驱动的智能交易",
+      "titleLine2": "加密货币新时代",
+      "subtitle": "多模型 AI 辩论引擎，优化你的 Alpha 收益，一键连接全球主流交易所。",
+      "cta": "开始交易"
+    },
+    "bento": {
+      "sectionTitle": "为交易而生",
+      "sectionSubtitle": "AI 驱动的加密市场交易利器",
+      "exchanges": {
+        "title": "交易所支持",
+        "desc": "Binance、Bybit、OKX 和 Hyperliquid"
+      },
+      "models": {
+        "title": "AI 大模型",
+        "desc": "多模型辩论引擎"
+      },
+      "automated": {
+        "title": "全天候自动交易",
+        "desc": "持续执行与监控"
+      },
+      "consensus": {
+        "title": "共识模式",
+        "desc": "投票、信心、加权、全票通过"
+      }
+    },
+    "features": {
+      "title": "核心能力",
+      "subtitle": "从策略到执行的完整链路",
+      "items": {
+        "0": {
+          "title": "自然语言 AI 交易",
+          "description": "通过自然语言 Prompt 定义交易策略，AI 理解您的意图并生成可执行的交易决策，无需编程。"
+        },
+        "1": {
+          "title": "多模型辩论引擎",
+          "description": "多个 AI 模型并行分析市场，支持 4 种共识模式：多数投票、最高信心、加权平均、全票通过。"
+        },
+        "2": {
+          "title": "多交易所统一接入",
+          "description": "一键连接 Binance、Bybit、OKX、Hyperliquid，统一 API 接口，在一个平台管理所有账户。"
+        },
+        "3": {
+          "title": "量化策略引擎",
+          "description": "经典量化策略全覆盖：网格交易、DCA 定投、RSI 超买超卖信号，参数完全可配置，自动执行。"
+        },
+        "4": {
+          "title": "回测与绩效分析",
+          "description": "基于历史数据模拟策略运行，提供夏普比率、索提诺比率、最大回撤、胜率等多维度绩效指标。"
+        },
+        "5": {
+          "title": "实时监控与通知",
+          "description": "WebSocket 实时推送持仓、决策和市场数据，支持 Telegram、Discord、邮件即时通知。"
+        }
+      }
+    },
+    "cta": {
+      "title": "开始探索",
+      "subtitle": "AI 交易、多交易所、回测 - 一键开启",
+      "button": "立即开始"
+    },
+    "footer": {
+      "copyright": "\u00a9 {year} BITRUN. 保留所有权利。",
+      "madeWith": "平台由",
+      "by": "倾力打造",
+      "teamName": "BITRUN 团队"
+    }
+  }
+}

@@ -1,0 +1,1839 @@
+{
+  "metadata": {
+    "title": "BITRUN | AI-Powered Trading Agent",
+    "description": "Prompt-driven automated trading with AI decision making"
+  },
+  "auth": {
+    "welcome": "Welcome back",
+    "description": "Please log in to continue.",
+    "login": "Sign In",
+    "register": "Register",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Enter password again",
+    "loginButton": "Sign In",
+    "registerButton": "Create Account",
+    "continue": "Continue",
+    "loading": "Please wait...",
+    "forgotPassword": "Forgot your password?",
+    "resetPassword": "Reset Your Password",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "createAccount": "Create an account",
+    "registerDescription": "Sign up to get started.",
+    "termsPrefix": "By continuing, you agree to our",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "and": "and",
+    "errors": {
+      "required": "Please fill in all required fields",
+      "invalidEmail": "Please enter a valid email address",
+      "passwordLength": "Password must be at least 8 characters",
+      "nameRequired": "Please enter your name",
+      "passwordMismatch": "Passwords do not match",
+      "AUTH_INVALID_CREDENTIALS": "Invalid email or password. {remaining} attempts remaining.",
+      "AUTH_INVALID_CREDENTIALS_GENERIC": "Invalid email or password",
+      "AUTH_ACCOUNT_LOCKED": "Account locked. Please try again in {minutes} minutes.",
+      "AUTH_RATE_LIMITED": "Too many requests. Please try again later.",
+      "AUTH_EMAIL_EXISTS": "This email is already registered",
+      "SERVICE_UNAVAILABLE": "Service temporarily unavailable. Please try again later.",
+      "LOGIN_FAILED": "Login failed. Please try again.",
+      "REGISTER_FAILED": "Registration failed. Please try again."
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "Agent Strategies",
+    "strategies": "Quant Strategies",
+    "accounts": "Accounts",
+    "models": "Models",
+    "backtest": "Backtest",
+    "settings": "Settings",
+    "collapse": "Collapse"
+  },
+  "header": {
+    "search": "Search agents, decisions...",
+    "systemOnline": "System Online",
+    "myAccount": "My Account",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Monitor your AI trading agents in real-time",
+    "newAgent": "New Agent",
+    "empty": {
+      "title": "No AI Agents Running",
+      "description": "Connect your exchange account and create your first AI trading agent to get started with automated trading.",
+      "feature1Title": "Natural Language",
+      "feature1Desc": "Describe your trading strategy",
+      "feature2Title": "24/7 Execution",
+      "feature2Desc": "AI trades around the clock",
+      "feature3Title": "Full Audit Trail",
+      "feature3Desc": "Every decision is logged",
+      "getStarted": "Get Started",
+      "viewTutorial": "View Tutorial",
+      "watchDemo": "Watch Demo"
+    },
+    "stats": {
+      "totalEquity": "Total Equity",
+      "dailyPL": "Daily P/L",
+      "activeStrategies": "Active Strategies",
+      "openPositions": "Open Positions",
+      "executing": "executing",
+      "inProfit": "in profit"
+    },
+    "recentDecisions": {
+      "title": "Recent AI Decisions",
+      "viewAll": "View All",
+      "time": "Time",
+      "strategy": "Strategy",
+      "action": "Action",
+      "confidence": "Confidence",
+      "status": "Status",
+      "executed": "executed",
+      "skipped": "skipped"
+    },
+    "positions": {
+      "title": "Open Positions",
+      "active": "active",
+      "entry": "Entry",
+      "mark": "Mark",
+      "size": "Size",
+      "pnl": "P/L",
+      "long": "LONG",
+      "short": "SHORT",
+      "empty": "No open positions"
+    },
+    "activity": {
+      "title": "Live Activity Feed",
+      "monitoring": "Monitoring market conditions...",
+      "analyzing": "AI agents are analyzing in real-time",
+      "viewDetail": "View details"
+    },
+    "timeAgo": {
+      "minAgo": "{count} min ago",
+      "hrAgo": "{count} hr ago"
+    },
+    "agentStrategies": {
+      "title": "Agent P/L & Win Rate",
+      "totalPnl": "Total P/L",
+      "winRate": "Win Rate",
+      "trades": "Trades",
+      "noData": "No strategies or no trade data yet",
+      "viewAgent": "View details"
+    },
+    "quantStrategies": {
+      "title": "Quant Strategies P/L & Win Rate",
+      "totalPnl": "Total P/L",
+      "winRate": "Win Rate",
+      "trades": "Trades",
+      "noData": "No strategies or no trade data yet",
+      "viewStrategy": "View details"
+    }
+  },
+  "agents": {
+    "title": "Agent Strategies",
+    "subtitle": "Create and manage trading strategies driven by AI agents",
+    "createAgent": "Create Strategy",
+    "searchPlaceholder": "Search agent strategies...",
+    "filter": {
+      "allStatus": "All Status",
+      "active": "Active",
+      "paused": "Paused",
+      "draft": "Draft",
+      "stopped": "Stopped"
+    },
+    "status": {
+      "active": "active",
+      "paused": "paused",
+      "stopped": "stopped",
+      "error": "error",
+      "draft": "draft"
+    },
+    "mode": {
+      "aggressive": "Aggressive",
+      "conservative": "Conservative",
+      "balanced": "Balanced",
+      "custom": "Custom"
+    },
+    "timeHorizon": {
+      "scalp": "Scalp",
+      "swing": "Swing",
+      "position": "Position"
+    },
+    "stats": {
+      "totalPL": "Total P/L",
+      "winRate": "Win Rate",
+      "maxLeverage": "Max Leverage"
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "viewDecisions": "View Decisions",
+      "delete": "Delete",
+      "pause": "Pause",
+      "start": "Start",
+      "resume": "Resume",
+      "stop": "Stop",
+      "stopConfirmTitle": "Confirm Stop",
+      "stopConfirmDesc": "Stopping is irreversible. The agent will be permanently stopped and cannot be resumed. Are you sure?",
+      "closePositionsOption": "Close all open positions",
+      "closePositionsHint": "Automatically close all positions held by this strategy on the exchange",
+      "confirmStop": "Confirm Stop",
+      "cancel": "Cancel",
+      "deleteRequireStopped": "Must be stopped before deletion",
+      "viewDetails": "View Details"
+    },
+    "info": {
+      "title": "AI Agent Strategies",
+      "description": "Create and manage trading strategies driven by AI agents. Each strategy runs 24/7 with natural language prompts and full decision audit."
+    },
+    "empty": {
+      "title": "No agent strategies yet",
+      "description": "Create your first AI agent-driven trading strategy",
+      "feature1Title": "Natural Language",
+      "feature1Desc": "Describe strategy",
+      "feature2Title": "Auto Execute",
+      "feature2Desc": "24/7 trading",
+      "feature3Title": "Full Audit",
+      "feature3Desc": "Every decision tracked",
+      "createFirst": "Create Your First Strategy",
+      "searchHint": "Try adjusting your search or filters",
+      "noDescription": "No description"
+    },
+    "toast": {
+      "started": "Agent strategy started",
+      "paused": "Agent strategy paused",
+      "stopped": "Agent strategy stopped",
+      "updateFailed": "Failed to update agent strategy",
+      "deleteSuccess": "Agent strategy deleted",
+      "deleteFailed": "Failed to delete agent strategy"
+    },
+    "error": {
+      "loadFailed": "Failed to load agent strategies"
+    },
+    "retry": "Retry",
+    "create": {
+      "title": "Create Agent Strategy",
+      "description": "Configure an AI agent-driven trading strategy",
+      "name": "Agent Name",
+      "namePlaceholder": "e.g., My BTC Strategy",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description for this agent",
+      "account": "Exchange Account",
+      "accountPlaceholder": "Select an account",
+      "noAccounts": "No accounts available",
+      "noAccountsHint": "Add an exchange account first in the Accounts section",
+      "tradingMode": "Trading Mode",
+      "symbols": "Trading Symbols",
+      "symbolsHint": "Comma-separated list of symbols to trade (e.g., BTC, ETH, SOL)",
+      "prompt": "Trading Prompt",
+      "promptPlaceholder": "Describe your trading strategy in natural language. For example: Focus on BTC trend following. Enter long when price breaks above 20-day high with increasing volume. Use 2% stop loss and 5% take profit...",
+      "promptHint": "The AI will follow these instructions to make trading decisions. Markdown formatting supported.",
+      "aiModel": "AI Model",
+      "aiModelPlaceholder": "Select AI Model",
+      "aiModelRequired": "Please select an AI model",
+      "noModels": "No models available",
+      "addModelLink": "Add a model in Model Management",
+      "riskSettings": "Risk Settings",
+      "maxLeverage": "Max Leverage",
+      "interval": "Decision Interval",
+      "maxPosition": "Max Position Size",
+      "cancel": "Cancel",
+      "submit": "Create Agent"
+    },
+    "confirmDelete": "Are you sure you want to delete this agent?",
+    "edit": {
+      "title": "Edit Strategy",
+      "description": "Update your trading strategy configuration."
+    },
+    "newPage": {
+      "backToAgents": "Back to Agents",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Set up your agent's identity and trading account",
+      "tradingConfig": "Trading Configuration",
+      "tradingConfigDesc": "Define how your AI agent should trade",
+      "riskSettingsDesc": "Set hard limits that the AI will never exceed",
+      "addAccountLink": "Add an account",
+      "promptTips": "Tips",
+      "insertExample": "Insert Example",
+      "tipSpecific": "Be Specific",
+      "tipSpecificDesc": "Describe entry/exit conditions, timeframes, and indicators clearly.",
+      "tipRisk": "Define Risk",
+      "tipRiskDesc": "Include stop-loss percentages and take-profit targets.",
+      "tipConditions": "Market Conditions",
+      "tipConditionsDesc": "Specify when to trade and when to stay out of the market.",
+      "examplePrompt": "Example Prompt",
+      "examplePromptText": "Focus on BTC trend following. Enter long when price breaks above 20-day high with increasing volume. Use 2% stop loss and 5% take profit. Avoid trading during low volatility periods.",
+      "riskWarningTitle": "Risk Warning",
+      "riskWarningDesc": "Start with testnet and conservative settings.",
+      "errorNoSymbols": "At least one symbol is required",
+      "errorNoAccount": "Please select an account",
+      "errorNoPrompt": "Please enter a prompt or open the Preview tab to generate one",
+      "errorShortPrompt": "Trading prompt must be at least 10 characters",
+      "success": "Agent created successfully",
+      "failed": "Failed to create agent"
+    },
+    "editPage": {
+      "backToAgent": "Back to Agent",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Update your agent's name and description",
+      "tradingConfig": "Trading Configuration",
+      "tradingConfigDesc": "Update how your AI agent should trade",
+      "riskSettingsDesc": "Update hard limits that the AI will never exceed",
+      "unknownAccount": "Unknown Account",
+      "accountNote": "Account cannot be changed after creation",
+      "agentInfo": "Agent Info",
+      "status": "Status",
+      "created": "Created",
+      "changeWarningTitle": "Changes Take Effect Immediately",
+      "changeWarningDesc": "Any changes will be applied to the next trading decision.",
+      "saveChanges": "Save Changes",
+      "notFound": "Agent not found",
+      "errorShortPrompt": "Trading prompt must be at least 10 characters",
+      "success": "Agent updated successfully",
+      "failed": "Failed to update agent"
+    }
+  },
+  "backtest": {
+    "title": "Backtest",
+    "subtitle": "Test your strategies against historical data",
+    "newBacktest": "New Backtest",
+    "runBacktest": "Run Backtest",
+    "running": "Running...",
+    "configuration": "Configuration",
+    "dataSource": "Data Source Exchange",
+    "selectExchange": "Select exchange",
+    "selectAgent": "Select Agent",
+    "selectAgentPlaceholder": "Choose an agent to backtest",
+    "tradingPair": "Trading Pairs",
+    "selectPair": "Select pairs (multi-select)",
+    "searchPair": "Search trading pairs...",
+    "loadingPairs": "Loading pairs...",
+    "noMatch": "No matching pairs",
+    "timeRange": "Time Range",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "initialBalance": "Initial Balance",
+    "results": "Backtest Results",
+    "noResults": "No backtest results yet",
+    "noResultsHint": "Run a backtest to see performance metrics",
+    "metrics": {
+      "totalReturn": "Total Return",
+      "maxDrawdown": "Max Drawdown",
+      "sharpeRatio": "Sharpe Ratio",
+      "sortinoRatio": "Sortino Ratio",
+      "calmarRatio": "Calmar Ratio",
+      "totalTrades": "Total Trades",
+      "winRate": "Win Rate",
+      "profitFactor": "Profit Factor",
+      "initialBalance": "Initial Balance",
+      "finalBalance": "Final Balance",
+      "totalFees": "Total Fees",
+      "expectancy": "Expectancy",
+      "recoveryFactor": "Recovery Factor",
+      "averageWin": "Average Win",
+      "averageLoss": "Average Loss",
+      "largestWin": "Largest Win",
+      "largestLoss": "Largest Loss",
+      "grossProfit": "Gross Profit",
+      "grossLoss": "Gross Loss",
+      "avgHoldingHours": "Avg Holding Time",
+      "maxConsecutiveWins": "Max Consec. Wins",
+      "maxConsecutiveLosses": "Max Consec. Losses"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "tradeAnalysis": "Trade Analysis",
+      "timeAnalysis": "Time Analysis",
+      "symbolBreakdown": "Symbol Breakdown",
+      "tradeList": "Trade List"
+    },
+    "charts": {
+      "equityCurve": "Equity Curve",
+      "drawdownCurve": "Drawdown Curve",
+      "equity": "Equity",
+      "balance": "Balance",
+      "drawdown": "Drawdown",
+      "positions": "Positions",
+      "pnlDistribution": "P&L Distribution",
+      "tradeCount": "Trade Count",
+      "pnl": "P&L",
+      "monthlyReturns": "Monthly Returns",
+      "returnPercent": "Return %",
+      "cumulativeReturn": "Cumulative Return",
+      "symbolComparison": "Symbol P&L Comparison"
+    },
+    "tradeAnalysis": {
+      "longVsShort": "Long vs Short",
+      "longTrades": "Long Trades",
+      "shortTrades": "Short Trades",
+      "consecutiveAnalysis": "Consecutive W/L",
+      "holdingTimeDistribution": "Holding Time Distribution",
+      "lessThan1h": "< 1h",
+      "1hTo4h": "1-4h",
+      "4hTo24h": "4-24h",
+      "1dTo7d": "1-7d",
+      "moreThan7d": "> 7d",
+      "trades": "trades"
+    },
+    "tradeList": {
+      "symbol": "Symbol",
+      "side": "Side",
+      "leverage": "Leverage",
+      "entryPrice": "Entry Price",
+      "exitPrice": "Exit Price",
+      "pnl": "P&L",
+      "pnlPercent": "P&L %",
+      "duration": "Duration",
+      "exitReason": "Exit Reason",
+      "openTime": "Open Time",
+      "closeTime": "Close Time",
+      "long": "Long",
+      "short": "Short",
+      "manual": "Manual",
+      "stopLoss": "Stop Loss",
+      "takeProfit": "Take Profit",
+      "liquidation": "Liquidation",
+      "noTrades": "No trade records"
+    },
+    "symbolBreakdown": {
+      "symbol": "Symbol",
+      "trades": "Trades",
+      "winRate": "Win Rate",
+      "totalPnl": "Total P&L",
+      "avgPnl": "Avg P&L",
+      "noData": "No symbol data"
+    },
+    "history": {
+      "title": "Backtest History",
+      "empty": "No previous backtests",
+      "agent": "Agent",
+      "pair": "Pair",
+      "period": "Period",
+      "return": "Return",
+      "date": "Date"
+    },
+    "toast": {
+      "completed": "Backtest completed",
+      "failed": "Backtest failed"
+    }
+  },
+  "accounts": {
+    "title": "Exchange Accounts",
+    "subtitle": "Manage your connected exchange accounts securely",
+    "addAccount": "Add Account",
+    "confirmDelete": "Are you sure you want to remove this account?",
+    "security": {
+      "title": "Security First",
+      "description": "All API credentials are encrypted end-to-end. We recommend using sub-accounts with limited permissions and IP whitelisting."
+    },
+    "info": {
+      "title": "Exchange Account Connection",
+      "description": "Connect Hyperliquid, Binance, Bybit, OKX and more. Credentials are encrypted; use testnet to try without real funds."
+    },
+    "dialog": {
+      "title": "Add Exchange Account",
+      "description": "Your API credentials are encrypted before storage",
+      "accountName": "Account Name",
+      "accountNamePlaceholder": "e.g., Main Trading Account",
+      "exchange": "Exchange",
+      "testnetMode": "Testnet Mode",
+      "testnetDescription": "Use testnet for paper trading",
+      "importType": "Import Method",
+      "privateKey": "Private Key",
+      "mnemonic": "Seed Phrase",
+      "mnemonicPlaceholder": "Enter your 12 or 24 word seed phrase",
+      "mnemonicHint": "Enter your wallet's seed phrase (12 or 24 words separated by spaces)",
+      "apiKey": "API Key",
+      "apiSecret": "API Secret",
+      "enterApiKey": "Enter API key",
+      "enterApiSecret": "Enter API secret",
+      "encryptionNote": "Credentials are encrypted with AES-256-GCM before storage",
+      "cancel": "Cancel",
+      "addAccount": "Add Account"
+    },
+    "newPage": {
+      "backToAccounts": "Back to Accounts",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Set up your account name and exchange",
+      "credentials": "Credentials",
+      "credentialsDesc": "Enter your exchange credentials securely",
+      "privateKeyDesc": "Import with private key",
+      "mnemonicDesc": "Import with seed phrase",
+      "securityTitle": "Security Information",
+      "securitySubtitle": "Learn how we protect your credentials",
+      "encryptionTitle": "End-to-End Encryption",
+      "testnet": "Testnet",
+      "mainnet": "Mainnet",
+      "tips": "Tips",
+      "tipTestnet": "Start with Testnet",
+      "tipTestnetDesc": "Use testnet mode to familiarize yourself with the platform without risking real funds.",
+      "tipSubaccount": "Use Sub-accounts",
+      "tipSubaccountDesc": "For CEX, create a sub-account with limited permissions for better security.",
+      "tipWhitelist": "IP Whitelist",
+      "tipWhitelistDesc": "Enable IP whitelist on your exchange for additional protection.",
+      "hyperliquidInfo": "Hyperliquid is a decentralized perpetual exchange. You can import your wallet using a private key or seed phrase.",
+      "cexInfo": "Generate API credentials from your exchange settings. Make sure to enable trading permissions but disable withdrawal.",
+      "success": "Account added successfully",
+      "failed": "Failed to add account",
+      "createError": "Failed to create account",
+      "creating": "Creating...",
+      "testingConnection": "Testing connection...",
+      "connectionOk": "Connection test passed",
+      "connectionFailed": "Account created, but connection test failed. Please check your credentials"
+    },
+    "card": {
+      "testnet": "Testnet",
+      "status": "Status",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "notConnected": "Not connected",
+      "availableBalance": "Available Balance",
+      "totalEquity": "Total Equity",
+      "unrealizedPnl": "Unrealized P&L",
+      "positions": "Positions",
+      "balanceError": "Failed to load",
+      "lastSynced": "Last synced",
+      "added": "Added"
+    },
+    "menu": {
+      "testConnection": "Test Connection",
+      "refreshBalance": "Refresh Balance",
+      "openExchange": "Open Exchange",
+      "removeAccount": "Remove Account"
+    },
+    "addCard": {
+      "title": "Add New Account",
+      "subtitle": "Connect another exchange"
+    },
+    "empty": {
+      "title": "No accounts yet",
+      "description": "Connect your first exchange account to start trading with AI agents.",
+      "createFirst": "Add Account"
+    },
+    "toast": {
+      "removeSuccess": "Account removed successfully",
+      "removeFailed": "Failed to remove account",
+      "connectionSuccess": "Connection successful",
+      "connectionFailed": "Connection failed",
+      "testFailed": "Connection test failed"
+    },
+    "error": {
+      "loadFailed": "Failed to load accounts"
+    },
+    "retry": "Retry"
+  },
+  "decisions": {
+    "title": "AI Decisions",
+    "subtitle": "View AI reasoning and decision history",
+    "searchPlaceholder": "Search decisions...",
+    "filter": {
+      "allDecisions": "All Decisions",
+      "executed": "Executed",
+      "skipped": "Skipped"
+    },
+    "card": {
+      "decision": "Decision",
+      "executed": "Executed",
+      "skipped": "Skipped",
+      "confidence": "Confidence"
+    },
+    "details": {
+      "marketAssessment": "Market Assessment",
+      "chainOfThought": "Chain of Thought",
+      "tradingDecisions": "Trading Decisions",
+      "leverage": "Leverage",
+      "size": "Size",
+      "stopLoss": "Stop Loss",
+      "takeProfit": "Take Profit"
+    },
+    "executionRecords": "Execution Records",
+    "execution": {
+      "success": "Order Succeeded",
+      "failed": "Order Failed",
+      "skipped": "Skipped",
+      "orderId": "Order ID",
+      "filledSize": "Filled Size",
+      "filledPrice": "Filled Price",
+      "requestedSize": "Requested Size",
+      "actualSize": "Actual Size",
+      "reason": "Reason",
+      "status": "Status",
+      "noRecords": "No execution records"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "retry": "Retry"
+  },
+  "editor": {
+    "source": "Source",
+    "preview": "Preview",
+    "empty": "No content"
+  },
+  "strategies": {
+    "title": "Strategies",
+    "subtitle": "Manage your trading strategies",
+    "createStrategy": "Create Strategy",
+    "searchPlaceholder": "Search strategies...",
+    "confirmDelete": "Are you sure you want to delete this strategy?",
+    "filter": {
+      "allStatus": "All Status",
+      "active": "Active",
+      "paused": "Paused",
+      "draft": "Draft",
+      "stopped": "Stopped"
+    },
+    "status": {
+      "active": "active",
+      "paused": "paused",
+      "stopped": "stopped",
+      "error": "error",
+      "draft": "draft"
+    },
+    "mode": {
+      "aggressive": "Aggressive",
+      "conservative": "Conservative",
+      "balanced": "Balanced"
+    },
+    "stats": {
+      "totalPL": "Total P/L",
+      "winRate": "Win Rate",
+      "maxLeverage": "Max Leverage"
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "viewDecisions": "View Decisions",
+      "delete": "Delete",
+      "pause": "Pause",
+      "start": "Start",
+      "resume": "Resume",
+      "viewDetails": "View Details"
+    },
+    "empty": {
+      "title": "No strategies yet",
+      "searchHint": "Try adjusting your search or filters",
+      "createHint": "Create your first strategy",
+      "noDescription": "No description"
+    },
+    "error": {
+      "loadFailed": "Failed to load strategies"
+    },
+    "retry": "Retry"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and preferences",
+    "saveChanges": "Save Changes",
+    "tabs": {
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "ai": "AI Settings",
+      "appearance": "Appearance"
+    },
+    "profile": {
+      "title": "Profile Information",
+      "description": "Update your personal information",
+      "name": "Name",
+      "namePlaceholder": "Enter your name",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage your account security settings",
+      "changePassword": "Change Password",
+      "twoFactor": "Two-Factor Authentication",
+      "twoFactorDescription": "Add an extra layer of security to your account"
+    },
+    "notifications": {
+      "email": {
+        "title": "Email Notifications",
+        "description": "Configure which emails you receive",
+        "decisions": "Trading Decisions",
+        "decisionsDescription": "Get notified when AI makes trading decisions",
+        "dailySummary": "Daily Summary",
+        "dailySummaryDescription": "Receive a daily summary of your trading activity"
+      },
+      "push": {
+        "title": "Push Notifications",
+        "description": "Configure browser notifications",
+        "alerts": "Critical Alerts",
+        "alertsDescription": "Important system alerts and warnings",
+        "positions": "Position Updates",
+        "positionsDescription": "Updates on your open positions"
+      }
+    },
+    "ai": {
+      "title": "AI Agent Settings",
+      "description": "Configure how AI agents make decisions",
+      "confidenceThreshold": "Default Confidence Threshold",
+      "confidenceThresholdDescription": "Minimum confidence required to execute trades",
+      "moreFrequent": "More frequent",
+      "moreSelective": "More selective",
+      "autoExecute": "Auto-Execute Trades",
+      "autoExecuteDescription": "Automatically execute AI decisions above threshold",
+      "riskLevel": "Risk Level",
+      "riskLevelDescription": "Set your preferred risk tolerance",
+      "riskLevels": {
+        "conservative": "Conservative",
+        "moderate": "Moderate",
+        "aggressive": "Aggressive"
+      },
+      "riskLevelDescriptions": {
+        "conservative": "Lower risk, smaller positions",
+        "moderate": "Balanced approach",
+        "aggressive": "Higher risk, larger positions"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Customize how BITRUN looks",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "agentDetail": {
+    "backToAgents": "Back to Agents",
+    "notFound": "Agent not found",
+    "refresh": "Refresh",
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "stopped": "Stopped",
+      "error": "Error",
+      "draft": "Draft"
+    },
+    "actions": {
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "stop": "Stop",
+      "stopConfirmTitle": "Confirm Stop",
+      "stopConfirmDesc": "Stopping is irreversible. The agent will be permanently stopped and cannot be resumed. Are you sure?",
+      "confirmStop": "Confirm Stop",
+      "cancel": "Cancel",
+      "runNow": "Run Now"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "decisions": "Decisions",
+      "performance": "Performance",
+      "settings": "Settings"
+    },
+    "toast": {
+      "started": "Agent started",
+      "paused": "Agent paused",
+      "stopped": "Agent stopped",
+      "updateFailed": "Failed to update agent",
+      "runNowSuccess": "Manual execution triggered",
+      "runNowFailed": "Manual execution failed"
+    },
+    "tradingModeValue": {
+      "conservative": "Conservative",
+      "balanced": "Balanced",
+      "aggressive": "Aggressive"
+    },
+    "overview": {
+      "totalPnl": "Total P/L",
+      "winRate": "Win Rate",
+      "totalTrades": "Total Trades",
+      "maxDrawdown": "Max Drawdown",
+      "noData": "No data",
+      "configuration": "Configuration",
+      "tradingMode": "Trading Mode",
+      "aiModel": "AI Model",
+      "executionInterval": "Execution Interval",
+      "everyMinutes": "Every {minutes} min",
+      "maxLeverage": "Max Leverage",
+      "maxPosition": "Max Position",
+      "minConfidence": "Min Confidence",
+      "createdAt": "Created",
+      "lastRun": "Last Run",
+      "never": "Never",
+      "symbolsAndTimeframes": "Trading Pairs & Timeframes",
+      "symbols": "Trading Pairs",
+      "timeframes": "Timeframes",
+      "noSymbols": "No trading pairs configured",
+      "indicators": "Technical Indicators",
+      "noIndicators": "No indicators configured",
+      "emaPeriods": "EMA Periods",
+      "rsiPeriod": "RSI Period",
+      "macdParams": "MACD (Fast/Slow/Signal)",
+      "atrPeriod": "ATR Period",
+      "riskControls": "Risk Controls",
+      "maxTotalExposure": "Max Total Exposure",
+      "minRiskReward": "Min Risk/Reward",
+      "maxDrawdownLimit": "Max Drawdown",
+      "stopLoss": "Default Stop Loss",
+      "debate": "Debate Settings",
+      "debateEnabled": "Debate Enabled",
+      "debateModels": "Participating Models",
+      "consensusMode": "Consensus Mode",
+      "consensusModes": {
+        "majority_vote": "Majority Vote",
+        "highest_confidence": "Highest Confidence",
+        "weighted_average": "Weighted Average",
+        "unanimous": "Unanimous"
+      },
+      "minParticipants": "Min Participants",
+      "instructions": "Trading Instructions",
+      "noInstructions": "No instructions defined",
+      "promptSections": "Prompt Sections",
+      "roleDefinition": "Role Definition",
+      "tradingFrequency": "Trading Frequency",
+      "entryStandards": "Entry Standards",
+      "decisionProcess": "Decision Process",
+      "noPromptSections": "No prompt sections defined",
+      "chart": "Chart",
+      "recentTrades": "Recent Trade Executions",
+      "viewAllDecisions": "View All Decisions",
+      "noRecentTrades": "No trade executions yet",
+      "noRecentTradesHint": "Trade records will appear here once the agent starts running",
+      "tradeTime": "Time",
+      "tradeSymbol": "Pair",
+      "tradeAction": "Action",
+      "tradeLeverage": "Leverage",
+      "tradeAmount": "Amount",
+      "tradeConfidence": "Confidence",
+      "tradeStatus": "Status",
+      "tradeEntryPrice": "Entry Price",
+      "tradeFilledPrice": "Fill Price",
+      "tradeMarkPrice": "Mark Price",
+      "tradePnl": "P/L",
+      "tradeRealizedPnl": "Realized P/L",
+      "tradeUnrealizedPnl": "Unrealized P/L",
+      "tradeLong": "LONG",
+      "tradeShort": "SHORT",
+      "tradeCloseLong": "Close Long",
+      "tradeCloseShort": "Close Short",
+      "tradeNA": "N/A",
+      "tradeFilterAll": "All Actions",
+      "strategyInfo": "Strategy Info",
+      "profitSummary": "Profit Summary",
+      "profits": "Profits"
+    },
+    "decisions": {
+      "empty": "No Decisions Yet",
+      "emptyHint": "Decisions will appear here once the agent starts running",
+      "decision": "Decision",
+      "executed": "Executed",
+      "skipped": "Skipped",
+      "confidence": "Confidence",
+      "marketAssessment": "Market Assessment",
+      "chainOfThought": "Chain of Thought",
+      "tradingDecisions": "Trading Decisions",
+      "leverage": "Leverage",
+      "size": "Size",
+      "stopLoss": "Stop Loss",
+      "takeProfit": "Take Profit",
+      "model": "Model",
+      "tokens": "Tokens",
+      "latency": "Latency",
+      "more": "+{count} more",
+      "analytics": "AI Decision Analytics",
+      "totalDecisions": "Total Decisions",
+      "executionRate": "Execution Rate",
+      "avgConfidence": "Avg Confidence",
+      "avgLatency": "Avg Latency",
+      "totalTokens": "Total Tokens",
+      "actionDistribution": "Action Distribution",
+      "executionRecords": "Execution Records",
+      "execution": {
+        "success": "Order Succeeded",
+        "failed": "Order Failed",
+        "skipped": "Skipped",
+        "orderId": "Order ID",
+        "filledSize": "Filled Size",
+        "filledPrice": "Filled Price",
+        "requestedSize": "Requested Size",
+        "actualSize": "Actual Size",
+        "reason": "Reason",
+        "status": "Status",
+        "noRecords": "No execution records"
+      },
+      "marketSnapshot": {
+        "title": "Market Data Snapshot",
+        "symbol": "symbol",
+        "symbols": "symbols",
+        "bid": "Bid",
+        "ask": "Ask",
+        "spread": "Spread",
+        "volume24h": "24h Volume",
+        "fundingRate": "Funding Rate",
+        "avgFunding24h": "24h Avg Funding",
+        "bullishBias": "Bullish bias",
+        "bearishBias": "Bearish bias",
+        "neutral": "Neutral",
+        "indicators": "Technical Indicators",
+        "macdLine": "MACD",
+        "signalLine": "Signal",
+        "histogram": "Histogram",
+        "fundingHistory": "Funding Rate History",
+        "recentKlines": "Recent K-lines",
+        "time": "Time",
+        "rate": "Rate",
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "volume": "Volume",
+        "change": "Change"
+      },
+      "accountSnapshot": {
+        "title": "Account Snapshot",
+        "equity": "Total Equity",
+        "availableBalance": "Available Balance",
+        "marginUsed": "Margin Used",
+        "unrealizedPnl": "Unrealized P/L",
+        "positionCount": "Open Positions",
+        "positions": "Positions",
+        "noPositions": "No open positions",
+        "entry": "Entry",
+        "mark": "Mark",
+        "leverage": "Leverage",
+        "pnl": "P/L",
+        "liquidation": "Liq. Price",
+        "size": "Size"
+      },
+      "prevPage": "Previous",
+      "nextPage": "Next",
+      "pageInfo": "Page {page} of {total}",
+      "filterAll": "All",
+      "filterExecuted": "Executed",
+      "filterSkipped": "Skipped",
+      "filterAction": "Action Type",
+      "filterActionAll": "All Actions"
+    },
+    "performance": {
+      "title": "Performance Analytics",
+      "comingSoon": "Detailed performance charts and analytics coming soon",
+      "totalPnl": "Total P/L",
+      "winRate": "Win Rate",
+      "totalTrades": "Total Trades",
+      "maxDrawdown": "Max Drawdown",
+      "aiAnalytics": "AI Decision Analytics",
+      "aiAnalyticsDesc": "Metrics from AI decision-making process",
+      "totalDecisions": "Total Decisions",
+      "executionRate": "Execution Rate",
+      "avgConfidence": "Avg Confidence",
+      "avgLatency": "Avg Latency",
+      "totalTokens": "Total Tokens",
+      "actionDistribution": "Action Distribution",
+      "actionDistributionDesc": "Breakdown of AI trading decisions by action type",
+      "recentActivity": "Recent Decision Activity"
+    },
+    "settings": {
+      "title": "Agent Settings",
+      "quickSettings": "Quick Settings",
+      "quickSettingsDesc": "Adjust operational parameters without changing the core strategy",
+      "strategyConfig": "Strategy Configuration",
+      "strategyConfigDesc": "Core strategy parameters are read-only here. Use the edit page for full changes.",
+      "editStrategy": "Edit Strategy",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Update your agent's name, description, and core settings",
+      "agentName": "Agent Name",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional description for this agent",
+      "tradingMode": "Trading Mode",
+      "aiModel": "AI Model",
+      "aiModelPlaceholder": "Select an AI model",
+      "noModels": "No models available. Configure a provider first.",
+      "executionInterval": "Execution Interval",
+      "minutes": "minutes",
+      "autoExecute": "Auto-Execute Trades",
+      "autoExecuteDesc": "Automatically execute trading decisions made by AI",
+      "symbolsAndTimeframes": "Trading Pairs & Timeframes",
+      "symbolsAndTimeframesDesc": "Configure which coins and timeframes to analyze",
+      "symbols": "Trading Pairs",
+      "symbolsHint": "Up to 10 trading pairs",
+      "addSymbol": "Add",
+      "symbolPlaceholder": "e.g. BTC",
+      "popularSymbols": "Popular",
+      "timeframes": "Timeframes",
+      "timeframesHint": "Up to 5 timeframes",
+      "indicators": "Technical Indicators",
+      "indicatorsDesc": "Configure technical analysis indicators",
+      "emaEnabled": "EMA (Exponential Moving Average)",
+      "emaPeriod1": "Period 1",
+      "emaPeriod2": "Period 2",
+      "emaPeriod3": "Period 3",
+      "rsiEnabled": "RSI (Relative Strength Index)",
+      "rsiPeriod": "Period",
+      "macdEnabled": "MACD",
+      "macdFast": "Fast",
+      "macdSlow": "Slow",
+      "macdSignal": "Signal",
+      "atrEnabled": "ATR (Average True Range)",
+      "atrPeriod": "Period",
+      "riskControls": "Risk Controls",
+      "riskControlsDesc": "These are hard limits the AI will never exceed",
+      "maxLeverage": "Max Leverage",
+      "maxPositionSize": "Max Position Size",
+      "minConfidence": "Min Confidence",
+      "maxDrawdown": "Max Drawdown",
+      "maxTotalExposure": "Max Total Exposure",
+      "minRiskReward": "Min Risk/Reward Ratio",
+      "instructions": "Trading Instructions",
+      "instructionsDesc": "The AI will follow these instructions to make trading decisions",
+      "instructionsPlaceholder": "Describe your trading strategy in natural language...",
+      "customPrompt": "Custom Prompt",
+      "customPromptDesc": "Additional instructions appended to the system prompt",
+      "customPromptPlaceholder": "Additional custom instructions...",
+      "promptSections": "Prompt Sections",
+      "promptSectionsDesc": "Fine-tune individual sections of the AI system prompt",
+      "roleDefinition": "Role Definition",
+      "tradingFrequency": "Trading Frequency",
+      "entryStandards": "Entry Standards",
+      "decisionProcess": "Decision Process",
+      "debate": "Debate Settings",
+      "debateDesc": "Enable multi-model debate for more robust decisions",
+      "debateEnabled": "Enable Debate",
+      "debateEnabledDesc": "Multiple AI models will debate before making a decision",
+      "debateModels": "Participating Models",
+      "debateModelsHint": "Select 2-5 models for the debate",
+      "consensusMode": "Consensus Mode",
+      "consensusModes": {
+        "majority_vote": "Majority Vote",
+        "highest_confidence": "Highest Confidence",
+        "weighted_average": "Weighted Average",
+        "unanimous": "Unanimous"
+      },
+      "minParticipants": "Min Participants",
+      "saveChanges": "Save Changes",
+      "saved": "Settings saved successfully",
+      "dangerZone": "Danger Zone",
+      "dangerZoneDesc": "Irreversible actions for this agent",
+      "deleteAgent": "Delete Agent",
+      "deleteConfirm": "Are you sure you want to delete this agent? This action cannot be undone.",
+      "deleteRequireStopped": "The agent must be stopped before it can be deleted",
+      "cancel": "Cancel",
+      "confirmDelete": "Yes, Delete Agent"
+    }
+  },
+  "onboarding": {
+    "common": {
+      "back": "Back",
+      "next": "Next",
+      "skip": "Skip"
+    },
+    "welcome": {
+      "title": "Let AI Trade for You",
+      "subtitle": "Describe your trading strategy in natural language. AI executes 24/7 automatically.",
+      "feature1Title": "Natural Language",
+      "feature1Desc": "No coding required",
+      "feature2Title": "Hard Risk Limits",
+      "feature2Desc": "Never exceeds limits",
+      "feature3Title": "Full Audit Trail",
+      "feature3Desc": "Every decision logged",
+      "getStarted": "Get Started"
+    },
+    "account": {
+      "title": "Connect Your Exchange",
+      "description": "Link your exchange account to enable trading",
+      "selectExchange": "Select Exchange",
+      "accountName": "Account Name",
+      "accountNamePlaceholder": "e.g., My Trading Account",
+      "testnetMode": "Testnet Mode",
+      "testnetDescription": "Recommended for beginners to practice",
+      "importType": "Import Method",
+      "privateKey": "Private Key",
+      "mnemonic": "Seed Phrase",
+      "mnemonicPlaceholder": "Enter your 12 or 24 word seed phrase",
+      "mnemonicHint": "Enter your wallet's seed phrase (12 or 24 words separated by spaces)",
+      "apiKey": "API Key",
+      "apiSecret": "API Secret",
+      "enterApiKey": "Enter API key",
+      "enterApiSecret": "Enter API secret",
+      "securityNote": "Your credentials are encrypted with <highlight>AES-256-GCM</highlight> before storage"
+    },
+    "agent": {
+      "title": "Create Your AI Agent",
+      "description": "Configure your first trading agent",
+      "agentName": "Agent Name",
+      "agentNamePlaceholder": "e.g., My First Strategy",
+      "tradingPairs": "Trading Pairs",
+      "tradingMode": "Trading Style",
+      "modes": {
+        "conservative": "Conservative",
+        "moderate": "Moderate",
+        "aggressive": "Aggressive"
+      },
+      "instructions": "Trading Instructions",
+      "instructionsPlaceholder": "Focus on BTC and ETH price trends. Open positions when there's a clear trend, stay out during consolidation. Keep stop loss within 2%, target profit 5-10%.",
+      "instructionsHint": "The more specific, the better AI executes"
+    },
+    "risk": {
+      "title": "Risk Controls",
+      "description": "These are hard limits AI will never exceed",
+      "maxLeverage": "Max Leverage",
+      "maxPositionSize": "Max Position Size (% of balance)",
+      "maxExposure": "Max Total Exposure",
+      "confidenceThreshold": "Confidence Threshold (skip if below)",
+      "recommendation": "Recommended for beginners: Leverage ≤ 3x, Position ≤ 10%, Confidence ≥ 75%"
+    },
+    "launch": {
+      "title": "Ready to Launch",
+      "description": "Review your configuration and start trading",
+      "agentName": "Agent Name",
+      "exchange": "Exchange",
+      "pairs": "Trading Pairs",
+      "mode": "Trading Style",
+      "maxLeverage": "Max Leverage",
+      "maxPosition": "Max Position",
+      "confidence": "Min Confidence",
+      "confirmTestnet": "I understand this is testnet and involves no real funds",
+      "launchAgent": "Launch Agent",
+      "launching": "Launching...",
+      "modifyConfig": "Modify Config",
+      "skipForNow": "Skip for Now"
+    }
+  },
+  "language": {
+    "en": "English",
+    "zh": "中文",
+    "switch": "Language"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Manage your personal information and security settings",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "emailReadonly": "Email cannot be changed",
+    "profileUpdated": "Profile updated successfully",
+    "security": "Security",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "passwordRequirements": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordChanged": "Password changed successfully",
+    "updatePassword": "Update Password",
+    "twoFactor": "Two-Factor Authentication",
+    "twoFactorDescription": "Add an extra layer of security to your account",
+    "twoFactorComingSoon": "Two-factor authentication coming soon",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and preferences",
+    "tabs": {
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "security": "Security"
+    },
+    "save": "Save Changes",
+    "saved": "Saved",
+    "profile": {
+      "title": "Profile Information",
+      "description": "Update your personal details",
+      "email": "Email Address",
+      "emailHint": "Email cannot be changed",
+      "name": "Display Name",
+      "namePlaceholder": "Enter your name"
+    },
+    "notifications": {
+      "channels": "Notification Channels",
+      "channelsDescription": "Configure how you receive notifications",
+      "preferences": "Alert Preferences",
+      "preferencesDescription": "Choose which notifications to receive",
+      "telegramDescription": "Receive instant notifications via Telegram bot",
+      "discordDescription": "Get alerts through Discord webhook",
+      "emailDescription": "Receive notifications via email",
+      "serverConfig": "Server Config",
+      "configHint": "Notification channels are configured on the server. Contact admin to enable.",
+      "decisionAlerts": "Decision Alerts",
+      "decisionAlertsDescription": "Get notified when AI makes trading decisions",
+      "tradeAlerts": "Trade Alerts",
+      "tradeAlertsDescription": "Get notified when trades are executed",
+      "riskAlerts": "Risk Alerts",
+      "riskAlertsDescription": "Get notified about risk warnings and limits"
+    },
+    "security": {
+      "changePassword": "Change Password",
+      "changePasswordDescription": "Update your account password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "updatePassword": "Update Password",
+      "apiAccess": "API Access",
+      "apiAccessDescription": "Information about API access and security",
+      "apiNote": "BITRUN uses secure JWT authentication. Access tokens expire after 1 hour.",
+      "exchangeKeysNote": "Exchange API keys are encrypted with AES-256-GCM and stored securely. You can manage your exchange accounts in the Accounts page."
+    },
+    "password": {
+      "mismatch": "Passwords do not match",
+      "tooShort": "Password must be at least 8 characters",
+      "failed": "Failed to change password"
+    }
+  },
+  "setupGuide": {
+    "title": "Getting Started",
+    "subtitle": "Complete setup to start trading",
+    "go": "Go",
+    "optional": "Optional",
+    "steps": {
+      "account": {
+        "title": "Connect Account",
+        "desc": "Link your exchange account"
+      },
+      "agent": {
+        "title": "Create AI Agent",
+        "desc": "Set up your first trading agent"
+      },
+      "models": {
+        "title": "Configure Models",
+        "desc": "Add AI provider API keys"
+      }
+    }
+  },
+  "models": {
+    "title": "Model Management",
+    "subtitle": "Configure and manage AI providers",
+    "addProvider": "Add Provider",
+    "confirmDelete": "Are you sure you want to delete this provider?",
+    "deleteSuccess": "Provider deleted successfully",
+    "deleteError": "Failed to delete provider",
+    "testSuccess": "Connection test successful",
+    "testFailed": "Connection test failed",
+    "updateError": "Failed to update provider",
+    "retry": "Retry",
+    "error": {
+      "loadFailed": "Failed to load providers"
+    },
+    "info": {
+      "title": "AI Provider Configuration",
+      "description": "Configure your AI provider API keys and endpoints for AI trading agent decision analysis."
+    },
+    "card": {
+      "apiKey": "API Key",
+      "configured": "Configured",
+      "notConfigured": "Not Configured",
+      "apiFormat": "API Format",
+      "endpoint": "API Endpoint",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "vision": "Vision",
+      "json": "JSON"
+    },
+    "menu": {
+      "testConnection": "Test Connection",
+      "openWebsite": "Open Website",
+      "delete": "Delete"
+    },
+    "addCard": {
+      "title": "Add New Provider",
+      "subtitle": "Configure more AI services"
+    },
+    "empty": {
+      "title": "No Providers Configured",
+      "description": "Add an AI provider to enable AI trading agent functionality."
+    },
+    "dialog": {
+      "title": "Add New Provider",
+      "description": "Configure AI provider API credentials",
+      "selectProvider": "Select Provider",
+      "customConfig": "Custom Config",
+      "presetHint": "Select a preset provider or customize",
+      "providerName": "Provider Name",
+      "namePlaceholder": "e.g., Claude Official",
+      "note": "Note",
+      "notePlaceholder": "e.g., Company account",
+      "websiteUrl": "Website URL",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter your API key",
+      "baseUrl": "Base URL",
+      "baseUrlHint": "Enter the API endpoint URL, do not end with slash",
+      "apiFormat": "API Format",
+      "apiFormatHint": "Select the provider API input format",
+      "cancel": "Cancel",
+      "add": "Add Provider",
+      "error": "Error",
+      "requiredFields": "Please fill in required fields",
+      "success": "Success",
+      "providerAdded": "Provider added successfully"
+    },
+    "newPage": {
+      "configuration": "Provider Configuration",
+      "configurationDesc": "Configure the provider details and API credentials",
+      "tips": "Tips",
+      "tipApiKey": "API Key Security",
+      "tipApiKeyDesc": "Your API key is encrypted and stored securely. Never share your API key with others.",
+      "tipFormat": "API Format",
+      "tipFormatDesc": "Most providers use OpenAI-compatible format. Check your provider's documentation if unsure.",
+      "tipTest": "Test Connection",
+      "tipTestDesc": "After adding a provider, use the test connection feature to verify your configuration.",
+      "officialEndpoint": "Using official API endpoint",
+      "advancedSettings": "Advanced Settings",
+      "advancedSettingsDesc": "Custom endpoint configuration for self-hosted or proxy services",
+      "securityTitle": "Secure Storage",
+      "securityDesc": "All API keys are encrypted using AES-256 before storage. Your credentials are never logged or exposed."
+    },
+    "modelList": {
+      "title": "Available Models",
+      "test": "Test",
+      "testSuccess": "Model test successful",
+      "testFailed": "Model test failed",
+      "deleteSuccess": "Model deleted successfully",
+      "deleteFailed": "Failed to delete model",
+      "empty": "No models available for this provider",
+      "loadFailed": "Failed to load available models",
+      "retry": "Retry",
+      "testError": {
+        "no_api_key": "No API key configured. Add and enable an API key for this provider under Models / Providers.",
+        "no_base_url": "Custom model requires a Base URL. Set the API endpoint in the provider configuration.",
+        "connection_error": "Cannot reach the service. Check network, proxy, or that the endpoint is reachable.",
+        "auth_error": "API key is invalid or expired. Please check and update your key.",
+        "model_not_found": "This model does not exist on the provider. Verify the model ID against the provider's supported models.",
+        "rate_limit": "Rate limited or too many requests. Please try again later.",
+        "api_error": "API returned an error. See details or try again later.",
+        "unknown": "Connection test failed. Check your configuration and try again."
+      }
+    },
+    "customModel": {
+      "add": "Add Model",
+      "title": "Add Model",
+      "description": "Add a new AI model to this provider",
+      "modelId": "Model ID",
+      "modelIdPlaceholder": "e.g., deepseek-chat",
+      "name": "Display Name",
+      "namePlaceholder": "e.g., DeepSeek V3",
+      "modelDescription": "Description",
+      "descriptionPlaceholder": "Optional description for this model",
+      "contextWindow": "Context Window",
+      "maxOutput": "Max Output Tokens",
+      "supportsJsonMode": "Supports JSON Mode",
+      "addModel": "Add Model",
+      "success": "Model added successfully",
+      "error": "Failed to add model",
+      "cancel": "Cancel"
+    }
+  },
+  "strategyStudio": {
+    "tabs": {
+      "coins": "Coins",
+      "indicators": "Indicators",
+      "risk": "Risk",
+      "prompt": "Prompt",
+      "debate": "Debate",
+      "preview": "Preview"
+    },
+    "coinSelector": {
+      "title": "Trading Pairs",
+      "description": "Select the cryptocurrency pairs you want to trade",
+      "selectedCoins": "Selected Coins",
+      "noCoinsSelected": "No coins selected. Add coins below.",
+      "popularCoins": "Popular Coins",
+      "searchPlaceholder": "Search coins...",
+      "noResults": "No matching coins",
+      "addCustom": "Add Custom Symbol",
+      "customPlaceholder": "e.g., ARB",
+      "add": "Add"
+    },
+    "timeframes": {
+      "title": "Timeframes",
+      "description": "Select the timeframes for market analysis",
+      "selected": "Selected",
+      "hint": "Click to toggle, at least 1 required",
+      "presets": "Quick Presets",
+      "presetSwing": "Swing",
+      "presetScalp": "Scalp",
+      "presetPosition": "Position"
+    },
+    "indicators": {
+      "title": "Technical Indicators",
+      "description": "Configure the technical indicators for market analysis",
+      "ema": {
+        "title": "Exponential Moving Average",
+        "description": "Trend-following indicator that gives more weight to recent prices",
+        "period": "Period"
+      },
+      "rsi": {
+        "title": "Relative Strength Index",
+        "description": "Momentum oscillator measuring speed and change of price movements",
+        "period": "Period"
+      },
+      "macd": {
+        "title": "MACD",
+        "description": "Trend-following momentum indicator showing relationship between two EMAs",
+        "fast": "Fast",
+        "slow": "Slow",
+        "signal": "Signal"
+      },
+      "atr": {
+        "title": "Average True Range",
+        "description": "Volatility indicator measuring market volatility",
+        "period": "Period"
+      }
+    },
+    "riskControls": {
+      "title": "Risk Controls",
+      "description": "Set hard limits that the AI will never exceed",
+      "riskLevel": "Risk Level",
+      "levels": {
+        "low": "Low Risk",
+        "medium": "Medium Risk",
+        "high": "High Risk"
+      },
+      "maxLeverage": "Max Leverage",
+      "maxLeverageTooltip": "Maximum leverage the AI can use for any position",
+      "maxPositionRatio": "Max Position Size",
+      "maxPositionRatioTooltip": "Maximum size of a single position as percentage of equity",
+      "maxTotalExposure": "Max Total Exposure",
+      "maxTotalExposureTooltip": "Maximum total exposure across all positions",
+      "minRiskReward": "Min Risk/Reward Ratio",
+      "minRiskRewardTooltip": "Minimum risk-to-reward ratio required for trades",
+      "maxDrawdown": "Max Drawdown Threshold",
+      "maxDrawdownTooltip": "Trading pauses if drawdown exceeds this threshold",
+      "minConfidence": "Min Confidence to Execute",
+      "minConfidenceTooltip": "Trades below this confidence level will be skipped",
+      "recommended": "Recommended",
+      "highRiskWarning": "Your current settings indicate high risk. Consider reducing leverage and position sizes.",
+      "modeMismatchConservative": "Risk settings are more aggressive than typical for Conservative mode.",
+      "modeMismatchAggressive": "Risk settings are more conservative than typical for Aggressive mode.",
+      "modeMismatchBalanced": "Risk settings are outside the typical range for Balanced mode.",
+      "presetMismatch": "Current risk settings deviate from the selected preset ({preset}): {details}. Ignore if intentional.",
+      "deviationLeverage": "Leverage {actual}x vs recommended {expected}x",
+      "deviationPosition": "Position {actual}% vs recommended {expected}%",
+      "deviationExposure": "Exposure {actual}% vs recommended {expected}%",
+      "deviationConfidence": "Confidence {actual}% vs recommended {expected}%"
+    },
+    "capitalAllocation": {
+      "title": "Capital Allocation",
+      "description": "Assign a dedicated capital budget to this strategy to prevent interference between strategies",
+      "mode": "Allocation Mode",
+      "modeFixed": "Fixed Amount",
+      "modePercent": "Account Percentage",
+      "modeNone": "No Limit",
+      "fixedAmount": "Allocated Amount (USDT)",
+      "fixedAmountPlaceholder": "Enter amount, e.g. 5000",
+      "percentAmount": "Allocation Percentage",
+      "percentAmountTooltip": "Percentage of account equity, e.g. 30% means using 30% of account funds",
+      "warning": "Account capital allocation exceeds safe threshold. New positions will be blocked",
+      "remainingBudget": "Remaining allocatable balance",
+      "totalAllocated": "Total allocated"
+    },
+    "promptEditor": {
+      "title": "Prompt Builder",
+      "description": "Customize the AI's trading behavior and decision process",
+      "templates": "Quick Templates",
+      "templateMomentum": "Momentum",
+      "templateMeanReversion": "Mean Reversion",
+      "templateConservative": "Conservative",
+      "customPrompt": "Custom Trading Instructions",
+      "customPromptPlaceholder": "Describe your trading strategy in natural language. Be specific about entry/exit conditions, risk management, and market conditions...",
+      "customPromptHint": "This is appended to the system prompt. Be specific about your trading style and preferences.",
+      "advancedSections": "Advanced Prompt Sections",
+      "customized": "customized",
+      "sections": {
+        "roleDefinition": "AI Role Definition",
+        "tradingFrequency": "Trading Frequency",
+        "entryStandards": "Entry Standards",
+        "decisionProcess": "Decision Process"
+      },
+      "placeholders": {
+        "roleDefinition": "Define the AI's role and expertise...",
+        "tradingFrequency": "Specify how often to trade...",
+        "entryStandards": "Define entry criteria...",
+        "decisionProcess": "Outline the decision-making process..."
+      },
+      "hints": {
+        "roleDefinition": "Leave empty to use default role definition",
+        "tradingFrequency": "Leave empty to use default frequency guidelines",
+        "entryStandards": "Leave empty to use default entry standards",
+        "decisionProcess": "Leave empty to use default decision process"
+      },
+      "conflictWithConservative": "Your custom instructions may conflict with the current Conservative trading mode. The system will follow the trading mode first.",
+      "conflictWithAggressive": "Your custom instructions may conflict with the current Aggressive trading mode. The system will follow the trading mode first.",
+      "conflictWithBalanced": "Your custom instructions may conflict with the current Balanced mode. The system will follow the trading mode first.",
+      "suggestTradingModeConservativeTitle": "Suggest syncing trading mode",
+      "suggestTradingModeConservative": "Conservative template applied. Consider switching the trading mode above to Conservative for consistency.",
+      "suggestTradingModeMomentumTitle": "Suggest syncing trading mode",
+      "suggestTradingModeMomentum": "Momentum template applied. For more active trading, consider switching the trading mode to Moderate or Aggressive."
+    },
+    "preview": {
+      "title": "Prompt Preview",
+      "description": "Preview the complete system prompt that will be sent to the AI",
+      "fullPrompt": "Full Prompt",
+      "role": "Role",
+      "mode": "Mode",
+      "frequency": "Frequency",
+      "entry": "Entry",
+      "process": "Process",
+      "custom": "Custom",
+      "usingDefault": "Using default value",
+      "noPreview": "No preview available",
+      "generate": "Generate Preview",
+      "testAI": "Test AI Response",
+      "testing": "Testing...",
+      "testHint": "Test with mock market data to see how the AI would respond"
+    },
+    "debate": {
+      "title": "Multi-Model Debate",
+      "description": "Let multiple AI models analyze and debate to reach consensus",
+      "enable": "Enable Debate Mode",
+      "enableDescription": "Multiple AI models will analyze the market in parallel and vote on decisions",
+      "selectModels": "Select AI Models",
+      "selectModelsDescription": "Choose 2-5 AI models to participate in the debate",
+      "minModelsWarning": "At least 2 models are required for debate mode",
+      "modelsLoadFailed": "Failed to load available models",
+      "retry": "Retry",
+      "noModels": "No models available",
+      "addModelLink": "Add a model in Model Management",
+      "validate": "Validate Models",
+      "consensusMode": "Consensus Algorithm",
+      "minParticipants": "Minimum Successful Responses",
+      "minParticipantsDescription": "Minimum number of models that must respond successfully for a valid debate",
+      "models": "models",
+      "estimatedCost": "Estimated Cost",
+      "perCycle": "per cycle",
+      "resultTitle": "Debate Results",
+      "successfulModels": "Successful",
+      "failedModels": "Failed",
+      "agreement": "Agreement",
+      "modelAgreement": "Model Agreement Score",
+      "consensusDecisions": "Consensus Decisions",
+      "confidence": "confidence",
+      "viewModelResponses": "View Individual Model Responses",
+      "consensusModes": {
+        "majorityVote": "Majority Vote",
+        "highestConfidence": "Highest Confidence",
+        "weightedAverage": "Weighted Average",
+        "unanimous": "Unanimous"
+      }
+    }
+  },
+  "quantStrategies": {
+    "title": "Quant Strategies",
+    "subtitle": "Create and manage traditional quantitative trading strategies",
+    "createStrategy": "Create Strategy",
+    "searchPlaceholder": "Search strategies...",
+    "confirmDelete": "Are you sure you want to delete this strategy?",
+    "info": {
+      "title": "Traditional Quant Strategies",
+      "description": "Rule-based automated trading: Grid, DCA, and RSI strategies execute deterministic trading logic without AI."
+    },
+    "filter": {
+      "allStatus": "All Status",
+      "active": "Active",
+      "paused": "Paused",
+      "draft": "Draft",
+      "stopped": "Stopped",
+      "allTypes": "All Types"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "stopped": "Stopped",
+      "error": "Error",
+      "draft": "Draft"
+    },
+    "types": {
+      "grid": "Grid Trading",
+      "dca": "DCA",
+      "rsi": "RSI Strategy"
+    },
+    "typeDescriptions": {
+      "grid": "Profit from market volatility by creating a grid of buy/sell orders within a price range.",
+      "dca": "Dollar-cost average into a position with scheduled orders, and sell when take-profit is reached.",
+      "rsi": "Trade based on RSI indicator values — buy when oversold, sell when overbought."
+    },
+    "stats": {
+      "totalPL": "Total P/L",
+      "winRate": "Win Rate",
+      "trades": "Trades"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "pause": "Pause",
+      "start": "Start",
+      "resume": "Resume",
+      "stop": "Stop",
+      "stopConfirmTitle": "Confirm Stop",
+      "stopConfirmDesc": "Stopping is irreversible. The strategy will be permanently stopped and cannot be resumed. Are you sure?",
+      "closePositionsOption": "Close all open positions",
+      "closePositionsHint": "Automatically close all positions held by this strategy on the exchange",
+      "confirmStop": "Confirm Stop",
+      "cancel": "Cancel",
+      "deleteRequireStopped": "Must be stopped before deletion",
+      "viewDetails": "View Details"
+    },
+    "empty": {
+      "title": "No strategies yet",
+      "description": "Create your first quantitative trading strategy",
+      "createFirst": "Create Your First Strategy",
+      "searchHint": "Try adjusting your search or filters"
+    },
+    "toast": {
+      "started": "Strategy started",
+      "paused": "Strategy paused",
+      "stopped": "Strategy stopped",
+      "updateFailed": "Failed to update strategy",
+      "deleteSuccess": "Strategy deleted successfully",
+      "deleteFailed": "Failed to delete strategy",
+      "createSuccess": "Strategy created successfully",
+      "createFailed": "Failed to create strategy"
+    },
+    "error": {
+      "loadFailed": "Failed to load strategies"
+    },
+    "retry": "Retry",
+    "create": {
+      "title": "Create Quant Strategy",
+      "description": "Choose a strategy type and configure parameters",
+      "selectType": "Select Strategy Type",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Set strategy name and trading pair",
+      "parameters": "Strategy Parameters",
+      "parametersDesc": "Configure strategy-specific parameters",
+      "name": "Strategy Name",
+      "namePlaceholder": "e.g., BTC Grid Strategy",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "symbol": "Trading Pair",
+      "symbolPlaceholder": "e.g., BTC",
+      "account": "Exchange Account",
+      "accountPlaceholder": "Select an account",
+      "noAccounts": "No accounts available",
+      "cancel": "Cancel",
+      "submit": "Create Strategy",
+      "back": "Back",
+      "next": "Next"
+    },
+    "grid": {
+      "title": "Grid Trading Parameters",
+      "upperPrice": "Upper Price",
+      "lowerPrice": "Lower Price",
+      "gridCount": "Grid Levels",
+      "totalInvestment": "Total Investment (USD)",
+      "leverage": "Leverage"
+    },
+    "dca": {
+      "title": "DCA Parameters",
+      "orderAmount": "Amount Per Order (USD)",
+      "intervalMinutes": "Order Interval (minutes)",
+      "takeProfitPercent": "Take Profit (%)",
+      "totalBudget": "Total Budget (USD, 0 = unlimited)",
+      "maxOrders": "Max Orders (0 = unlimited)"
+    },
+    "rsi": {
+      "title": "RSI Strategy Parameters",
+      "rsiPeriod": "RSI Period",
+      "overboughtThreshold": "Overbought Threshold",
+      "oversoldThreshold": "Oversold Threshold",
+      "orderAmount": "Order Amount (USD)",
+      "timeframe": "Timeframe",
+      "leverage": "Leverage"
+    },
+    "detail": {
+      "backToStrategies": "Back to Strategies",
+      "notFound": "Strategy not found",
+      "refresh": "Refresh",
+      "tabs": {
+        "overview": "Overview",
+        "trades": "Trades",
+        "settings": "Settings"
+      },
+      "overview": {
+        "configuration": "Configuration",
+        "strategyType": "Strategy Type",
+        "symbol": "Trading Pair",
+        "status": "Status",
+        "createdAt": "Created",
+        "lastRun": "Last Run",
+        "never": "Never",
+        "performance": "Performance",
+        "totalPnl": "Total P/L",
+        "winRate": "Win Rate",
+        "totalTrades": "Total Trades",
+        "maxDrawdown": "Max Drawdown",
+        "runtimeState": "Runtime State",
+        "chart": "Chart",
+        "strategyInfo": "Strategy Info",
+        "profitSummary": "Profit Summary",
+        "profits": "Profits",
+        "tradeList": "Trade Executions",
+        "noTradeData": "No trade data yet",
+        "noTradeDataHint": "Trade records will appear here once the strategy starts running",
+        "gridLevels": "Grid Levels",
+        "gridLevel": "Level",
+        "gridPrice": "Price",
+        "gridBuyStatus": "Buy",
+        "gridSellStatus": "Sell",
+        "gridFilled": "Filled",
+        "gridPending": "Pending",
+        "gridTotalInvested": "Total Invested",
+        "gridTotalReturned": "Total Returned",
+        "gridLastPrice": "Last Price",
+        "dcaOrdersPlaced": "Orders Placed",
+        "dcaTotalInvested": "Total Invested",
+        "dcaTotalQuantity": "Total Quantity",
+        "dcaAvgCost": "Avg Cost",
+        "dcaLastOrderTime": "Last Order Time",
+        "rsiHasPosition": "Has Position",
+        "rsiEntryPrice": "Entry Price",
+        "rsiPositionSize": "Position Size",
+        "rsiLastRsi": "Last RSI",
+        "rsiLastSignal": "Last Signal",
+        "rsiLastPrice": "Last Price",
+        "rsiYes": "Yes",
+        "rsiNo": "No",
+        "rsiBuySignal": "Buy Signal",
+        "rsiSellSignal": "Sell Signal",
+        "lastCheck": "Last Check"
+      },
+      "settings": {
+        "title": "Strategy Settings",
+        "saveChanges": "Save Changes",
+        "dangerZone": "Danger Zone",
+        "deleteStrategy": "Delete Strategy",
+        "deleteConfirm": "Are you sure you want to delete this strategy? This action cannot be undone.",
+        "deleteRequireStopped": "The strategy must be stopped before it can be deleted",
+        "cancel": "Cancel",
+        "confirmDelete": "Yes, Delete"
+      }
+    }
+  },
+  "strategyPreset": {
+    "title": "Strategy Style",
+    "description": "Choose your investment style and time horizon to auto-fill all parameters",
+    "riskProfile": {
+      "title": "Investment Style",
+      "conservative": "Conservative",
+      "conservativeDesc": "Low leverage, small positions, high confidence threshold",
+      "balanced": "Balanced",
+      "balancedDesc": "Moderate parameters, suitable for most users",
+      "aggressive": "Aggressive",
+      "aggressiveDesc": "High leverage, large positions, lower confidence threshold"
+    },
+    "timeHorizon": {
+      "title": "Time Horizon",
+      "scalp": "Scalp",
+      "scalpDesc": "1m/5m/15m high-frequency, quick in and out",
+      "swing": "Swing",
+      "swingDesc": "15m/1h/4h intraday to multi-day, ride the trend",
+      "position": "Position",
+      "positionDesc": "4h/1d hold for weeks, capture major trends"
+    },
+    "summary": {
+      "title": "Preset Summary",
+      "leverage": "Max Leverage",
+      "positionSize": "Position Limit",
+      "exposure": "Total Exposure",
+      "confidence": "Confidence Threshold",
+      "interval": "Decision Interval",
+      "timeframes": "Analysis Timeframes"
+    },
+    "custom": "Custom Configuration",
+    "customDesc": "Skip presets, configure all parameters manually",
+    "applied": "Strategy preset applied: {profile} · {horizon}",
+    "resetToPreset": "Reapply Preset",
+    "presetActive": "Active Preset",
+    "customized": "Parameters have been customized"
+  },
+  "landing": {
+    "nav": {
+      "login": "Sign In",
+      "getStarted": "Get Started",
+      "ariaLabel": "Main navigation"
+    },
+    "hero": {
+      "badgeTag": "AI",
+      "badgeText": "Powered Trading Platform",
+      "titleLine1": "AI-Powered Trading",
+      "titleLine2": "For Crypto",
+      "subtitle": "Let our multi-model AI debate engine optimize your alpha and execute across all major hubs.",
+      "cta": "Start Trading"
+    },
+    "bento": {
+      "sectionTitle": "Built for Trading",
+      "sectionSubtitle": "Your AI-powered edge for crypto markets",
+      "exchanges": {
+        "title": "Exchanges Supported",
+        "desc": "Binance, Bybit, OKX & Hyperliquid"
+      },
+      "models": {
+        "title": "AI Models",
+        "desc": "Multi-model debate engine"
+      },
+      "automated": {
+        "title": "Automated Trading",
+        "desc": "Always-on execution & monitoring"
+      },
+      "consensus": {
+        "title": "Consensus Modes",
+        "desc": "Vote, Confidence, Weighted, Unanimous"
+      }
+    },
+    "features": {
+      "title": "Core Capabilities",
+      "subtitle": "Everything you need from strategy to execution",
+      "items": {
+        "0": {
+          "title": "Natural Language AI Trading",
+          "description": "Define strategies with plain language prompts. AI understands your intent and generates actionable trading decisions — no coding required."
+        },
+        "1": {
+          "title": "Multi-Model Debate Engine",
+          "description": "Multiple AI models analyze markets in parallel with 4 consensus modes: majority vote, highest confidence, weighted average, and unanimous agreement."
+        },
+        "2": {
+          "title": "Multi-Exchange Unified Access",
+          "description": "Seamlessly connect to Binance, Bybit, OKX, and Hyperliquid through a single unified interface. Manage all accounts in one place."
+        },
+        "3": {
+          "title": "Quant Strategy Engine",
+          "description": "Classic quantitative strategies including Grid Trading, DCA (Dollar-Cost Averaging), and RSI-based signals, fully configurable and automated."
+        },
+        "4": {
+          "title": "Backtesting & Performance",
+          "description": "Simulate strategies against historical data. Analyze with Sharpe, Sortino, max drawdown, win rate, and comprehensive performance metrics."
+        },
+        "5": {
+          "title": "Real-time Monitoring",
+          "description": "Live WebSocket updates for positions, decisions, and market data. Instant notifications via Telegram, Discord, and Email."
+        }
+      }
+    },
+    "cta": {
+      "title": "Start Exploring",
+      "subtitle": "AI Trading, Multi-Exchange, Backtesting - One Click Away",
+      "button": "Get Started"
+    },
+    "footer": {
+      "copyright": "\u00a9 {year} BITRUN. All rights reserved.",
+      "madeWith": "A platform built with",
+      "by": "by",
+      "teamName": "BITRUN Team"
+    }
+  }
+}

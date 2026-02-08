@@ -1,0 +1,17 @@
+# Railway Configuration for BITRUN Frontend
+# Deploy as a separate service in your Railway project
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+numReplicas = 1
+
+# Environment Variables (set in Railway Dashboard):
+# - NEXT_PUBLIC_API_URL: Backend API URL (e.g., https://bitrun-backend.up.railway.app/api)
+# - NEXT_PUBLIC_WS_URL: Backend WebSocket URL (e.g., wss://bitrun-backend.up.railway.app/api/ws)

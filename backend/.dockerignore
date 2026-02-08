@@ -1,0 +1,59 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Mypy
+.mypy_cache/
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+docs/
+
+# Alembic (keep migrations but ignore temp files)
+alembic/versions/*.pyc
