@@ -27,6 +27,8 @@ class StrategyRepository:
         trading_mode: str = "conservative",
         config: Optional[dict] = None,
         ai_model: Optional[str] = None,
+        allocated_capital: Optional[float] = None,
+        allocated_capital_percent: Optional[float] = None,
     ) -> StrategyDB:
         """Create a new strategy"""
         strategy = StrategyDB(
@@ -38,6 +40,8 @@ class StrategyRepository:
             trading_mode=trading_mode,
             config=config or {},
             ai_model=ai_model,
+            allocated_capital=allocated_capital,
+            allocated_capital_percent=allocated_capital_percent,
             status="draft",
         )
         self.session.add(strategy)
