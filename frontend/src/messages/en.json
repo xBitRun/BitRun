@@ -1824,6 +1824,28 @@
         }
       }
     },
+    "capabilities": {
+      "title": "Core Capabilities",
+      "subtitle": "Everything you need from strategy to execution",
+      "models": {
+        "title": "AI Models",
+        "desc": "8 providers with multi-model debate consensus engine"
+      },
+      "exchanges": {
+        "title": "Exchanges",
+        "desc": "Unified access to top crypto derivatives exchanges"
+      },
+      "strategies": {
+        "title": "Strategy Types",
+        "desc": "From classic quant to AI-driven strategies",
+        "items": {
+          "aiNlp": "AI NLP",
+          "grid": "Grid Trading",
+          "dca": "DCA",
+          "rsi": "RSI Signal"
+        }
+      }
+    },
     "cta": {
       "title": "Start Exploring",
       "subtitle": "AI Trading, Multi-Exchange, Backtesting - One Click Away",

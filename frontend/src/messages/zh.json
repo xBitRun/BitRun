@@ -1824,6 +1824,28 @@
         }
       }
     },
+    "capabilities": {
+      "title": "核心能力",
+      "subtitle": "从策略到执行的完整链路",
+      "models": {
+        "title": "AI 大模型",
+        "desc": "8 家供应商，多模型辩论共识引擎"
+      },
+      "exchanges": {
+        "title": "交易所",
+        "desc": "统一接入顶级加密衍生品交易所"
+      },
+      "strategies": {
+        "title": "策略类型",
+        "desc": "从经典量化到 AI 驱动策略",
+        "items": {
+          "aiNlp": "AI 自然语言",
+          "grid": "网格交易",
+          "dca": "定投策略",
+          "rsi": "RSI 信号"
+        }
+      }
+    },
     "cta": {
       "title": "开始探索",
       "subtitle": "AI 交易、多交易所、回测 - 一键开启",

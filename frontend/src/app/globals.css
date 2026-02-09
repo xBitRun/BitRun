@@ -781,6 +781,168 @@
   }
 }
 
+/* ── 13b. Capability Showcase ── */
+
+.capability-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .capability-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Staggered entrance animation */
+.capability-grid .capability-card {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.capability-grid-visible .capability-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.capability-grid-visible .capability-card:nth-child(2) {
+  transition-delay: 0.15s;
+}
+
+.capability-grid-visible .capability-card:nth-child(3) {
+  transition-delay: 0.3s;
+}
+
+.capability-card {
+  display: flex;
+  flex-direction: column;
+  min-height: auto !important;
+}
+
+.capability-number {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--foreground);
+  opacity: 0.2;
+}
+
+.capability-showcase {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 0;
+}
+
+.capability-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-top: 0.25rem;
+}
+
+.capability-card-desc {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  margin-top: 0.25rem;
+}
+
+/* Brand pills (shared by AI models & exchanges) */
+.capability-brand-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.capability-brand-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+  background: color-mix(in oklch, var(--foreground) 3%, transparent);
+  transition: all 0.25s ease;
+}
+
+.capability-brand-pill:hover {
+  border-color: color-mix(in oklch, var(--border) 100%, transparent);
+  background: color-mix(in oklch, var(--foreground) 7%, transparent);
+  transform: translateY(-1px);
+}
+
+.capability-brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.capability-brand-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--foreground);
+  opacity: 0.8;
+}
+
+/* Larger pills for exchanges (fewer items) */
+.capability-brand-grid-lg .capability-brand-pill {
+  padding: 0.6rem 1rem;
+}
+
+.capability-brand-grid-lg .capability-brand-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.capability-brand-grid-lg .capability-brand-name {
+  font-size: 0.875rem;
+}
+
+/* Strategy items */
+.capability-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.capability-strategy-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+  background: color-mix(in oklch, var(--foreground) 3%, transparent);
+  transition: all 0.25s ease;
+}
+
+.capability-strategy-item:hover {
+  border-color: color-mix(in oklch, var(--border) 100%, transparent);
+  background: color-mix(in oklch, var(--foreground) 7%, transparent);
+  transform: translateY(-1px);
+}
+
+.capability-strategy-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary-vivid);
+  flex-shrink: 0;
+}
+
+.capability-strategy-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--foreground);
+  opacity: 0.8;
+}
+
 /* ── 14. Marquee ── */
 
 .marquee-container {
