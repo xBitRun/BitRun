@@ -10,6 +10,7 @@ import {
   Sparkles,
   ShieldAlert,
   Zap,
+  DollarSign,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import { getStrategyPreset } from "@/types";
 export default function NewAgentPage() {
   const t = useTranslations("agents");
   const tNew = useTranslations("agents.newPage");
+  const tCap = useTranslations("strategyStudio.capitalAllocation");
   const router = useRouter();
   const toast = useToast();
   const locale = useLocale();
@@ -54,6 +56,11 @@ export default function NewAgentPage() {
   const [selectedRiskProfile, setSelectedRiskProfile] = useState<RiskProfile | null>("balanced");
   const [selectedTimeHorizon, setSelectedTimeHorizon] = useState<TimeHorizon | null>("swing");
   const [isCustomPreset, setIsCustomPreset] = useState(false);
+
+  // Capital allocation state
+  const [capitalMode, setCapitalMode] = useState<"none" | "fixed" | "percent">("none");
+  const [allocatedCapital, setAllocatedCapital] = useState("");
+  const [allocatedCapitalPercent, setAllocatedCapitalPercent] = useState("");
 
   // Strategy Studio hook – auto-set language & default preset values
   const defaultPreset = getStrategyPreset("balanced", "swing");
@@ -139,6 +146,8 @@ export default function NewAgentPage() {
         account_id: apiData.account_id as string,
         ai_model: apiData.ai_model as string,
         config: configObj,
+        allocated_capital: capitalMode === "fixed" ? parseFloat(allocatedCapital) : undefined,
+        allocated_capital_percent: capitalMode === "percent" ? parseFloat(allocatedCapitalPercent) / 100 : undefined,
       };
 
       const created = await strategiesApi.create(request);
@@ -301,6 +310,54 @@ export default function NewAgentPage() {
                   {tNew("riskWarningDesc") || "Start with testnet and conservative settings."}
                 </p>
               </div>
+            </div>
+
+            {/* Capital Allocation */}
+            <div className="space-y-3 pt-2 border-t border-border/50">
+              <Label className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-primary" />
+                {tCap("title")}
+              </Label>
+              <p className="text-xs text-muted-foreground">{tCap("description")}</p>
+              <Select value={capitalMode} onValueChange={(v) => setCapitalMode(v as "none" | "fixed" | "percent")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{tCap("modeNone")}</SelectItem>
+                  <SelectItem value="fixed">{tCap("modeFixed")}</SelectItem>
+                  <SelectItem value="percent">{tCap("modePercent")}</SelectItem>
+                </SelectContent>
+              </Select>
+              {capitalMode === "fixed" && (
+                <div className="space-y-2">
+                  <Label>{tCap("fixedAmount")}</Label>
+                  <Input
+                    type="number"
+                    value={allocatedCapital}
+                    onChange={(e) => setAllocatedCapital(e.target.value)}
+                    placeholder={tCap("fixedAmountPlaceholder")}
+                    min="0"
+                  />
+                </div>
+              )}
+              {capitalMode === "percent" && (
+                <div className="space-y-2">
+                  <Label>{tCap("percentAmount")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={allocatedCapitalPercent}
+                      onChange={(e) => setAllocatedCapitalPercent(e.target.value)}
+                      placeholder="30"
+                      min="1"
+                      max="100"
+                    />
+                    <span className="text-muted-foreground text-sm shrink-0">%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{tCap("percentAmountTooltip")}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
