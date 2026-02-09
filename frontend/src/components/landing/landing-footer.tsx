@@ -8,7 +8,7 @@ export function LandingFooter() {
 
   return (
     <footer className="landing-footer">
-      <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-4 px-5 sm:flex-row sm:justify-between">
+      <div className="flex flex-col items-center gap-4 px-4 sm:flex-row sm:justify-between sm:px-6 lg:px-8">
         <p className="flex items-center gap-1 text-sm text-foreground/40">
           {t("footer.madeWith")}
           <Heart className="inline h-4 w-4 text-red-400" aria-hidden="true" />

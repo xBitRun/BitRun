@@ -6,11 +6,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-// Mock Sentry (used by base ErrorBoundary)
-jest.mock("@sentry/nextjs", () => ({
-  withScope: jest.fn((cb) => cb({ setTag: jest.fn(), setExtra: jest.fn() })),
-  captureException: jest.fn(),
-}));
 
 import {
   PageErrorFallback,

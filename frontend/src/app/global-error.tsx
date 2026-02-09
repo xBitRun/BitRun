@@ -8,7 +8,6 @@
  */
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -17,13 +16,7 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // Log error to Sentry
-    Sentry.captureException(error);
-
-    // Log to console in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("Root layout error:", error);
-    }
+    console.error("Root layout error:", error);
   }, [error]);
 
   return (

@@ -516,23 +516,9 @@ function ActivityFeed({
             {activityData.items.map((item: ActivityItem) => {
               const strategyId = item.data?.strategy_id as string | undefined;
               const isClickable = !!strategyId;
-              const Wrapper = isClickable ? Link : 'div';
-              const wrapperProps = isClickable
-                ? { href: `/agents/${strategyId}?tab=decisions&decision=${item.id}` }
-                : {};
 
-              return (
-                <Wrapper
-                  key={item.id}
-                  {...wrapperProps}
-                  className={cn(
-                    'flex items-start gap-3 p-3 rounded-lg bg-muted/30 transition-colors group',
-                    isClickable
-                      ? 'hover:bg-muted/50 cursor-pointer'
-                      : 'hover:bg-muted/50'
-                  )}
-                  {...(isClickable ? { title: t('activity.viewDetail') } : {})}
-                >
+              const content = (
+                <>
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 flex-shrink-0">
                     {getTypeIcon(item.type)}
                   </div>
@@ -563,7 +549,27 @@ function ActivityFeed({
                   {isClickable && (
                     <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground/70 transition-colors shrink-0 mt-1" />
                   )}
-                </Wrapper>
+                </>
+              );
+
+              const sharedClassName = cn(
+                'flex items-start gap-3 p-3 rounded-lg bg-muted/30 transition-colors group hover:bg-muted/50',
+                isClickable && 'cursor-pointer'
+              );
+
+              return isClickable ? (
+                <Link
+                  key={item.id}
+                  href={`/agents/${strategyId}?tab=decisions&decision=${item.id}`}
+                  className={sharedClassName}
+                  title={t('activity.viewDetail')}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div key={item.id} className={sharedClassName}>
+                  {content}
+                </div>
               );
             })}
           </div>

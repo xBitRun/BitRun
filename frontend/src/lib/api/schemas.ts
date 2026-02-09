@@ -32,7 +32,7 @@ export const StrategySchema = z.object({
   prompt: z.string().optional(),
   description: z.string().optional(),
   account_id: z.string().uuid().nullable().optional(),
-  config: z.record(z.unknown()).nullable().optional(),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
   created_at: z.string(),
   updated_at: z.string().optional(),
   last_run_at: z.string().nullable().optional(),

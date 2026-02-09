@@ -6,17 +6,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary/error-boundary";
 
-// Mock Sentry
-jest.mock("@sentry/nextjs", () => ({
-  withScope: jest.fn((callback) => {
-    const mockScope = {
-      setTag: jest.fn(),
-      setExtra: jest.fn(),
-    };
-    callback(mockScope);
-  }),
-  captureException: jest.fn(),
-}));
 
 // Suppress console.error for cleaner test output
 const originalConsoleError = console.error;
@@ -87,19 +76,6 @@ describe("ErrorBoundary", () => {
         componentStack: expect.any(String),
       })
     );
-  });
-
-  it("should report error to Sentry", () => {
-    const Sentry = require("@sentry/nextjs");
-
-    render(
-      <ErrorBoundary>
-        <ThrowError />
-      </ErrorBoundary>
-    );
-
-    expect(Sentry.withScope).toHaveBeenCalled();
-    expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
   });
 
   it("should reset error state when Try Again is clicked", () => {

@@ -14,7 +14,6 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,13 +55,6 @@ export class ErrorBoundary extends Component<
     if (process.env.NODE_ENV === "development") {
       console.error("ErrorBoundary caught an error:", error, errorInfo);
     }
-
-    // Report to Sentry
-    Sentry.withScope((scope) => {
-      scope.setTag("errorBoundary", "true");
-      scope.setExtra("componentStack", errorInfo.componentStack);
-      Sentry.captureException(error);
-    });
 
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);

@@ -8,7 +8,6 @@
  */
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { PageErrorFallback } from "@/components/error-boundary";
 
 interface ErrorPageProps {
@@ -18,13 +17,7 @@ interface ErrorPageProps {
 
 export default function GlobalError({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    // Log error to Sentry
-    Sentry.captureException(error);
-
-    // Log to console in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("Global error:", error);
-    }
+    console.error("Global error:", error);
   }, [error]);
 
   return <PageErrorFallback error={error} reset={reset} />;

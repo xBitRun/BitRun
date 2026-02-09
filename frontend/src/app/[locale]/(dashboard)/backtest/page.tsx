@@ -75,12 +75,17 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
   Cell,
   ReferenceLine,
 } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 // Supported exchanges for backtesting
 const EXCHANGE_OPTIONS: {
@@ -257,54 +262,60 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={equityData}>
+            <ChartContainer
+              config={{
+                equity: { label: t("charts.equity"), color: "hsl(var(--primary))" },
+                balance: { label: t("charts.balance"), color: "hsl(var(--muted-foreground))" },
+              } satisfies ChartConfig}
+              className="min-h-[300px] w-full"
+            >
+              <AreaChart accessibilityLayer data={equityData}>
                 <defs>
                   <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-equity)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-equity)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="timestamp"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => v?.slice(5, 10) ?? ""}
-                  className="text-muted-foreground"
                 />
-                <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                  labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
-                  formatter={(value: number) => [`$${value.toFixed(2)}`]}
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          ${Number(value).toFixed(2)}
+                        </span>
+                      )}
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ color: "hsl(var(--muted-foreground))" }} />
+                <ChartLegend content={<ChartLegendContent />} />
                 <Area
                   type="monotone"
                   dataKey="equity"
-                  name={t("charts.equity")}
-                  stroke="hsl(var(--primary))"
+                  stroke="var(--color-equity)"
                   fill="url(#eqGrad)"
                   strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="balance"
-                  name={t("charts.balance")}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--color-balance)"
                   fill="none"
                   strokeWidth={1}
                   strokeDasharray="4 2"
                 />
               </AreaChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -318,49 +329,56 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={drawdownData}>
+            <ChartContainer
+              config={{
+                drawdown_percent: { label: t("charts.drawdown"), color: "var(--loss, #ef4444)" },
+              } satisfies ChartConfig}
+              className="min-h-[200px] w-full"
+            >
+              <AreaChart accessibilityLayer data={drawdownData}>
                 <defs>
                   <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--loss, #ef4444)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--loss, #ef4444)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-drawdown_percent)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--color-drawdown_percent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="timestamp"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => v?.slice(5, 10) ?? ""}
-                  className="text-muted-foreground"
                 />
                 <YAxis
+                  tickLine={false}
+                  axisLine={false}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => `-${v}%`}
                   reversed
-                  className="text-muted-foreground"
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                  labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
-                  formatter={(value: number) => [`-${value.toFixed(2)}%`]}
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          -{Number(value).toFixed(2)}%
+                        </span>
+                      )}
+                    />
+                  }
                 />
                 <Area
                   type="monotone"
                   dataKey="drawdown_percent"
-                  name={t("charts.drawdown")}
-                  stroke="var(--loss, #ef4444)"
+                  stroke="var(--color-drawdown_percent)"
                   fill="url(#ddGrad)"
                   strokeWidth={1.5}
                 />
               </AreaChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -436,21 +454,17 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={pnlBins}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-                <XAxis dataKey="range" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                />
+            <ChartContainer
+              config={{
+                count: { label: t("charts.tradeCount"), color: "hsl(var(--primary))" },
+              } satisfies ChartConfig}
+              className="min-h-[250px] w-full"
+            >
+              <BarChart accessibilityLayer data={pnlBins}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="range" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <ReferenceLine x="0" stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                 <Bar dataKey="count" name={t("charts.tradeCount")} radius={[4, 4, 0, 0]}>
                   {pnlBins.map((entry, index) => (
@@ -462,7 +476,7 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -599,30 +613,25 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={holdingDist}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                />
+            <ChartContainer
+              config={{
+                count: { label: t("tradeAnalysis.trades"), color: "hsl(var(--primary))" },
+              } satisfies ChartConfig}
+              className="min-h-[200px] w-full"
+            >
+              <BarChart accessibilityLayer data={holdingDist}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar
                   dataKey="count"
-                  name={t("tradeAnalysis.trades")}
-                  fill="hsl(var(--primary))"
+                  fill="var(--color-count)"
                   fillOpacity={0.7}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -662,30 +671,38 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+            <ChartContainer
+              config={{
+                return_percent: { label: t("charts.returnPercent"), color: "hsl(var(--primary))" },
+              } satisfies ChartConfig}
+              className="min-h-[300px] w-full"
+            >
+              <BarChart accessibilityLayer data={monthlyData}>
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => v?.slice(2) ?? ""}
-                  className="text-muted-foreground"
                 />
                 <YAxis
+                  tickLine={false}
+                  axisLine={false}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => `${v}%`}
-                  className="text-muted-foreground"
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                  formatter={(value: number) => [`${value.toFixed(2)}%`, t("charts.returnPercent")]}
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          {Number(value).toFixed(2)}%
+                        </span>
+                      )}
+                    />
+                  }
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                 <Bar dataKey="return_percent" name={t("charts.returnPercent")} radius={[4, 4, 0, 0]}>
@@ -698,7 +715,7 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -712,44 +729,50 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={cumulativeData}>
+            <ChartContainer
+              config={{
+                cumulative: { label: t("charts.cumulativeReturn"), color: "hsl(var(--primary))" },
+              } satisfies ChartConfig}
+              className="min-h-[250px] w-full"
+            >
+              <AreaChart accessibilityLayer data={cumulativeData}>
                 <defs>
                   <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-cumulative)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-cumulative)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                   tick={{ fontSize: 10 }}
                   tickFormatter={(v) => v?.slice(2) ?? ""}
-                  className="text-muted-foreground"
                 />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} className="text-muted-foreground" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                    color: "hsl(var(--foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                  formatter={(value: number) => [`${value.toFixed(2)}%`, t("charts.cumulativeReturn")]}
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          {Number(value).toFixed(2)}%
+                        </span>
+                      )}
+                    />
+                  }
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                 <Area
                   type="monotone"
                   dataKey="cumulative"
-                  name={t("charts.cumulativeReturn")}
-                  stroke="hsl(var(--primary))"
+                  stroke="var(--color-cumulative)"
                   fill="url(#cumGrad)"
                   strokeWidth={2}
                 />
               </AreaChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -828,21 +851,26 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={sb}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-              <XAxis dataKey="symbol" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} className="text-muted-foreground" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: 12,
-                  color: "hsl(var(--foreground))",
-                }}
-                labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                formatter={(value: number) => [`$${value.toFixed(2)}`, t("charts.pnl")]}
+          <ChartContainer
+            config={{
+              total_pnl: { label: t("charts.pnl"), color: "hsl(var(--primary))" },
+            } satisfies ChartConfig}
+            className="min-h-[250px] w-full"
+          >
+            <BarChart accessibilityLayer data={sb}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value) => (
+                      <span className="font-mono font-medium text-foreground">
+                        ${Number(value).toFixed(2)}
+                      </span>
+                    )}
+                  />
+                }
               />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
               <Bar dataKey="total_pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
@@ -855,7 +883,7 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         </CardContent>
       </Card>
 
