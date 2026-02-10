@@ -2,58 +2,66 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, Grid3X3, TrendingUp, Activity } from "lucide-react";
+import {
+  FileText,
+  BarChart3,
+  Brain,
+  Shield,
+  Zap,
+  TrendingUp,
+} from "lucide-react";
+import { Marquee } from "./marquee";
 
-/* ── Brand Data ── */
+/* ── Process Flow Data ── */
 
-const aiModels = [
-  { name: "DeepSeek", accent: "#4f6df5" },
-  { name: "Qwen", accent: "#7c3aed" },
-  { name: "Zhipu", accent: "#3b82f6" },
-  { name: "MiniMax", accent: "#6366f1" },
-  { name: "Kimi", accent: "#14b8a6" },
-  { name: "OpenAI", accent: "#10a37f" },
-  { name: "Gemini", accent: "#4285f4" },
-  { name: "Grok", accent: "#1da1f2" },
-];
-
-const exchanges = [
-  { name: "Binance", accent: "#f0b90b" },
-  { name: "Bybit", accent: "#f7a600" },
-  { name: "OKX", accent: "#e5e5e5" },
-  { name: "Hyperliquid", accent: "#a3e635" },
-];
-
-const strategies = [
-  { key: "grid", Icon: Grid3X3 },
-  { key: "dca", Icon: TrendingUp },
-  { key: "rsi", Icon: Activity },
-  { key: "aiNlp", Icon: Sparkles },
+const processSteps = [
+  {
+    key: "strategy",
+    Icon: FileText,
+    titleKey: "capabilities.strategy.title",
+    descKey: "capabilities.strategy.desc",
+  },
+  {
+    key: "analysis",
+    Icon: BarChart3,
+    titleKey: "capabilities.analysis.title",
+    descKey: "capabilities.analysis.desc",
+  },
+  {
+    key: "decision",
+    Icon: Brain,
+    titleKey: "capabilities.decision.title",
+    descKey: "capabilities.decision.desc",
+  },
+  {
+    key: "risk",
+    Icon: Shield,
+    titleKey: "capabilities.risk.title",
+    descKey: "capabilities.risk.desc",
+  },
+  {
+    key: "execution",
+    Icon: Zap,
+    titleKey: "capabilities.execution.title",
+    descKey: "capabilities.execution.desc",
+  },
+  {
+    key: "backtest",
+    Icon: TrendingUp,
+    titleKey: "capabilities.backtest.title",
+    descKey: "capabilities.backtest.desc",
+  },
 ] as const;
-
-/* ── Sub-components ── */
-
-function BrandPill({ name, accent }: { name: string; accent: string }) {
-  return (
-    <div className="capability-brand-pill">
-      <span
-        className="capability-brand-dot"
-        style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}50` }}
-      />
-      <span className="capability-brand-name">{name}</span>
-    </div>
-  );
-}
 
 function CapabilityCard({
   number,
-  children,
+  Icon,
   titleKey,
   descKey,
   t,
 }: {
   number: string;
-  children: React.ReactNode;
+  Icon: React.ComponentType<{ className?: string }>;
   titleKey: string;
   descKey: string;
   t: ReturnType<typeof useTranslations>;
@@ -79,12 +87,14 @@ function CapabilityCard({
   return (
     <div
       ref={cardRef}
-      className="bento-card capability-card"
+      className="capability-carousel-card"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <span className="capability-number">{number}</span>
-      <div className="capability-showcase">{children}</div>
+      <div className="capability-showcase">
+        <Icon className="capability-process-icon" />
+      </div>
       <h3 className="capability-card-title">{t(titleKey)}</h3>
       <p className="capability-card-desc">{t(descKey)}</p>
     </div>
@@ -127,54 +137,34 @@ export function CapabilityShowcase() {
           </p>
         </div>
 
-        {/* Cards */}
-        <div className={`capability-grid ${visible ? "capability-grid-visible" : ""}`}>
-          {/* 01 — AI Models */}
-          <CapabilityCard
-            number="01"
-            titleKey="capabilities.models.title"
-            descKey="capabilities.models.desc"
-            t={t}
-          >
-            <div className="capability-brand-grid">
-              {aiModels.map((m) => (
-                <BrandPill key={m.name} {...m} />
-              ))}
-            </div>
-          </CapabilityCard>
-
-          {/* 02 — Exchanges */}
-          <CapabilityCard
-            number="02"
-            titleKey="capabilities.exchanges.title"
-            descKey="capabilities.exchanges.desc"
-            t={t}
-          >
-            <div className="capability-brand-grid capability-brand-grid-lg">
-              {exchanges.map((ex) => (
-                <BrandPill key={ex.name} {...ex} />
-              ))}
-            </div>
-          </CapabilityCard>
-
-          {/* 03 — Strategy Types */}
-          <CapabilityCard
-            number="03"
-            titleKey="capabilities.strategies.title"
-            descKey="capabilities.strategies.desc"
-            t={t}
-          >
-            <div className="capability-strategy-grid">
-              {strategies.map(({ key, Icon }) => (
-                <div key={key} className="capability-strategy-item">
-                  <Icon className="capability-strategy-icon" />
-                  <span className="capability-strategy-name">
-                    {t(`capabilities.strategies.items.${key}`)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CapabilityCard>
+        {/* Cards Carousel - 2 Rows */}
+        <div className="capability-carousel-wrapper">
+          {/* First Row */}
+          <Marquee duration={40} direction="left" className="capability-marquee">
+            {processSteps.slice(0, 3).map((step, index) => (
+              <CapabilityCard
+                key={step.key}
+                number={String(index + 1).padStart(2, "0")}
+                Icon={step.Icon}
+                titleKey={step.titleKey}
+                descKey={step.descKey}
+                t={t}
+              />
+            ))}
+          </Marquee>
+          {/* Second Row */}
+          <Marquee duration={45} direction="right" className="capability-marquee">
+            {processSteps.slice(3, 6).map((step, index) => (
+              <CapabilityCard
+                key={step.key}
+                number={String(index + 4).padStart(2, "0")}
+                Icon={step.Icon}
+                titleKey={step.titleKey}
+                descKey={step.descKey}
+                t={t}
+              />
+            ))}
+          </Marquee>
         </div>
       </div>
     </section>

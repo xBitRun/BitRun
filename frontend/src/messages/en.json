@@ -1793,84 +1793,76 @@
       "badgeText": "Powered Trading Platform",
       "titleLine1": "AI-Powered Trading",
       "titleLine2": "For Crypto",
-      "subtitle": "Let our multi-model AI debate engine optimize your alpha and execute across all major hubs.",
-      "cta": "Start Trading"
+      "subtitle": "Connect to global leading exchanges with one click, intelligent strategies execute automatically, reach optimal trading decisions through multi-model consensus algorithms, empowering your trading with AI.",
+      "cta": "Get Started"
     },
     "bento": {
-      "sectionTitle": "Built for Trading",
-      "sectionSubtitle": "Your AI-powered edge for crypto markets",
+      "sectionTitle": "Platform Advantages",
+      "sectionSubtitle": "Quick overview of core capabilities",
       "exchanges": {
-        "title": "Exchanges Supported",
-        "desc": "Binance, Bybit, OKX & Hyperliquid"
+        "title": "Multi-Exchange Support",
+        "desc": "Connect to Binance, Bybit, OKX, Hyperliquid with one click"
       },
       "models": {
         "title": "AI Models",
-        "desc": "Multi-model debate engine"
+        "desc": "8 providers with multi-model debate engine"
       },
       "automated": {
-        "title": "Automated Trading",
-        "desc": "Always-on execution & monitoring"
+        "title": "24/7 Automated Trading",
+        "desc": "Continuous execution and monitoring"
       },
       "consensus": {
         "title": "Consensus Modes",
         "desc": "Vote, Confidence, Weighted, Unanimous"
       }
     },
-    "features": {
+    "coreCapabilities": {
       "title": "Core Capabilities",
-      "subtitle": "Everything you need from strategy to execution",
-      "items": {
-        "0": {
-          "title": "Natural Language AI Trading",
-          "description": "Define strategies with plain language prompts. AI understands your intent and generates actionable trading decisions — no coding required."
-        },
-        "1": {
-          "title": "Multi-Model Debate Engine",
-          "description": "Multiple AI models analyze markets in parallel with 4 consensus modes: majority vote, highest confidence, weighted average, and unanimous agreement."
-        },
-        "2": {
-          "title": "Multi-Exchange Unified Access",
-          "description": "Seamlessly connect to Binance, Bybit, OKX, and Hyperliquid through a single unified interface. Manage all accounts in one place."
-        },
-        "3": {
-          "title": "Quant Strategy Engine",
-          "description": "Classic quantitative strategies including Grid Trading, DCA (Dollar-Cost Averaging), and RSI-based signals, fully configurable and automated."
-        },
-        "4": {
-          "title": "Backtesting & Performance",
-          "description": "Simulate strategies against historical data. Analyze with Sharpe, Sortino, max drawdown, win rate, and comprehensive performance metrics."
-        },
-        "5": {
-          "title": "Real-time Monitoring",
-          "description": "Live WebSocket updates for positions, decisions, and market data. Instant notifications via Telegram, Discord, and Email."
-        }
+      "subtitle": "Three core engines building intelligent trading system",
+      "nlp": {
+        "title": "Intelligent Strategy Generation Engine",
+        "desc": "Natural language-based strategy definition engine. AI deeply understands trading intent, transforming natural language into executable strategies through 8-segment Prompt building mechanism, enabling complex trading logic without coding"
+      },
+      "debate": {
+        "title": "Multi-Model Consensus Decision Engine",
+        "desc": "Multi-model parallel analysis engine. Through consensus algorithms including vote, confidence, weighted, unanimous, it aggregates wisdom from multiple AI models to reach optimal trading decisions, significantly enhancing accuracy and reliability"
+      },
+      "backtest": {
+        "title": "Quantitative Backtesting Validation Engine",
+        "desc": "Historical data-based strategy validation engine. Through simulated execution and multi-dimensional performance analysis, provides professional metrics including Sharpe ratio, max drawdown, win rate, ensuring thorough validation before live trading"
       }
     },
     "capabilities": {
-      "title": "Core Capabilities",
-      "subtitle": "Everything you need from strategy to execution",
-      "models": {
-        "title": "AI Models",
-        "desc": "8 providers with multi-model debate consensus engine"
+      "title": "Learn More",
+      "subtitle": "Complete capabilities from strategy to execution",
+      "strategy": {
+        "title": "Natural Language Strategy Definition",
+        "desc": "Describe trading logic in plain language. AI understands your intent and generates executable strategies — no coding required"
       },
-      "exchanges": {
-        "title": "Exchanges",
-        "desc": "Unified access to top crypto derivatives exchanges"
+      "analysis": {
+        "title": "Real-time Data Collection & Analysis",
+        "desc": "Fetch real-time prices and K-line data, calculate technical indicators like EMA, RSI, MACD, ATR to provide data for AI decisions"
       },
-      "strategies": {
-        "title": "Strategy Types",
-        "desc": "From classic quant to AI-driven strategies",
-        "items": {
-          "aiNlp": "AI NLP",
-          "grid": "Grid Trading",
-          "dca": "DCA",
-          "rsi": "RSI Signal"
-        }
+      "decision": {
+        "title": "Multi-Model Debate Engine",
+        "desc": "Multiple AI models analyze markets in parallel, reaching optimal decisions through consensus modes: vote, confidence, weighted, unanimous"
+      },
+      "risk": {
+        "title": "Smart Risk Control & Decision Parsing",
+        "desc": "Automatically parse AI decisions, validate risk control rules including leverage limits, position limits, max drawdown to ensure trading safety"
+      },
+      "execution": {
+        "title": "Multi-Exchange Unified Execution",
+        "desc": "Submit decisions to Binance, Bybit, OKX, Hyperliquid through unified API interface, automatically manage orders"
+      },
+      "backtest": {
+        "title": "Historical Backtesting & Performance Analysis",
+        "desc": "Simulate strategy execution on historical data, provide multi-dimensional performance metrics including Sharpe ratio, max drawdown, win rate"
       }
     },
     "cta": {
-      "title": "Start Exploring",
-      "subtitle": "AI Trading, Multi-Exchange, Backtesting - One Click Away",
+      "title": "Get Started",
+      "subtitle": "Embark on a new era of intelligent trading, explore infinite possibilities powered by AI",
       "button": "Get Started"
     },
     "footer": {

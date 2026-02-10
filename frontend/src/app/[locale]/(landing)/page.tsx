@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Header } from "@/components/layout/header";
 import { DarkVeil } from "@/components/landing/dark-veil";
 import { FeatureCards } from "@/components/landing/feature-cards";
+import { CoreCapabilities } from "@/components/landing/core-capabilities";
 import { CapabilityShowcase } from "@/components/landing/capability-showcase";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
@@ -59,6 +60,9 @@ export default function LandingPage() {
 
       {/* ── Feature Cards (Bento Grid) ── */}
       <FeatureCards />
+
+      {/* ── Core Capabilities ── */}
+      <CoreCapabilities />
 
       {/* ── Core Capabilities Showcase ── */}
       <CapabilityShowcase />

@@ -410,7 +410,7 @@
 .landing-title {
   user-select: none;
   text-align: center;
-  font-size: 4rem;
+  font-size: 5rem;
   font-weight: 600;
   position: relative;
   z-index: 6;
@@ -418,33 +418,37 @@
   margin-bottom: 1rem;
   max-width: 22ch;
   letter-spacing: -3px;
-  line-height: 1;
+  line-height: 1.15;
 }
 
-@media (max-width: 1440px) { .landing-title { font-size: 3.6rem; } }
-@media (max-width: 1024px) { .landing-title { font-size: 3.4rem; } }
-@media (max-width: 768px)  { .landing-title { font-size: 3rem; text-align: center; max-width: 100%; } }
-@media (max-width: 640px)  { .landing-title { font-size: 2.4rem; letter-spacing: -2px; } }
-@media (max-width: 480px)  { .landing-title { font-size: 2rem; letter-spacing: -1px; } }
-@media (max-width: 390px)  { .landing-title { font-size: 1.8rem; } }
+@media (max-width: 1440px) { .landing-title { font-size: 4.5rem; } }
+@media (max-width: 1024px) { .landing-title { font-size: 4rem; } }
+@media (max-width: 768px)  { .landing-title { font-size: 3.5rem; text-align: center; max-width: 100%; } }
+@media (max-width: 640px)  { .landing-title { font-size: 2.8rem; letter-spacing: -2px; } }
+@media (max-width: 480px)  { .landing-title { font-size: 2.4rem; letter-spacing: -1px; } }
+@media (max-width: 390px)  { .landing-title { font-size: 2rem; } }
 
 /* ── 7. Landing Subtitle ── */
 
 .landing-subtitle {
   user-select: none;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--muted-foreground);
-  max-width: 40ch;
+  max-width: 50ch;
   margin-bottom: 2rem;
   z-index: 6;
 }
 
-@media (max-width: 1024px) { .landing-subtitle { font-size: 1rem; } }
-@media (max-width: 768px)  { .landing-subtitle { font-size: 0.95rem; max-width: 80%; text-align: center; } }
-@media (max-width: 480px)  { .landing-subtitle { font-size: 0.9rem; } }
+.landing-subtitle span {
+  display: inline-block;
+}
+
+@media (max-width: 1024px) { .landing-subtitle { font-size: 1.2rem; } }
+@media (max-width: 768px)  { .landing-subtitle { font-size: 1.1rem; max-width: 80%; text-align: center; } }
+@media (max-width: 480px)  { .landing-subtitle { font-size: 1rem; } }
 
 /* ── 8. Landing CTA Button ── */
 
@@ -456,12 +460,13 @@
   gap: 0.8rem;
   background: var(--primary-vivid);
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 1.15rem;
   border-radius: 50px;
   border: none;
   letter-spacing: -0.2px;
   height: 55px;
-  padding: 0 2em;
+  padding: 0 3em;
+  min-width: 180px;
   color: var(--foreground);
   cursor: pointer;
   isolation: isolate;
@@ -547,8 +552,9 @@
 @media (max-width: 480px) {
   .landing-cta-button {
     height: 48px;
-    padding: 0 1.6em;
-    font-size: 0.95rem;
+    padding: 0 2.5em;
+    font-size: 1.05rem;
+    min-width: 160px;
   }
 }
 
@@ -791,6 +797,13 @@
 
 @media (min-width: 768px) {
   .capability-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .capability-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
   }
@@ -809,11 +822,23 @@
 }
 
 .capability-grid-visible .capability-card:nth-child(2) {
-  transition-delay: 0.15s;
+  transition-delay: 0.1s;
 }
 
 .capability-grid-visible .capability-card:nth-child(3) {
+  transition-delay: 0.2s;
+}
+
+.capability-grid-visible .capability-card:nth-child(4) {
   transition-delay: 0.3s;
+}
+
+.capability-grid-visible .capability-card:nth-child(5) {
+  transition-delay: 0.4s;
+}
+
+.capability-grid-visible .capability-card:nth-child(6) {
+  transition-delay: 0.5s;
 }
 
 .capability-card {
@@ -831,10 +856,17 @@
 }
 
 .capability-showcase {
-  flex: 1;
   display: flex;
   align-items: center;
-  padding: 1.25rem 0;
+  justify-content: flex-start;
+  padding: 1rem 0;
+}
+
+.capability-process-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--primary-vivid);
+  opacity: 0.9;
 }
 
 .capability-card-title {
@@ -849,6 +881,120 @@
   line-height: 1.5;
   color: var(--muted-foreground);
   margin-top: 0.25rem;
+}
+
+/* ── Capability Carousel Card ── */
+
+.capability-carousel-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.capability-carousel-card {
+  flex-shrink: 0;
+  width: 340px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease;
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+}
+
+.capability-carousel-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  background: radial-gradient(
+    200px circle at var(--glow-x) var(--glow-y),
+    oklch(0.55 0.28 290 / calc(var(--glow-intensity) * 0.8)) 0%,
+    oklch(0.55 0.28 290 / calc(var(--glow-intensity) * 0.4)) 30%,
+    transparent 60%
+  );
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.capability-carousel-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 40px -15px color-mix(in oklch, var(--primary-glow) 40%, transparent);
+  background: var(--card);
+}
+
+.capability-carousel-card:hover::after {
+  opacity: 1;
+}
+
+.capability-marquee {
+  margin-top: 0;
+}
+
+.capability-marquee .marquee-track {
+  gap: 1.25rem;
+}
+
+@media (max-width: 1280px) {
+  .capability-carousel-card {
+    width: 320px;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .capability-carousel-card {
+    width: 300px;
+    padding: 1.25rem;
+  }
+  
+  .capability-process-icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .capability-carousel-card {
+    width: 280px;
+    padding: 1.25rem;
+  }
+  
+  .capability-marquee .marquee-track {
+    gap: 1rem;
+  }
+  
+  .capability-process-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .capability-carousel-card {
+    width: 260px;
+    padding: 1rem;
+  }
+  
+  .capability-marquee .marquee-track {
+    gap: 0.875rem;
+  }
+  
+  .capability-process-icon {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 /* Brand pills (shared by AI models & exchanges) */
@@ -943,7 +1089,200 @@
   opacity: 0.8;
 }
 
-/* ── 14. Marquee ── */
+/* ── 14. Core Capabilities ── */
+
+.core-capabilities-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .core-capabilities-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* Staggered entrance animation */
+.core-capabilities-grid .core-capability-card {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.core-capabilities-grid-visible .core-capability-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.core-capabilities-grid-visible .core-capability-card:nth-child(2) {
+  transition-delay: 0.15s;
+}
+
+.core-capabilities-grid-visible .core-capability-card:nth-child(3) {
+  transition-delay: 0.3s;
+}
+
+.core-capability-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease,
+    border-color 0.3s ease;
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+}
+
+.core-capability-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  background: radial-gradient(
+    300px circle at var(--glow-x) var(--glow-y),
+    oklch(0.55 0.28 290 / calc(var(--glow-intensity) * 0.6)) 0%,
+    oklch(0.55 0.28 290 / calc(var(--glow-intensity) * 0.3)) 40%,
+    transparent 70%
+  );
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.core-capability-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px -12px color-mix(in oklch, var(--primary-glow) 30%, transparent);
+  background: var(--card);
+}
+
+.core-capability-card:hover::after {
+  opacity: 1;
+}
+
+.core-capability-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: color-mix(in oklch, var(--primary-vivid) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.core-capability-card:hover .core-capability-icon-wrapper {
+  background: color-mix(in oklch, var(--primary-vivid) 15%, transparent);
+  transform: scale(1.05);
+}
+
+.core-capability-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--primary-vivid);
+  transition: transform 0.3s ease;
+}
+
+.core-capability-card:hover .core-capability-icon {
+  transform: scale(1.1);
+}
+
+.core-capability-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foreground);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.core-capability-desc {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+@media (max-width: 1024px) {
+  .core-capability-card {
+    padding: 1.75rem;
+  }
+  
+  .core-capability-icon-wrapper {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .core-capability-icon {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .core-capability-title {
+    font-size: 1.15rem;
+  }
+  
+  .core-capability-desc {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .core-capabilities-grid {
+    gap: 1.5rem;
+  }
+  
+  .core-capability-card {
+    padding: 1.5rem;
+  }
+  
+  .core-capability-icon-wrapper {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .core-capability-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .core-capability-title {
+    font-size: 1.1rem;
+  }
+  
+  .core-capability-desc {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .core-capability-card {
+    padding: 1.25rem;
+  }
+  
+  .core-capability-icon-wrapper {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .core-capability-icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* ── 15. Marquee ── */
 
 .marquee-container {
   position: relative;

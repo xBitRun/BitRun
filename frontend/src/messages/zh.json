@@ -1793,84 +1793,76 @@
       "badgeText": "驱动的智能交易平台",
       "titleLine1": "AI 驱动的智能交易",
       "titleLine2": "加密货币新时代",
-      "subtitle": "多模型 AI 辩论引擎，优化你的 Alpha 收益，一键连接全球主流交易所。",
-      "cta": "开始交易"
+      "subtitle": "一键连接全球主流交易所，智能策略自动执行，通过多模型共识算法达成最优交易决策，让 AI 为您的交易赋能。",
+      "cta": "立即开始"
     },
     "bento": {
-      "sectionTitle": "为交易而生",
-      "sectionSubtitle": "AI 驱动的加密市场交易利器",
+      "sectionTitle": "平台优势",
+      "sectionSubtitle": "快速了解核心能力",
       "exchanges": {
-        "title": "交易所支持",
-        "desc": "Binance、Bybit、OKX 和 Hyperliquid"
+        "title": "多交易所支持",
+        "desc": "一键连接 Binance、Bybit、OKX、Hyperliquid"
       },
       "models": {
         "title": "AI 大模型",
-        "desc": "多模型辩论引擎"
+        "desc": "8 家供应商，多模型辩论引擎"
       },
       "automated": {
         "title": "全天候自动交易",
-        "desc": "持续执行与监控"
+        "desc": "7×24 小时持续执行与监控"
       },
       "consensus": {
         "title": "共识模式",
         "desc": "投票、信心、加权、全票通过"
       }
     },
-    "features": {
+    "coreCapabilities": {
       "title": "核心能力",
-      "subtitle": "从策略到执行的完整链路",
-      "items": {
-        "0": {
-          "title": "自然语言 AI 交易",
-          "description": "通过自然语言 Prompt 定义交易策略，AI 理解您的意图并生成可执行的交易决策，无需编程。"
-        },
-        "1": {
-          "title": "多模型辩论引擎",
-          "description": "多个 AI 模型并行分析市场，支持 4 种共识模式：多数投票、最高信心、加权平均、全票通过。"
-        },
-        "2": {
-          "title": "多交易所统一接入",
-          "description": "一键连接 Binance、Bybit、OKX、Hyperliquid，统一 API 接口，在一个平台管理所有账户。"
-        },
-        "3": {
-          "title": "量化策略引擎",
-          "description": "经典量化策略全覆盖：网格交易、DCA 定投、RSI 超买超卖信号，参数完全可配置，自动执行。"
-        },
-        "4": {
-          "title": "回测与绩效分析",
-          "description": "基于历史数据模拟策略运行，提供夏普比率、索提诺比率、最大回撤、胜率等多维度绩效指标。"
-        },
-        "5": {
-          "title": "实时监控与通知",
-          "description": "WebSocket 实时推送持仓、决策和市场数据，支持 Telegram、Discord、邮件即时通知。"
-        }
+      "subtitle": "三大核心引擎，构建智能交易体系",
+      "nlp": {
+        "title": "智能策略生成引擎",
+        "desc": "基于自然语言的策略定义引擎，AI 深度理解交易意图，通过 8 段式 Prompt 构建机制，将自然语言转化为可执行的交易策略，无需编程即可构建复杂交易逻辑"
+      },
+      "debate": {
+        "title": "多模型共识决策引擎",
+        "desc": "多模型并行分析引擎，通过投票、信心、加权、全票通过等共识算法，汇聚多个 AI 模型的智慧，达成最优交易决策，显著提升决策准确性与可靠性"
+      },
+      "backtest": {
+        "title": "量化回测验证引擎",
+        "desc": "基于历史数据的策略验证引擎，通过模拟交易执行与多维度绩效分析，提供夏普比率、最大回撤、胜率等专业指标，确保策略在实盘前的充分验证"
       }
     },
     "capabilities": {
-      "title": "核心能力",
-      "subtitle": "从策略到执行的完整链路",
-      "models": {
-        "title": "AI 大模型",
-        "desc": "8 家供应商，多模型辩论共识引擎"
+      "title": "深入了解",
+      "subtitle": "从策略到执行的完整能力展示",
+      "strategy": {
+        "title": "自然语言策略定义",
+        "desc": "用自然语言描述交易逻辑，AI 理解意图并生成可执行策略，无需编程"
       },
-      "exchanges": {
-        "title": "交易所",
-        "desc": "统一接入顶级加密衍生品交易所"
+      "analysis": {
+        "title": "实时数据采集与分析",
+        "desc": "获取实时价格、K 线数据，计算 EMA、RSI、MACD、ATR 等技术指标，为 AI 决策提供数据"
       },
-      "strategies": {
-        "title": "策略类型",
-        "desc": "从经典量化到 AI 驱动策略",
-        "items": {
-          "aiNlp": "AI 自然语言",
-          "grid": "网格交易",
-          "dca": "定投策略",
-          "rsi": "RSI 信号"
-        }
+      "decision": {
+        "title": "多模型辩论引擎",
+        "desc": "多个 AI 模型并行分析市场，通过投票、信心、加权、全票通过等共识模式达成最优决策"
+      },
+      "risk": {
+        "title": "智能风控与决策解析",
+        "desc": "自动解析 AI 决策，校验杠杆上限、仓位限制、最大回撤等风控规则，确保交易安全"
+      },
+      "execution": {
+        "title": "多交易所统一执行",
+        "desc": "通过统一 API 接口将决策提交到 Binance、Bybit、OKX、Hyperliquid，自动管理订单"
+      },
+      "backtest": {
+        "title": "历史回测与绩效分析",
+        "desc": "基于历史数据模拟策略运行，提供夏普比率、最大回撤、胜率等多维度绩效指标"
       }
     },
     "cta": {
-      "title": "开始探索",
-      "subtitle": "AI 交易、多交易所、回测 - 一键开启",
+      "title": "立即开始",
+      "subtitle": "开启智能交易新纪元，探索 AI 驱动的无限可能",
       "button": "立即开始"
     },
     "footer": {

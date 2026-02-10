@@ -10,6 +10,39 @@ interface CardData {
   titleKey: string;
   descKey: string;
   gridClass: string;
+  showBrands?: "exchanges" | "models";
+}
+
+/* ── Brand Data ── */
+
+const aiModels = [
+  { name: "DeepSeek", accent: "#4f6df5" },
+  { name: "Qwen", accent: "#7c3aed" },
+  { name: "Zhipu", accent: "#ef4444" },
+  { name: "MiniMax", accent: "#f59e0b" },
+  { name: "Kimi", accent: "#14b8a6" },
+  { name: "OpenAI", accent: "#10a37f" },
+  { name: "Gemini", accent: "#8b5cf6" },
+  { name: "Grok", accent: "#ec4899" },
+];
+
+const exchanges = [
+  { name: "Binance", accent: "#f0b90b" },
+  { name: "Bybit", accent: "#ff6b35" },
+  { name: "OKX", accent: "#e5e5e5" },
+  { name: "Hyperliquid", accent: "#a3e635" },
+];
+
+function BrandPill({ name, accent }: { name: string; accent: string }) {
+  return (
+    <div className="capability-brand-pill">
+      <span
+        className="capability-brand-dot"
+        style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}50` }}
+      />
+      <span className="capability-brand-name">{name}</span>
+    </div>
+  );
 }
 
 const cards: CardData[] = [
@@ -19,6 +52,7 @@ const cards: CardData[] = [
     titleKey: "bento.exchanges.title",
     descKey: "bento.exchanges.desc",
     gridClass: "bento-card-1 bento-card-wide",
+    showBrands: "exchanges",
   },
   {
     target: 8,
@@ -26,6 +60,7 @@ const cards: CardData[] = [
     titleKey: "bento.models.title",
     descKey: "bento.models.desc",
     gridClass: "bento-card-2",
+    showBrands: "models",
   },
   {
     target: 24,
@@ -91,6 +126,20 @@ function BentoCard({
       <p className="mt-0 text-sm leading-snug text-muted-foreground">
         {t(card.descKey)}
       </p>
+      {card.showBrands === "exchanges" && (
+        <div className="mt-3 capability-brand-grid capability-brand-grid-lg">
+          {exchanges.map((ex) => (
+            <BrandPill key={ex.name} {...ex} />
+          ))}
+        </div>
+      )}
+      {card.showBrands === "models" && (
+        <div className="mt-3 capability-brand-grid">
+          {aiModels.map((m) => (
+            <BrandPill key={m.name} {...m} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
