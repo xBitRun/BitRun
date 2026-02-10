@@ -5,11 +5,14 @@ Defines the interface for all exchange adapters.
 Each exchange (Hyperliquid, Binance, etc.) implements this interface.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Literal, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class OrderType(str, Enum):
@@ -806,7 +809,7 @@ class BaseTrader(ABC):
         
         Args:
             symbol: Trading symbol
-            size_usd: Position size in USD
+            size_usd: Position size in USD (notional value)
             leverage: Leverage multiplier
             stop_loss: Stop loss price (optional)
             take_profit: Take profit price (optional)
@@ -816,6 +819,11 @@ class BaseTrader(ABC):
         """
         # Get current price to calculate size
         price = await self.get_market_price(symbol)
+        if not price or price <= 0:
+            raise TradeError(
+                f"Invalid market price for {symbol}: {price}",
+                code="INVALID_PRICE",
+            )
         size = size_usd / price
         
         # Set leverage
@@ -826,11 +834,23 @@ class BaseTrader(ABC):
         result = await self.place_market_order(symbol, "buy", size, leverage, price=price)
         
         if result.success and result.filled_size:
-            # Place SL/TP if specified
+            # Place SL/TP if specified — errors must not affect the main order
             if stop_loss:
-                await self.place_stop_loss(symbol, "sell", result.filled_size, stop_loss)
+                try:
+                    await self.place_stop_loss(symbol, "sell", result.filled_size, stop_loss)
+                except Exception as e:
+                    logger.error(
+                        f"[open_long] Failed to place stop-loss for {symbol} "
+                        f"at {stop_loss}: {e}  (entry order succeeded)"
+                    )
             if take_profit:
-                await self.place_take_profit(symbol, "sell", result.filled_size, take_profit)
+                try:
+                    await self.place_take_profit(symbol, "sell", result.filled_size, take_profit)
+                except Exception as e:
+                    logger.error(
+                        f"[open_long] Failed to place take-profit for {symbol} "
+                        f"at {take_profit}: {e}  (entry order succeeded)"
+                    )
         
         return result
     
@@ -846,6 +866,11 @@ class BaseTrader(ABC):
         Convenience method to open a short position with optional SL/TP.
         """
         price = await self.get_market_price(symbol)
+        if not price or price <= 0:
+            raise TradeError(
+                f"Invalid market price for {symbol}: {price}",
+                code="INVALID_PRICE",
+            )
         size = size_usd / price
         
         await self.set_leverage(symbol, leverage)
@@ -855,10 +880,23 @@ class BaseTrader(ABC):
         result = await self.place_market_order(symbol, "sell", size, leverage, price=price)
         
         if result.success and result.filled_size:
+            # Place SL/TP if specified — errors must not affect the main order
             if stop_loss:
-                await self.place_stop_loss(symbol, "buy", result.filled_size, stop_loss)
+                try:
+                    await self.place_stop_loss(symbol, "buy", result.filled_size, stop_loss)
+                except Exception as e:
+                    logger.error(
+                        f"[open_short] Failed to place stop-loss for {symbol} "
+                        f"at {stop_loss}: {e}  (entry order succeeded)"
+                    )
             if take_profit:
-                await self.place_take_profit(symbol, "buy", result.filled_size, take_profit)
+                try:
+                    await self.place_take_profit(symbol, "buy", result.filled_size, take_profit)
+                except Exception as e:
+                    logger.error(
+                        f"[open_short] Failed to place take-profit for {symbol} "
+                        f"at {take_profit}: {e}  (entry order succeeded)"
+                    )
         
         return result
     

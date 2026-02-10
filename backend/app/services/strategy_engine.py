@@ -717,18 +717,36 @@ class StrategyEngine:
 
     async def _check_risk_limits(self, account: AccountState) -> tuple[bool, str]:
         """
-        Check if current state allows trading.
+        Fatal pre-flight check — blocks the **entire** cycle.
 
-        Uses **strategy-level** position count (via PositionService)
-        instead of the account-wide position count so that other
-        strategies or manual trades on the same account don't block
-        this strategy from trading within its own allocation.
-
-        Falls back to account-level checks when PositionService is
-        not available (backward compatible).
+        Only conditions that make it impossible (or dangerous) to call the
+        AI at all should live here.  Everything that merely prevents
+        *opening new positions* belongs in ``_check_can_open_position``
+        so that close/hold decisions can still be generated and executed.
 
         Returns:
             Tuple of (can_trade, reason)
+        """
+        # Reject trading when equity is zero or negative
+        if account.equity <= 0:
+            return False, f"Equity is zero or negative (${account.equity:.2f})"
+
+        return True, "OK"
+
+    async def _check_can_open_position(self, account: AccountState) -> tuple[bool, str]:
+        """
+        Check whether the strategy is allowed to **open** a new position.
+
+        These checks do NOT block the whole decision cycle — the AI is
+        still called so it can produce close/hold decisions.  Only open
+        actions are gated by this method.
+
+        Uses strategy-level position count (via PositionService) instead
+        of the account-wide count so that other strategies or manual
+        trades on the same account don't block this strategy.
+
+        Returns:
+            Tuple of (can_open, reason)
         """
         rc = self.risk_controls
         max_positions = self._settings.default_max_positions
@@ -896,8 +914,8 @@ class StrategyEngine:
                 continue
 
             # Refresh account state before open actions to get latest balance
-            # (important when multiple decisions execute in one cycle)
-            if is_open_action and len(sorted_decisions) > 1:
+            # and margin data (avoids stale state from AI analysis phase)
+            if is_open_action:
                 try:
                     account = await self.trader.get_account_state()
                     self._last_account_state = account
@@ -906,6 +924,17 @@ class StrategyEngine:
                         f"[Execution] Failed to refresh account state: {refresh_err}, "
                         "using stale state"
                     )
+
+                # Gate new positions by risk limits (max_positions, margin, drawdown).
+                # Close/hold decisions are never blocked here.
+                can_open, open_reason = await self._check_can_open_position(account)
+                if not can_open:
+                    exec_result["reason"] = open_reason
+                    logger.warning(
+                        f"[Execution] SKIP OPEN {d.symbol} {d.action.value}: {open_reason}"
+                    )
+                    results.append(exec_result)
+                    continue
 
             # Apply position size limits (margin-based)
             position_size = self._apply_position_limits(

@@ -245,6 +245,7 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "每个决策需要清晰的推理依据",
             "置信度范围 0-100（仅执行置信度 >= {min_confidence} 的交易）",
             '对于 "hold" 或 "wait" 操作，将 position_size_usd 设为 0',
+            '对于 "close_long" 或 "close_short" 操作，leverage 和 position_size_usd 应与被平仓的现有持仓一致',
             "根据市场波动性设置 next_review_minutes",
             "chain_of_thought、market_assessment 和 reasoning 字段必须使用中文书写",
         ],

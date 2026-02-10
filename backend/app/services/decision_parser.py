@@ -6,6 +6,7 @@ Handles various response formats and edge cases.
 """
 
 import json
+import logging
 import re
 from typing import Optional, Tuple
 
@@ -17,6 +18,8 @@ from ..models.decision import (
     RiskControls,
     TradingDecision,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DecisionParseError(Exception):
@@ -195,7 +198,10 @@ class DecisionParser:
                 )
                 decisions.append(decision)
             except (ValueError, KeyError) as e:
-                # Skip invalid decisions but log
+                logger.warning(
+                    f"[DecisionParser] Skipping invalid decision: {e} | "
+                    f"raw={d}"
+                )
                 continue
 
         return DecisionResponse(
@@ -217,7 +223,12 @@ class DecisionParser:
         for decision in response.decisions:
             # Cap leverage
             if decision.leverage > rc.max_leverage:
+                original = decision.leverage
                 decision.leverage = rc.max_leverage
+                logger.info(
+                    f"[DecisionParser] Leverage capped for {decision.symbol}: "
+                    f"{original}x -> {rc.max_leverage}x (max_leverage limit)"
+                )
 
             # Validate risk/reward ratio for trades with SL/TP
             if decision.stop_loss and decision.take_profit and decision.entry_price:
@@ -235,11 +246,10 @@ class DecisionParser:
                     risk = reward = 0
 
                 if risk > 0 and reward / risk < rc.min_risk_reward_ratio:
-                    # Risk/reward ratio doesn't meet minimum threshold
-                    # Currently just passes through - could add warning or adjustment
-                    import logging
-                    logging.getLogger(__name__).debug(
-                        f"Risk/reward ratio {reward/risk:.2f} below minimum {rc.min_risk_reward_ratio} for {decision.symbol}"
+                    logger.warning(
+                        f"[DecisionParser] Risk/reward ratio {reward/risk:.2f} "
+                        f"below minimum {rc.min_risk_reward_ratio} for "
+                        f"{decision.symbol} {decision.action.value}"
                     )
 
     def extract_chain_of_thought(self, raw_response: str) -> str:
