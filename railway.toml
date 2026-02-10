@@ -22,7 +22,7 @@
 #   JWT_SECRET          — python -c "import secrets; print(secrets.token_urlsafe(32))"
 #   DATA_ENCRYPTION_KEY — python -c "import secrets; print(secrets.token_urlsafe(32))"
 #   ENVIRONMENT         — production
-#   CORS_ORIGINS        — https://your-frontend.up.railway.app
+#   CORS_ORIGINS        — https://www.bitrun.ai (多个用逗号分隔，如 https://www.bitrun.ai,https://bitrun.ai)
 #
 # Required Environment Variables (Frontend):
 #   NEXT_PUBLIC_API_URL — https://your-backend.up.railway.app/api
