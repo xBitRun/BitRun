@@ -213,13 +213,19 @@ async function fetchApi<T>(
         return fetchApi<T>(path, options, true);
       }
 
-      // Refresh failed, clear tokens and throw
+      // Refresh failed, clear tokens and redirect to login
       TokenManager.clearTokens();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       throw new AuthError(message);
     }
 
     if (response.status === 401) {
       TokenManager.clearTokens();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       throw new AuthError(message);
     }
 

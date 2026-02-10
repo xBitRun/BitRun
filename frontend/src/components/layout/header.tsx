@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import Image from "next/image";
 import { LogOut, Menu, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ interface HeaderProps {
 export function Header({ variant = "dashboard", onMenuClick }: HeaderProps) {
   const t = useTranslations("header");
   const tLanding = useTranslations("landing");
+  const router = useRouter();
   const { user, logout, isLoading } = useAuthStore();
 
   // Get user initials for avatar
@@ -41,7 +42,7 @@ export function Header({ variant = "dashboard", onMenuClick }: HeaderProps) {
 
   const handleLogout = async () => {
     await logout();
-    // Auth guard will handle redirect to login
+    router.replace("/login");
   };
 
   const isLanding = variant === "landing";
