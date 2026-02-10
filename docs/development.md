@@ -113,7 +113,8 @@ backend/
 │   │   ├── config.py             #   应用配置 (pydantic-settings)
 │   │   ├── security.py           #   加密服务 (AES-256, RSA)
 │   │   ├── dependencies.py       #   FastAPI 依赖注入 (认证、限流)
-│   │   └── errors.py             #   异常定义和处理
+│   │   ├── errors.py             #   异常定义和处理
+│   │   └── circuit_breaker.py    #   熔断器 (保护外部服务调用)
 │   │
 │   ├── db/                       # 数据库层
 │   │   ├── database.py           #   数据库连接和会话管理
@@ -121,12 +122,14 @@ backend/
 │   │   └── repositories/         #   Repository 模式数据访问
 │   │       ├── account.py        #     账户 CRUD
 │   │       ├── strategy.py       #     策略 CRUD
+│   │       ├── quant_strategy.py #     量化策略 CRUD
 │   │       ├── decision.py       #     决策记录 CRUD
-│   │       └── ...
+│   │       └── user.py           #     用户 CRUD
 │   │
 │   ├── models/                   # Pydantic 领域模型
 │   │   ├── decision.py           #   决策模型 (ActionType, DecisionResponse)
 │   │   ├── strategy.py           #   策略配置 (StrategyConfig, RiskControls)
+│   │   ├── quant_strategy.py     #   量化策略模型 (Grid/DCA/RSI 配置)
 │   │   ├── debate.py             #   辩论模型 (DebateConfig, DebateResult)
 │   │   └── market_context.py     #   市场上下文 (技术指标)
 │   │
@@ -139,6 +142,7 @@ backend/
 │   │   ├── ai/                   #   AI 客户端
 │   │   │   ├── base.py           #     基类 (BaseAIClient, AIProvider)
 │   │   │   ├── factory.py        #     工厂 (AIClientFactory)
+│   │   │   ├── credentials.py    #     凭证解析 (Provider → API Key)
 │   │   │   ├── deepseek_client.py #    DeepSeek 实现
 │   │   │   ├── qwen_client.py    #     Qwen 实现
 │   │   │   ├── openai_client.py  #     OpenAI 实现
@@ -150,10 +154,12 @@ backend/
 │   │   │   └── custom_client.py  #     自定义 OpenAI 兼容
 │   │   ├── strategy_engine.py    #   AI 策略执行引擎
 │   │   ├── prompt_builder.py     #   Prompt 构建器
+│   │   ├── prompt_templates.py   #   Prompt 模板 (中英文)
 │   │   ├── decision_parser.py    #   决策解析器
 │   │   ├── debate_engine.py      #   多模型辩论引擎
 │   │   ├── quant_engine.py       #   量化策略引擎 (Grid/DCA/RSI)
 │   │   ├── order_manager.py      #   订单生命周期管理
+│   │   ├── position_service.py   #   持仓跟踪与管理
 │   │   ├── data_access_layer.py  #   统一数据访问 (K 线 + 指标)
 │   │   ├── indicator_calculator.py # 技术指标计算
 │   │   ├── market_data_cache.py  #   市场数据 Redis 缓存
@@ -169,18 +175,19 @@ backend/
 │   └── workers/                  # 后台任务
 │       ├── execution_worker.py   #   AI 策略执行 Worker
 │       ├── quant_worker.py       #   量化策略执行 Worker
-│       └── queue.py              #   ARQ 分布式任务队列
+│       ├── queue.py              #   ARQ 分布式任务队列
+│       └── tasks.py              #   任务定义
 │
 ├── alembic/                      # 数据库迁移
-│   ├── alembic.ini               #   Alembic 配置
 │   ├── env.py                    #   迁移环境 (异步支持)
 │   └── versions/                 #   迁移脚本
 │       ├── 001_initial_schema.py
 │       ├── 002_add_ai_model_to_strategies.py
 │       ├── ...
-│       └── 007_add_quant_strategies.py
+│       └── 010_add_debate_fields_to_decisions.py
 │
 ├── tests/                        # 测试套件
+├── alembic.ini                   # Alembic 配置
 ├── requirements.txt              # Python 依赖
 ├── Dockerfile                    # 容器定义
 ├── .env.example                  # 环境变量模板
@@ -194,40 +201,55 @@ backend/
 frontend/
 ├── src/
 │   ├── app/                      # Next.js App Router
+│   │   ├── layout.tsx            #   根布局 (字体、元数据)
 │   │   ├── [locale]/             #   国际化路由
-│   │   │   ├── layout.tsx        #     根布局
+│   │   │   ├── layout.tsx        #     Locale 布局 (i18n Provider)
 │   │   │   ├── (auth)/           #     认证页面组
 │   │   │   │   └── login/        #       登录页
-│   │   │   └── (dashboard)/      #     Dashboard 页面组
-│   │   │       ├── page.tsx      #       首页 (Dashboard)
-│   │   │       ├── agents/       #       AI Agent 策略
-│   │   │       ├── strategies/   #       量化策略
-│   │   │       ├── accounts/     #       交易所账户
-│   │   │       ├── models/       #       AI 模型管理
-│   │   │       ├── backtest/     #       回测
-│   │   │       ├── decisions/    #       决策记录
-│   │   │       └── settings/     #       设置
+│   │   │   ├── (dashboard)/      #     Dashboard 页面组
+│   │   │   │   ├── overview/     #       首页 (Dashboard)
+│   │   │   │   ├── agents/       #       AI Agent 策略
+│   │   │   │   ├── strategies/   #       量化策略
+│   │   │   │   ├── accounts/     #       交易所账户
+│   │   │   │   ├── models/       #       AI 模型管理
+│   │   │   │   ├── backtest/     #       回测
+│   │   │   │   ├── decisions/    #       决策记录
+│   │   │   │   └── settings/     #       设置
+│   │   │   └── (landing)/        #     Landing 页面组
 │   │   └── middleware.ts         #   路由中间件 (认证 + 国际化)
 │   │
 │   ├── components/               # React 组件
 │   │   ├── ui/                   #   shadcn/ui 基础组件 (Button, Card, Dialog...)
-│   │   ├── auth/                 #   认证组件 (LoginForm, AuthGuard)
+│   │   ├── auth/                 #   认证组件 (AuthGuard)
 │   │   ├── layout/               #   布局组件 (Sidebar, Header)
 │   │   ├── strategy-studio/      #   策略工作室 (5 Tab 配置界面)
-│   │   ├── charts/               #   图表组件 (Recharts)
+│   │   ├── charts/               #   图表组件 (Recharts + TradingView)
 │   │   ├── decisions/            #   决策展示组件
 │   │   ├── dialogs/              #   模态对话框
+│   │   ├── landing/              #   Landing 页面组件
 │   │   ├── onboarding/           #   新手引导
 │   │   ├── error-boundary/       #   错误边界
 │   │   └── list-page/            #   列表页工具组件
 │   │
 │   ├── hooks/                    # 自定义 Hooks
-│   │   └── use-websocket.ts      #   WebSocket 连接 Hook
+│   │   ├── use-accounts.ts       #   账户管理
+│   │   ├── use-backtest.ts       #   回测操作
+│   │   ├── use-dashboard.ts      #   仪表盘统计
+│   │   ├── use-decisions.ts      #   决策记录
+│   │   ├── use-models.ts         #   AI 模型管理
+│   │   ├── use-providers.ts      #   AI Provider 管理
+│   │   ├── use-quant-strategies.ts # 量化策略
+│   │   ├── use-strategies.ts     #   AI 策略管理
+│   │   ├── use-strategy-studio.ts #  策略工作室状态
+│   │   ├── use-websocket.ts      #   WebSocket 连接
+│   │   └── use-mobile.ts         #   移动端检测
 │   │
 │   ├── lib/                      # 工具和客户端
 │   │   ├── api/
 │   │   │   ├── client.ts         #     HTTP 客户端 (Token 自动刷新)
-│   │   │   └── endpoints.ts      #     API 端点定义
+│   │   │   ├── endpoints.ts      #     API 端点定义
+│   │   │   └── schemas.ts        #     Zod 校验 Schema
+│   │   ├── logger.ts             #   条件日志 (仅开发环境)
 │   │   └── utils.ts              #   通用工具函数
 │   │
 │   ├── stores/                   # Zustand 状态管理
@@ -240,15 +262,18 @@ frontend/
 │   │
 │   ├── i18n/                     # 国际化配置
 │   │   ├── routing.ts            #   路由配置
-│   │   └── request.ts            #   请求处理
+│   │   ├── request.ts            #   请求处理
+│   │   └── navigation.ts         #   类型化导航辅助
 │   │
 │   ├── providers/                # React Context Providers
-│   │   └── index.tsx             #   SWR + Tooltip + Toast
+│   │   ├── index.tsx             #   主 Provider 包装器
+│   │   └── swr-provider.tsx      #   SWR 全局配置
 │   │
-│   └── types/                    # TypeScript 类型定义
+│   ├── types/                    # TypeScript 类型定义
+│   │
+│   └── __tests__/                # Jest 单元测试
 │
 ├── e2e/                          # Playwright E2E 测试
-├── __tests__/                    # Jest 单元测试
 ├── Dockerfile                    # 多阶段构建
 ├── package.json                  # Node.js 依赖
 ├── next.config.ts                # Next.js 配置
@@ -463,6 +488,9 @@ docker compose exec backend alembic upgrade head
 | 005 | 决策记录增加市场快照 |
 | 006 | 决策记录增加账户快照 |
 | 007 | 量化策略表 |
+| 008 | 策略持仓表 (strategy_positions) |
+| 009 | 交易所账户索引优化 |
+| 010 | 决策记录增加辩论字段 (Debate Engine) |
 
 ## 相关文档
 

@@ -231,7 +231,7 @@ npm run dev
 
 **解决方法**:
 1. 检查 `frontend/.env.local` 中的 `NEXT_PUBLIC_API_URL`
-2. Docker 环境: `http://localhost:8000/api`
+2. 默认值: `http://localhost:8000/api/v1`
 3. 确认后端已成功启动：访问 `http://localhost:8000/health`
 
 ### 端口被占用

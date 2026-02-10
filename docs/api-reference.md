@@ -179,7 +179,7 @@ POST /api/v1/accounts
 ```
 
 ```json
-// 请求 (CEX)
+// 请求 (CEX - Binance / Bybit)
 {
   "name": "Binance 主账户",
   "exchange": "binance",
@@ -188,12 +188,30 @@ POST /api/v1/accounts
   "api_secret": "xxx"
 }
 
-// 请求 (DEX - Hyperliquid)
+// 请求 (CEX - OKX, 需要额外 passphrase)
+{
+  "name": "OKX 主账户",
+  "exchange": "okx",
+  "is_testnet": false,
+  "api_key": "xxx",
+  "api_secret": "xxx",
+  "passphrase": "xxx"
+}
+
+// 请求 (DEX - Hyperliquid, 私钥方式)
 {
   "name": "Hyperliquid",
   "exchange": "hyperliquid",
   "is_testnet": false,
   "private_key": "0x..."
+}
+
+// 请求 (DEX - Hyperliquid, 助记词方式)
+{
+  "name": "Hyperliquid",
+  "exchange": "hyperliquid",
+  "is_testnet": false,
+  "mnemonic": "word1 word2 ... word12"
 }
 
 // 响应 200
@@ -789,13 +807,13 @@ GET /api/v1/metrics/json
 #### 详细健康检查
 
 ```
-GET /health/detailed
+GET /api/v1/health/detailed
 ```
 
 #### 熔断器状态
 
 ```
-GET /health/circuit-breakers
+GET /api/v1/health/circuit-breakers
 ```
 
 ---

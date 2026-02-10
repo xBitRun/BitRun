@@ -82,7 +82,6 @@ bitrun/
 │   │   ├── stores/           #   Zustand 状态管理
 │   │   └── messages/         #   i18n 翻译文件 (en.json / zh.json)
 │   └── e2e/                  #   Playwright E2E 测试
-├── nginx/                    # Nginx 配置
 ├── scripts/                  # 部署和开发脚本
 │   ├── quick-start.sh        #   一键启动
 │   ├── deploy.sh             #   生产部署
@@ -203,6 +202,7 @@ AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密�
 | [部署指南](docs/deployment.md) | Docker 部署、SSL/HTTPS、Nginx、监控告警 |
 | [开发者指南](docs/development.md) | 本地开发、代码规范、测试、数据库迁移 |
 | [API 参考](docs/api-reference.md) | REST API、WebSocket API、认证机制 |
+| [Redis 备份与恢复](docs/redis-backup-recovery.md) | Redis 数据备份、恢复、自动备份配置 |
 
 ## License
 

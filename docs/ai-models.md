@@ -26,7 +26,7 @@ Provider (服务商)
 | `name` | 自定义显示名称 |
 | `api_key` | API Key (AES-256-GCM 加密存储) |
 | `base_url` | API 端点 URL |
-| `api_format` | API 格式 (openai / anthropic / gemini / custom) |
+| `api_format` | API 格式 (openai / custom) |
 | `models` | 该 Provider 下的可用模型列表 (JSON) |
 | `is_enabled` | 是否启用 |
 

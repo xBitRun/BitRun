@@ -398,12 +398,9 @@ BITRUN 前后端均集成了 Sentry，用于实时错误追踪和性能监控。
 SENTRY_DSN=https://xxx@sentry.io/xxx
 ```
 
-**前端配置** (`frontend/.env.local`)：
+**前端配置**：
 
-前端 Sentry 配置文件：
-- `sentry.client.config.ts` — 客户端配置
-- `sentry.server.config.ts` — 服务端配置
-- `sentry.edge.config.ts` — Edge Runtime 配置
+前端目前未集成 Sentry SDK。如需启用，可安装 `@sentry/nextjs` 并按官方文档配置。
 
 #### 后端 Sentry 功能
 
@@ -425,10 +422,10 @@ SENTRY_DSN=https://xxx@sentry.io/xxx
 后端暴露 Prometheus 指标端点：
 
 ```
-GET /api/v1/metrics          # Prometheus 格式
-GET /api/v1/metrics/json     # JSON 格式
-GET /health/detailed         # 组件级健康检查
-GET /health/circuit-breakers # 熔断器状态
+GET /api/v1/metrics                    # Prometheus 格式
+GET /api/v1/metrics/json               # JSON 格式
+GET /api/v1/health/detailed            # 组件级健康检查
+GET /api/v1/health/circuit-breakers    # 熔断器状态
 ```
 
 采集的指标包括：
@@ -450,7 +447,7 @@ GET /health/circuit-breakers # 熔断器状态
 |------|------|
 | **Telegram** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` |
 | **Discord** | `DISCORD_WEBHOOK_URL` |
-| **邮件 (SMTP)** | `SMTP_HOST` + `SMTP_PORT` + `SMTP_USER` + `SMTP_PASSWORD` |
+| **邮件 (Resend)** | `RESEND_API_KEY` + `RESEND_FROM` |
 
 通知触发场景：
 - 策略执行成功/失败
