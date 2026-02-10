@@ -150,12 +150,12 @@ function StrategyCard({ strategy, onStatusChange, onDelete, t }: StrategyCardPro
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                className={strategy.status === "stopped" ? "text-destructive" : "text-muted-foreground"}
-                disabled={strategy.status !== "stopped"}
-                onClick={() => strategy.status === "stopped" && onDelete(strategy.id)}
+                className={["stopped", "draft"].includes(strategy.status) ? "text-destructive" : "text-muted-foreground"}
+                disabled={!["stopped", "draft"].includes(strategy.status)}
+                onClick={() => ["stopped", "draft"].includes(strategy.status) && onDelete(strategy.id)}
               >
                 {t("actions.delete")}
-                {strategy.status !== "stopped" && (
+                {!["stopped", "draft"].includes(strategy.status) && (
                   <span className="ml-1 text-xs">({t("actions.deleteRequireStopped")})</span>
                 )}
               </DropdownMenuItem>

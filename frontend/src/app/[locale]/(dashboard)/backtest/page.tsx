@@ -1166,6 +1166,8 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
       stop_loss: t("tradeList.stopLoss"),
       take_profit: t("tradeList.takeProfit"),
       liquidation: t("tradeList.liquidation"),
+      signal: t("tradeList.signal"),
+      reverse: t("tradeList.reverse"),
     };
     return map[reason] || reason;
   };

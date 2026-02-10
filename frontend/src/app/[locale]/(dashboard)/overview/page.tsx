@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils';
 import {
   useWebSocket,
   useDashboardStats,
-  useAllPositions,
   useAccounts,
   useStrategies,
   useQuantStrategies,
@@ -102,14 +101,10 @@ export default function DashboardPage() {
   // Data fetching - using aggregated hooks
   const {
     data: stats,
+    positions,
     isLoading: statsLoading,
     mutate: refreshStats,
   } = useDashboardStats();
-  const {
-    data: positions,
-    isLoading: positionsLoading,
-    mutate: refreshPositions,
-  } = useAllPositions();
   const { isLoading: accountsLoading } = useAccounts();
   const { data: strategies, isLoading: agentsLoading } = useStrategies();
   const { data: quantStrategies } = useQuantStrategies();
@@ -117,7 +112,6 @@ export default function DashboardPage() {
   // Real-time updates via WebSocket
   const { isConnected, subscribe } = useWebSocket({
     onPositionUpdate: () => {
-      refreshPositions();
       refreshStats();
     },
   });
@@ -353,7 +347,7 @@ export default function DashboardPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => refreshPositions()}
+                  onClick={() => refreshStats()}
                   className="h-8 w-8"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -364,7 +358,7 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 flex-1 overflow-y-auto">
-              {positionsLoading ? (
+              {statsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>

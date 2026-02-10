@@ -115,6 +115,40 @@ describe("useDashboardStats", () => {
     expect(result.current.data?.connectedAccounts).toBe(2);
   });
 
+  it("should return positions alongside stats from backend response", async () => {
+    mockedDashboardApi.getFullStats.mockResolvedValue(mockFullStatsResponse as never);
+
+    const { result } = renderHook(() => useDashboardStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.positions.length).toBeGreaterThan(0));
+
+    expect(result.current.positions.length).toBe(4);
+    expect(result.current.positions[0].symbol).toBeDefined();
+    expect(result.current.positions[0].exchange).toBeDefined();
+  });
+
+  it("should sort positions by absolute PnL descending", async () => {
+    mockedDashboardApi.getFullStats.mockResolvedValue({
+      ...mockFullStatsResponse,
+      positions: [
+        { symbol: "BNB", side: "long", size: 1, size_usd: 2000, entry_price: 300, mark_price: 310, leverage: 1, unrealized_pnl: 100, unrealized_pnl_percent: 5, liquidation_price: null, account_name: "Binance", exchange: "binance" },
+        { symbol: "ETH", side: "short", size: 10, size_usd: 20000, entry_price: 2000, mark_price: 1800, leverage: 2, unrealized_pnl: 2000, unrealized_pnl_percent: 10, liquidation_price: 2500, account_name: "OKX", exchange: "okx" },
+      ],
+    } as never);
+
+    const { result } = renderHook(() => useDashboardStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.positions.length).toBe(2));
+
+    // ETH has |2000| > BNB |100|, so ETH should come first
+    expect(result.current.positions[0].symbol).toBe("ETH");
+    expect(result.current.positions[1].symbol).toBe("BNB");
+  });
+
   it("should count profitable positions from backend response", async () => {
     mockedDashboardApi.getFullStats.mockResolvedValue(mockFullStatsResponse as never);
 
@@ -159,6 +193,11 @@ describe("useDashboardStats", () => {
     expect(mockedAccountsApi.getBalance).toHaveBeenCalledWith("acc-1");
     expect(result.current.data?.totalAccounts).toBe(2);
     expect(result.current.data?.activeStrategies).toBe(2);
+
+    // Positions should also be built from per-account balances in fallback
+    expect(result.current.positions.length).toBe(1);
+    expect(result.current.positions[0].symbol).toBe("BTC");
+    expect(result.current.positions[0].accountName).toBe("Binance Main");
   });
 
   it("should handle zero equity in fallback for pnl percent", async () => {
@@ -174,6 +213,7 @@ describe("useDashboardStats", () => {
 
     expect(result.current.data?.unrealizedPnlPercent).toBe(0);
     expect(result.current.data?.totalEquity).toBe(0);
+    expect(result.current.positions).toEqual([]);
   });
 
   it("should return loading state initially", () => {
@@ -187,60 +227,18 @@ describe("useDashboardStats", () => {
   });
 });
 
-describe("useAllPositions", () => {
+describe("useAllPositions (deprecated cache-only hook)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should fetch and flatten positions via dashboardApi", async () => {
-    mockedDashboardApi.getFullStats.mockResolvedValue({
-      ...mockFullStatsResponse,
-      positions: [
-        { symbol: "BTC", side: "long", size: 0.5, size_usd: 15000, entry_price: 30000, mark_price: 31500, leverage: 3, unrealized_pnl: 750, unrealized_pnl_percent: 5.0, liquidation_price: 25000, account_name: "Binance Main", exchange: "binance" },
-      ],
-    } as never);
-
+  it("should return undefined when no cache is populated", () => {
     const { result } = renderHook(() => useAllPositions(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.data).toBeDefined());
-
-    expect(result.current.data?.length).toBe(1);
-    expect(result.current.data?.[0].symbol).toBe("BTC");
-    expect(result.current.data?.[0].accountName).toBe("Binance Main");
-  });
-
-  it("should sort positions by absolute PnL descending", async () => {
-    mockedDashboardApi.getFullStats.mockResolvedValue({
-      ...mockFullStatsResponse,
-      positions: [
-        { symbol: "BTC", side: "long", size: 0.5, size_usd: 15000, entry_price: 30000, mark_price: 31500, leverage: 3, unrealized_pnl: 750, unrealized_pnl_percent: 5.0, liquidation_price: 25000, account_name: "Binance", exchange: "binance" },
-        { symbol: "ETH", side: "short", size: 10, size_usd: 20000, entry_price: 2000, mark_price: 1800, leverage: 2, unrealized_pnl: 2000, unrealized_pnl_percent: 10, liquidation_price: 2500, account_name: "OKX", exchange: "okx" },
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useAllPositions(), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.data?.length).toBe(2));
-
-    // ETH has |2000| > BTC |750|, so ETH should come first
-    expect(result.current.data?.[0].symbol).toBe("ETH");
-    expect(result.current.data?.[1].symbol).toBe("BTC");
-  });
-
-  it("should handle fetch failure gracefully", async () => {
-    mockedDashboardApi.getFullStats.mockRejectedValue(new Error("Server error"));
-
-    const { result } = renderHook(() => useAllPositions(), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.data).toBeDefined());
-
-    expect(result.current.data).toEqual([]);
+    // No fetcher, no cache → data should be undefined
+    expect(result.current.data).toBeUndefined();
   });
 });
 

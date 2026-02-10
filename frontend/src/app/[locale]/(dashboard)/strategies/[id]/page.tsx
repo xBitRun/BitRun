@@ -692,7 +692,7 @@ export default function QuantStrategyDetailPage({
                 <div>
                   <p className="font-medium">{t("detail.settings.deleteStrategy")}</p>
                   <p className="text-sm text-muted-foreground">
-                    {strategy.status !== "stopped"
+                    {!["stopped", "draft"].includes(strategy.status)
                       ? t("detail.settings.deleteRequireStopped")
                       : t("detail.settings.deleteConfirm")}
                   </p>
@@ -700,7 +700,7 @@ export default function QuantStrategyDetailPage({
                 <Button
                   variant="destructive"
                   onClick={handleDelete}
-                  disabled={strategy.status !== "stopped"}
+                  disabled={!["stopped", "draft"].includes(strategy.status)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   {t("detail.settings.confirmDelete")}

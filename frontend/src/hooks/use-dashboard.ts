@@ -3,13 +3,12 @@
  *
  * Aggregates data from multiple sources for the dashboard.
  *
- * Optimisation: `useDashboardStats` fetches everything once from the backend
- * `/dashboard/stats` endpoint (which already returns positions).
- * `useAllPositions` derives its data from the same response via a shared SWR
- * cache key, eliminating redundant per-account balance requests.
+ * `useDashboardStats` fetches everything once from the backend
+ * `/dashboard/stats` endpoint and returns both stats and positions
+ * in a single SWR request, eliminating race conditions between hooks.
  */
 
-import useSWR, { mutate as globalMutate } from "swr";
+import useSWR from "swr";
 import { accountsApi, strategiesApi, dashboardApi } from "@/lib/api";
 import type {
   AccountResponse,
@@ -58,18 +57,16 @@ export interface Position {
   liquidationPrice?: number;
 }
 
-// Shared SWR key for raw dashboard positions (written by useDashboardStats,
-// consumed by useAllPositions).
-const POSITIONS_CACHE_KEY = "/dashboard/positions";
+// ==================== Internal Types ====================
+
+/** Combined SWR value returned by the single dashboard fetch. */
+interface DashboardData {
+  stats: DashboardStats;
+  positions: Position[];
+}
 
 // ==================== Dashboard Stats Hook ====================
 
-/**
- * Fetch aggregated dashboard statistics
- *
- * First tries to use the backend aggregation endpoint for efficiency.
- * Falls back to client-side aggregation if the backend endpoint fails.
- */
 /**
  * Helper: convert backend position summary to frontend Position type.
  */
@@ -95,8 +92,17 @@ function mapBackendPositions(
     .sort((a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl));
 }
 
+/**
+ * Fetch aggregated dashboard statistics **and** positions in a single request.
+ *
+ * Returns `{ data, positions, isLoading, mutate, ... }` where `data` is
+ * `DashboardStats` (backward-compatible) and `positions` is `Position[]`.
+ *
+ * First tries the backend `/dashboard/stats` endpoint.  Falls back to
+ * client-side aggregation when the backend is unavailable.
+ */
 export function useDashboardStats() {
-  return useSWR<DashboardStats>(
+  const { data, ...rest } = useSWR<DashboardData>(
     "/dashboard/stats",
     async () => {
       // Try backend endpoint first for efficient aggregation
@@ -108,11 +114,9 @@ export function useDashboardStats() {
           (p) => p.unrealized_pnl > 0
         ).length;
 
-        // Side-populate the positions cache so useAllPositions doesn't
-        // need to make separate requests.
-        globalMutate(POSITIONS_CACHE_KEY, mapBackendPositions(response.positions), false);
+        const positions = mapBackendPositions(response.positions);
 
-        return {
+        const stats: DashboardStats = {
           totalEquity: response.total_equity,
           availableBalance: response.available_balance,
           unrealizedPnl: response.unrealized_pnl,
@@ -128,6 +132,8 @@ export function useDashboardStats() {
           connectedAccounts: response.accounts_connected,
           totalAccounts: response.accounts_total,
         };
+
+        return { stats, positions };
       } catch {
         // Fallback to client-side aggregation (backend endpoint may not be available)
       }
@@ -139,21 +145,24 @@ export function useDashboardStats() {
       ]);
 
       // Fetch balances for all connected accounts
-      const balancePromises = accounts
-        .filter((acc) => acc.is_connected)
-        .map((acc) =>
-          accountsApi.getBalance(acc.id).catch(() => null)
-        );
-      const balances = await Promise.all(balancePromises);
+      const connectedAccts = accounts.filter((acc) => acc.is_connected);
+      const balancePromises = connectedAccts.map((acc) =>
+        accountsApi
+          .getBalance(acc.id)
+          .then((balance) => ({ account: acc, balance }))
+          .catch(() => ({ account: acc, balance: null as AccountBalanceResponse | null }))
+      );
+      const balanceResults = await Promise.all(balancePromises);
 
-      // Aggregate balances
+      // Aggregate balances and build positions
       let totalEquity = 0;
       let availableBalance = 0;
       let unrealizedPnl = 0;
       let openPositions = 0;
       let profitablePositions = 0;
+      const allPositions: Position[] = [];
 
-      balances.forEach((balance) => {
+      balanceResults.forEach(({ account, balance }) => {
         if (balance) {
           totalEquity += balance.equity;
           availableBalance += balance.available_balance;
@@ -162,8 +171,32 @@ export function useDashboardStats() {
           profitablePositions += balance.positions.filter(
             (p) => p.unrealized_pnl > 0
           ).length;
+
+          // Build positions from per-account balances
+          for (const p of balance.positions) {
+            allPositions.push({
+              accountId: account.id,
+              accountName: account.name,
+              exchange: account.exchange,
+              symbol: p.symbol,
+              side: p.side as "long" | "short",
+              size: p.size,
+              sizeUsd: p.size_usd,
+              entryPrice: p.entry_price,
+              markPrice: p.mark_price,
+              leverage: p.leverage,
+              unrealizedPnl: p.unrealized_pnl,
+              unrealizedPnlPercent: p.unrealized_pnl_percent,
+              liquidationPrice: p.liquidation_price ?? undefined,
+            });
+          }
         }
       });
+
+      // Sort positions by absolute PnL descending
+      allPositions.sort(
+        (a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl)
+      );
 
       // Calculate percentages
       const unrealizedPnlPercent =
@@ -175,9 +208,9 @@ export function useDashboardStats() {
       ).length;
 
       // Count accounts
-      const connectedAccounts = accounts.filter((acc) => acc.is_connected).length;
+      const connectedAccounts = connectedAccts.length;
 
-      return {
+      const stats: DashboardStats = {
         totalEquity,
         availableBalance,
         unrealizedPnl,
@@ -191,6 +224,8 @@ export function useDashboardStats() {
         connectedAccounts,
         totalAccounts: accounts.length,
       };
+
+      return { stats, positions: allPositions };
     },
     {
       refreshInterval: 30000, // Refresh every 30 seconds
@@ -198,37 +233,27 @@ export function useDashboardStats() {
       dedupingInterval: 5000,
     }
   );
+
+  return {
+    ...rest,
+    data: data?.stats,
+    positions: data?.positions ?? [],
+  };
 }
 
 // ==================== All Positions Hook ====================
 
 /**
- * Fetch all positions across all accounts.
+ * Read-only accessor for positions.
  *
- * Optimised: positions are pre-populated by `useDashboardStats` via a shared
- * SWR cache key.  The fetcher here acts as a fallback in case the positions
- * haven't been cached yet (e.g. the dashboard stats request is still in
- * flight or failed).
+ * @deprecated Prefer destructuring `positions` directly from
+ * `useDashboardStats()`.  This hook is kept for backward compatibility but
+ * no longer makes its own API requests – it simply reads whatever
+ * `useDashboardStats` last fetched.  If used on a page that does NOT mount
+ * `useDashboardStats`, `data` will be `undefined`.
  */
 export function useAllPositions() {
-  return useSWR<Position[]>(
-    POSITIONS_CACHE_KEY,
-    async () => {
-      // Fallback: fetch from backend dashboard stats endpoint directly
-      try {
-        const response = await dashboardApi.getFullStats();
-        return mapBackendPositions(response.positions);
-      } catch {
-        // ignore – return empty
-      }
-      return [];
-    },
-    {
-      refreshInterval: 30000, // Aligned with stats refresh (was 15s)
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
-    }
-  );
+  return useSWR<Position[]>("/dashboard/positions", null);
 }
 
 // ==================== Account Balances Hook ====================

@@ -96,12 +96,10 @@ function OverviewTab({
   agent,
   agentId,
   t,
-  onViewAllDecisions,
 }: {
   agent: NonNullable<ReturnType<typeof useStrategy>["data"]>;
   agentId: string;
   t: ReturnType<typeof useTranslations>;
-  onViewAllDecisions: () => void;
 }) {
   const hasTradeData = (agent.total_trades ?? 0) > 0;
   const config = agent.config as Record<string, unknown>;
@@ -171,6 +169,10 @@ function OverviewTab({
             ? (position?.entry_price ?? aiDecision?.entry_price)
             : (aiDecision?.entry_price ?? position?.entry_price),
           filledPrice: orderResult?.filled_price as number | undefined,
+          filledSize: orderResult?.filled_size as number | undefined,
+          sizeUsd: isClose
+            ? ((er.position_size_usd as number) ?? position?.size_usd)
+            : (er.actual_size_usd as number | undefined),
           markPrice: position?.mark_price,
           unrealizedPnl: position?.unrealized_pnl,
           unrealizedPnlPercent: position?.unrealized_pnl_percent,
@@ -318,18 +320,10 @@ function OverviewTab({
       <div ref={tradeListTopRef} />
       <Card className="bg-card/50 border-border/50">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              {t("overview.recentTrades")}
-            </CardTitle>
-            {tradeTotalItems > 0 && (
-              <Button variant="ghost" size="sm" onClick={onViewAllDecisions}>
-                {t("overview.viewAllDecisions")}
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            )}
-          </div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            {t("overview.recentTrades")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Toolbar: filters + refresh */}
@@ -378,8 +372,9 @@ function OverviewTab({
                       <TableHead className="text-xs">{t("overview.tradeAction")}</TableHead>
                       <TableHead className="text-xs text-right">{t("overview.tradeLeverage")}</TableHead>
                       <TableHead className="text-xs text-right">{t("overview.tradeEntryPrice")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeFilledPrice")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeMarkPrice")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("overview.tradeClosePrice")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("overview.tradeSize")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("overview.tradeSizeUsd")}</TableHead>
                       <TableHead className="text-xs text-right">{t("overview.tradePnl")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -393,7 +388,7 @@ function OverviewTab({
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(row.timestamp).toLocaleString()}
                           </TableCell>
-                          <TableCell className="font-mono text-xs font-medium">{row.symbol}</TableCell>
+                          <TableCell className="font-mono text-xs font-medium">{row.symbol}/USDT</TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
@@ -410,9 +405,18 @@ function OverviewTab({
                             </Badge>
                           </TableCell>
                           <TableCell className="font-mono text-xs text-right">{row.leverage}x</TableCell>
-                          <TableCell className="font-mono text-xs text-right">{fmtPrice(row.entryPrice)}</TableCell>
-                          <TableCell className="font-mono text-xs text-right">{fmtPrice(row.filledPrice)}</TableCell>
-                          <TableCell className="font-mono text-xs text-right">{fmtPrice(row.markPrice)}</TableCell>
+                          <TableCell className="font-mono text-xs text-right">
+                            {fmtPrice(row.isClose ? row.entryPrice : row.filledPrice)}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-right">
+                            {row.isClose ? fmtPrice(row.filledPrice) : t("overview.tradeNA")}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-right">
+                            {row.filledSize != null ? row.filledSize : t("overview.tradeNA")}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-right">
+                            {row.sizeUsd != null ? `$${row.sizeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : t("overview.tradeNA")}
+                          </TableCell>
                           <TableCell className="text-right">
                             {pnlValue != null ? (
                               <span className={cn(
@@ -1526,7 +1530,7 @@ function SettingsTab({
           <CardDescription>{t("settings.dangerZoneDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {agent.status !== "stopped" ? (
+          {!["stopped", "draft"].includes(agent.status) ? (
             <div className="space-y-2">
               <Button
                 variant="outline"
@@ -1793,7 +1797,6 @@ export default function AgentDetailPage() {
             agent={agent}
             agentId={agentId}
             t={t}
-            onViewAllDecisions={() => setActiveTab("decisions")}
           />
         </TabsContent>
 

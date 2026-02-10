@@ -189,7 +189,7 @@
       "closePositionsHint": "Automatically close all positions held by this strategy on the exchange",
       "confirmStop": "Confirm Stop",
       "cancel": "Cancel",
-      "deleteRequireStopped": "Must be stopped before deletion",
+      "deleteRequireStopped": "Running strategy must be stopped before deletion",
       "viewDetails": "View Details"
     },
     "info": {
@@ -415,6 +415,8 @@
       "stopLoss": "Stop Loss",
       "takeProfit": "Take Profit",
       "liquidation": "Liquidation",
+      "signal": "Signal",
+      "reverse": "Reverse",
       "noTrades": "No trade records"
     },
     "symbolBreakdown": {
@@ -830,8 +832,9 @@
       "tradeConfidence": "Confidence",
       "tradeStatus": "Status",
       "tradeEntryPrice": "Entry Price",
-      "tradeFilledPrice": "Fill Price",
-      "tradeMarkPrice": "Mark Price",
+      "tradeClosePrice": "Close Price",
+      "tradeSize": "Size",
+      "tradeSizeUsd": "Value",
       "tradePnl": "P/L",
       "tradeRealizedPnl": "Realized P/L",
       "tradeUnrealizedPnl": "Unrealized P/L",
@@ -1038,7 +1041,7 @@
       "dangerZoneDesc": "Irreversible actions for this agent",
       "deleteAgent": "Delete Agent",
       "deleteConfirm": "Are you sure you want to delete this agent? This action cannot be undone.",
-      "deleteRequireStopped": "The agent must be stopped before it can be deleted",
+      "deleteRequireStopped": "Running agent must be stopped before it can be deleted",
       "cancel": "Cancel",
       "confirmDelete": "Yes, Delete Agent"
     }
@@ -1599,7 +1602,7 @@
       "closePositionsHint": "Automatically close all positions held by this strategy on the exchange",
       "confirmStop": "Confirm Stop",
       "cancel": "Cancel",
-      "deleteRequireStopped": "Must be stopped before deletion",
+      "deleteRequireStopped": "Running strategy must be stopped before deletion",
       "viewDetails": "View Details"
     },
     "empty": {
@@ -1732,7 +1735,7 @@
         "dangerZone": "Danger Zone",
         "deleteStrategy": "Delete Strategy",
         "deleteConfirm": "Are you sure you want to delete this strategy? This action cannot be undone.",
-        "deleteRequireStopped": "The strategy must be stopped before it can be deleted",
+        "deleteRequireStopped": "Running strategy must be stopped before it can be deleted",
         "cancel": "Cancel",
         "confirmDelete": "Yes, Delete"
       }

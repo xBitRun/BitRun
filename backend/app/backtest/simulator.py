@@ -110,7 +110,7 @@ class Trade:
     pnl_percent: float
     opened_at: datetime
     closed_at: datetime
-    exit_reason: str = "manual"  # manual, stop_loss, take_profit, liquidation
+    exit_reason: str = "manual"  # manual, stop_loss, take_profit, liquidation, signal, reverse
     
     @property
     def duration_minutes(self) -> float:
@@ -394,7 +394,7 @@ class SimulatedTrader(BaseTrader):
             return OrderResult(success=False, error="No position to reduce")
         
         close_size = min(size, pos.size)
-        self._close_position_internal(symbol, price, "partial", close_size)
+        self._close_position_internal(symbol, price, "signal", close_size)
         
         return OrderResult(
             success=True,
