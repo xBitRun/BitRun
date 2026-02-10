@@ -271,22 +271,37 @@ class AsyncCircuitBreaker:
             raise CircuitBreakerOpen(self.name, remaining)
         
         try:
-            # Use pybreaker's call mechanism for state management
+            # Execute the function directly instead of using pybreaker's
+            # call_async, which has compatibility issues with Python >= 3.13.
             if asyncio.iscoroutinefunction(func):
-                result = await self._breaker.call_async(func, *args, **kwargs)
+                result = await func(*args, **kwargs)
             else:
-                result = self._breaker.call(func, *args, **kwargs)
-            
-            self._success_count += 1
-            return result
-            
-        except pybreaker.CircuitBreakerError as e:
-            # When pybreaker trips the circuit, it wraps the original exception
-            # Re-raise the original exception if available, otherwise raise CircuitBreakerOpen
-            if e.__context__ is not None:
-                # Re-raise the original exception that caused the circuit to trip
-                raise e.__context__
-            raise CircuitBreakerOpen(self.name, self._breaker.reset_timeout)
+                result = func(*args, **kwargs)
+        except Exception as e:
+            # Record failure with pybreaker's state machine
+            self._record_failure(e)
+            raise
+        
+        # Record success with pybreaker's state machine
+        self._success_count += 1
+        self._record_success()
+        return result
+    
+    def _record_success(self) -> None:
+        """Record a successful call with pybreaker's state machine."""
+        try:
+            self._breaker.call(lambda: None)
+        except Exception:
+            pass
+    
+    def _record_failure(self, exc: Exception) -> None:
+        """Record a failed call with pybreaker's state machine."""
+        def raise_exc():
+            raise exc
+        try:
+            self._breaker.call(raise_exc)
+        except Exception:
+            pass
     
     def reset(self) -> None:
         """Manually reset the circuit breaker to closed state."""
