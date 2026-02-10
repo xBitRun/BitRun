@@ -409,6 +409,129 @@ class TestCCXTTraderMocked:
             assert trader._initialized is False
 
 
+class TestCCXTTraderExceptions:
+    """Tests for CCXTTrader exception handling with mocked ccxt errors."""
+
+    @pytest.fixture
+    def _make_trader(self):
+        """Factory to create CCXTTrader with mocked exchange."""
+        import ccxt
+        from app.traders.ccxt_trader import CCXTTrader
+
+        async def _factory():
+            mock_exchange = MagicMock()
+            mock_exchange.load_markets = AsyncMock()
+            mock_exchange.set_sandbox_mode = MagicMock()
+            mock_exchange.set_leverage = AsyncMock()
+            mock_exchange.markets = {"BTC/USDT:USDT": {"limits": {"amount": {"min": 0.001}}, "precision": {"amount": 3}}}
+            mock_exchange.market = MagicMock(return_value={"limits": {"amount": {"min": 0.001}}, "precision": {"amount": 3}})
+            mock_exchange.amount_to_precision = MagicMock(side_effect=lambda s, a: a)
+
+            with patch("app.traders.ccxt_trader.ExchangePool") as mock_pool:
+                mock_pool.acquire = AsyncMock(return_value=mock_exchange)
+                trader = CCXTTrader(
+                    exchange_id="bybit",
+                    credentials={"api_key": "k", "api_secret": "s"},
+                    testnet=True,
+                )
+                await trader.initialize()
+            return trader, mock_exchange
+
+        return _factory
+
+    @pytest.mark.asyncio
+    async def test_auth_error_on_initialize(self):
+        """ccxt.AuthenticationError during initialize raises TradeError."""
+        import ccxt as ccxt_lib
+        from app.traders.ccxt_trader import CCXTTrader
+
+        with patch("app.traders.ccxt_trader.ExchangePool") as mock_pool:
+            mock_pool.acquire = AsyncMock(
+                side_effect=ccxt_lib.AuthenticationError("Invalid API key")
+            )
+            trader = CCXTTrader(
+                exchange_id="bybit",
+                credentials={"api_key": "bad", "api_secret": "bad"},
+                testnet=True,
+            )
+            with pytest.raises(TradeError) as exc_info:
+                await trader.initialize()
+            assert "authentication" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_exchange_error_on_initialize(self):
+        """ccxt.ExchangeError during initialize raises TradeError."""
+        import ccxt as ccxt_lib
+        from app.traders.ccxt_trader import CCXTTrader
+
+        with patch("app.traders.ccxt_trader.ExchangePool") as mock_pool:
+            mock_pool.acquire = AsyncMock(
+                side_effect=ccxt_lib.ExchangeError("Exchange maintenance")
+            )
+            trader = CCXTTrader(
+                exchange_id="bybit",
+                credentials={"api_key": "k", "api_secret": "s"},
+                testnet=True,
+            )
+            with pytest.raises(TradeError) as exc_info:
+                await trader.initialize()
+            assert "exchange error" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_insufficient_funds_on_market_order(self, _make_trader):
+        """ccxt.InsufficientFunds returns failed OrderResult."""
+        import ccxt as ccxt_lib
+
+        trader, mock_exchange = await _make_trader()
+        mock_exchange.create_market_order = AsyncMock(
+            side_effect=ccxt_lib.InsufficientFunds("Not enough USDT")
+        )
+
+        result = await trader.place_market_order(
+            symbol="BTC", side="buy", size=0.1, leverage=5,
+        )
+
+        assert result.success is False
+        assert "insufficient funds" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_invalid_order_on_market_order(self, _make_trader):
+        """ccxt.InvalidOrder returns failed OrderResult."""
+        import ccxt as ccxt_lib
+
+        trader, mock_exchange = await _make_trader()
+        mock_exchange.create_market_order = AsyncMock(
+            side_effect=ccxt_lib.InvalidOrder("Order size too small")
+        )
+
+        result = await trader.place_market_order(
+            symbol="BTC", side="buy", size=0.1, leverage=5,
+        )
+
+        assert result.success is False
+        assert "invalid order" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_exceeded_retries(self, _make_trader):
+        """ccxt.RateLimitExceeded retries once then returns failure."""
+        import ccxt as ccxt_lib
+
+        trader, mock_exchange = await _make_trader()
+        mock_exchange.create_market_order = AsyncMock(
+            side_effect=ccxt_lib.RateLimitExceeded("429 Too Many Requests")
+        )
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await trader.place_market_order(
+                symbol="BTC", side="buy", size=0.1, leverage=5,
+            )
+
+        assert result.success is False
+        assert "rate limit" in result.error.lower()
+        # Should have been called twice (initial + retry)
+        assert mock_exchange.create_market_order.call_count == 2
+
+
 class TestTradeError:
     """Tests for TradeError exception."""
 

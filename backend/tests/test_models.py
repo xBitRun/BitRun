@@ -118,6 +118,22 @@ class TestRiskControls:
         with pytest.raises(ValidationError):
             RiskControls(min_confidence=101)
 
+    def test_total_exposure_bounds(self):
+        RiskControls(max_total_exposure=0.1)   # lower bound ok
+        RiskControls(max_total_exposure=1.0)   # upper bound ok
+        with pytest.raises(ValidationError):
+            RiskControls(max_total_exposure=0.09)
+        with pytest.raises(ValidationError):
+            RiskControls(max_total_exposure=1.1)
+
+    def test_min_risk_reward_ratio_bounds(self):
+        RiskControls(min_risk_reward_ratio=1.0)   # lower bound ok
+        RiskControls(min_risk_reward_ratio=5.0)   # valid
+        with pytest.raises(ValidationError):
+            RiskControls(min_risk_reward_ratio=0.0)
+        with pytest.raises(ValidationError):
+            RiskControls(min_risk_reward_ratio=0.99)
+
 
 # ======================== TradingDecision ========================
 
@@ -176,6 +192,8 @@ class TestTradingDecision:
         assert d.take_profit is None
 
     def test_confidence_bounds(self):
+        self._make(confidence=0)    # lower bound ok
+        self._make(confidence=100)  # upper bound ok
         with pytest.raises(ValidationError):
             self._make(confidence=-1)
         with pytest.raises(ValidationError):
@@ -184,14 +202,24 @@ class TestTradingDecision:
     def test_reasoning_min_length(self):
         with pytest.raises(ValidationError):
             self._make(reasoning="short")
+        # exactly 10 chars should pass
+        self._make(reasoning="a" * 10)
+        # 9 chars should fail
+        with pytest.raises(ValidationError):
+            self._make(reasoning="a" * 9)
 
     def test_leverage_bounds(self):
+        self._make(leverage=1)   # lower bound ok
+        self._make(leverage=50)  # upper bound ok
         with pytest.raises(ValidationError):
             self._make(leverage=0)
         with pytest.raises(ValidationError):
             self._make(leverage=51)
+        with pytest.raises(ValidationError):
+            self._make(leverage=-1)
 
     def test_position_size_non_negative(self):
+        self._make(position_size_usd=0)  # boundary ok
         with pytest.raises(ValidationError):
             self._make(position_size_usd=-1)
 
@@ -234,6 +262,26 @@ class TestDecisionResponse:
             DecisionResponse(
                 chain_of_thought="t", market_assessment="m",
                 next_review_minutes=1441,
+            )
+
+    def test_overall_confidence_bounds(self):
+        DecisionResponse(
+            chain_of_thought="t", market_assessment="m",
+            overall_confidence=0,
+        )
+        DecisionResponse(
+            chain_of_thought="t", market_assessment="m",
+            overall_confidence=100,
+        )
+        with pytest.raises(ValidationError):
+            DecisionResponse(
+                chain_of_thought="t", market_assessment="m",
+                overall_confidence=-1,
+            )
+        with pytest.raises(ValidationError):
+            DecisionResponse(
+                chain_of_thought="t", market_assessment="m",
+                overall_confidence=101,
             )
 
 
@@ -405,6 +453,13 @@ class TestStrategyCreate:
         with pytest.raises(ValidationError):
             StrategyCreate(name="", prompt="ok prompt enough", account_id="acc-1")
 
+    def test_prompt_min_length(self):
+        # 9 chars should fail
+        with pytest.raises(ValidationError):
+            StrategyCreate(name="ok", prompt="a" * 9, account_id="acc-1")
+        # 10 chars should pass
+        StrategyCreate(name="ok", prompt="a" * 10, account_id="acc-1")
+
 
 # ======================== StrategyUpdate ========================
 
@@ -419,6 +474,19 @@ class TestStrategyUpdate:
         su = StrategyUpdate(name="Updated", status=StrategyStatus.ACTIVE)
         assert su.name == "Updated"
         assert su.status == StrategyStatus.ACTIVE
+
+    def test_name_bounds(self):
+        with pytest.raises(ValidationError):
+            StrategyUpdate(name="")
+        with pytest.raises(ValidationError):
+            StrategyUpdate(name="x" * 101)
+        StrategyUpdate(name="x")          # min ok
+        StrategyUpdate(name="x" * 100)    # max ok
+
+    def test_prompt_min_length(self):
+        with pytest.raises(ValidationError):
+            StrategyUpdate(prompt="a" * 9)
+        StrategyUpdate(prompt="a" * 10)   # boundary ok
 
 
 # ======================== TechnicalIndicators ========================
@@ -667,6 +735,32 @@ class TestGridConfig:
         with pytest.raises(ValidationError):
             GridConfig(upper_price=100, lower_price=50, grid_count=201, total_investment=1000)
 
+    def test_lower_price_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=0, grid_count=10, total_investment=1000)
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=-1, grid_count=10, total_investment=1000)
+
+    def test_leverage_bounds(self):
+        GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=1000, leverage=1.0)
+        GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=1000, leverage=50.0)
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=1000, leverage=0.9)
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=1000, leverage=50.1)
+
+    def test_total_investment_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=0)
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=50, grid_count=10, total_investment=-100)
+
+    def test_upper_must_exceed_lower(self):
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=50, lower_price=100, grid_count=10, total_investment=1000)
+        with pytest.raises(ValidationError):
+            GridConfig(upper_price=100, lower_price=100, grid_count=10, total_investment=1000)
+
 
 # ======================== DCAConfig ========================
 
@@ -682,8 +776,30 @@ class TestDCAConfig:
             DCAConfig(order_amount=0, interval_minutes=60)
 
     def test_interval_bounds(self):
+        DCAConfig(order_amount=100, interval_minutes=1)       # lower bound ok
+        DCAConfig(order_amount=100, interval_minutes=43200)   # upper bound ok
         with pytest.raises(ValidationError):
             DCAConfig(order_amount=100, interval_minutes=0)
+        with pytest.raises(ValidationError):
+            DCAConfig(order_amount=100, interval_minutes=43201)
+
+    def test_take_profit_percent_bounds(self):
+        DCAConfig(order_amount=100, interval_minutes=60, take_profit_percent=0.1)
+        DCAConfig(order_amount=100, interval_minutes=60, take_profit_percent=100.0)
+        with pytest.raises(ValidationError):
+            DCAConfig(order_amount=100, interval_minutes=60, take_profit_percent=0.09)
+        with pytest.raises(ValidationError):
+            DCAConfig(order_amount=100, interval_minutes=60, take_profit_percent=100.1)
+
+    def test_total_budget_non_negative(self):
+        DCAConfig(order_amount=100, interval_minutes=60, total_budget=0)
+        with pytest.raises(ValidationError):
+            DCAConfig(order_amount=100, interval_minutes=60, total_budget=-1)
+
+    def test_max_orders_non_negative(self):
+        DCAConfig(order_amount=100, interval_minutes=60, max_orders=0)
+        with pytest.raises(ValidationError):
+            DCAConfig(order_amount=100, interval_minutes=60, max_orders=-1)
 
 
 # ======================== RSIConfig ========================
@@ -696,10 +812,46 @@ class TestRSIConfig:
         assert rc.oversold_threshold == 30.0
 
     def test_threshold_bounds(self):
+        RSIConfig(order_amount=100, overbought_threshold=50.0, oversold_threshold=30.0)
+        RSIConfig(order_amount=100, overbought_threshold=95.0)
+        RSIConfig(order_amount=100, oversold_threshold=5.0)
+        RSIConfig(order_amount=100, oversold_threshold=50.0, overbought_threshold=51.0)
         with pytest.raises(ValidationError):
             RSIConfig(order_amount=100, overbought_threshold=49)
         with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, overbought_threshold=95.1)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, oversold_threshold=4.9)
+        with pytest.raises(ValidationError):
             RSIConfig(order_amount=100, oversold_threshold=51)
+
+    def test_rsi_period_bounds(self):
+        RSIConfig(order_amount=100, rsi_period=2)
+        RSIConfig(order_amount=100, rsi_period=100)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, rsi_period=1)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, rsi_period=101)
+
+    def test_order_amount_positive(self):
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=0)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=-1)
+
+    def test_leverage_bounds(self):
+        RSIConfig(order_amount=100, leverage=1.0)
+        RSIConfig(order_amount=100, leverage=50.0)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, leverage=0.9)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, leverage=50.1)
+
+    def test_overbought_must_exceed_oversold(self):
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, overbought_threshold=60, oversold_threshold=60)
+        with pytest.raises(ValidationError):
+            RSIConfig(order_amount=100, overbought_threshold=50, oversold_threshold=50)
 
 
 # ======================== QuantStrategyCreate ========================
@@ -715,6 +867,57 @@ class TestQuantStrategyCreate:
         assert qsc.description == ""
         assert qsc.account_id is None
 
+    def test_name_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="", strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={},
+            )
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="x" * 101, strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={},
+            )
+
+    def test_symbol_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="", config={},
+            )
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="x" * 21, config={},
+            )
+
+    def test_allocated_capital_non_negative(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={}, allocated_capital=-1,
+            )
+
+    def test_allocated_capital_percent_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={}, allocated_capital_percent=-0.1,
+            )
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={}, allocated_capital_percent=1.1,
+            )
+
+    def test_capital_allocation_mutual_exclusion(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyCreate(
+                name="Bot", strategy_type=QuantStrategyType.GRID,
+                symbol="BTC", config={},
+                allocated_capital=1000, allocated_capital_percent=0.5,
+            )
+
 
 # ======================== QuantStrategyUpdate ========================
 
@@ -727,6 +930,32 @@ class TestQuantStrategyUpdate:
     def test_partial(self):
         qsu = QuantStrategyUpdate(name="Updated")
         assert qsu.name == "Updated"
+
+    def test_name_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(name="")
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(name="x" * 101)
+
+    def test_symbol_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(symbol="")
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(symbol="x" * 21)
+
+    def test_allocated_capital_non_negative(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(allocated_capital=-1)
+
+    def test_allocated_capital_percent_bounds(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(allocated_capital_percent=-0.1)
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(allocated_capital_percent=1.1)
+
+    def test_capital_allocation_mutual_exclusion(self):
+        with pytest.raises(ValidationError):
+            QuantStrategyUpdate(allocated_capital=1000, allocated_capital_percent=0.5)
 
 
 # ======================== QuantStrategyStatusUpdate ========================
@@ -802,6 +1031,24 @@ class TestDebateParticipant:
         )
         assert dp.succeeded is False
 
+    def test_overall_confidence_bounds(self):
+        DebateParticipant(model_id="m", overall_confidence=0)
+        DebateParticipant(model_id="m", overall_confidence=100)
+        with pytest.raises(ValidationError):
+            DebateParticipant(model_id="m", overall_confidence=-1)
+        with pytest.raises(ValidationError):
+            DebateParticipant(model_id="m", overall_confidence=101)
+
+    def test_latency_ms_non_negative(self):
+        DebateParticipant(model_id="m", latency_ms=0)
+        with pytest.raises(ValidationError):
+            DebateParticipant(model_id="m", latency_ms=-1)
+
+    def test_tokens_used_non_negative(self):
+        DebateParticipant(model_id="m", tokens_used=0)
+        with pytest.raises(ValidationError):
+            DebateParticipant(model_id="m", tokens_used=-1)
+
 
 # ======================== DebateVote ========================
 
@@ -852,6 +1099,22 @@ class TestDebateResult:
         assert len(resp.decisions) == 1
         assert resp.overall_confidence == 85
         assert resp.chain_of_thought == "thinking"
+
+    def test_agreement_score_bounds(self):
+        DebateResult(agreement_score=0.0)
+        DebateResult(agreement_score=1.0)
+        with pytest.raises(ValidationError):
+            DebateResult(agreement_score=-0.1)
+        with pytest.raises(ValidationError):
+            DebateResult(agreement_score=1.1)
+
+    def test_final_confidence_bounds(self):
+        DebateResult(final_confidence=0)
+        DebateResult(final_confidence=100)
+        with pytest.raises(ValidationError):
+            DebateResult(final_confidence=-1)
+        with pytest.raises(ValidationError):
+            DebateResult(final_confidence=101)
 
 
 # ======================== DebateConfig ========================

@@ -72,8 +72,8 @@ async def test_user(test_session: AsyncSession):
     user = UserDB(
         id=uuid4(),
         email="trader@example.com",
-        username="trader",
-        hashed_password=hash_password("StrongPass123!"),
+        name="trader",
+        password_hash=hash_password("StrongPass123!"),
         created_at=datetime.now(UTC),
     )
     test_session.add(user)

@@ -1,7 +1,8 @@
 """
 Tests for database repository layer.
 
-Covers: UserRepository, AccountRepository, StrategyRepository, DecisionRepository
+Covers: UserRepository, AccountRepository, StrategyRepository, DecisionRepository,
+        QuantStrategyRepository
 """
 
 import uuid
@@ -18,11 +19,13 @@ from app.db.models import (
     ExchangeAccountDB,
     StrategyDB,
     DecisionRecordDB,
+    QuantStrategyDB,
 )
 from app.db.repositories.user import UserRepository
 from app.db.repositories.account import AccountRepository
 from app.db.repositories.strategy import StrategyRepository
 from app.db.repositories.decision import DecisionRepository
+from app.db.repositories.quant_strategy import QuantStrategyRepository
 
 
 # ============================================================================
@@ -969,3 +972,211 @@ class TestDecisionRepository:
         
         remaining = await repo.get_by_strategy(test_strategy.id)
         assert len(remaining) == 2
+
+
+# ============================================================================
+# QuantStrategyRepository Tests
+# ============================================================================
+
+class TestQuantStrategyRepository:
+    """Tests for QuantStrategyRepository"""
+
+    @pytest.mark.asyncio
+    async def test_create_quant_strategy(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        strategy = await repo.create(
+            user_id=test_user.id,
+            name="Grid BTC",
+            strategy_type="grid",
+            symbol="BTC",
+            config={"upper_price": 60000, "lower_price": 50000, "grid_count": 10},
+            description="Test grid strategy",
+        )
+        assert strategy is not None
+        assert strategy.name == "Grid BTC"
+        assert strategy.strategy_type == "grid"
+        assert strategy.symbol == "BTC"
+        assert strategy.status == "draft"
+
+    @pytest.mark.asyncio
+    async def test_create_with_capital(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        strategy = await repo.create(
+            user_id=test_user.id,
+            name="DCA ETH",
+            strategy_type="dca",
+            symbol="ETH",
+            config={"order_amount": 100},
+            allocated_capital=5000.0,
+        )
+        assert strategy.allocated_capital == 5000.0
+        assert strategy.allocated_capital_percent is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_id(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        created = await repo.create(
+            user_id=test_user.id, name="RSI SOL",
+            strategy_type="rsi", symbol="SOL", config={},
+        )
+        result = await repo.get_by_id(created.id)
+        assert result is not None
+        assert result.id == created.id
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_with_user(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        created = await repo.create(
+            user_id=test_user.id, name="RSI BTC",
+            strategy_type="rsi", symbol="BTC", config={},
+        )
+        # Correct user
+        result = await repo.get_by_id(created.id, user_id=test_user.id)
+        assert result is not None
+        # Wrong user
+        result = await repo.get_by_id(created.id, user_id=uuid.uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_not_found(self, db_session: AsyncSession):
+        repo = QuantStrategyRepository(db_session)
+        result = await repo.get_by_id(uuid.uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_user(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        for i in range(3):
+            await repo.create(
+                user_id=test_user.id, name=f"Strat {i}",
+                strategy_type="grid", symbol="BTC", config={},
+            )
+        results = await repo.get_by_user(test_user.id)
+        assert len(results) >= 3
+
+    @pytest.mark.asyncio
+    async def test_get_by_user_filter_status(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        await repo.create(
+            user_id=test_user.id, name="Active Grid",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        results = await repo.get_by_user(test_user.id, status="draft")
+        assert all(s.status == "draft" for s in results)
+
+    @pytest.mark.asyncio
+    async def test_get_by_user_filter_type(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        await repo.create(
+            user_id=test_user.id, name="DCA Filter",
+            strategy_type="dca", symbol="ETH", config={},
+        )
+        results = await repo.get_by_user(test_user.id, strategy_type="dca")
+        assert all(s.strategy_type == "dca" for s in results)
+
+    @pytest.mark.asyncio
+    async def test_get_active_strategies(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Active Strat",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        await repo.update_status(s.id, "active")
+        actives = await repo.get_active_strategies()
+        assert any(a.id == s.id for a in actives)
+
+    @pytest.mark.asyncio
+    async def test_update(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Update Me",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        updated = await repo.update(s.id, test_user.id, name="Updated Name")
+        assert updated is not None
+        assert updated.name == "Updated Name"
+
+    @pytest.mark.asyncio
+    async def test_update_not_found(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        result = await repo.update(uuid.uuid4(), test_user.id, name="X")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_status(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Status Test",
+            strategy_type="dca", symbol="ETH", config={},
+        )
+        result = await repo.update_status(s.id, "active")
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_status_with_error(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Error Test",
+            strategy_type="rsi", symbol="SOL", config={},
+        )
+        result = await repo.update_status(s.id, "error", error_message="API failed")
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_runtime_state(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Runtime Test",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        result = await repo.update_runtime_state(s.id, {"filled_grids": [1, 2]})
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_performance(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Perf Test",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        result = await repo.update_performance(s.id, pnl_change=100.0, is_win=True)
+        assert result is True
+        refreshed = await repo.get_by_id(s.id)
+        assert refreshed.total_pnl == 100.0
+        assert refreshed.winning_trades == 1
+
+    @pytest.mark.asyncio
+    async def test_update_performance_loss(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Loss Test",
+            strategy_type="dca", symbol="ETH", config={},
+        )
+        result = await repo.update_performance(s.id, pnl_change=-50.0, is_win=False)
+        assert result is True
+        refreshed = await repo.get_by_id(s.id)
+        assert refreshed.losing_trades == 1
+        assert refreshed.max_drawdown == 50.0
+
+    @pytest.mark.asyncio
+    async def test_update_performance_not_found(self, db_session: AsyncSession):
+        repo = QuantStrategyRepository(db_session)
+        result = await repo.update_performance(uuid.uuid4(), 10.0, True)
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_delete(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        s = await repo.create(
+            user_id=test_user.id, name="Delete Me",
+            strategy_type="grid", symbol="BTC", config={},
+        )
+        result = await repo.delete(s.id, test_user.id)
+        assert result is True
+        assert await repo.get_by_id(s.id) is None
+
+    @pytest.mark.asyncio
+    async def test_delete_not_found(self, db_session: AsyncSession, test_user: UserDB):
+        repo = QuantStrategyRepository(db_session)
+        result = await repo.delete(uuid.uuid4(), test_user.id)
+        assert result is False

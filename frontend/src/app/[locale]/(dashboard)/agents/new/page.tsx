@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -34,7 +34,7 @@ import {
   useStrategyStudio,
 } from "@/hooks";
 import type { CreateStrategyRequest } from "@/lib/api";
-import type { TradingMode, RiskProfile, TimeHorizon } from "@/types";
+import type { TradingMode, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
 import { getStrategyPreset } from "@/types";
 
 export default function NewAgentPage() {
@@ -94,6 +94,22 @@ export default function NewAgentPage() {
   const handleCustomPreset = () => {
     setIsCustomPreset(true);
   };
+
+  // Wrap setConfig to auto-switch to custom mode when indicators or riskControls change
+  const handleConfigChange = useCallback((newConfig: StrategyStudioConfig) => {
+    // Detect if indicators or riskControls have changed from preset values
+    if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
+      const preset = getStrategyPreset(selectedRiskProfile, selectedTimeHorizon);
+      if (preset) {
+        const indicatorsChanged = JSON.stringify(newConfig.indicators) !== JSON.stringify(preset.values.indicators);
+        const riskControlsChanged = JSON.stringify(newConfig.riskControls) !== JSON.stringify(preset.values.riskControls);
+        if (indicatorsChanged || riskControlsChanged) {
+          setIsCustomPreset(true);
+        }
+      }
+    }
+    setConfig(newConfig);
+  }, [isCustomPreset, selectedRiskProfile, selectedTimeHorizon, setConfig]);
 
   const handleCreateStrategy = async () => {
     setIsSubmitting(true);
@@ -381,7 +397,7 @@ export default function NewAgentPage() {
         <CardContent className="pt-6">
           <StrategyStudioTabs
             config={config}
-            onConfigChange={setConfig}
+            onConfigChange={handleConfigChange}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             promptPreview={promptPreview}

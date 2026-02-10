@@ -96,3 +96,35 @@ export function MyComponent() {
   - 提交前确保代码可运行
   - 相关联的改动合并为一次提交
   - **ALWAYS** follow this format when making commits
+
+## 4. Testing Standards (CRITICAL)
+
+### 边界值强制覆盖
+- 对带约束的字段（如 Pydantic `ge=1`, `le=50`），**必须测试边界值和非法值**
+- 边界值：约束边界本身（1, 50）及其两侧（0, 51）
+- 非法值：负数、零、`None`、空字符串、类型错误等
+- 示例：`leverage` 字段 `ge=1, le=50` → 必须覆盖 `0, 1, 50, 51, -1, None`
+
+### 断言必须验证核心行为
+- **禁止**只写 `assert result is not None` 就结束
+- 每个测试必须断言函数的**核心输出值或副作用**
+- ❌ `assert result is not None  # should clamp leverage`
+- ✅ `assert result.decisions[0].leverage == 3  # clamped from 5`
+
+### 异常路径必须覆盖
+- 代码中每个 `except` 分支都要有对应的测试用例触发它
+- 特别注意：捕获多种异常类型时（如 `except (ValueError, KeyError, ValidationError)`），每种异常类型都需要独立的测试用例
+
+### 外部输入必须模拟真实脏数据
+- 解析 AI / 第三方 API 响应的代码，测试数据**不能只用理想格式**
+- 必须包含真实场景中的脏数据：缺失字段、类型错误、越界值、空值、额外字段
+- 示例：AI 对 hold 决策返回 `leverage: 0`（认为"不交易无杠杆"），这类真实行为必须有测试覆盖
+
+### 集成层与模型层独立测试
+- 模型层（Pydantic Model）验证了约束 ≠ 集成层（Service/Parser）也安全
+- 集成层需单独测试：数据经过转换/清洗后流入模型时的完整行为
+- 重点关注：集成层的数据预处理（clamp、default、转换）是否正确
+
+### 修 Bug 必须补回归测试
+- 每次 bug fix **必须附带**能复现该 bug 的测试用例
+- 测试应在修复前失败、修复后通过，确保问题不会复发

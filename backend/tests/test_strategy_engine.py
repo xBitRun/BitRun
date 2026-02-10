@@ -98,7 +98,15 @@ class TestStrategyEngine:
         assert result["error"] is None
         assert result["tokens_used"] > 0
         assert result["latency_ms"] >= 0
-        assert result["decision"] is not None
+
+        # Verify decision content (not just "is not None")
+        decision = result["decision"]
+        assert decision is not None
+        assert decision.chain_of_thought == "Market shows bullish momentum..."
+        assert decision.overall_confidence == 75
+        assert len(decision.decisions) == 1
+        assert decision.decisions[0].symbol == "BTC"
+        assert decision.decisions[0].action == ActionType.OPEN_LONG
 
         # Verify AI client was called
         mock_ai_client.generate.assert_called_once()
@@ -278,6 +286,150 @@ class TestStrategyEngine:
         # No trades should be executed for hold
         mock_trader.open_long.assert_not_called()
         mock_trader.open_short.assert_not_called()
+
+
+    @pytest.mark.asyncio
+    async def test_risk_limit_zero_equity_blocks_cycle(self, mock_strategy, mock_trader, mock_ai_client):
+        """Zero equity triggers risk limit and blocks the entire cycle."""
+        mock_trader.get_account_state = AsyncMock(return_value=AccountState(
+            equity=0.0,
+            available_balance=0.0,
+            total_margin_used=0.0,
+            unrealized_pnl=0.0,
+            positions=[],
+        ))
+
+        engine = StrategyEngine(
+            strategy=mock_strategy,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=True,
+            use_enhanced_context=False,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is False
+        assert "equity" in result["error"].lower() or "risk" in result["error"].lower()
+        # AI should NOT be called when equity is zero
+        mock_ai_client.generate.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_capital_exceeded_error_returns_failure(self, mock_strategy, mock_trader, mock_ai_client):
+        """CapitalExceededError during position claim returns order failure."""
+        from app.services.position_service import PositionService, CapitalExceededError
+        from app.traders.base import OrderResult
+
+        mock_ps = AsyncMock(spec=PositionService)
+        mock_ps.claim_position_with_capital_check = AsyncMock(
+            side_effect=CapitalExceededError("Exceeds allocated capital limit")
+        )
+
+        engine = StrategyEngine(
+            strategy=mock_strategy,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=True,
+            use_enhanced_context=False,
+            position_service=mock_ps,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True  # Cycle succeeds; order rejected
+        # The executed item should show the failure
+        executed = result.get("executed", [])
+        assert len(executed) >= 1
+        btc_exec = next((e for e in executed if e["symbol"] == "BTC"), None)
+        assert btc_exec is not None
+        assert btc_exec["executed"] is False
+        assert "capital" in btc_exec.get("reason", "").lower() or "capital" in str(btc_exec.get("order_result", "")).lower()
+
+    @pytest.mark.asyncio
+    async def test_position_conflict_error_returns_failure(self, mock_strategy, mock_trader, mock_ai_client):
+        """PositionConflictError during position claim returns order failure."""
+        from app.services.position_service import PositionService, PositionConflictError
+
+        mock_ps = AsyncMock(spec=PositionService)
+        mock_ps.claim_position_with_capital_check = AsyncMock(
+            side_effect=PositionConflictError("BTC", uuid4())
+        )
+
+        engine = StrategyEngine(
+            strategy=mock_strategy,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=True,
+            use_enhanced_context=False,
+            position_service=mock_ps,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True
+        executed = result.get("executed", [])
+        assert len(executed) >= 1
+        btc_exec = next((e for e in executed if e["symbol"] == "BTC"), None)
+        assert btc_exec is not None
+        assert btc_exec["executed"] is False
+        # Error is in order_result.error (PositionConflictError caught in _execute_single_decision)
+        order_error = btc_exec.get("order_result", {}).get("error", "")
+        assert "conflict" in order_error.lower() or "occupied" in order_error.lower()
+
+    @pytest.mark.asyncio
+    async def test_order_exception_releases_claim(self, mock_strategy, mock_trader, mock_ai_client):
+        """When order placement raises exception, the claim is released."""
+        from app.services.position_service import PositionService
+
+        mock_claim = MagicMock()
+        mock_claim.id = uuid4()
+
+        mock_ps = AsyncMock(spec=PositionService)
+        mock_ps.claim_position_with_capital_check = AsyncMock(return_value=mock_claim)
+        mock_ps.release_claim = AsyncMock()
+
+        # Make trader.open_long raise
+        mock_trader.open_long = AsyncMock(side_effect=Exception("Exchange timeout"))
+        mock_trader.get_position = AsyncMock(return_value=None)
+
+        engine = StrategyEngine(
+            strategy=mock_strategy,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=True,
+            use_enhanced_context=False,
+            position_service=mock_ps,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True  # Cycle itself succeeds
+        # Claim should have been released
+        mock_ps.release_claim.assert_called_once_with(mock_claim.id)
+
+    @pytest.mark.asyncio
+    async def test_unexpected_exception_in_cycle(self, mock_strategy, mock_trader):
+        """Non-DecisionParseError exception in run_cycle is caught."""
+        mock_ai_client = AsyncMock()
+        mock_ai_client.generate = AsyncMock(side_effect=RuntimeError("Unexpected internal error"))
+
+        engine = StrategyEngine(
+            strategy=mock_strategy,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=False,
+            use_enhanced_context=False,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is False
+        assert "Unexpected internal error" in result["error"]
 
 
 class TestStrategyEnginePromptBuilding:

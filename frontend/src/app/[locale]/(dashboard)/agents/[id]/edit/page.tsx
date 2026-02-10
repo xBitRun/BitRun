@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
@@ -39,6 +39,7 @@ import {
   apiResponseToConfig,
 } from "@/hooks";
 import type { TradingMode, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
+import { getStrategyPreset } from "@/types";
 
 function LoadingSkeleton() {
   return (
@@ -107,6 +108,22 @@ export default function EditAgentPage() {
   const handleCustomPreset = () => {
     setIsCustomPreset(true);
   };
+
+  // Wrap setConfig to auto-switch to custom mode when indicators or riskControls change
+  const handleConfigChange = useCallback((newConfig: StrategyStudioConfig) => {
+    // Detect if indicators or riskControls have changed from preset values
+    if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
+      const preset = getStrategyPreset(selectedRiskProfile, selectedTimeHorizon);
+      if (preset) {
+        const indicatorsChanged = JSON.stringify(newConfig.indicators) !== JSON.stringify(preset.values.indicators);
+        const riskControlsChanged = JSON.stringify(newConfig.riskControls) !== JSON.stringify(preset.values.riskControls);
+        if (indicatorsChanged || riskControlsChanged) {
+          setIsCustomPreset(true);
+        }
+      }
+    }
+    setConfig(newConfig);
+  }, [isCustomPreset, selectedRiskProfile, selectedTimeHorizon, setConfig]);
 
   // Populate form when agent data loads
   useEffect(() => {
@@ -418,7 +435,7 @@ export default function EditAgentPage() {
         <CardContent className="pt-6">
           <StrategyStudioTabs
             config={config}
-            onConfigChange={setConfig}
+            onConfigChange={handleConfigChange}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             promptPreview={promptPreview}

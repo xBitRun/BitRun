@@ -281,3 +281,161 @@ class TestMarketDataCache:
         stats = await cache.get_cache_stats()
 
         assert "error" in stats
+
+
+# ==================== Symbol Cache Tests ====================
+
+
+class TestSymbolCache:
+    """Tests for get_symbols and set_symbols."""
+
+    @pytest.fixture
+    def redis(self):
+        return AsyncMock()
+
+    @pytest.fixture
+    def cache(self, redis):
+        from app.services.market_data_cache import MarketDataCache
+        with patch("app.services.market_data_cache.get_settings"):
+            c = MarketDataCache()
+            c._redis = redis
+            return c
+
+    @pytest.mark.asyncio
+    async def test_get_symbols_hit(self, cache, redis):
+        import json
+        redis.get.return_value = json.dumps(["BTC/USDT", "ETH/USDT"])
+
+        result = await cache.get_symbols("binance")
+        assert result == ["BTC/USDT", "ETH/USDT"]
+
+    @pytest.mark.asyncio
+    async def test_get_symbols_miss(self, cache, redis):
+        redis.get.return_value = None
+
+        result = await cache.get_symbols("binance")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_symbols_error(self, cache, redis):
+        redis.get.side_effect = RuntimeError("down")
+
+        result = await cache.get_symbols("binance")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_set_symbols(self, cache, redis):
+        result = await cache.set_symbols(["BTC/USDT"], exchange="binance")
+        assert result is True
+        redis.set.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_symbols_custom_ttl(self, cache, redis):
+        result = await cache.set_symbols(["BTC/USDT"], ttl=3600)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_set_symbols_error(self, cache, redis):
+        redis.set.side_effect = RuntimeError("down")
+        result = await cache.set_symbols(["BTC/USDT"])
+        assert result is False
+
+
+# ==================== BacktestDataPreloader Tests ====================
+
+
+class TestBacktestDataPreloader:
+    """Tests for BacktestDataPreloader."""
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = AsyncMock()
+        cache.get_klines = AsyncMock(return_value=None)
+        cache.set_klines = AsyncMock()
+        return cache
+
+    @pytest.fixture
+    def preloader(self, mock_cache):
+        from app.services.market_data_cache import BacktestDataPreloader
+        with patch("app.services.market_data_cache.get_settings"):
+            return BacktestDataPreloader(cache=mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_preload_cache_hit(self, preloader, mock_cache):
+        """Cached data should not trigger fetch."""
+        from datetime import datetime, UTC
+        mock_cache.get_klines.return_value = [{"close": 50000}]
+
+        result = await preloader.preload_for_backtest(
+            symbols=["BTC/USDT"],
+            start_date=datetime(2025, 1, 1, tzinfo=UTC),
+            end_date=datetime(2025, 2, 1, tzinfo=UTC),
+        )
+        assert result["symbols_cached"] == 1
+        assert result["symbols_fetched"] == 0
+
+    @pytest.mark.asyncio
+    async def test_preload_with_provider(self, preloader, mock_cache):
+        """With data provider, fetches and caches."""
+        from datetime import datetime, UTC
+        mock_cache.get_klines.return_value = None
+
+        provider = AsyncMock()
+        provider.get_klines = AsyncMock(return_value=[{"close": 50000}])
+
+        result = await preloader.preload_for_backtest(
+            symbols=["ETH/USDT"],
+            start_date=datetime(2025, 1, 1, tzinfo=UTC),
+            end_date=datetime(2025, 2, 1, tzinfo=UTC),
+            data_provider=provider,
+        )
+        assert result["symbols_fetched"] == 1
+        mock_cache.set_klines.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_preload_error(self, preloader, mock_cache):
+        """Errors are captured per symbol."""
+        from datetime import datetime, UTC
+        mock_cache.get_klines.side_effect = RuntimeError("fail")
+
+        result = await preloader.preload_for_backtest(
+            symbols=["FAIL/USDT"],
+            start_date=datetime(2025, 1, 1, tzinfo=UTC),
+            end_date=datetime(2025, 2, 1, tzinfo=UTC),
+        )
+        assert len(result["errors"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_preload_common_symbols(self, preloader, mock_cache):
+        """preload_common_symbols calls preload_for_backtest."""
+        mock_cache.get_klines.return_value = [{"close": 100}]
+
+        result = await preloader.preload_common_symbols()
+        assert result["symbols_requested"] == 10
+
+
+# ==================== Singleton Tests ====================
+
+
+class TestSingletons:
+    def test_get_market_data_cache(self):
+        from app.services.market_data_cache import get_market_data_cache, _market_data_cache
+        import app.services.market_data_cache as mod
+        mod._market_data_cache = None
+
+        with patch("app.services.market_data_cache.get_settings"):
+            cache = get_market_data_cache()
+            assert cache is not None
+            mod._market_data_cache = None
+
+    def test_get_backtest_preloader(self):
+        from app.services.market_data_cache import get_backtest_preloader
+        import app.services.market_data_cache as mod
+        mod._backtest_preloader = None
+        mod._market_data_cache = None
+
+        with patch("app.services.market_data_cache.get_settings"):
+            preloader = get_backtest_preloader()
+            assert preloader is not None
+            mod._backtest_preloader = None
+            mod._market_data_cache = None

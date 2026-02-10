@@ -506,3 +506,210 @@ class TestConstants:
         assert CACHE_TTL["15m"] == 900
         assert CACHE_TTL["1h"] == 1800
         assert CACHE_TTL["1d"] == 3600
+
+
+# ==================== DAL Exception Path Tests ====================
+
+
+class TestDataAccessLayerExceptionPaths:
+    """Tests covering exception paths and edge cases in DataAccessLayer."""
+
+    @pytest.fixture
+    def mock_trader(self):
+        trader = AsyncMock()
+        trader.exchange_name = "test_exchange"
+        trader.get_market_data = AsyncMock(side_effect=RuntimeError("API down"))
+        trader.get_klines = AsyncMock(return_value=[])
+        trader.get_funding_history = AsyncMock(return_value=[])
+        return trader
+
+    @pytest.fixture
+    def dal(self, mock_trader):
+        return DataAccessLayer(trader=mock_trader, config=StrategyConfig())
+
+    @pytest.mark.asyncio
+    async def test_get_market_data_failure_fallback(self, dal):
+        """When get_market_data fails, creates minimal MarketData."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.get = AsyncMock(return_value=None)
+            mock_redis.return_value.set = AsyncMock()
+
+            ctx = await dal.get_market_context("BTC/USDT")
+            assert ctx.current.mid_price == 0.0
+            assert ctx.current.symbol == "BTC/USDT"
+
+    @pytest.mark.asyncio
+    async def test_get_market_contexts_with_failure(self, dal):
+        """get_market_contexts handles per-symbol failures gracefully."""
+        async def _ctx_side_effect(symbol, timeframes=None):
+            if symbol == "FAIL/USDT":
+                raise RuntimeError("boom")
+            return MarketContext(
+                symbol=symbol,
+                current=MarketData(symbol=symbol, mid_price=100, bid_price=99,
+                                   ask_price=101, volume_24h=0),
+                exchange_name="test",
+            )
+
+        with patch.object(dal, "get_market_context", side_effect=_ctx_side_effect):
+            results = await dal.get_market_contexts(["BTC/USDT", "FAIL/USDT"])
+            assert results["BTC/USDT"].current.mid_price == 100
+            assert results["FAIL/USDT"].current.mid_price == 0.0
+
+    @pytest.mark.asyncio
+    async def test_klines_cache_hit(self, dal):
+        """Cache hit should return deserialized klines."""
+        import json
+        from datetime import datetime as dt
+
+        cached_data = json.dumps([{
+            "timestamp": "2025-01-01T00:00:00",
+            "open": 50000, "high": 51000, "low": 49000,
+            "close": 50500, "volume": 100,
+        }])
+
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.get = AsyncMock(return_value=cached_data)
+
+            klines = await dal._get_klines_cached("BTC/USDT", "1h")
+            assert len(klines) == 1
+            assert klines[0].close == 50500
+
+    @pytest.mark.asyncio
+    async def test_klines_cache_exception(self, dal):
+        """Cache exception falls back to exchange fetch."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.get = AsyncMock(side_effect=RuntimeError("Redis down"))
+            mock_redis.return_value.set = AsyncMock(side_effect=RuntimeError("Redis down"))
+
+            klines = await dal._get_klines_cached("BTC/USDT", "1h")
+            assert klines == []  # trader returns empty
+
+    @pytest.mark.asyncio
+    async def test_get_klines_no_cache(self, dal):
+        """get_klines with use_cache=False bypasses cache."""
+        result = await dal.get_klines("BTC/USDT", "1h", use_cache=False)
+        assert result == []
+        dal.trader.get_klines.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_get_klines_with_cache(self, dal):
+        """get_klines with use_cache=True uses _get_klines_cached."""
+        with patch.object(dal, "_get_klines_cached", new_callable=AsyncMock, return_value=[]):
+            result = await dal.get_klines("BTC/USDT", "1h", use_cache=True)
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_funding_cache_hit(self, dal):
+        """Funding cache hit returns deserialized FundingRate list."""
+        import json
+
+        cached = json.dumps([{"timestamp": "2025-01-01T00:00:00", "rate": 0.001}])
+
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.get = AsyncMock(return_value=cached)
+
+            funding = await dal._get_funding_cached("BTC/USDT")
+            assert len(funding) == 1
+            assert funding[0].rate == 0.001
+
+    @pytest.mark.asyncio
+    async def test_funding_empty_exchange(self, dal):
+        """Empty funding from exchange returns empty list."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.get = AsyncMock(return_value=None)
+
+            funding = await dal._get_funding_cached("BTC/USDT")
+            assert funding == []
+
+    @pytest.mark.asyncio
+    async def test_get_indicators_empty_klines(self, dal):
+        """Empty klines returns empty TechnicalIndicators."""
+        with patch.object(dal, "_get_klines_cached", new_callable=AsyncMock, return_value=[]):
+            ind = await dal.get_indicators("BTC/USDT", "1h")
+            assert ind is not None
+
+    @pytest.mark.asyncio
+    async def test_get_indicators_multi(self, dal):
+        """get_indicators_multi returns dict of indicators."""
+        with patch.object(dal, "get_indicators", new_callable=AsyncMock,
+                          return_value=TechnicalIndicators()):
+            result = await dal.get_indicators_multi("BTC/USDT", ["1h", "4h"])
+            assert "1h" in result
+            assert "4h" in result
+
+    @pytest.mark.asyncio
+    async def test_invalidate_cache(self, dal):
+        """invalidate_cache deletes matching keys."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.keys = AsyncMock(return_value=["k1", "k2"])
+            mock_redis.return_value.delete = AsyncMock(return_value=2)
+
+            count = await dal.invalidate_cache(symbol="BTC/USDT", timeframe="1h")
+            assert count == 2
+
+    @pytest.mark.asyncio
+    async def test_invalidate_cache_no_keys(self, dal):
+        """invalidate_cache with no matching keys returns 0."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.keys = AsyncMock(return_value=[])
+
+            count = await dal.invalidate_cache()
+            assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_invalidate_cache_exception(self, dal):
+        """invalidate_cache handles exceptions gracefully."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.keys = AsyncMock(side_effect=RuntimeError("boom"))
+
+            count = await dal.invalidate_cache()
+            assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_get_cache_stats(self, dal):
+        """get_cache_stats returns statistics."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.keys = AsyncMock(return_value=["k1"])
+
+            stats = await dal.get_cache_stats()
+            assert "kline_entries" in stats
+
+    @pytest.mark.asyncio
+    async def test_get_cache_stats_exception(self, dal):
+        """get_cache_stats returns error on failure."""
+        with patch.object(dal, "_get_redis", new_callable=AsyncMock) as mock_redis:
+            mock_redis.return_value.keys = AsyncMock(side_effect=RuntimeError("boom"))
+
+            stats = await dal.get_cache_stats()
+            assert "error" in stats
+
+    @pytest.mark.asyncio
+    async def test_preload_data(self, dal):
+        """preload_data loads klines and funding for symbols."""
+        with patch.object(dal, "_get_klines_cached", new_callable=AsyncMock, return_value=[MagicMock()]):
+            with patch.object(dal, "_get_funding_cached", new_callable=AsyncMock, return_value=[MagicMock()]):
+                result = await dal.preload_data(["BTC/USDT"])
+                assert result["klines_loaded"] >= 1
+                assert result["funding_loaded"] == 1
+
+    @pytest.mark.asyncio
+    async def test_preload_data_with_error(self, dal):
+        """preload_data captures errors per symbol."""
+        with patch.object(dal, "_get_klines_cached", new_callable=AsyncMock,
+                          side_effect=RuntimeError("exchange fail")):
+            result = await dal.preload_data(["FAIL/USDT"])
+            assert len(result["errors"]) == 1
+
+
+class TestCreateDataAccessLayerFactory:
+    def test_create_data_access_layer(self):
+        """Factory function creates DAL with defaults."""
+        from app.services.data_access_layer import create_data_access_layer
+        mock_trader = AsyncMock()
+        mock_trader.exchange_name = "test"
+
+        with patch("app.services.market_data_cache.get_market_data_cache") as mock_cache:
+            mock_cache.return_value = MagicMock()
+            dal = create_data_access_layer(mock_trader)
+            assert dal.trader is mock_trader

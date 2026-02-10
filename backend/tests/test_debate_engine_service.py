@@ -719,3 +719,65 @@ class TestValidateDebateModels:
 
         assert resolver.call_count == 2
         assert all(r["valid"] for r in results.values())
+
+    @pytest.mark.asyncio
+    @patch("app.services.debate_engine.get_ai_client")
+    async def test_non_ai_client_error(self, mock_get_client):
+        """Non-AIClientError exception (e.g. RuntimeError) → valid=False with error string."""
+        mock_get_client.side_effect = RuntimeError("Unexpected crash in factory")
+
+        results = await validate_debate_models(["a:m1"])
+
+        assert results["a:m1"]["valid"] is False
+        assert "Unexpected crash" in results["a:m1"]["error"]
+
+
+# ── Dirty Data: empty / malformed model responses ────────────────────
+
+
+class TestDirtyDataScenarios:
+    """Tests for AI returning empty or malformed data in debate."""
+
+    @pytest.mark.asyncio
+    @patch("app.services.debate_engine.get_ai_client")
+    async def test_model_returns_empty_decisions(self, mock_get_client):
+        """All models return valid JSON but with empty decisions array."""
+        mock_client = AsyncMock()
+        mock_client.generate = AsyncMock(return_value=_ai_response("resp"))
+        mock_get_client.return_value = mock_client
+
+        engine = DebateEngine()
+        engine.decision_parser.parse = MagicMock(
+            return_value=_decision_response(decisions=[], overall_confidence=40)
+        )
+
+        result = await engine.run_debate(
+            "sys", "user", model_ids=["a:m1", "a:m2"]
+        )
+
+        # Both models succeed (no error) but have empty decisions
+        # → succeeded because parse succeeded and decisions list is present
+        assert result.successful_participants == 0  # succeeded requires decisions
+        assert len(result.final_decisions) == 0
+
+    @pytest.mark.asyncio
+    @patch("app.services.debate_engine.get_ai_client")
+    async def test_model_returns_malformed_response(self, mock_get_client):
+        """Model returns something that causes DecisionParseError."""
+        mock_client = AsyncMock()
+        mock_client.generate = AsyncMock(
+            return_value=_ai_response("completely invalid garbage {{{{}")
+        )
+        mock_get_client.return_value = mock_client
+
+        engine = DebateEngine()
+        # Use real parser — it will fail on this garbage
+        result = await engine.run_debate(
+            "sys", "user", model_ids=["a:m1", "a:m2"]
+        )
+
+        assert result.successful_participants == 0
+        assert result.failed_participants == 2
+        for p in result.participants:
+            assert p.error is not None
+            assert "Parse error" in p.error

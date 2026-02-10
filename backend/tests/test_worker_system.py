@@ -183,9 +183,10 @@ class TestExecutionWorker:
 class TestWorkerManager:
     """Tests for WorkerManager class."""
 
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    async def _reset_manager(self):
         """Reset worker manager before each test."""
-        asyncio.get_event_loop().run_until_complete(reset_worker_manager())
+        await reset_worker_manager()
 
     @pytest.mark.asyncio
     async def test_manager_singleton(self):

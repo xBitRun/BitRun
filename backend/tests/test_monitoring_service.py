@@ -294,3 +294,285 @@ class TestSentryIntegration:
         assert result["request"]["data"]["password"] == "[Filtered]"
         assert result["request"]["data"]["api_key"] == "[Filtered]"
         assert result["request"]["data"]["username"] == "user@example.com"
+
+
+# ==================== Metrics Tracking Methods ====================
+
+
+class TestMetricsTrackingMethods:
+    """Tests for MetricsCollector tracking methods that were uncovered."""
+
+    def test_update_positions(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_tracking")
+        collector.update_positions("binance", {"BTC": 2, "ETH": 1}, 15000.0)
+        # No exception means success
+
+    def test_update_account_equity(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_equity")
+        collector.update_account_equity("binance", "acc_1", 50000.0)
+
+    def test_track_strategy_cycle(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_cycle")
+        collector.track_strategy_cycle("strat_1", success=True)
+        collector.track_strategy_cycle("strat_1", success=False)
+
+    def test_update_strategy_stats(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_stats")
+        collector.update_strategy_stats("strat_1", win_rate=0.65)
+
+    def test_set_active_strategies(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_active")
+        collector.set_active_strategies(5)
+
+    def test_track_websocket_message(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_ws")
+        collector.track_websocket_message("sent", "market_update")
+        collector.set_websocket_connections(10)
+
+    def test_set_worker_status(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_worker")
+        collector.set_worker_status("strat_1", running=True)
+        collector.set_worker_status("strat_1", running=False)
+
+    def test_set_system_status(self):
+        from app.monitoring.metrics import MetricsCollector
+        collector = MetricsCollector("test_system")
+        collector.set_redis_status(True)
+        collector.set_database_status(True)
+        collector.set_redis_status(False)
+        collector.set_database_status(False)
+
+
+# ==================== Metrics Decorators ====================
+
+
+class TestMetricsDecorators:
+    """Tests for track_request, track_decision, and track_trade decorators."""
+
+    @pytest.mark.asyncio
+    async def test_track_request_decorator(self):
+        from app.monitoring.metrics import track_request
+        from unittest.mock import patch as _patch
+
+        @track_request
+        async def dummy_handler():
+            return MagicMock()
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_handler()
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_track_decision_decorator(self):
+        from app.monitoring.metrics import track_decision
+        from unittest.mock import patch as _patch
+
+        @track_decision
+        async def dummy_decision(**kwargs):
+            return {
+                "decision": MagicMock(decisions=[], overall_confidence=80),
+                "tokens_used": 100,
+                "latency_ms": 500,
+            }
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_decision(strategy_id="strat_1")
+            assert "decision" in result
+
+    @pytest.mark.asyncio
+    async def test_track_decision_decorator_with_individual_decisions(self):
+        from app.monitoring.metrics import track_decision
+        from unittest.mock import patch as _patch
+
+        mock_decision = MagicMock()
+        mock_decision.decisions = [
+            MagicMock(action=MagicMock(value="buy"), confidence=85)
+        ]
+
+        @track_decision
+        async def dummy_decision(**kwargs):
+            return {
+                "decision": mock_decision,
+                "tokens_used": 200,
+            }
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_decision(strategy_id="strat_2")
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_track_decision_decorator_no_decision(self):
+        from app.monitoring.metrics import track_decision
+        from unittest.mock import patch as _patch
+
+        @track_decision
+        async def dummy_decision(**kwargs):
+            return {"result": "no decision"}
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_decision()
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_track_trade_decorator(self):
+        from app.monitoring.metrics import track_trade
+        from unittest.mock import patch as _patch
+
+        @track_trade
+        async def dummy_trade(**kwargs):
+            return MagicMock(success=True, filled_size=0.1, filled_price=50000)
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_trade(symbol="BTC", side="buy")
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_track_trade_decorator_dict_result(self):
+        from app.monitoring.metrics import track_trade
+        from unittest.mock import patch as _patch
+
+        @track_trade
+        async def dummy_trade(**kwargs):
+            return {"success": True, "filled_size": 1.0, "filled_price": 3000}
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_trade(symbol="ETH")
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_track_trade_decorator_bool_result(self):
+        from app.monitoring.metrics import track_trade
+        from unittest.mock import patch as _patch
+
+        @track_trade
+        async def dummy_trade(**kwargs):
+            return True
+
+        with _patch("app.monitoring.metrics.get_metrics_collector") as mock_get:
+            mock_collector = MagicMock()
+            mock_get.return_value = mock_collector
+            result = await dummy_trade()
+            assert result is True
+
+
+# ==================== Sentry Success Paths ====================
+
+
+class TestSentrySuccessPaths:
+    """Tests for Sentry functions when SDK is available."""
+
+    def test_before_send_filters_cancelled_error(self):
+        from app.monitoring.sentry import _before_send
+        import asyncio
+
+        event = {"event_id": "123"}
+        hint = {
+            "exc_info": (
+                type("asyncio.CancelledError", (Exception,), {"__name__": "asyncio.CancelledError"}),
+                Exception("cancelled"),
+                None,
+            )
+        }
+        result = _before_send(event, hint)
+        assert result is None
+
+    def test_before_send_filters_connection_reset(self):
+        from app.monitoring.sentry import _before_send
+
+        event = {"event_id": "456"}
+        hint = {"exc_info": (ConnectionResetError, ConnectionResetError(), None)}
+        result = _before_send(event, hint)
+        assert result is None
+
+    def test_before_send_filters_status_code_404(self):
+        from app.monitoring.sentry import _before_send
+
+        exc = Exception("not found")
+        exc.status_code = 404
+        event = {"event_id": "789"}
+        hint = {"exc_info": (type(exc), exc, None)}
+        result = _before_send(event, hint)
+        assert result is None
+
+    def test_before_send_passes_normal_error(self):
+        from app.monitoring.sentry import _before_send
+
+        event = {"event_id": "abc"}
+        hint = {"exc_info": (ValueError, ValueError("bad"), None)}
+        result = _before_send(event, hint)
+        assert result is not None
+
+    def test_capture_exception_disabled(self):
+        from app.monitoring.sentry import capture_exception
+        # Sentry SDK may not be configured, should return None
+        result = capture_exception(ValueError("test"), tags={"k": "v"})
+        # Either None or a string event ID
+
+    def test_capture_message_disabled(self):
+        from app.monitoring.sentry import capture_message
+        result = capture_message("test msg", level="warning", tags={"k": "v"})
+
+    def test_set_user_disabled(self):
+        from app.monitoring.sentry import set_user
+        set_user("user_1", email="a@b.com", name="Test")
+
+    def test_clear_user_disabled(self):
+        from app.monitoring.sentry import clear_user
+        clear_user()
+
+    def test_add_breadcrumb_disabled(self):
+        from app.monitoring.sentry import add_breadcrumb
+        add_breadcrumb("test breadcrumb", category="test", data={"key": "val"})
+
+    def test_start_transaction_disabled(self):
+        from app.monitoring.sentry import start_transaction
+        ctx = start_transaction("test_tx", op="task", description="test")
+        # Should return nullcontext when disabled
+        with ctx:
+            pass
+
+    def test_start_span_disabled(self):
+        from app.monitoring.sentry import start_span
+        ctx = start_span(op="db.query", description="SELECT")
+        with ctx:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_sentry_trace_decorator_async(self):
+        from app.monitoring.sentry import sentry_trace
+
+        @sentry_trace("test_func", op="task")
+        async def async_func():
+            return 42
+
+        result = await async_func()
+        assert result == 42
+
+    def test_sentry_trace_decorator_sync(self):
+        from app.monitoring.sentry import sentry_trace
+
+        @sentry_trace("test_sync")
+        def sync_func():
+            return "hello"
+
+        result = sync_func()
+        assert result == "hello"

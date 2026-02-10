@@ -2,8 +2,11 @@
 Tests for the security module - encryption and JWT.
 """
 
+import os
+
 import pytest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch, MagicMock
 
 from app.core.security import (
     CryptoService,
@@ -215,3 +218,184 @@ class TestCryptoService:
         decrypted = self.crypto.decrypt(encrypted)
         
         assert decrypted == plaintext
+
+
+# ==================== Extended Security Tests ====================
+
+
+class TestCryptoServiceKeyDerivation:
+    """Tests for CryptoService key derivation and transport encryption."""
+
+    def test_key_derivation_from_non_base64(self):
+        """When base64 decode fails, key is derived from raw string."""
+        from app.core.security import CryptoService
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = "not-base64-at-all!!!"
+            mock_settings.return_value.transport_encryption_enabled = False
+            crypto = CryptoService(encryption_key="not-base64-at-all!!!")
+            # Should still work for encrypt/decrypt
+            encrypted = crypto.encrypt("hello")
+            assert crypto.decrypt(encrypted) == "hello"
+
+    def test_transport_encryption_enabled(self):
+        """RSA keypair is generated when transport encryption enabled."""
+        from app.core.security import CryptoService
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = True
+            crypto = CryptoService(encryption_key=key)
+            assert crypto._rsa_private_key is not None
+            assert crypto._rsa_public_key is not None
+
+    def test_get_public_key_pem(self):
+        """get_public_key_pem returns PEM string."""
+        from app.core.security import CryptoService
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = True
+            crypto = CryptoService(encryption_key=key)
+            pem = crypto.get_public_key_pem()
+            assert "BEGIN PUBLIC KEY" in pem
+
+    def test_get_public_key_pem_not_enabled(self):
+        """get_public_key_pem raises when transport encryption disabled."""
+        from app.core.security import CryptoService
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = False
+            crypto = CryptoService(encryption_key=key)
+            with pytest.raises(RuntimeError, match="not enabled"):
+                crypto.get_public_key_pem()
+
+    def test_decrypt_transport_round_trip(self):
+        """Full RSA+AES hybrid encryption round trip."""
+        from app.core.security import CryptoService
+        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = True
+            crypto = CryptoService(encryption_key=key)
+
+            # Simulate frontend encryption
+            plaintext = "sensitive data"
+            aes_key = os.urandom(32)
+            nonce = os.urandom(12)
+
+            # Encrypt AES key with RSA public key
+            encrypted_aes_key = crypto._rsa_public_key.encrypt(
+                aes_key,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None,
+                ),
+            )
+
+            # Encrypt data with AES-GCM
+            aesgcm = AESGCM(aes_key)
+            ciphertext = aesgcm.encrypt(nonce, plaintext.encode(), None)
+
+            # Combine: encrypted_aes_key (256) + nonce (12) + ciphertext
+            payload = base64.b64encode(encrypted_aes_key + nonce + ciphertext).decode()
+
+            # Decrypt
+            result = crypto.decrypt_transport(payload)
+            assert result == plaintext
+
+    def test_decrypt_transport_not_enabled(self):
+        """decrypt_transport raises when transport disabled."""
+        from app.core.security import CryptoService
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = False
+            crypto = CryptoService(encryption_key=key)
+            with pytest.raises(RuntimeError, match="not enabled"):
+                crypto.decrypt_transport("invalid")
+
+    def test_decrypt_transport_invalid_data(self):
+        """decrypt_transport raises ValueError on corrupt data."""
+        from app.core.security import CryptoService
+        import base64
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = True
+            crypto = CryptoService(encryption_key=key)
+            with pytest.raises(ValueError, match="Transport decryption failed"):
+                crypto.decrypt_transport(base64.b64encode(b"invalid" * 50).decode())
+
+
+class TestTokenEdgeCases:
+    """Tests for JWT token edge cases."""
+
+    def test_verify_expired_token(self):
+        """Expired token raises JWTError."""
+        from app.core.security import create_access_token, verify_token
+        from jose import JWTError
+        from datetime import timedelta
+        token = create_access_token("user_1", expires_delta=timedelta(seconds=-1))
+        with pytest.raises(JWTError):
+            verify_token(token)
+
+    def test_verify_token_wrong_type(self):
+        """Wrong token type raises JWTError."""
+        from app.core.security import create_access_token, verify_token
+        from jose import JWTError
+        token = create_access_token("user_1")
+        with pytest.raises(JWTError):
+            verify_token(token, token_type="refresh")
+
+
+class TestPasswordAsync:
+    """Tests for verify_password_async."""
+
+    @pytest.mark.asyncio
+    async def test_verify_password_async_correct(self):
+        from app.core.security import hash_password, verify_password_async
+        hashed = hash_password("my_password")
+        result = await verify_password_async("my_password", hashed)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_verify_password_async_wrong(self):
+        from app.core.security import hash_password, verify_password_async
+        hashed = hash_password("my_password")
+        result = await verify_password_async("wrong", hashed)
+        assert result is False
+
+
+class TestCryptoSingleton:
+    def test_get_crypto_service_singleton(self):
+        from app.core.security import get_crypto_service, CryptoService
+        import app.core.security as mod
+        import base64
+
+        old = mod._crypto_service
+        mod._crypto_service = None
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        with patch("app.core.security.get_settings") as mock_settings:
+            mock_settings.return_value.data_encryption_key = key
+            mock_settings.return_value.transport_encryption_enabled = False
+            mock_settings.return_value.jwt_secret = "test"
+            mock_settings.return_value.jwt_algorithm = "HS256"
+            mock_settings.return_value.jwt_access_token_expire_minutes = 30
+            mock_settings.return_value.jwt_refresh_token_expire_days = 7
+
+            svc = get_crypto_service()
+            assert svc is not None
+            svc2 = get_crypto_service()
+            assert svc is svc2
+        mod._crypto_service = old

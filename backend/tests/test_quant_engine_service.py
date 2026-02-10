@@ -209,6 +209,55 @@ class TestGridEngine:
         assert result["pnl_change"] > 0
 
 
+    @pytest.mark.asyncio
+    async def test_sell_trade_error_continues(self, grid_config):
+        """TradeError during sell is caught per level; cycle still succeeds."""
+        trader = _mock_trader(mark_price=120.0)
+        trader.close_position = AsyncMock(side_effect=TradeError("Insufficient margin"))
+        runtime_state = {
+            "initialized": True,
+            "config_hash": "110.0:90.0:4",
+            "grid_levels": [90.0, 95.0, 100.0, 105.0, 110.0],
+            "filled_buys": ["0", "1"],
+            "filled_sells": [],
+            "total_invested": 200.0,
+            "total_returned": 0.0,
+        }
+        engine = GridEngine(
+            strategy_id="g1", trader=trader, symbol="BTC",
+            config=grid_config, runtime_state=runtime_state,
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True
+        assert result["trades_executed"] == 0  # Sells failed but cycle succeeded
+
+    @pytest.mark.asyncio
+    async def test_capital_exceeded_on_buy(self, grid_config):
+        """CapitalExceededError during open_with_isolation returns failed order."""
+        from app.services.position_service import CapitalExceededError
+
+        trader = _mock_trader(mark_price=88.0)
+        # Patch _open_with_isolation to simulate CapitalExceededError
+        # CapitalExceededError is caught inside _open_with_isolation and returns
+        # OrderResult(success=False), so open_long never fires but the engine
+        # sees success=False and skips the level.
+        trader.open_long = AsyncMock(
+            return_value=OrderResult(success=False, error="Capital exceeded")
+        )
+
+        engine = GridEngine(
+            strategy_id="g1", trader=trader, symbol="BTC",
+            config=grid_config, runtime_state={},
+        )
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True
+        assert result["trades_executed"] == 0
+
+
 # ── DCAEngine ────────────────────────────────────────────────────────
 
 
@@ -612,6 +661,54 @@ class TestRSIEngine:
 
         assert result["success"] is False
         assert "Error" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_trade_error_on_sell(self, rsi_config):
+        """TradeError during sell (close_position) is caught; cycle succeeds."""
+        trader = _mock_trader(mark_price=55000.0)
+        trader.close_position = AsyncMock(side_effect=TradeError("Exchange error"))
+        trader.get_position = AsyncMock(return_value=None)
+        runtime_state = {
+            "initialized": True,
+            "has_position": True,
+            "entry_price": 50000.0,
+            "position_size_usd": 100.0,
+            "last_rsi": None,
+            "last_signal": "buy",
+        }
+        engine = RSIEngine(
+            strategy_id="r1", trader=trader, symbol="BTC",
+            config=rsi_config, runtime_state=runtime_state,
+        )
+
+        with patch.object(
+            engine, "_calculate_rsi",
+            new_callable=AsyncMock, return_value=75.0,
+        ):
+            result = await engine.run_cycle()
+
+        assert result["success"] is True
+        assert result["trades_executed"] == 0  # Sell failed, caught by TradeError
+
+    @pytest.mark.asyncio
+    async def test_trade_error_on_buy(self, rsi_config):
+        """TradeError during buy is caught; cycle succeeds with zero trades."""
+        trader = _mock_trader(mark_price=50000.0)
+        trader.open_long = AsyncMock(side_effect=TradeError("Insufficient margin"))
+        trader.get_position = AsyncMock(return_value=None)
+        engine = RSIEngine(
+            strategy_id="r1", trader=trader, symbol="BTC",
+            config=rsi_config, runtime_state={},
+        )
+
+        with patch.object(
+            engine, "_calculate_rsi",
+            new_callable=AsyncMock, return_value=25.0,
+        ):
+            result = await engine.run_cycle()
+
+        assert result["success"] is True
+        assert result["trades_executed"] == 0
 
 
 # ── create_engine() Factory ──────────────────────────────────────────

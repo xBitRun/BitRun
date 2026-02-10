@@ -650,11 +650,40 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
   const weekdayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
   const monthlyData = useMemo(() => {
-    return (data.monthly_returns || []).map((m) => ({
-      ...m,
-      isPositive: m.return_percent >= 0,
-    }));
-  }, [data.monthly_returns]);
+    const raw = data.monthly_returns || [];
+
+    // 从 end_date 提取结束月份，生成前 6 个月的月份列表
+    const endMonth = data.end_date?.slice(0, 7); // "YYYY-MM"
+    if (!endMonth) {
+      return raw.map((m) => ({ ...m, isPositive: m.return_percent >= 0 }));
+    }
+
+    const [endY, endM] = endMonth.split("-").map(Number);
+    const months: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(endY, endM - 1 - i, 1);
+      months.push(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      );
+    }
+
+    // 如果原始数据有比 6 个月范围更早的月份，前面追加
+    const rawMap = new Map(raw.map((m) => [m.month, m]));
+    const earliest = months[0];
+    const earlier = raw
+      .filter((m) => m.month < earliest)
+      .map((m) => m.month);
+    const allMonths = [...earlier, ...months];
+
+    return allMonths.map((month) => {
+      const found = rawMap.get(month);
+      return {
+        month,
+        return_percent: found?.return_percent ?? 0,
+        isPositive: (found?.return_percent ?? 0) >= 0,
+      };
+    });
+  }, [data.monthly_returns, data.end_date]);
 
   // Cumulative returns
   const cumulativeData = useMemo(() => {
