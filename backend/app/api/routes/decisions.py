@@ -39,6 +39,13 @@ class DecisionResponse(BaseModel):
     # Account state snapshot at the time of decision
     account_snapshot: Optional[dict] = None
 
+    # Multi-model debate fields
+    is_debate: bool = False
+    debate_models: Optional[list] = None
+    debate_responses: Optional[list] = None
+    debate_consensus_mode: Optional[str] = None
+    debate_agreement_score: Optional[float] = None
+
 
 class PaginatedDecisionResponse(BaseModel):
     """Paginated decision list response"""
@@ -195,4 +202,9 @@ def _decision_to_response(decision) -> DecisionResponse:
         latency_ms=decision.latency_ms,
         market_snapshot=decision.market_snapshot,
         account_snapshot=decision.account_snapshot,
+        is_debate=decision.is_debate,
+        debate_models=decision.debate_models,
+        debate_responses=decision.debate_responses,
+        debate_consensus_mode=decision.debate_consensus_mode,
+        debate_agreement_score=decision.debate_agreement_score,
     )
