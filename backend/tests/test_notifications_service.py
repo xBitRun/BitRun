@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.notifications import (
     DiscordProvider,
-    EmailProvider,
+    ResendEmailProvider,
     Notification,
     NotificationChannel,
     NotificationService,
@@ -221,67 +221,97 @@ class TestDiscordProvider:
 # ==================== EmailProvider ====================
 
 
-class TestEmailProvider:
-    """Tests for EmailProvider."""
+class TestResendEmailProvider:
+    """Tests for ResendEmailProvider."""
 
     def _make_email_provider(self, **overrides):
         defaults = dict(
-            smtp_host="smtp.example.com",
-            smtp_port=587,
-            smtp_user="user",
-            smtp_password="pass",
+            api_key="re_test_key_123",
             from_email="from@example.com",
-            to_email="to@example.com",
         )
         defaults.update(overrides)
-        return EmailProvider(**defaults)
+        return ResendEmailProvider(**defaults)
 
     def test_is_configured_true(self):
         provider = self._make_email_provider()
         assert provider.is_configured() is True
 
-    def test_is_configured_false_missing_host(self):
-        provider = self._make_email_provider(smtp_host="")
+    def test_is_configured_false_missing_api_key(self):
+        provider = self._make_email_provider(api_key="")
+        assert provider.is_configured() is False
+
+    def test_is_configured_false_missing_from_email(self):
+        provider = self._make_email_provider(from_email="")
         assert provider.is_configured() is False
 
     @pytest.mark.asyncio
     async def test_send_not_configured(self):
-        provider = self._make_email_provider(smtp_host="")
+        provider = self._make_email_provider(api_key="")
         result = await provider.send(_make_notification())
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_send_no_recipient(self):
+        provider = self._make_email_provider()
+        notification = _make_notification()
+        # No recipient_email set
+        result = await provider.send(notification)
         assert result is False
 
     @pytest.mark.asyncio
     async def test_send_success(self):
         provider = self._make_email_provider()
-        mock_module = MagicMock()
-        mock_module.send = AsyncMock()
+        mock_resend = MagicMock()
+        mock_resend.Emails = MagicMock()
+        mock_resend.Emails.send = MagicMock(return_value={"id": "123"})
 
-        with patch.dict(sys.modules, {"aiosmtplib": mock_module}):
-            result = await provider.send(_make_notification())
+        notification = _make_notification()
+        notification.recipient_email = "to@example.com"
 
-        assert result is True
-        mock_module.send.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_send_with_data(self):
-        provider = self._make_email_provider()
-        mock_module = MagicMock()
-        mock_module.send = AsyncMock()
-
-        with patch.dict(sys.modules, {"aiosmtplib": mock_module}):
-            notification = _make_notification(data={"key": "value"})
+        with patch.dict(sys.modules, {"resend": mock_resend}):
             result = await provider.send(notification)
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_send_smtp_error(self):
+    async def test_send_with_data(self):
         provider = self._make_email_provider()
-        mock_module = MagicMock()
-        mock_module.send = AsyncMock(side_effect=Exception("SMTP error"))
+        mock_resend = MagicMock()
+        mock_resend.Emails = MagicMock()
+        mock_resend.Emails.send = MagicMock(return_value={"id": "123"})
 
-        with patch.dict(sys.modules, {"aiosmtplib": mock_module}):
-            result = await provider.send(_make_notification())
+        notification = _make_notification(data={"key": "value"})
+        notification.recipient_email = "to@example.com"
+
+        with patch.dict(sys.modules, {"resend": mock_resend}):
+            result = await provider.send(notification)
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_send_resend_error(self):
+        provider = self._make_email_provider()
+        mock_resend = MagicMock()
+        mock_resend.Emails = MagicMock()
+        mock_resend.Emails.send = MagicMock(side_effect=Exception("Resend error"))
+
+        notification = _make_notification()
+        notification.recipient_email = "to@example.com"
+
+        with patch.dict(sys.modules, {"resend": mock_resend}):
+            result = await provider.send(notification)
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_send_import_error(self):
+        provider = self._make_email_provider()
+        notification = _make_notification()
+        notification.recipient_email = "to@example.com"
+
+        # Simulate resend not installed
+        with patch.dict(sys.modules, {"resend": None}):
+            result = await provider.send(notification)
 
         assert result is False
 
@@ -308,11 +338,8 @@ class TestNotificationService:
     def test_configure_email(self):
         service = NotificationService()
         service.configure(
-            smtp_host="smtp.example.com",
-            smtp_user="user",
-            smtp_password="pass",
-            smtp_from="from@example.com",
-            smtp_to="to@example.com",
+            resend_api_key="re_test_key_123",
+            resend_from="from@example.com",
         )
         assert NotificationChannel.EMAIL in service.providers
 

@@ -283,6 +283,7 @@ class TestCreateTraderFromAccount:
                 exchange_id="hyperliquid",
                 credentials=credentials,
                 testnet=True,
+                margin_mode="isolated",
             )
 
     def test_create_binance_trader(self):
@@ -300,6 +301,7 @@ class TestCreateTraderFromAccount:
                 exchange_id="binanceusdm",
                 credentials=credentials,
                 testnet=False,
+                margin_mode="isolated",
             )
 
     def test_create_bybit_trader(self):
@@ -317,6 +319,7 @@ class TestCreateTraderFromAccount:
                 exchange_id="bybit",
                 credentials=credentials,
                 testnet=True,
+                margin_mode="isolated",
             )
 
     def test_create_okx_trader(self):
@@ -338,6 +341,7 @@ class TestCreateTraderFromAccount:
                 exchange_id="okx",
                 credentials=credentials,
                 testnet=False,
+                margin_mode="isolated",
             )
 
     def test_create_unsupported_exchange(self):
@@ -551,7 +555,7 @@ class TestWorkerSettings:
             settings = get_worker_settings()
             
             assert "functions" in settings
-            assert len(settings["functions"]) == 4
+            assert len(settings["functions"]) == 5
             assert "on_startup" in settings
             assert "on_shutdown" in settings
             assert settings["max_jobs"] == 10
@@ -559,7 +563,7 @@ class TestWorkerSettings:
 
     def test_worker_settings_class(self):
         """Test WorkerSettings class"""
-        assert len(WorkerSettings.functions) == 4
+        assert len(WorkerSettings.functions) == 5
         assert WorkerSettings.max_jobs == 10
         assert WorkerSettings.job_timeout == 300
         assert WorkerSettings.queue_name == "bitrun:tasks"

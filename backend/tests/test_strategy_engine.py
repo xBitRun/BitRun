@@ -39,6 +39,8 @@ class TestStrategyEngine:
         }
         strategy.status = "active"
         strategy.account_id = uuid4()
+        strategy.ai_model = "openai:gpt-4o"
+        strategy.get_effective_capital = MagicMock(return_value=None)
         return strategy
 
     @pytest.fixture
@@ -296,6 +298,8 @@ class TestStrategyEnginePromptBuilding:
             "risk_controls": {}
         }
         strategy.status = "active"
+        strategy.ai_model = "openai:gpt-4o"
+        strategy.get_effective_capital = MagicMock(return_value=None)
         return strategy
 
     @pytest.mark.asyncio

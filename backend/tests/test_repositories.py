@@ -859,7 +859,7 @@ class TestDecisionRepository:
         await db_session.commit()
         
         executed = await repo.get_by_strategy(
-            test_strategy.id, executed_only=True
+            test_strategy.id, execution_filter="executed"
         )
         
         assert all(d.executed for d in executed)

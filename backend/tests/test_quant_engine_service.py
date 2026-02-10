@@ -98,6 +98,7 @@ class TestGridEngine:
         trader = _mock_trader(mark_price=120.0)
         runtime_state = {
             "initialized": True,
+            "config_hash": "110.0:90.0:4",
             "grid_levels": [90.0, 95.0, 100.0, 105.0, 110.0],
             "filled_buys": ["0", "1"],
             "filled_sells": [],
@@ -122,6 +123,7 @@ class TestGridEngine:
         trader = _mock_trader(mark_price=112.0)
         runtime_state = {
             "initialized": True,
+            "config_hash": "110.0:90.0:4",
             "grid_levels": [90.0, 95.0, 100.0, 105.0, 110.0],
             "filled_buys": [],
             "filled_sells": [],
@@ -190,6 +192,7 @@ class TestGridEngine:
         trader = _mock_trader(mark_price=120.0)
         runtime_state = {
             "initialized": True,
+            "config_hash": "110.0:90.0:4",
             "grid_levels": [90.0, 95.0, 100.0, 105.0, 110.0],
             "filled_buys": ["0"],
             "filled_sells": [],
