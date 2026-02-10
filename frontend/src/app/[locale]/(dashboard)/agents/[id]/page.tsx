@@ -28,6 +28,7 @@ import {
   Trash2,
   XCircle,
   Zap,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1721,6 +1722,29 @@ export default function AgentDetailPage() {
                   {t("actions.stop")}
                 </Button>
               )}
+            </>
+          ) : (agent.status === "error" || agent.status === "warning") ? (
+            <>
+              <Button
+                onClick={() => handleStatusChange("active")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                {t("actions.restart")}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                onClick={() => setShowStopConfirm(true)}
+                disabled={isUpdating}
+              >
+                <Square className="w-4 h-4 mr-2" />
+                {t("actions.stop")}
+              </Button>
             </>
           ) : null}
         </div>

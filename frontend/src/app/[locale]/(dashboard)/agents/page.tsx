@@ -15,6 +15,7 @@ import {
   Loader2,
   Square,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import {
   ListPageSkeleton,
@@ -300,6 +301,33 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   {t("actions.stop")}
                 </Button>
               )}
+            </>
+          ) : (agent.status === "error" || agent.status === "warning") ? (
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1"
+                onClick={() => handleStatusChange("active")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                {t("actions.restart")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                onClick={() => setShowStopConfirm(true)}
+                disabled={isUpdating}
+              >
+                <Square className="w-4 h-4 mr-2" />
+                {t("actions.stop")}
+              </Button>
             </>
           ) : null}
           <Link href={`/agents/${agent.id}`}>

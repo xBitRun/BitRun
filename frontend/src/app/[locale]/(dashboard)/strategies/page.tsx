@@ -17,6 +17,7 @@ import {
   Filter,
   Loader2,
   Square,
+  RotateCcw,
 } from "lucide-react";
 import {
   ListPageSkeleton,
@@ -240,6 +241,33 @@ function StrategyCard({ strategy, onStatusChange, onDelete, t }: StrategyCardPro
                   {t("actions.stop")}
                 </Button>
               )}
+            </>
+          ) : (strategy.status === "error" || strategy.status === "warning") ? (
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1"
+                onClick={() => handleStatusChange("active")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                {t("actions.restart")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                onClick={() => setShowStopConfirm(true)}
+                disabled={isUpdating}
+              >
+                <Square className="w-4 h-4 mr-2" />
+                {t("actions.stop")}
+              </Button>
             </>
           ) : null}
           <Link href={`/strategies/${strategy.id}`}>
