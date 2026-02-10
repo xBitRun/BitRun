@@ -323,7 +323,6 @@ async def create_strategy(
     # Validate account ownership
     account_uuid = None
     if data.account_id:
-        from ...db.repositories.account import AccountRepository
         account_repo = AccountRepository(db)
         account = await account_repo.get_by_id(uuid.UUID(data.account_id))
         if not account or str(account.user_id) != user_id:
@@ -412,7 +411,6 @@ async def update_strategy(
         )
 
     from ...services.position_service import PositionService
-    from ...db.repositories.account import AccountRepository
     ps = PositionService(db=db)
 
     # Protect account_id change when positions are open + validate ownership
@@ -590,7 +588,6 @@ async def update_strategy_status(
     if new == "stopped" and data.close_positions:
         try:
             from ...services.position_service import PositionService
-            from ...db.repositories.account import AccountRepository
             from ...traders.ccxt_trader import create_trader_from_account
 
             ps = PositionService(db=db)
