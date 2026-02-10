@@ -49,6 +49,7 @@ class PromptBuilder:
         config: StrategyConfig,
         trading_mode: TradingMode = TradingMode.CONSERVATIVE,
         custom_prompt: str = "",
+        max_positions: int = 3,
     ):
         """
         Initialize prompt builder.
@@ -57,10 +58,12 @@ class PromptBuilder:
             config: Strategy configuration (includes language setting)
             trading_mode: Trading mode (aggressive/balanced/conservative)
             custom_prompt: Additional custom instructions
+            max_positions: Maximum concurrent positions (from Settings)
         """
         self.config = config
         self.trading_mode = trading_mode
         self.custom_prompt = custom_prompt
+        self.max_positions = max_positions
         self.risk_controls = config.risk_controls
         self.language = getattr(config, "language", "en") or "en"
         self._sys = get_system_templates(self.language)
@@ -97,13 +100,14 @@ class PromptBuilder:
         constraints = (
             f"{t['hard_constraints_header']}\n"
             f"{t['hard_constraints_desc']}\n"
-            f"- {t['constraint_max_positions']}: {rc.max_leverage} {t['concurrent']}\n"
+            f"- {t['constraint_max_positions']}: {self.max_positions} {t['concurrent']}\n"
             f"- {t['constraint_max_leverage']}: {rc.max_leverage}x\n"
             f"- {t['constraint_max_position_size']}: {rc.max_position_ratio * 100:.0f}% {t['of_equity_per_position']}\n"
             f"- {t['constraint_max_total_exposure']}: {rc.max_total_exposure * 100:.0f}% {t['of_equity']}\n"
             f"- {t['constraint_min_rr_ratio']}: 1:{rc.min_risk_reward_ratio}\n"
             f"- {t['constraint_max_drawdown']}: {rc.max_drawdown_percent * 100:.0f}%\n"
-            f"- {t['constraint_min_confidence']}: {rc.min_confidence}%"
+            f"- {t['constraint_min_confidence']}: {rc.min_confidence}%\n\n"
+            f"{t['position_sizing_note']}"
         )
         sections.append(constraints)
         

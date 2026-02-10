@@ -296,15 +296,18 @@ class BacktestEngine:
             position = await self.trader.get_position(symbol)
 
             # Decision logic
+            leverage = self.config.risk_controls.max_leverage
             if price > sma_20 * 1.01:  # 1% above SMA
                 if not position:
-                    # Open long
-                    size_usd = account.available_balance * self.config.risk_controls.max_position_ratio
+                    # Open long — max_position_ratio limits margin, multiply
+                    # by leverage to get the notional position value.
+                    max_margin = account.available_balance * self.config.risk_controls.max_position_ratio
+                    size_usd = max_margin * leverage
                     if size_usd > 100:  # Minimum position size
                         await self.trader.open_long(
                             symbol=symbol,
                             size_usd=size_usd,
-                            leverage=self.config.risk_controls.max_leverage,
+                            leverage=leverage,
                             stop_loss=price * 0.97,  # 3% stop loss
                             take_profit=price * 1.06,  # 6% take profit
                         )
@@ -313,13 +316,14 @@ class BacktestEngine:
 
             elif price < sma_20 * 0.99:  # 1% below SMA
                 if not position:
-                    # Open short
-                    size_usd = account.available_balance * self.config.risk_controls.max_position_ratio
+                    # Open short — same margin-based sizing
+                    max_margin = account.available_balance * self.config.risk_controls.max_position_ratio
+                    size_usd = max_margin * leverage
                     if size_usd > 100:
                         await self.trader.open_short(
                             symbol=symbol,
                             size_usd=size_usd,
-                            leverage=self.config.risk_controls.max_leverage,
+                            leverage=leverage,
                             stop_loss=price * 1.03,
                             take_profit=price * 0.94,
                         )

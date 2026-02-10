@@ -41,7 +41,7 @@ class RiskControls(BaseModel):
         default=0.2,
         ge=0.01,
         le=1.0,
-        description="Max single position as ratio of total equity"
+        description="Max margin per position as ratio of total equity"
     )
     max_total_exposure: float = Field(
         default=0.8,
@@ -91,7 +91,7 @@ class TradingDecision(BaseModel):
     position_size_usd: float = Field(
         default=0,
         ge=0,
-        description="Position value in USD"
+        description="Notional position value in USD (= margin × leverage)"
     )
     entry_price: Optional[float] = Field(
         None,
@@ -212,7 +212,7 @@ _DECISION_JSON_SCHEMA_EN = """{
       "symbol": "string - Trading pair symbol (e.g., 'BTC')",
       "action": "string - One of: open_long, open_short, close_long, close_short, hold, wait",
       "leverage": "integer - Leverage multiplier (1-50)",
-      "position_size_usd": "number - Position value in USD",
+      "position_size_usd": "number - Notional position value in USD (= margin × leverage). E.g. to use $40 margin at 20x leverage, set this to 800.",
       "entry_price": "number | null - Entry price for limit orders",
       "stop_loss": "number | null - Stop loss price",
       "take_profit": "number | null - Take profit price",
@@ -233,7 +233,7 @@ _DECISION_JSON_SCHEMA_ZH = """{
       "symbol": "string - 交易对符号（如 'BTC'）",
       "action": "string - 以下之一: open_long, open_short, close_long, close_short, hold, wait",
       "leverage": "integer - 杠杆倍数 (1-50)",
-      "position_size_usd": "number - 仓位价值（美元）",
+      "position_size_usd": "number - 仓位名义价值（美元）（= 保证金 × 杠杆）。例如使用 $40 保证金、20x 杠杆时，设为 800。",
       "entry_price": "number | null - 限价单入场价格",
       "stop_loss": "number | null - 止损价格",
       "take_profit": "number | null - 止盈价格",

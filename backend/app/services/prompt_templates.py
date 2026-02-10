@@ -64,14 +64,23 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         "hard_constraints_desc": "These limits are enforced by the execution engine. DO NOT exceed them:",
         "constraint_max_positions": "Maximum Positions",
         "constraint_max_leverage": "Maximum Leverage",
-        "constraint_max_position_size": "Maximum Position Size",
+        "constraint_max_position_size": "Maximum Margin Per Position",
         "constraint_max_total_exposure": "Maximum Total Exposure",
         "constraint_min_rr_ratio": "Minimum Risk/Reward Ratio",
         "constraint_max_drawdown": "Maximum Drawdown Threshold",
         "constraint_min_confidence": "Minimum Confidence to Execute",
-        "of_equity_per_position": "of equity per position",
+        "of_equity_per_position": "of equity as margin per position",
         "of_equity": "of equity",
         "concurrent": "concurrent",
+        "position_sizing_note": (
+            "IMPORTANT - Position Sizing with Leverage:\n"
+            "- `position_size_usd` is the NOTIONAL value (total position value), NOT the margin.\n"
+            "- Margin = position_size_usd / leverage.\n"
+            "- The \"Maximum Margin Per Position\" constraint limits the margin, not the notional value.\n"
+            "- Example: With $200 equity, 20% max margin ratio, and 20x leverage:\n"
+            "  margin cap = $200 × 20% = $40, so position_size_usd can be up to $40 × 20 = $800.\n"
+            "- Set position_size_usd = desired_margin × leverage to fully utilise the allowed margin."
+        ),
 
         # Section 4: Default trading frequency
         "default_trading_frequency": (
@@ -180,14 +189,23 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         "hard_constraints_desc": "以下限制由执行引擎强制执行，请勿超出：",
         "constraint_max_positions": "最大持仓数",
         "constraint_max_leverage": "最大杠杆倍数",
-        "constraint_max_position_size": "最大单仓比例",
+        "constraint_max_position_size": "单仓最大保证金比例",
         "constraint_max_total_exposure": "最大总敞口",
         "constraint_min_rr_ratio": "最低风险收益比",
         "constraint_max_drawdown": "最大回撤阈值",
         "constraint_min_confidence": "最低执行置信度",
-        "of_equity_per_position": "（占权益比例，每仓）",
+        "of_equity_per_position": "（占权益保证金比例，每仓）",
         "of_equity": "（占权益比例）",
         "concurrent": "（并发）",
+        "position_sizing_note": (
+            "重要 - 带杠杆的仓位计算：\n"
+            "- `position_size_usd` 是仓位的名义价值（总仓位价值），不是保证金。\n"
+            "- 保证金 = position_size_usd / 杠杆倍数。\n"
+            "- 「单仓最大保证金比例」约束的是保证金，而非名义价值。\n"
+            "- 示例：$200 权益、20% 最大保证金比例、20x 杠杆：\n"
+            "  保证金上限 = $200 × 20% = $40，因此 position_size_usd 最高可设为 $40 × 20 = $800。\n"
+            "- 设置 position_size_usd = 期望保证金 × 杠杆倍数，以充分利用允许的保证金额度。"
+        ),
 
         # Section 4: Default trading frequency
         "default_trading_frequency": (

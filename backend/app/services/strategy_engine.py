@@ -120,6 +120,7 @@ class StrategyEngine:
             config=self.config,
             trading_mode=TradingMode(strategy.trading_mode),
             custom_prompt=self.config.custom_prompt,
+            max_positions=self._settings.default_max_positions,
         )
         self.decision_parser = DecisionParser(risk_controls=self.risk_controls)
 
@@ -906,8 +907,10 @@ class StrategyEngine:
                         "using stale state"
                     )
 
-            # Apply position size limits
-            position_size = self._apply_position_limits(d.position_size_usd, account)
+            # Apply position size limits (margin-based)
+            position_size = self._apply_position_limits(
+                d.position_size_usd, account, leverage=d.leverage,
+            )
             exec_result["actual_size_usd"] = position_size
 
             if d.position_size_usd != position_size:
@@ -915,7 +918,7 @@ class StrategyEngine:
                     f"[Execution] Position size capped for {d.symbol}: "
                     f"${d.position_size_usd:.2f} -> ${position_size:.2f} "
                     f"(equity=${account.equity:.2f}, available=${account.available_balance:.2f}, "
-                    f"max_ratio={self.risk_controls.max_position_ratio})"
+                    f"leverage={d.leverage}x, max_ratio={self.risk_controls.max_position_ratio})"
                 )
 
             # Check minimum position size to avoid exchange rejections
@@ -985,9 +988,27 @@ class StrategyEngine:
         self,
         requested_size: float,
         account: AccountState,
+        leverage: int = 1,
     ) -> float:
-        """Apply risk limits to position size, respecting capital allocation."""
+        """
+        Apply risk limits to position size, respecting capital allocation.
+
+        All limits are margin-based: ``max_position_ratio`` caps the **margin**
+        (i.e. position_value / leverage) as a fraction of equity, not the raw
+        notional value.  This ensures that high-leverage positions can still
+        utilise a meaningful share of the account.
+
+        Args:
+            requested_size: AI-requested position notional value (USD).
+            account: Current account state.
+            leverage: Leverage multiplier for this position (used to convert
+                      between notional and margin).
+
+        Returns:
+            Final capped notional position size (USD).
+        """
         rc = self.risk_controls
+        lev = max(leverage, 1)
 
         # If strategy has allocated capital, use it as the equity base
         effective_equity = account.equity
@@ -995,11 +1016,15 @@ class StrategyEngine:
         if effective_capital is not None:
             effective_equity = effective_capital
 
-        # Max size based on equity ratio (uses allocated capital if set)
-        max_by_ratio = effective_equity * rc.max_position_ratio
+        # max_position_ratio limits MARGIN (not notional).
+        # Convert the margin cap back to a notional cap for comparison.
+        max_margin_by_ratio = effective_equity * rc.max_position_ratio
+        max_by_ratio = max_margin_by_ratio * lev
 
-        # Max based on available balance (account-level, keep 5% buffer)
-        max_by_balance = account.available_balance * 0.95
+        # Available balance represents remaining margin capacity.
+        # Keep a 5% safety buffer and convert to notional via leverage.
+        max_margin_by_balance = account.available_balance * 0.95
+        max_by_balance = max_margin_by_balance * lev
 
         # Take minimum
         max_size = min(max_by_ratio, max_by_balance)
@@ -1007,8 +1032,11 @@ class StrategyEngine:
 
         logger.debug(
             f"[Position Limits] requested=${requested_size:.2f} "
-            f"effective_equity=${effective_equity:.2f} "
-            f"max_by_ratio=${max_by_ratio:.2f} max_by_balance=${max_by_balance:.2f} "
+            f"effective_equity=${effective_equity:.2f} leverage={lev}x "
+            f"max_margin_by_ratio=${max_margin_by_ratio:.2f} "
+            f"max_by_ratio=${max_by_ratio:.2f} "
+            f"max_margin_by_balance=${max_margin_by_balance:.2f} "
+            f"max_by_balance=${max_by_balance:.2f} "
             f"-> final=${final_size:.2f}"
         )
 
