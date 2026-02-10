@@ -29,6 +29,9 @@ import {
   XCircle,
   Zap,
   RotateCcw,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -357,12 +360,7 @@ function OverviewTab({
               <p className="text-xs text-muted-foreground mt-1">{t("overview.noRecentTradesHint")}</p>
             </div>
           ) : (
-            <div className={cn("relative transition-opacity", isTradeValidating && "opacity-50 pointer-events-none")}>
-              {isTradeValidating && (
-                <div className="absolute top-2 right-2 z-10">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                </div>
-              )}
+            <div className="relative">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -451,7 +449,7 @@ function OverviewTab({
                 size="icon"
                 className="w-8 h-8"
                 onClick={() => goToTradePage(tradePage - 1)}
-                disabled={tradePage <= 1 || isTradeValidating}
+                disabled={tradePage <= 1}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -480,7 +478,6 @@ function OverviewTab({
                       size="icon"
                       className="w-8 h-8 text-xs"
                       onClick={() => goToTradePage(p)}
-                      disabled={isTradeValidating}
                     >
                       {p}
                     </Button>
@@ -492,7 +489,7 @@ function OverviewTab({
                 size="icon"
                 className="w-8 h-8"
                 onClick={() => goToTradePage(tradePage + 1)}
-                disabled={tradePage >= tradeTotalPages || isTradeValidating}
+                disabled={tradePage >= tradeTotalPages}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -704,6 +701,74 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Raw AI Response Viewer
+function RawResponseViewer({
+  rawResponse,
+  t,
+}: {
+  rawResponse: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const formattedResponse = (() => {
+    try {
+      const parsed = JSON.parse(rawResponse);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return rawResponse;
+    }
+  })();
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(rawResponse);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: ignore
+    }
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg bg-muted/20 border border-border/30 hover:bg-muted/40 transition-colors text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Code className="w-4 h-4" />
+            <span className="font-medium">{t("decisions.rawResponse")}</span>
+            <span className="text-xs opacity-70">({t("decisions.rawResponseHint")})</span>
+          </div>
+          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="relative mt-2 rounded-lg border border-border/30 bg-muted/10">
+          <div className="absolute top-2 right-2 z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <><Check className="w-3.5 h-3.5 mr-1" />{t("decisions.copied")}</>
+              ) : (
+                <><Copy className="w-3.5 h-3.5 mr-1" />{t("decisions.copyRaw")}</>
+              )}
+            </Button>
+          </div>
+          <pre className="p-4 pr-20 text-xs font-mono leading-relaxed overflow-auto max-h-[400px] whitespace-pre-wrap break-words text-muted-foreground">
+            {formattedResponse}
+          </pre>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -957,12 +1022,7 @@ function DecisionsTab({
 
       <div ref={listTopRef} />
 
-      <div className={cn("relative transition-opacity", isValidating && !isLoading && "opacity-50 pointer-events-none")}>
-        {isValidating && !isLoading && (
-          <div className="absolute top-2 right-2 z-10">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          </div>
-        )}
+      <div className="relative">
 
       {decisions.map((decision) => {
         const isHighlighted = highlightDecisionId === decision.id;
@@ -1254,6 +1314,11 @@ function DecisionsTab({
                   </div>
                 )}
 
+                {/* Raw AI Response */}
+                {decision.raw_response && (
+                  <RawResponseViewer rawResponse={decision.raw_response} t={t} />
+                )}
+
                 {/* AI Info */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
                   <span>{t("decisions.model")}: {decision.ai_model}</span>
@@ -1278,7 +1343,7 @@ function DecisionsTab({
             size="icon"
             className="w-8 h-8"
             onClick={() => goToPage(page - 1)}
-            disabled={page <= 1 || isValidating}
+            disabled={page <= 1}
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -1307,7 +1372,6 @@ function DecisionsTab({
                   size="icon"
                   className="w-8 h-8 text-xs"
                   onClick={() => goToPage(p)}
-                  disabled={isValidating}
                 >
                   {p}
                 </Button>
@@ -1319,7 +1383,7 @@ function DecisionsTab({
             size="icon"
             className="w-8 h-8"
             onClick={() => goToPage(page + 1)}
-            disabled={page >= totalPages || isValidating}
+            disabled={page >= totalPages}
           >
             <ChevronRight className="w-4 h-4" />
           </Button>

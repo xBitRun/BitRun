@@ -150,6 +150,10 @@ class DecisionParser:
                 "next_review_minutes": 60,
             })
 
+        logger.warning(
+            f"[DecisionParser] Failed to extract JSON from response. "
+            f"Response length={len(text)}, preview: {text[:500]}"
+        )
         return None
 
     def _extract_text_before_json(self, text: str) -> str:
@@ -177,8 +181,15 @@ class DecisionParser:
             }
 
         # Parse decisions
+        raw_decisions = data.get("decisions", [])
+        if not raw_decisions:
+            logger.warning(
+                "[DecisionParser] AI returned empty decisions array. "
+                f"chain_of_thought_length={len(data.get('chain_of_thought', ''))}"
+            )
+
         decisions = []
-        for d in data.get("decisions", []):
+        for d in raw_decisions:
             try:
                 # Normalize action
                 action_str = d.get("action", "hold").lower().replace("-", "_")
@@ -203,6 +214,17 @@ class DecisionParser:
                     f"raw={d}"
                 )
                 continue
+
+        if raw_decisions and not decisions:
+            logger.error(
+                f"[DecisionParser] ALL {len(raw_decisions)} decisions failed validation! "
+                f"raw_data={raw_decisions}"
+            )
+        elif len(decisions) < len(raw_decisions):
+            logger.warning(
+                f"[DecisionParser] {len(raw_decisions) - len(decisions)}/{len(raw_decisions)} "
+                f"decisions were skipped during parsing"
+            )
 
         return DecisionResponse(
             chain_of_thought=data.get("chain_of_thought", ""),

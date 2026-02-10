@@ -436,6 +436,7 @@ export interface DecisionResponse {
   ai_model: string;
   tokens_used: number;
   latency_ms: number;
+  raw_response?: string | null;
   market_snapshot?: MarketSnapshotItem[] | null;
   account_snapshot?: AccountSnapshotItem | null;
 }

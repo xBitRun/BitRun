@@ -39,6 +39,9 @@ class DecisionResponse(BaseModel):
     # Account state snapshot at the time of decision
     account_snapshot: Optional[dict] = None
 
+    # Raw AI response for debugging
+    raw_response: Optional[str] = None
+
     # Multi-model debate fields
     is_debate: bool = False
     debate_models: Optional[list] = None
@@ -200,6 +203,7 @@ def _decision_to_response(decision) -> DecisionResponse:
         ai_model=decision.ai_model,
         tokens_used=decision.tokens_used,
         latency_ms=decision.latency_ms,
+        raw_response=decision.raw_response,
         market_snapshot=decision.market_snapshot,
         account_snapshot=decision.account_snapshot,
         is_debate=decision.is_debate,

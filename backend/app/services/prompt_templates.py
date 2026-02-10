@@ -122,6 +122,7 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             'For "hold" or "wait" actions, set position_size_usd to 0',
             'For "close_long" or "close_short" actions, set leverage and position_size_usd to match the existing position being closed',
             "Set next_review_minutes based on market volatility",
+            'NEVER return an empty decisions array. Always include at least one decision per symbol (use "hold" or "wait" if no trade opportunity)',
         ],
 
         # Section 8: Additional instructions
@@ -248,6 +249,7 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             '对于 "close_long" 或 "close_short" 操作，leverage 和 position_size_usd 应与被平仓的现有持仓一致',
             "根据市场波动性设置 next_review_minutes",
             "chain_of_thought、market_assessment 和 reasoning 字段必须使用中文书写",
+            '绝对不要返回空的 decisions 数组。每个关注的交易对至少返回一个决策（如果没有交易机会，使用 "hold" 或 "wait"）',
         ],
 
         # Section 8: Additional instructions
