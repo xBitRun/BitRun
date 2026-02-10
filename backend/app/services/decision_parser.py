@@ -195,10 +195,15 @@ class DecisionParser:
                 action_str = d.get("action", "hold").lower().replace("-", "_")
                 action = ActionType(action_str)
 
+                # For hold/wait, leverage is irrelevant; clamp to 1 to satisfy ge=1
+                raw_leverage = int(d.get("leverage", 1))
+                if raw_leverage < 1:
+                    raw_leverage = 1
+
                 decision = TradingDecision(
                     symbol=d.get("symbol", "").upper(),
                     action=action,
-                    leverage=int(d.get("leverage", 1)),
+                    leverage=raw_leverage,
                     position_size_usd=float(d.get("position_size_usd", 0)),
                     entry_price=d.get("entry_price"),
                     stop_loss=d.get("stop_loss"),
@@ -208,7 +213,7 @@ class DecisionParser:
                     reasoning=d.get("reasoning", "No reasoning provided"),
                 )
                 decisions.append(decision)
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError, ValidationError) as e:
                 logger.warning(
                     f"[DecisionParser] Skipping invalid decision: {e} | "
                     f"raw={d}"
