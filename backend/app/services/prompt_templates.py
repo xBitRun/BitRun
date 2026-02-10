@@ -265,9 +265,9 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         # Positions section
         "current_positions": "## Current Positions",
         "no_positions": "No open positions.",
-        "pos_size": "Size",
+        "pos_value": "Position Value",
+        "pos_qty": "Quantity",
         "pos_entry": "Entry",
-        "pos_mark": "Mark",
         "pos_leverage": "Leverage",
         "pos_pnl": "Unrealized P/L",
         "pos_liquidation": "Liquidation",
@@ -340,9 +340,9 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         # Positions section
         "current_positions": "## 当前持仓",
         "no_positions": "暂无持仓。",
-        "pos_size": "仓位",
+        "pos_value": "仓位价值",
+        "pos_qty": "仓位数量",
         "pos_entry": "开仓价",
-        "pos_mark": "标记价",
         "pos_leverage": "杠杆",
         "pos_pnl": "未实现盈亏",
         "pos_liquidation": "强平价",

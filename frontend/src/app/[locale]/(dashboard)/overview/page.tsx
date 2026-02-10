@@ -397,25 +397,25 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">
+                          {tPositions('sizeValue')}
+                        </span>
+                        <p className="font-mono">
+                          ${position.sizeUsd.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">
+                          {tPositions('sizeQty')}
+                        </span>
+                        <p className="font-mono">{position.size}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">
                           {tPositions('entry')}
                         </span>
                         <p className="font-mono">
                           ${position.entryPrice.toLocaleString()}
                         </p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">
-                          {tPositions('mark')}
-                        </span>
-                        <p className="font-mono">
-                          ${position.markPrice.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">
-                          {tPositions('size')}
-                        </span>
-                        <p className="font-mono">{position.size}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">

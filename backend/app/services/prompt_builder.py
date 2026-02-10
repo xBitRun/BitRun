@@ -297,8 +297,9 @@ Timestamp: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC
             liq_str = f"${pos.liquidation_price:,.2f}" if pos.liquidation_price is not None else "N/A"
             pos_lines.append(f"""
 ### {pos.symbol} ({pos.side.upper()}) {profit_emoji}
-- {u['pos_size']}: {pos.size:.4f} (${pos.size_usd:,.2f})
-- {u['pos_entry']}: ${pos.entry_price:,.2f} | {u['pos_mark']}: ${pos.mark_price:,.2f}
+- {u['pos_value']}: ${pos.size_usd:,.2f}
+- {u['pos_qty']}: {pos.size:.4f}
+- {u['pos_entry']}: ${pos.entry_price:,.2f}
 - {u['pos_leverage']}: {pos.leverage}x
 - {u['pos_pnl']}: ${pos.unrealized_pnl:+,.2f} ({pos.unrealized_pnl_percent:+.2f}%)
 - {u['pos_liquidation']}: {liq_str}""")

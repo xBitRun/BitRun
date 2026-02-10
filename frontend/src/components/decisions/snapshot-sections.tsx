@@ -104,16 +104,16 @@ export function AccountSnapshotSection({
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                       <div>
-                        <span className="text-muted-foreground">{t("decisions.accountSnapshot.size")}</span>
+                        <span className="text-muted-foreground">{t("decisions.accountSnapshot.sizeValue")}</span>
                         <p className="font-mono">${pos.size_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{t("decisions.accountSnapshot.sizeQty")}</span>
+                        <p className="font-mono">{pos.size}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("decisions.accountSnapshot.entry")}</span>
                         <p className="font-mono">${pos.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t("decisions.accountSnapshot.mark")}</span>
-                        <p className="font-mono">${pos.mark_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("decisions.accountSnapshot.leverage")}</span>
