@@ -135,8 +135,9 @@ describe("FloatingSetupGuide", () => {
   });
 
   it("should not render when all required steps are complete", () => {
-    // Add items to make steps complete
+    // Add items to make all 3 steps complete (account, models, agent)
     mockAccounts.push({ id: "1" });
+    mockModels.push({ id: "1" });
     mockStrategies.push({ id: "1" });
 
     const { container } = render(<FloatingSetupGuide />);

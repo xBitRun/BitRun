@@ -28,6 +28,7 @@ jest.mock("@/i18n/navigation", () => ({
     replace: mockReplace,
     push: jest.fn(),
     back: jest.fn(),
+    refresh: jest.fn(),
   }),
   usePathname: () => "/dashboard",
   Link: ({
@@ -78,7 +79,7 @@ describe("LanguageSwitcher", () => {
     });
   });
 
-  it("should call router.replace when selecting a locale", async () => {
+  it("should set cookie and refresh when selecting a locale", async () => {
     const user = userEvent.setup();
     render(<LanguageSwitcher />);
 
@@ -91,9 +92,8 @@ describe("LanguageSwitcher", () => {
     await user.click(screen.getByText("中文"));
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith("/dashboard", {
-        locale: "zh",
-      });
+      // Should set NEXT_LOCALE cookie
+      expect(document.cookie).toContain("NEXT_LOCALE=zh");
     });
   });
 

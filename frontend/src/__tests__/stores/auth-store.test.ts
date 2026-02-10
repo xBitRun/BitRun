@@ -22,6 +22,15 @@ jest.mock("@/lib/api", () => ({
     refreshAccessToken: jest.fn(() => Promise.resolve(false)),
   },
   AuthError: class AuthError extends Error {},
+  ApiError: class ApiError extends Error {
+    code: string;
+    details: Record<string, unknown> | null;
+    constructor(message: string, code = "UNKNOWN", details: Record<string, unknown> | null = null) {
+      super(message);
+      this.code = code;
+      this.details = details;
+    }
+  },
 }));
 
 // Get references to the mocked functions
@@ -130,8 +139,7 @@ describe("Auth Store", () => {
   });
 
   it("should set error on login failure", async () => {
-    const errorMessage = "Invalid credentials";
-    mockAuthApi.login.mockRejectedValue(new Error(errorMessage));
+    mockAuthApi.login.mockRejectedValue(new Error("Invalid credentials"));
 
     await act(async () => {
       try {
@@ -145,7 +153,8 @@ describe("Auth Store", () => {
     });
 
     const state = useAuthStore.getState();
-    expect(state.error).toBe(errorMessage);
+    // Store now sets a structured AuthErrorInfo object instead of a string
+    expect(state.error).toEqual({ code: "LOGIN_FAILED" });
     expect(state.isAuthenticated).toBe(false);
     expect(state.isLoading).toBe(false);
   });

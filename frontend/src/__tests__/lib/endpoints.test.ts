@@ -247,11 +247,11 @@ describe("decisionsApi", () => {
     expect(mockedApi.get).toHaveBeenCalledWith("/decisions/recent", { params: { limit: 10 } });
   });
 
-  it("listByStrategy should include offset and executed_only", async () => {
+  it("listByStrategy should include offset and execution_filter", async () => {
     mockedApi.get.mockResolvedValue([]);
-    await decisionsApi.listByStrategy("s1", 5, 10, true);
+    await decisionsApi.listByStrategy("s1", 5, 10, "executed");
     expect(mockedApi.get).toHaveBeenCalledWith("/decisions/strategy/s1", {
-      params: { limit: 5, offset: 10, executed_only: true },
+      params: { limit: 5, offset: 10, execution_filter: "executed" },
     });
   });
 

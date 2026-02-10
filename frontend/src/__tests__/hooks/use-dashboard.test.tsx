@@ -192,9 +192,13 @@ describe("useAllPositions", () => {
     jest.clearAllMocks();
   });
 
-  it("should fetch and flatten positions across accounts", async () => {
-    mockedAccountsApi.list.mockResolvedValue(mockAccounts as never);
-    mockedAccountsApi.getBalance.mockResolvedValue(mockBalance as never);
+  it("should fetch and flatten positions via dashboardApi", async () => {
+    mockedDashboardApi.getFullStats.mockResolvedValue({
+      ...mockFullStatsResponse,
+      positions: [
+        { symbol: "BTC", side: "long", size: 0.5, size_usd: 15000, entry_price: 30000, mark_price: 31500, leverage: 3, unrealized_pnl: 750, unrealized_pnl_percent: 5.0, liquidation_price: 25000, account_name: "Binance Main", exchange: "binance" },
+      ],
+    } as never);
 
     const { result } = renderHook(() => useAllPositions(), {
       wrapper: createWrapper(),
@@ -202,24 +206,19 @@ describe("useAllPositions", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
-    expect(result.current.data?.length).toBe(1); // Only 1 connected account
+    expect(result.current.data?.length).toBe(1);
     expect(result.current.data?.[0].symbol).toBe("BTC");
     expect(result.current.data?.[0].accountName).toBe("Binance Main");
   });
 
   it("should sort positions by absolute PnL descending", async () => {
-    const twoConnected = mockAccounts.map((a) => ({ ...a, is_connected: true }));
-    const balance2 = {
-      ...mockBalance,
-      account_id: "acc-2",
+    mockedDashboardApi.getFullStats.mockResolvedValue({
+      ...mockFullStatsResponse,
       positions: [
-        { symbol: "ETH", side: "short" as const, size: 10, size_usd: 20000, entry_price: 2000, mark_price: 1800, leverage: 2, unrealized_pnl: 2000, unrealized_pnl_percent: 10, liquidation_price: 2500 },
+        { symbol: "BTC", side: "long", size: 0.5, size_usd: 15000, entry_price: 30000, mark_price: 31500, leverage: 3, unrealized_pnl: 750, unrealized_pnl_percent: 5.0, liquidation_price: 25000, account_name: "Binance", exchange: "binance" },
+        { symbol: "ETH", side: "short", size: 10, size_usd: 20000, entry_price: 2000, mark_price: 1800, leverage: 2, unrealized_pnl: 2000, unrealized_pnl_percent: 10, liquidation_price: 2500, account_name: "OKX", exchange: "okx" },
       ],
-    };
-    mockedAccountsApi.list.mockResolvedValue(twoConnected as never);
-    mockedAccountsApi.getBalance
-      .mockResolvedValueOnce(mockBalance as never)
-      .mockResolvedValueOnce(balance2 as never);
+    } as never);
 
     const { result } = renderHook(() => useAllPositions(), {
       wrapper: createWrapper(),
@@ -232,10 +231,8 @@ describe("useAllPositions", () => {
     expect(result.current.data?.[1].symbol).toBe("BTC");
   });
 
-  it("should handle balance fetch failure gracefully", async () => {
-    const connected = [{ ...mockAccounts[0], is_connected: true }];
-    mockedAccountsApi.list.mockResolvedValue(connected as never);
-    mockedAccountsApi.getBalance.mockRejectedValue(new Error("Balance error"));
+  it("should handle fetch failure gracefully", async () => {
+    mockedDashboardApi.getFullStats.mockRejectedValue(new Error("Server error"));
 
     const { result } = renderHook(() => useAllPositions(), {
       wrapper: createWrapper(),
@@ -280,10 +277,12 @@ describe("useAccountsWithBalances", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.data).toBeDefined());
+    await waitFor(() => {
+      expect(result.current.data).toBeDefined();
+      expect(result.current.data?.[0].error).toBe("Timeout");
+    });
 
     expect(result.current.data?.[0].balance).toBeNull();
-    expect(result.current.data?.[0].error).toBe("Timeout");
   });
 });
 

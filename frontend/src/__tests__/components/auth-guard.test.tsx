@@ -5,13 +5,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-// Mock next/navigation
+// Mock i18n navigation (auth-guard imports from @/i18n/navigation, not next/navigation)
 const mockReplace = jest.fn();
-jest.mock("next/navigation", () => ({
+jest.mock("@/i18n/navigation", () => ({
   useRouter: () => ({
     replace: mockReplace,
+    push: jest.fn(),
+    back: jest.fn(),
+    refresh: jest.fn(),
   }),
   usePathname: () => "/en/dashboard",
+  Link: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
 }));
 
 // Mock token manager

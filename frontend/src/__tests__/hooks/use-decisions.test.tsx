@@ -157,7 +157,12 @@ describe("useStrategyDecisions", () => {
     const strategyDecisions = mockDecisions.filter(
       (d) => d.strategy_id === "strategy-1"
     );
-    mockedDecisionsApi.listByStrategy.mockResolvedValue(strategyDecisions);
+    mockedDecisionsApi.listByStrategy.mockResolvedValue({
+      items: strategyDecisions,
+      total: strategyDecisions.length,
+      limit: 10,
+      offset: 0,
+    });
 
     const { result } = renderHook(
       () => useStrategyDecisions("strategy-1"),
@@ -168,9 +173,12 @@ describe("useStrategyDecisions", () => {
 
     expect(mockedDecisionsApi.listByStrategy).toHaveBeenCalledWith(
       "strategy-1",
-      20
+      10,
+      0,
+      "all",
+      undefined
     );
-    expect(result.current.data?.length).toBe(2);
+    expect(result.current.data?.items?.length).toBe(2);
   });
 
   it("should not fetch when strategyId is null", async () => {
@@ -265,7 +273,12 @@ describe("useLatestDecision", () => {
   });
 
   it("should return the latest decision for a strategy", async () => {
-    mockedDecisionsApi.listByStrategy.mockResolvedValue([mockDecision]);
+    mockedDecisionsApi.listByStrategy.mockResolvedValue({
+      items: [mockDecision],
+      total: 1,
+      limit: 1,
+      offset: 0,
+    });
 
     const { result } = renderHook(() => useLatestDecision("strategy-1"), {
       wrapper: createWrapper(),
@@ -275,13 +288,21 @@ describe("useLatestDecision", () => {
 
     expect(mockedDecisionsApi.listByStrategy).toHaveBeenCalledWith(
       "strategy-1",
-      1
+      1,
+      0,
+      "all",
+      undefined
     );
     expect(result.current?.id).toBe("decision-1");
   });
 
   it("should return null when no decisions", async () => {
-    mockedDecisionsApi.listByStrategy.mockResolvedValue([]);
+    mockedDecisionsApi.listByStrategy.mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 1,
+      offset: 0,
+    });
 
     const { result } = renderHook(() => useLatestDecision("strategy-1"), {
       wrapper: createWrapper(),

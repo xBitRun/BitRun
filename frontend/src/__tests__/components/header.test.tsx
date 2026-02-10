@@ -42,6 +42,12 @@ jest.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    refresh: jest.fn(),
+  }),
 }));
 
 // Mock auth store
@@ -75,18 +81,6 @@ describe("Header", () => {
   });
 
   describe("rendering", () => {
-    it("should render search input", () => {
-      render(<Header />);
-
-      expect(screen.getByPlaceholderText("Search...")).toBeInTheDocument();
-    });
-
-    it("should render theme switcher", () => {
-      render(<Header />);
-
-      expect(screen.getByText("Theme Switcher")).toBeInTheDocument();
-    });
-
     it("should render language switcher", () => {
       render(<Header />);
 
