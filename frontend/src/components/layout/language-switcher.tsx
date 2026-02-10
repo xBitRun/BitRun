@@ -1,7 +1,8 @@
 "use client";
 
+import { useTransition } from "react";
 import { useLocale } from "next-intl";
-import { useRouter, usePathname } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,10 +22,16 @@ const locales: { code: Locale; name: string; flag: string }[] = [
 export function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
 
   const handleLocaleChange = (newLocale: Locale) => {
-    router.replace(pathname, { locale: newLocale });
+    // Set NEXT_LOCALE cookie so middleware resolves the correct locale
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    // Refresh inside a transition to invalidate the entire Router Cache
+    // and avoid triggering Suspense boundaries (global loading flash)
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const currentLocale = locales.find((l) => l.code === locale);
