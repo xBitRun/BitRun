@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { format } from "date-fns";
 import {
   FlaskConical,
   Play,
   TrendingUp,
   TrendingDown,
-  Calendar,
   Loader2,
   BarChart3,
   Target,
@@ -59,6 +59,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { useStrategies, useRunBacktest, useBacktestSymbols } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -1186,8 +1187,8 @@ export default function BacktestPage() {
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
   const [pairOpen, setPairOpen] = useState(false);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [initialBalance, setInitialBalance] = useState<string>("10000");
 
   // Results state
@@ -1216,8 +1217,8 @@ export default function BacktestPage() {
     try {
       const result = await runBacktest({
         strategy_id: selectedAgent,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: format(startDate, "yyyy-MM-dd"),
+        end_date: format(endDate, "yyyy-MM-dd"),
         initial_balance: parseFloat(initialBalance),
         symbols: selectedSymbols,
         exchange: selectedExchange,
@@ -1386,29 +1387,24 @@ export default function BacktestPage() {
                   <Label className="text-xs text-muted-foreground">
                     {t("startDate")}
                   </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="bg-muted/50 pl-10"
-                    />
-                  </div>
+                  <DatePicker
+                    value={startDate}
+                    onChange={setStartDate}
+                    placeholder={t("startDate")}
+                    toDate={endDate}
+                  />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">
                     {t("endDate")}
                   </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="bg-muted/50 pl-10"
-                    />
-                  </div>
+                  <DatePicker
+                    value={endDate}
+                    onChange={setEndDate}
+                    placeholder={t("endDate")}
+                    fromDate={startDate}
+                    toDate={new Date()}
+                  />
                 </div>
               </div>
             </div>
