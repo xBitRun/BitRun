@@ -637,8 +637,14 @@ export interface DashboardStatsResponse {
   positions: Array<{
     symbol: string;
     side: string;
+    size: number;
     size_usd: number;
+    entry_price: number;
+    mark_price: number;
+    leverage: number;
     unrealized_pnl: number;
+    unrealized_pnl_percent: number;
+    liquidation_price?: number | null;
     account_name: string;
     exchange: string;
   }>;

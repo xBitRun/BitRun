@@ -25,11 +25,17 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 # ==================== Response Models ====================
 
 class PositionSummary(BaseModel):
-    """Summary of a position"""
+    """Summary of a position (includes detail fields for frontend reuse)"""
     symbol: str
     side: str
+    size: float = 0.0
     size_usd: float
+    entry_price: float = 0.0
+    mark_price: float = 0.0
+    leverage: float = 1.0
     unrealized_pnl: float
+    unrealized_pnl_percent: float = 0.0
+    liquidation_price: Optional[float] = None
     account_name: str
     exchange: str
 
@@ -126,7 +132,48 @@ async def get_dashboard_stats(
     connected_accounts = [a for a in accounts if a.is_connected]
 
     async def _fetch_single_account(account: Any) -> Optional[tuple]:
-        """Fetch account state for a single account. Returns (account, state) or None."""
+        """Fetch account state for a single account. Returns (account, state) or None.
+
+        Optimisation: check per-account Redis balance cache before hitting the
+        exchange API.  The ``/accounts/{id}/balance`` endpoint already populates
+        this cache (10 s TTL), so we can often avoid an expensive exchange
+        round-trip.
+        """
+        from ...traders.base import AccountState, Position as TraderPosition
+
+        # --- Try per-account balance cache first ---
+        try:
+            redis = await get_redis_service()
+            cached = await redis.get_cached_account_balance(str(account.id))
+            if cached:
+                positions = [
+                    TraderPosition(
+                        symbol=p.get("symbol", ""),
+                        side=p.get("side", "long"),
+                        size=p.get("size", 0),
+                        size_usd=p.get("size_usd", 0),
+                        entry_price=p.get("entry_price", 0),
+                        mark_price=p.get("mark_price", 0),
+                        leverage=int(p.get("leverage", 1)),
+                        unrealized_pnl=p.get("unrealized_pnl", 0),
+                        unrealized_pnl_percent=p.get("unrealized_pnl_percent", 0),
+                        liquidation_price=p.get("liquidation_price"),
+                    )
+                    for p in cached.get("positions", [])
+                ]
+                state = AccountState(
+                    equity=cached.get("equity", 0),
+                    available_balance=cached.get("available_balance", 0),
+                    total_margin_used=cached.get("total_margin_used", 0),
+                    unrealized_pnl=cached.get("unrealized_pnl", 0),
+                    positions=positions,
+                )
+                logger.debug(f"Dashboard using cached balance for account {account.id}")
+                return (account, state)
+        except Exception as e:
+            logger.debug(f"Cache lookup failed for account {account.id}: {e}")
+
+        # --- Cache miss: fetch from exchange ---
         try:
             credentials = await account_repo.get_decrypted_credentials(
                 account.id, uuid.UUID(user_id)
@@ -141,6 +188,40 @@ async def get_dashboard_stats(
             try:
                 await trader.initialize()
                 state = await trader.get_account_state()
+
+                # Write result to per-account cache so subsequent
+                # requests (including /accounts/{id}/balance) benefit.
+                try:
+                    redis = await get_redis_service()
+                    await redis.cache_account_balance(
+                        str(account.id),
+                        {
+                            "account_id": str(account.id),
+                            "equity": state.equity,
+                            "available_balance": state.available_balance,
+                            "total_margin_used": state.total_margin_used,
+                            "unrealized_pnl": state.unrealized_pnl,
+                            "positions": [
+                                {
+                                    "symbol": p.symbol,
+                                    "side": p.side,
+                                    "size": p.size,
+                                    "size_usd": p.size_usd,
+                                    "entry_price": p.entry_price,
+                                    "mark_price": p.mark_price,
+                                    "leverage": p.leverage,
+                                    "unrealized_pnl": p.unrealized_pnl,
+                                    "unrealized_pnl_percent": p.unrealized_pnl_percent,
+                                    "liquidation_price": p.liquidation_price,
+                                }
+                                for p in state.positions
+                            ],
+                        },
+                        ttl=10,
+                    )
+                except Exception:
+                    pass  # Non-critical
+
                 return (account, state)
             finally:
                 await trader.close()
@@ -170,8 +251,14 @@ async def get_dashboard_stats(
             all_positions.append(PositionSummary(
                 symbol=pos.symbol,
                 side=pos.side,
+                size=pos.size,
                 size_usd=pos.size_usd,
+                entry_price=pos.entry_price,
+                mark_price=pos.mark_price,
+                leverage=float(pos.leverage),
                 unrealized_pnl=pos.unrealized_pnl,
+                unrealized_pnl_percent=pos.unrealized_pnl_percent,
+                liquidation_price=pos.liquidation_price,
                 account_name=account.name,
                 exchange=account.exchange,
             ))

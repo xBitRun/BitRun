@@ -2,13 +2,19 @@
  * Dashboard Hooks
  *
  * Aggregates data from multiple sources for the dashboard.
+ *
+ * Optimisation: `useDashboardStats` fetches everything once from the backend
+ * `/dashboard/stats` endpoint (which already returns positions).
+ * `useAllPositions` derives its data from the same response via a shared SWR
+ * cache key, eliminating redundant per-account balance requests.
  */
 
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { accountsApi, strategiesApi, dashboardApi } from "@/lib/api";
 import type {
   AccountResponse,
   AccountBalanceResponse,
+  DashboardStatsResponse,
   ActivityFeedResponse,
 } from "@/lib/api";
 
@@ -52,6 +58,10 @@ export interface Position {
   liquidationPrice?: number;
 }
 
+// Shared SWR key for raw dashboard positions (written by useDashboardStats,
+// consumed by useAllPositions).
+const POSITIONS_CACHE_KEY = "/dashboard/positions";
+
 // ==================== Dashboard Stats Hook ====================
 
 /**
@@ -60,6 +70,31 @@ export interface Position {
  * First tries to use the backend aggregation endpoint for efficiency.
  * Falls back to client-side aggregation if the backend endpoint fails.
  */
+/**
+ * Helper: convert backend position summary to frontend Position type.
+ */
+function mapBackendPositions(
+  positions: DashboardStatsResponse["positions"]
+): Position[] {
+  return positions
+    .map((p) => ({
+      accountId: "",
+      accountName: p.account_name,
+      exchange: p.exchange,
+      symbol: p.symbol,
+      side: p.side as "long" | "short",
+      size: p.size,
+      sizeUsd: p.size_usd,
+      entryPrice: p.entry_price,
+      markPrice: p.mark_price,
+      leverage: p.leverage,
+      unrealizedPnl: p.unrealized_pnl,
+      unrealizedPnlPercent: p.unrealized_pnl_percent,
+      liquidationPrice: p.liquidation_price ?? undefined,
+    }))
+    .sort((a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl));
+}
+
 export function useDashboardStats() {
   return useSWR<DashboardStats>(
     "/dashboard/stats",
@@ -72,6 +107,10 @@ export function useDashboardStats() {
         const profitablePositions = response.positions.filter(
           (p) => p.unrealized_pnl > 0
         ).length;
+
+        // Side-populate the positions cache so useAllPositions doesn't
+        // need to make separate requests.
+        globalMutate(POSITIONS_CACHE_KEY, mapBackendPositions(response.positions), false);
 
         return {
           totalEquity: response.total_equity,
@@ -164,61 +203,30 @@ export function useDashboardStats() {
 // ==================== All Positions Hook ====================
 
 /**
- * Fetch all positions across all accounts
+ * Fetch all positions across all accounts.
+ *
+ * Optimised: positions are pre-populated by `useDashboardStats` via a shared
+ * SWR cache key.  The fetcher here acts as a fallback in case the positions
+ * haven't been cached yet (e.g. the dashboard stats request is still in
+ * flight or failed).
  */
 export function useAllPositions() {
   return useSWR<Position[]>(
-    "/dashboard/positions",
+    POSITIONS_CACHE_KEY,
     async () => {
-      // Fetch accounts
-      const accounts = await accountsApi.list();
-
-      // Fetch balances for connected accounts
-      const balancePromises = accounts
-        .filter((acc) => acc.is_connected)
-        .map(async (acc) => {
-          try {
-            const balance = await accountsApi.getBalance(acc.id);
-            return { account: acc, balance };
-          } catch {
-            return null;
-          }
-        });
-
-      const results = await Promise.all(balancePromises);
-
-      // Flatten positions with account info
-      const positions: Position[] = [];
-      results.forEach((result) => {
-        if (result && result.balance) {
-          result.balance.positions.forEach((pos) => {
-            positions.push({
-              accountId: result.account.id,
-              accountName: result.account.name,
-              exchange: result.account.exchange,
-              symbol: pos.symbol,
-              side: pos.side as "long" | "short",
-              size: pos.size,
-              sizeUsd: pos.size_usd,
-              entryPrice: pos.entry_price,
-              markPrice: pos.mark_price,
-              leverage: pos.leverage,
-              unrealizedPnl: pos.unrealized_pnl,
-              unrealizedPnlPercent: pos.unrealized_pnl_percent,
-              liquidationPrice: pos.liquidation_price,
-            });
-          });
-        }
-      });
-
-      // Sort by absolute PnL (highest first)
-      return positions.sort(
-        (a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl)
-      );
+      // Fallback: fetch from backend dashboard stats endpoint directly
+      try {
+        const response = await dashboardApi.getFullStats();
+        return mapBackendPositions(response.positions);
+      } catch {
+        // ignore – return empty
+      }
+      return [];
     },
     {
-      refreshInterval: 15000, // Refresh every 15 seconds
+      refreshInterval: 30000, // Aligned with stats refresh (was 15s)
       revalidateOnFocus: true,
+      dedupingInterval: 5000,
     }
   );
 }

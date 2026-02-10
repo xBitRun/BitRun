@@ -50,9 +50,9 @@
     "dashboard": "仪表盘",
     "agents": "代理策略",
     "strategies": "量化策略",
-    "accounts": "账户",
-    "models": "模型",
-    "backtest": "回测",
+    "accounts": "账户管理",
+    "models": "模型管理",
+    "backtest": "历史回测",
     "settings": "设置",
     "collapse": "收起"
   },

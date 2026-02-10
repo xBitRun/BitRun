@@ -126,22 +126,11 @@ async def login(
     repo = UserRepository(db)
     email = form_data.username
 
-    # Check if account is locked due to too many failed attempts
+    # Obtain Redis service once and reuse throughout the handler
+    redis = None
     try:
         redis = await get_redis_service()
-        if await redis.is_account_locked(email):
-            remaining_time = await redis.get_lockout_remaining_time(email)
-            remaining_minutes = remaining_time // 60 + 1
-            raise auth_error(
-                ErrorCode.AUTH_ACCOUNT_LOCKED,
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                headers={"Retry-After": str(remaining_time)},
-                remaining_minutes=remaining_minutes,
-            )
-    except HTTPException:
-        raise
     except Exception:
-        # If Redis is unavailable, continue without lockout check in dev
         if settings.environment == "production":
             raise auth_error(
                 ErrorCode.SERVICE_UNAVAILABLE,
@@ -149,45 +138,63 @@ async def login(
                 headers={"Retry-After": "5"},
             )
 
+    # Check if account is locked (single pipeline: GET + TTL)
+    if redis:
+        try:
+            is_locked, remaining_time = await redis.check_account_lockout(email)
+            if is_locked:
+                remaining_minutes = remaining_time // 60 + 1
+                raise auth_error(
+                    ErrorCode.AUTH_ACCOUNT_LOCKED,
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    headers={"Retry-After": str(remaining_time)},
+                    remaining_minutes=remaining_minutes,
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Non-critical in dev, already handled above for prod
+
     # Authenticate user
     user = await repo.authenticate(email, form_data.password)
     if not user:
         # Track failed login attempt
-        try:
-            redis = await get_redis_service()
-            failure_count = await redis.track_login_failure(email)
-            remaining_attempts = max(0, 5 - failure_count)
+        if redis:
+            try:
+                failure_count = await redis.track_login_failure(email)
+                remaining_attempts = max(0, 5 - failure_count)
 
-            if remaining_attempts == 0:
+                if remaining_attempts == 0:
+                    raise auth_error(
+                        ErrorCode.AUTH_ACCOUNT_LOCKED,
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        headers={"Retry-After": "900"},
+                        remaining_minutes=15,
+                    )
+
                 raise auth_error(
-                    ErrorCode.AUTH_ACCOUNT_LOCKED,
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    headers={"Retry-After": "900"},
-                    remaining_minutes=15,
+                    ErrorCode.AUTH_INVALID_CREDENTIALS,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    headers={"WWW-Authenticate": "Bearer"},
+                    remaining_attempts=remaining_attempts,
                 )
+            except HTTPException:
+                raise
+            except Exception:
+                pass  # Fall through to generic error
 
-            raise auth_error(
-                ErrorCode.AUTH_INVALID_CREDENTIALS,
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                headers={"WWW-Authenticate": "Bearer"},
-                remaining_attempts=remaining_attempts,
-            )
-        except HTTPException:
-            raise
-        except Exception:
-            # If Redis fails, just return generic error
-            raise auth_error(
-                ErrorCode.AUTH_INVALID_CREDENTIALS,
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        raise auth_error(
+            ErrorCode.AUTH_INVALID_CREDENTIALS,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     # Clear login failures on successful login
-    try:
-        redis = await get_redis_service()
-        await redis.clear_login_failures(email)
-    except Exception:
-        pass  # Non-critical, continue with login
+    if redis:
+        try:
+            await redis.clear_login_failures(email)
+        except Exception:
+            pass  # Non-critical, continue with login
 
     # Create tokens
     access_token = create_access_token(str(user.id))
@@ -410,16 +417,16 @@ async def change_password(
             detail="User account is disabled"
         )
 
-    # Verify current password
-    from ...core.security import verify_password
-    if not verify_password(request.current_password, user.password_hash):
+    # Verify current password (async to avoid blocking event loop)
+    from ...core.security import verify_password_async
+    if not await verify_password_async(request.current_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
 
     # Check new password is different
-    if verify_password(request.new_password, user.password_hash):
+    if await verify_password_async(request.new_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be different from current password"

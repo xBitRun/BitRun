@@ -7,6 +7,7 @@ Security Architecture (based on NoFx + SlowMist audit recommendations):
 3. Authentication: JWT with random secret per deployment
 """
 
+import asyncio
 import base64
 import os
 import secrets
@@ -331,13 +332,22 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
+    """Verify a password against its hash (synchronous version)"""
     try:
         password_bytes = plain_password.encode("utf-8")[:72]
         hashed_bytes = hashed_password.encode("utf-8")
         return bcrypt.checkpw(password_bytes, hashed_bytes)
     except Exception:
         return False
+
+
+async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash in a thread pool.
+
+    bcrypt is CPU-intensive (~200-500ms). Running it via ``asyncio.to_thread``
+    prevents blocking the event loop so other requests can be served concurrently.
+    """
+    return await asyncio.to_thread(verify_password, plain_password, hashed_password)
 
 
 # ==================== Singleton Instance ====================

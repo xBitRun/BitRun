@@ -50,9 +50,9 @@
     "dashboard": "Dashboard",
     "agents": "Agent Strategies",
     "strategies": "Quant Strategies",
-    "accounts": "Accounts",
-    "models": "Models",
-    "backtest": "Backtest",
+    "accounts": "Account Management",
+    "models": "Model Management",
+    "backtest": "Backtest History",
     "settings": "Settings",
     "collapse": "Collapse"
   },

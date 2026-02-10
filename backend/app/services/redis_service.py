@@ -221,6 +221,22 @@ class RedisService:
             return ttl
         return 0
 
+    async def check_account_lockout(self, email: str) -> tuple[bool, int]:
+        """Check lockout status in a single Redis pipeline (GET + TTL).
+
+        Returns:
+            (is_locked, remaining_seconds) tuple.
+        """
+        key = f"{self.PREFIX_LOGIN_FAILURES}{email.lower()}"
+        pipe = self.redis.pipeline(transaction=False)
+        pipe.get(key)
+        pipe.ttl(key)
+        count_raw, ttl = await pipe.execute()
+
+        is_locked = int(count_raw or 0) >= self.LOGIN_FAILURE_THRESHOLD
+        remaining = ttl if (is_locked and ttl > 0) else 0
+        return is_locked, remaining
+
     # ==================== Rate Limiting ====================
 
     async def check_rate_limit(
