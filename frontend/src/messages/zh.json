@@ -370,7 +370,19 @@
       "monthlyReturns": "月度收益",
       "returnPercent": "收益率",
       "cumulativeReturn": "累计收益",
-      "symbolComparison": "品种收益对比"
+      "symbolComparison": "品种收益对比",
+      "symbolWinRate": "品种胜率对比",
+      "pnlByWeekday": "按星期盈亏",
+      "pnlByHour": "按小时盈亏"
+    },
+    "timeAnalysis": {
+      "sun": "周日",
+      "mon": "周一",
+      "tue": "周二",
+      "wed": "周三",
+      "thu": "周四",
+      "fri": "周五",
+      "sat": "周六"
     },
     "tradeAnalysis": {
       "longVsShort": "多空对比",

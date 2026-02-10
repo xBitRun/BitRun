@@ -254,135 +254,136 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
         />
       </div>
 
-      {/* Equity Curve */}
-      {equityData.length > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("charts.equityCurve")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                equity: { label: t("charts.equity"), color: "hsl(var(--primary))" },
-                balance: { label: t("charts.balance"), color: "hsl(var(--muted-foreground))" },
-              } satisfies ChartConfig}
-              className="min-h-[300px] w-full"
-            >
-              <AreaChart accessibilityLayer data={equityData}>
-                <defs>
-                  <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-equity)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-equity)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => v?.slice(5, 10) ?? ""}
-                />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
-                      formatter={(value) => (
-                        <span className="font-mono font-medium text-foreground">
-                          ${Number(value).toFixed(2)}
-                        </span>
-                      )}
-                    />
-                  }
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="equity"
-                  stroke="var(--color-equity)"
-                  fill="url(#eqGrad)"
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="var(--color-balance)"
-                  fill="none"
-                  strokeWidth={1}
-                  strokeDasharray="4 2"
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Equity Curve + Drawdown Curve side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {equityData.length > 0 && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.equityCurve")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  equity: { label: t("charts.equity"), color: "var(--primary)" },
+                  balance: { label: t("charts.balance"), color: "var(--muted-foreground)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <AreaChart accessibilityLayer data={equityData}>
+                  <defs>
+                    <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-equity)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--color-equity)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v?.slice(5, 10) ?? ""}
+                  />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            ${Number(value).toFixed(2)}
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="equity"
+                    stroke="var(--color-equity)"
+                    fill="url(#eqGrad)"
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="balance"
+                    stroke="var(--color-balance)"
+                    fill="none"
+                    strokeWidth={1}
+                    strokeDasharray="4 2"
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Drawdown Curve */}
-      {drawdownData.length > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("charts.drawdownCurve")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                drawdown_percent: { label: t("charts.drawdown"), color: "var(--loss, #ef4444)" },
-              } satisfies ChartConfig}
-              className="min-h-[200px] w-full"
-            >
-              <AreaChart accessibilityLayer data={drawdownData}>
-                <defs>
-                  <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-drawdown_percent)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--color-drawdown_percent)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => v?.slice(5, 10) ?? ""}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => `-${v}%`}
-                  reversed
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
-                      formatter={(value) => (
-                        <span className="font-mono font-medium text-foreground">
-                          -{Number(value).toFixed(2)}%
-                        </span>
-                      )}
-                    />
-                  }
-                />
-                <Area
-                  type="monotone"
-                  dataKey="drawdown_percent"
-                  stroke="var(--color-drawdown_percent)"
-                  fill="url(#ddGrad)"
-                  strokeWidth={1.5}
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
+        {drawdownData.length > 0 && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.drawdownCurve")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  drawdown_percent: { label: t("charts.drawdown"), color: "var(--loss, #ef4444)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <AreaChart accessibilityLayer data={drawdownData}>
+                  <defs>
+                    <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-drawdown_percent)" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="var(--color-drawdown_percent)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v?.slice(5, 10) ?? ""}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `-${v}%`}
+                    reversed
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            -{Number(value).toFixed(2)}%
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="drawdown_percent"
+                    stroke="var(--color-drawdown_percent)"
+                    fill="url(#ddGrad)"
+                    strokeWidth={1.5}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
@@ -446,44 +447,77 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
 
   return (
     <div className="space-y-6">
-      {/* P&L Distribution */}
-      {pnlBins.length > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("charts.pnlDistribution")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                count: { label: t("charts.tradeCount"), color: "hsl(var(--primary))" },
-              } satisfies ChartConfig}
-              className="min-h-[250px] w-full"
-            >
-              <BarChart accessibilityLayer data={pnlBins}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="range" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ReferenceLine x="0" stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Bar dataKey="count" name={t("charts.tradeCount")} radius={[4, 4, 0, 0]}>
-                  {pnlBins.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
-                      fillOpacity={0.8}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* P&L Distribution + Holding Time Distribution side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {pnlBins.length > 0 && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.pnlDistribution")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  count: { label: t("charts.tradeCount"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <BarChart accessibilityLayer data={pnlBins}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="range" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ReferenceLine x="0" stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <Bar dataKey="count" name={t("charts.tradeCount")} radius={[4, 4, 0, 0]}>
+                    {pnlBins.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fillOpacity={0.8}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Long vs Short + Consecutive + Holding time */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {holdingDist.some((b) => b.count > 0) && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("tradeAnalysis.holdingTimeDistribution")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  count: { label: t("tradeAnalysis.trades"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <BarChart accessibilityLayer data={holdingDist}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="count"
+                    fill="var(--color-count)"
+                    fillOpacity={0.7}
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Long vs Short + Consecutive Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Long vs Short */}
         <Card className="bg-card/50 border-border/50">
           <CardHeader className="pb-2">
@@ -604,38 +638,6 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Holding Time Distribution */}
-      {holdingDist.some((b) => b.count > 0) && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("tradeAnalysis.holdingTimeDistribution")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                count: { label: t("tradeAnalysis.trades"), color: "hsl(var(--primary))" },
-              } satisfies ChartConfig}
-              className="min-h-[200px] w-full"
-            >
-              <BarChart accessibilityLayer data={holdingDist}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="count"
-                  fill="var(--color-count)"
-                  fillOpacity={0.7}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -644,6 +646,8 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
 
 function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
   const t = useTranslations("backtest");
+
+  const weekdayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
   const monthlyData = useMemo(() => {
     return (data.monthly_returns || []).map((m) => ({
@@ -661,121 +665,243 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
     });
   }, [monthlyData]);
 
+  // P&L by day of week (computed from trades)
+  const pnlByWeekday = useMemo(() => {
+    const buckets = weekdayKeys.map(() => 0);
+    for (const trade of data.trades) {
+      if (!trade.opened_at) continue;
+      const day = new Date(trade.opened_at).getDay(); // 0=Sun..6=Sat
+      buckets[day] += trade.pnl;
+    }
+    return weekdayKeys.map((key, i) => ({
+      name: t(`timeAnalysis.${key}`),
+      pnl: parseFloat(buckets[i].toFixed(2)),
+      isPositive: buckets[i] >= 0,
+    }));
+  }, [data.trades, t]);
+
+  // P&L by hour of day (computed from trades)
+  const pnlByHour = useMemo(() => {
+    const buckets = Array.from({ length: 24 }, () => 0);
+    for (const trade of data.trades) {
+      if (!trade.opened_at) continue;
+      const hour = new Date(trade.opened_at).getHours();
+      buckets[hour] += trade.pnl;
+    }
+    return buckets.map((pnl, h) => ({
+      name: `${String(h).padStart(2, "0")}:00`,
+      pnl: parseFloat(pnl.toFixed(2)),
+      isPositive: pnl >= 0,
+    }));
+  }, [data.trades]);
+
   return (
     <div className="space-y-6">
-      {/* Monthly Returns Bar Chart */}
-      {monthlyData.length > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("charts.monthlyReturns")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                return_percent: { label: t("charts.returnPercent"), color: "hsl(var(--primary))" },
-              } satisfies ChartConfig}
-              className="min-h-[300px] w-full"
-            >
-              <BarChart accessibilityLayer data={monthlyData}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => v?.slice(2) ?? ""}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => (
-                        <span className="font-mono font-medium text-foreground">
-                          {Number(value).toFixed(2)}%
-                        </span>
-                      )}
-                    />
-                  }
-                />
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Bar dataKey="return_percent" name={t("charts.returnPercent")} radius={[4, 4, 0, 0]}>
-                  {monthlyData.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
-                      fillOpacity={0.8}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Monthly Returns + Cumulative Return side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {monthlyData.length > 0 && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.monthlyReturns")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  return_percent: { label: t("charts.returnPercent"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <BarChart accessibilityLayer data={monthlyData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v?.slice(2) ?? ""}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            {Number(value).toFixed(2)}%
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <Bar dataKey="return_percent" name={t("charts.returnPercent")} radius={[4, 4, 0, 0]}>
+                    {monthlyData.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fillOpacity={0.8}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Cumulative Return Curve */}
-      {cumulativeData.length > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("charts.cumulativeReturn")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                cumulative: { label: t("charts.cumulativeReturn"), color: "hsl(var(--primary))" },
-              } satisfies ChartConfig}
-              className="min-h-[250px] w-full"
-            >
-              <AreaChart accessibilityLayer data={cumulativeData}>
-                <defs>
-                  <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-cumulative)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-cumulative)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => v?.slice(2) ?? ""}
-                />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => (
-                        <span className="font-mono font-medium text-foreground">
-                          {Number(value).toFixed(2)}%
-                        </span>
-                      )}
-                    />
-                  }
-                />
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Area
-                  type="monotone"
-                  dataKey="cumulative"
-                  stroke="var(--color-cumulative)"
-                  fill="url(#cumGrad)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+        {cumulativeData.length > 0 && (
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.cumulativeReturn")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  cumulative: { label: t("charts.cumulativeReturn"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <AreaChart accessibilityLayer data={cumulativeData}>
+                  <defs>
+                    <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-cumulative)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--color-cumulative)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v?.slice(2) ?? ""}
+                  />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            {Number(value).toFixed(2)}%
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <Area
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="var(--color-cumulative)"
+                    fill="url(#cumGrad)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* P&L by Weekday + P&L by Hour side by side */}
+      {data.trades.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.pnlByWeekday")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  pnl: { label: t("charts.pnl"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <BarChart accessibilityLayer data={pnlByWeekday}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            ${Number(value).toFixed(2)}
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <Bar dataKey="pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                    {pnlByWeekday.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fillOpacity={0.8}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("charts.pnlByHour")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  pnl: { label: t("charts.pnl"), color: "var(--primary)" },
+                } satisfies ChartConfig}
+                className="min-h-[250px] w-full"
+              >
+                <BarChart accessibilityLayer data={pnlByHour}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} interval={2} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => (
+                          <span className="font-mono font-medium text-foreground">
+                            ${Number(value).toFixed(2)}
+                          </span>
+                        )}
+                      />
+                    }
+                  />
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <Bar dataKey="pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                    {pnlByHour.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fillOpacity={0.8}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Monthly Returns Table */}
@@ -844,49 +970,94 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
 
   return (
     <div className="space-y-6">
-      {/* Symbol P&L Comparison Chart */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
-            {t("charts.symbolComparison")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={{
-              total_pnl: { label: t("charts.pnl"), color: "hsl(var(--primary))" },
-            } satisfies ChartConfig}
-            className="min-h-[250px] w-full"
-          >
-            <BarChart accessibilityLayer data={sb}>
-              <CartesianGrid vertical={false} />
-              <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => (
-                      <span className="font-mono font-medium text-foreground">
-                        ${Number(value).toFixed(2)}
-                      </span>
-                    )}
-                  />
-                }
-              />
-              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-              <Bar dataKey="total_pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
-                {sb.map((entry, index) => (
-                  <Cell
-                    key={index}
-                    fill={entry.total_pnl >= 0 ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
-                    fillOpacity={0.8}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+      {/* Symbol P&L + Win Rate side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t("charts.symbolComparison")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                total_pnl: { label: t("charts.pnl"), color: "var(--primary)" },
+              } satisfies ChartConfig}
+              className="min-h-[250px] w-full"
+            >
+              <BarChart accessibilityLayer data={sb}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          ${Number(value).toFixed(2)}
+                        </span>
+                      )}
+                    />
+                  }
+                />
+                <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                <Bar dataKey="total_pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                  {sb.map((entry, index) => (
+                    <Cell
+                      key={index}
+                      fill={entry.total_pnl >= 0 ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                      fillOpacity={0.8}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t("charts.symbolWinRate")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                win_rate: { label: t("symbolBreakdown.winRate"), color: "var(--primary)" },
+              } satisfies ChartConfig}
+              className="min-h-[250px] w-full"
+            >
+              <BarChart accessibilityLayer data={sb}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => (
+                        <span className="font-mono font-medium text-foreground">
+                          {Number(value).toFixed(1)}%
+                        </span>
+                      )}
+                    />
+                  }
+                />
+                <ReferenceLine y={50} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                <Bar dataKey="win_rate" name={t("symbolBreakdown.winRate")} radius={[4, 4, 0, 0]}>
+                  {sb.map((entry, index) => (
+                    <Cell
+                      key={index}
+                      fill={entry.win_rate >= 50 ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                      fillOpacity={0.8}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Symbol Table */}
       <Card className="bg-card/50 border-border/50">

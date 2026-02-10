@@ -370,7 +370,19 @@
       "monthlyReturns": "Monthly Returns",
       "returnPercent": "Return %",
       "cumulativeReturn": "Cumulative Return",
-      "symbolComparison": "Symbol P&L Comparison"
+      "symbolComparison": "Symbol P&L Comparison",
+      "symbolWinRate": "Symbol Win Rate",
+      "pnlByWeekday": "P&L by Weekday",
+      "pnlByHour": "P&L by Hour"
+    },
+    "timeAnalysis": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
     },
     "tradeAnalysis": {
       "longVsShort": "Long vs Short",
