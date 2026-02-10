@@ -1633,8 +1633,9 @@ export default function BacktestPage() {
                 </CardTitle>
                 <CardDescription>
                   {results.strategy_name} &bull;{" "}
-                  {selectedExchange.toUpperCase()} &bull; {startDate} ~{" "}
-                  {endDate}
+                  {selectedExchange.toUpperCase()} &bull;{" "}
+                  {startDate ? format(startDate, "yyyy-MM-dd") : ""} ~{" "}
+                  {endDate ? format(endDate, "yyyy-MM-dd") : ""}
                 </CardDescription>
               </CardHeader>
               <CardContent>

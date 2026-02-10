@@ -61,10 +61,10 @@ function DatePicker({
           disabled={disabled}
           startMonth={fromDate}
           endMonth={toDate}
-          hidden={{
-            before: fromDate,
-            after: toDate,
-          }}
+          hidden={[
+            ...(fromDate ? [{ before: fromDate }] : []),
+            ...(toDate ? [{ after: toDate }] : []),
+          ]}
           defaultMonth={value ?? fromDate}
           autoFocus
         />

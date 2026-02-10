@@ -296,7 +296,10 @@ async def get_dashboard_stats(
     # Get today's decisions
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     recent_decisions = await decision_repo.get_recent(uuid.UUID(user_id), limit=100)
-    today_decisions = [d for d in recent_decisions if d.timestamp >= today_start]
+    today_decisions = [
+        d for d in recent_decisions
+        if d.timestamp is not None and _ensure_utc(d.timestamp) >= today_start
+    ]
     today_executed = [d for d in today_decisions if d.executed]
 
     # Build response
@@ -387,7 +390,7 @@ async def get_activity_feed(
         activities.append(ActivityItem(
             id=str(decision.id),
             type="decision",
-            timestamp=decision.timestamp,
+            timestamp=_ensure_utc(decision.timestamp),
             title=f"{main_action}: {strategy_name}",
             description=f"{desc_prefix} {symbol_str} with {decision.overall_confidence}% confidence",
             data={
@@ -412,6 +415,13 @@ async def get_activity_feed(
         total=total,
         has_more=has_more,
     )
+
+
+def _ensure_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (assume UTC if naive)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _create_trader(exchange: str, credentials: dict, is_testnet: bool):
