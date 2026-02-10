@@ -98,11 +98,10 @@ USER nextjs
 
 EXPOSE 3000
 ENV HOSTNAME="0.0.0.0"
-ENV PORT=3000
 
-# Health check
+# Health check (use PORT env var, Railway sets it dynamically)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000} || exit 1
 
 # Production server
 CMD ["node", "server.js"]
