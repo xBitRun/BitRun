@@ -73,30 +73,24 @@ class PromptBuilder:
     
     def build_system_prompt(self) -> str:
         """
-        Build the system prompt with all 8 sections.
+        Build the system prompt.
+        
+        Supports two modes:
+        - simple: Uses section-based prompt building (Role, Trading Mode, Frequency, Entry, Process),
+                  then adds Hard Constraints and Output Format at the end
+        - advanced: Uses advanced_prompt for user content, then adds Hard Constraints and Output Format at the end
+        
+        Note: custom_prompt is deprecated and no longer used in either mode.
         
         Returns:
             Complete system prompt string
         """
+        prompt_mode = getattr(self.config, "prompt_mode", "simple") or "simple"
         sections = []
-        ps = self.config.prompt_sections
         t = self._sys
-        
-        # 1. Role Definition
-        role = ps.role_definition or t["default_role"]
-        sections.append(f"{t['section_role']}\n{role}")
-        
-        # 2. Trading Mode
-        mode_key = self.trading_mode.value  # "aggressive" / "balanced" / "conservative"
-        mode_desc = t["trading_mode"].get(
-            mode_key,
-            t["trading_mode"]["conservative"],
-        )
-        priority_note = t["priority_rules"]
-        sections.append(f"{t['section_trading_mode']}\n{mode_desc}{priority_note}")
-        
-        # 3. Hard Constraints (code-enforced)
         rc = self.risk_controls
+        
+        # Build hard constraints (always needed, section 3)
         constraints = (
             f"{t['hard_constraints_header']}\n"
             f"{t['hard_constraints_desc']}\n"
@@ -109,21 +103,8 @@ class PromptBuilder:
             f"- {t['constraint_min_confidence']}: {rc.min_confidence}%\n\n"
             f"{t['position_sizing_note']}"
         )
-        sections.append(constraints)
         
-        # 4. Trading Frequency
-        frequency = ps.trading_frequency or t["default_trading_frequency"]
-        sections.append(f"{t['section_frequency']}\n{frequency}")
-        
-        # 5. Entry Standards
-        entry = ps.entry_standards or t["default_entry_standards"]
-        sections.append(f"{t['section_entry']}\n{entry}")
-        
-        # 6. Decision Process
-        process = ps.decision_process or t["default_decision_process"]
-        sections.append(f"{t['section_process']}\n{process}")
-        
-        # 7. Output Format
+        # Build output format (always needed, section 7)
         rules_lines = "\n".join(
             f"- {rule.format(min_confidence=rc.min_confidence)}"
             for rule in t["output_format_rules"]
@@ -135,15 +116,73 @@ class PromptBuilder:
             f"{t['output_format_important']}\n"
             f"{rules_lines}"
         )
-        sections.append(output_format)
         
-        # 8. Custom Prompt (if provided)
-        if self.custom_prompt:
-            sections.append(
-                f"{t['additional_instructions_header']}\n"
-                f"{t['additional_instructions_note']}\n\n"
-                f"{self.custom_prompt}"
+        if prompt_mode == "advanced":
+            # Advanced mode: Use advanced_prompt for user content, then append constraints and output format
+            advanced_prompt = getattr(self.config, "advanced_prompt", "") or ""
+            if advanced_prompt.strip():
+                sections.append(advanced_prompt.strip())
+            else:
+                # Fallback to default if advanced_prompt is empty
+                ps = self.config.prompt_sections
+                role = ps.role_definition or t["default_role"]
+                sections.append(f"{t['section_role']}\n{role}")
+                
+                mode_key = self.trading_mode.value
+                mode_desc = t["trading_mode"].get(
+                    mode_key,
+                    t["trading_mode"]["conservative"],
+                )
+                priority_note = t["priority_rules"]
+                sections.append(f"{t['section_trading_mode']}\n{mode_desc}{priority_note}")
+                
+                frequency = ps.trading_frequency or t["default_trading_frequency"]
+                sections.append(f"{t['section_frequency']}\n{frequency}")
+                
+                entry = ps.entry_standards or t["default_entry_standards"]
+                sections.append(f"{t['section_entry']}\n{entry}")
+                
+                process = ps.decision_process or t["default_decision_process"]
+                sections.append(f"{t['section_process']}\n{process}")
+            
+            # Add hard constraints and output format together at the end
+            sections.append(constraints)
+            sections.append(output_format)
+        else:
+            # Simple mode: Use section-based building
+            # Note: custom_prompt is deprecated and ignored in simple mode
+            ps = self.config.prompt_sections
+            
+            # 1. Role Definition
+            role = ps.role_definition or t["default_role"]
+            sections.append(f"{t['section_role']}\n{role}")
+            
+            # 2. Trading Mode
+            mode_key = self.trading_mode.value  # "aggressive" / "balanced" / "conservative"
+            mode_desc = t["trading_mode"].get(
+                mode_key,
+                t["trading_mode"]["conservative"],
             )
+            priority_note = t["priority_rules"]
+            sections.append(f"{t['section_trading_mode']}\n{mode_desc}{priority_note}")
+            
+            # 3. Trading Frequency
+            frequency = ps.trading_frequency or t["default_trading_frequency"]
+            sections.append(f"{t['section_frequency']}\n{frequency}")
+            
+            # 4. Entry Standards
+            entry = ps.entry_standards or t["default_entry_standards"]
+            sections.append(f"{t['section_entry']}\n{entry}")
+            
+            # 5. Decision Process
+            process = ps.decision_process or t["default_decision_process"]
+            sections.append(f"{t['section_process']}\n{process}")
+            
+            # 6. Hard Constraints (moved to end, before output format)
+            sections.append(constraints)
+            
+            # 7. Output Format
+            sections.append(output_format)
         
         return "\n\n".join(sections)
     

@@ -189,8 +189,10 @@ export interface StrategyStudioConfig {
 
   // Prompt configuration
   language: string; // Prompt language: "en" | "zh" (auto-set from locale)
+  promptMode: "simple" | "advanced"; // Prompt editing mode
   promptSections: PromptSections;
-  customPrompt: string;
+  customPrompt: string; // Deprecated in simple mode, kept for backward compatibility
+  advancedPrompt: string; // Full markdown content for advanced mode
 
   // Debate configuration
   debateEnabled: boolean;
@@ -216,11 +218,12 @@ export const DEFAULT_RISK_CONTROLS: RiskControlsConfig = {
   minConfidence: 60,
 };
 
+// Default prompt sections match backend PromptSections defaults
 export const DEFAULT_PROMPT_SECTIONS: PromptSections = {
-  roleDefinition: "",
-  tradingFrequency: "",
-  entryStandards: "",
-  decisionProcess: "",
+  roleDefinition: "You are an expert cryptocurrency trader with deep market analysis skills.",
+  tradingFrequency: "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
+  entryStandards: "Enter positions only when multiple indicators align and risk/reward is favorable.",
+  decisionProcess: "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
 };
 
 export const DEFAULT_STRATEGY_STUDIO_CONFIG: StrategyStudioConfig = {
@@ -236,8 +239,10 @@ export const DEFAULT_STRATEGY_STUDIO_CONFIG: StrategyStudioConfig = {
   indicators: DEFAULT_INDICATOR_SETTINGS,
   riskControls: DEFAULT_RISK_CONTROLS,
   language: "en",
+  promptMode: "simple",
   promptSections: DEFAULT_PROMPT_SECTIONS,
   customPrompt: "",
+  advancedPrompt: "",
   // Debate defaults
   debateEnabled: false,
   debateModels: [],

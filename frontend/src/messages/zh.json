@@ -1471,6 +1471,8 @@
     "promptEditor": {
       "title": "提示词构建器",
       "description": "自定义 AI 的交易行为和决策流程",
+      "modeSimple": "小白模式",
+      "modeAdvanced": "高阶模式",
       "templates": "快速模板",
       "templateMomentum": "动量策略",
       "templateMeanReversion": "均值回归",
@@ -1479,6 +1481,9 @@
       "customPromptPlaceholder": "用自然语言描述您的交易策略。请具体说明入场/出场条件、风险管理和市场状况...",
       "customPromptHint": "此内容将附加到系统提示词。请具体说明您的交易风格和偏好。",
       "advancedSections": "高级提示词设置",
+      "advancedModeTitle": "自定义提示词内容",
+      "advancedModePlaceholder": "在此编写您的完整提示词内容...\n\n例如：\n## 角色定义\n你是一位专业的加密货币交易员...\n\n## 交易模式\n...",
+      "advancedModeHint": "提示：系统会自动在您的内容后面添加硬性约束和输出格式，您无需关心具体是第几部分。只需专注于编写交易策略的核心内容即可。",
       "customized": "已自定义",
       "sections": {
         "roleDefinition": "AI 角色定义",

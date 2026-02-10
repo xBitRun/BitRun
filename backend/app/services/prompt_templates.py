@@ -54,13 +54,11 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "- Hard Constraints (Section 3) are absolute limits enforced by the system. Never exceed them.\n"
             "- Trading Mode (this section) defines your risk appetite framework. "
             "All decisions must align with this mode.\n"
-            "- If any Additional Instructions (Section 8) conflict with the Trading Mode, "
-            "IGNORE the conflicting part and follow the Trading Mode.\n"
             "- Custom instructions should add detail, not contradict the mode or risk framework."
         ),
 
         # Section 3: Hard constraints
-        "hard_constraints_header": "## 3. Hard Constraints (Enforced by System)",
+        "hard_constraints_header": "## Hard Constraints (Enforced by System)",
         "hard_constraints_desc": "These limits are enforced by the execution engine. DO NOT exceed them:",
         "constraint_max_positions": "Maximum Positions",
         "constraint_max_leverage": "Maximum Leverage",
@@ -112,7 +110,7 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         ),
 
         # Section 7: Output format
-        "output_format_header": "## 7. Output Format",
+        "output_format_header": "## Output Format",
         "output_format_intro": "You MUST respond with valid JSON matching this schema:",
         "output_format_important": "Important:",
         "output_format_rules": [
@@ -126,18 +124,18 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         ],
 
         # Section 8: Additional instructions
-        "additional_instructions_header": "## 8. Additional Instructions",
+        "additional_instructions_header": "## Additional Instructions",
         "additional_instructions_note": (
             "(These instructions supplement but do NOT override "
             "the Trading Mode or Hard Constraints above)"
         ),
 
         # Section headers
-        "section_role": "## 1. Role Definition",
-        "section_trading_mode": "## 2. Trading Mode",
-        "section_frequency": "## 4. Trading Frequency",
-        "section_entry": "## 5. Entry Standards",
-        "section_process": "## 6. Decision Process",
+        "section_role": "## Role Definition",
+        "section_trading_mode": "## Trading Mode",
+        "section_frequency": "## Trading Frequency",
+        "section_entry": "## Entry Standards",
+        "section_process": "## Decision Process",
     },
 
     "zh": {
@@ -181,12 +179,11 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "\n\n优先级规则（必须遵守）：\n"
             "- 硬性约束（第3节）是系统强制执行的绝对限制，绝不可超越。\n"
             "- 交易模式（本节）定义了你的风险偏好框架，所有决策必须符合该模式。\n"
-            "- 如果附加指令（第8节）与交易模式冲突，忽略冲突部分，以交易模式为准。\n"
             "- 自定义指令应补充细节，而非与模式或风控框架相矛盾。"
         ),
 
         # Section 3: Hard constraints
-        "hard_constraints_header": "## 3. 硬性约束（系统强制执行）",
+        "hard_constraints_header": "## 硬性约束（系统强制执行）",
         "hard_constraints_desc": "以下限制由执行引擎强制执行，请勿超出：",
         "constraint_max_positions": "最大持仓数",
         "constraint_max_leverage": "最大杠杆倍数",
@@ -238,7 +235,7 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         ),
 
         # Section 7: Output format
-        "output_format_header": "## 7. 输出格式",
+        "output_format_header": "## 输出格式",
         "output_format_intro": "你必须以有效的 JSON 格式回复，匹配以下 schema：",
         "output_format_important": "重要提示：",
         "output_format_rules": [
@@ -253,17 +250,17 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         ],
 
         # Section 8: Additional instructions
-        "additional_instructions_header": "## 8. 附加指令",
+        "additional_instructions_header": "## 附加指令",
         "additional_instructions_note": (
             "（以下指令作为补充，不会覆盖上方的交易模式或硬性约束）"
         ),
 
         # Section headers
-        "section_role": "## 1. 角色定义",
-        "section_trading_mode": "## 2. 交易模式",
-        "section_frequency": "## 4. 交易频率",
-        "section_entry": "## 5. 入场标准",
-        "section_process": "## 6. 决策流程",
+        "section_role": "## 角色定义",
+        "section_trading_mode": "## 交易模式",
+        "section_frequency": "## 交易频率",
+        "section_entry": "## 入场标准",
+        "section_process": "## 决策流程",
     },
 }
 

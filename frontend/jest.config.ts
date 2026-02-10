@@ -69,7 +69,7 @@ const config: Config = {
   
   // Transform ignore patterns
   transformIgnorePatterns: [
-    "/node_modules/",
+    "/node_modules/(?!(react-markdown|remark-gfm|unified|unist-util|vfile|mdast|micromark|hast|rehype|rehype-react)/)",
     "^.+\\.module\\.(css|sass|scss)$",
   ],
 };

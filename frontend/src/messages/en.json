@@ -1471,6 +1471,8 @@
     "promptEditor": {
       "title": "Prompt Builder",
       "description": "Customize the AI's trading behavior and decision process",
+      "modeSimple": "Simple Mode",
+      "modeAdvanced": "Advanced Mode",
       "templates": "Quick Templates",
       "templateMomentum": "Momentum",
       "templateMeanReversion": "Mean Reversion",
@@ -1479,6 +1481,9 @@
       "customPromptPlaceholder": "Describe your trading strategy in natural language. Be specific about entry/exit conditions, risk management, and market conditions...",
       "customPromptHint": "This is appended to the system prompt. Be specific about your trading style and preferences.",
       "advancedSections": "Advanced Prompt Sections",
+      "advancedModeTitle": "Custom Prompt Content",
+      "advancedModePlaceholder": "Write your complete prompt content here...\n\nExample:\n## Role Definition\nYou are a professional cryptocurrency trader...\n\n## Trading Mode\n...",
+      "advancedModeHint": "Note: The system will automatically append Hard Constraints and Output Format at the end, so you don't need to worry about section numbers. Just focus on writing your trading strategy content.",
       "customized": "customized",
       "sections": {
         "roleDefinition": "AI Role Definition",

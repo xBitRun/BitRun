@@ -73,6 +73,10 @@ class TestBuildSystemPrompt:
         assert "Trading Mode" in prompt
         assert "Hard Constraints" in prompt
         assert "Output Format" in prompt
+        # Verify no section numbers in headers
+        assert "## 1. Role Definition" not in prompt
+        assert "## 3. Hard Constraints" not in prompt
+        assert "## 7. Output Format" not in prompt
 
     def test_chinese_system_prompt(self):
         config = StrategyConfig(language="zh")
@@ -100,19 +104,22 @@ class TestBuildSystemPrompt:
         assert "5x" in prompt  # default max_leverage
         assert "60%" in prompt  # default min_confidence
 
-    def test_includes_custom_prompt(self):
-        config = StrategyConfig()
+    def test_custom_prompt_deprecated_in_simple_mode(self):
+        """Test that custom_prompt is ignored in simple mode (deprecated)."""
+        config = StrategyConfig(prompt_mode="simple")
         pb = PromptBuilder(config, custom_prompt="Only trade BTC and ETH")
         prompt = pb.build_system_prompt()
-        assert "Only trade BTC and ETH" in prompt
-        assert "Additional Instructions" in prompt
+        # In simple mode, custom_prompt is ignored
+        assert "Only trade BTC and ETH" not in prompt
+        assert "Additional Instructions" not in prompt
 
     def test_no_custom_prompt_section_when_empty(self):
         config = StrategyConfig()
         pb = PromptBuilder(config, custom_prompt="")
         prompt = pb.build_system_prompt()
-        # Section 8 header should not appear when no custom prompt
-        assert "## 8. Additional Instructions" not in prompt
+        # Additional Instructions section should not appear when no custom prompt
+        # (Note: custom_prompt is deprecated, this test verifies backward compatibility)
+        assert "Additional Instructions" not in prompt
 
     def test_includes_json_schema(self):
         config = StrategyConfig()
@@ -133,6 +140,43 @@ class TestBuildSystemPrompt:
         prompt = pb.build_system_prompt()
         assert "DeFi expert" in prompt
         assert "every 15 minutes" in prompt
+
+    def test_simple_mode_hard_constraints_at_end(self):
+        """Test that in simple mode, hard constraints are placed at the end."""
+        config = StrategyConfig(prompt_mode="simple")
+        pb = PromptBuilder(config)
+        prompt = pb.build_system_prompt()
+        # Hard constraints should come after decision process
+        role_idx = prompt.find("Role Definition")
+        constraints_idx = prompt.find("Hard Constraints")
+        output_idx = prompt.find("Output Format")
+        assert role_idx < constraints_idx < output_idx
+
+    def test_advanced_mode_uses_advanced_prompt(self):
+        """Test that advanced mode uses advanced_prompt content."""
+        config = StrategyConfig(
+            prompt_mode="advanced",
+            advanced_prompt="## Custom Role\nYou are a custom trader.\n\n## Custom Strategy\nFocus on altcoins.",
+        )
+        pb = PromptBuilder(config)
+        prompt = pb.build_system_prompt()
+        assert "Custom Role" in prompt
+        assert "Custom Strategy" in prompt
+        assert "custom trader" in prompt
+        assert "altcoins" in prompt
+        # Hard constraints and output format should still be appended
+        assert "Hard Constraints" in prompt
+        assert "Output Format" in prompt
+
+    def test_advanced_mode_empty_fallback_to_defaults(self):
+        """Test that advanced mode falls back to defaults when advanced_prompt is empty."""
+        config = StrategyConfig(prompt_mode="advanced", advanced_prompt="")
+        pb = PromptBuilder(config)
+        prompt = pb.build_system_prompt()
+        # Should still have role definition and other sections
+        assert "Role Definition" in prompt or "角色定义" in prompt
+        assert "Hard Constraints" in prompt
+        assert "Output Format" in prompt
 
 
 class TestBuildUserPrompt:

@@ -35,7 +35,7 @@ import {
 } from "@/hooks";
 import type { CreateStrategyRequest } from "@/lib/api";
 import type { TradingMode, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
-import { getStrategyPreset } from "@/types";
+import { getStrategyPreset, DEFAULT_PROMPT_SECTIONS } from "@/types";
 
 export default function NewAgentPage() {
   const t = useTranslations("agents");
@@ -95,15 +95,22 @@ export default function NewAgentPage() {
     setIsCustomPreset(true);
   };
 
-  // Wrap setConfig to auto-switch to custom mode when indicators or riskControls change
+  // Wrap setConfig to auto-switch to custom mode when indicators, riskControls, or prompts change
   const handleConfigChange = useCallback((newConfig: StrategyStudioConfig) => {
-    // Detect if indicators or riskControls have changed from preset values
+    // Detect if indicators, riskControls, or prompts have changed from preset values
     if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
       const preset = getStrategyPreset(selectedRiskProfile, selectedTimeHorizon);
       if (preset) {
         const indicatorsChanged = JSON.stringify(newConfig.indicators) !== JSON.stringify(preset.values.indicators);
         const riskControlsChanged = JSON.stringify(newConfig.riskControls) !== JSON.stringify(preset.values.riskControls);
-        if (indicatorsChanged || riskControlsChanged) {
+        
+        // Check if prompt sections have been customized (differs from default)
+        const promptSectionsChanged = JSON.stringify(newConfig.promptSections) !== JSON.stringify(DEFAULT_PROMPT_SECTIONS);
+        
+        // Check if advanced prompt has content
+        const advancedPromptChanged = newConfig.promptMode === "advanced" && newConfig.advancedPrompt.trim() !== "";
+        
+        if (indicatorsChanged || riskControlsChanged || promptSectionsChanged || advancedPromptChanged) {
           setIsCustomPreset(true);
         }
       }

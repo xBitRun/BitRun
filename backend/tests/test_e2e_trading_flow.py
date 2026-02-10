@@ -13,6 +13,9 @@ the integration between components without external dependencies.
 """
 
 import asyncio
+import base64
+import os
+import secrets
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -30,6 +33,21 @@ from app.db.models import Base, UserDB
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# Set up valid encryption key for tests
+_VALID_AES_KEY = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
+os.environ.setdefault("DATA_ENCRYPTION_KEY", _VALID_AES_KEY)
+
+
+@pytest.fixture(autouse=True)
+def _mock_crypto_service(monkeypatch):
+    """Mock CryptoService to avoid encryption key issues in tests."""
+    mock_crypto = MagicMock()
+    mock_crypto.encrypt.return_value = "encrypted"
+    mock_crypto.decrypt.return_value = "decrypted"
+    mock_crypto.is_encrypted.return_value = False
+    monkeypatch.setattr("app.core.security._crypto_service", mock_crypto)
+    monkeypatch.setattr("app.db.repositories.account.get_crypto_service", lambda: mock_crypto)
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -131,39 +149,48 @@ class TestTradingFlowE2E:
                 )
                 # Account creation may require specific exchange validation
                 # This is a structural test - actual exchange calls are mocked
+                # If account creation fails, create strategy without account_id
+                account_id = None
                 if account_resp.status_code == 201:
                     account_id = account_resp.json()["id"]
 
-                    # Step 2: Create strategy
-                    strategy_resp = await client.post(
-                        "/api/v1/strategies",
-                        headers=auth_headers,
-                        json={
-                            "name": "Test BTC Strategy",
-                            "description": "E2E test strategy",
-                            "prompt": "Buy BTC when RSI < 30, sell when RSI > 70. Conservative risk management.",
-                            "trading_mode": "conservative",
-                            "account_id": account_id,
-                        },
-                    )
-                    assert strategy_resp.status_code == 201
-                    strategy = strategy_resp.json()
-                    strategy_id = strategy["id"]
+                # Step 2: Create strategy (with or without account_id)
+                strategy_data = {
+                    "name": "Test BTC Strategy",
+                    "description": "E2E test strategy",
+                    "prompt": "Buy BTC when RSI < 30, sell when RSI > 70. Conservative risk management.",
+                    "trading_mode": "conservative",
+                    "ai_model": "openai:gpt-4",
+                }
+                if account_id:
+                    strategy_data["account_id"] = account_id
+                
+                strategy_resp = await client.post(
+                    "/api/v1/strategies",
+                    headers=auth_headers,
+                    json=strategy_data,
+                )
+                if strategy_resp.status_code != 201:
+                    print(f"Strategy creation failed: {strategy_resp.status_code}")
+                    print(f"Response: {strategy_resp.text}")
+                assert strategy_resp.status_code == 201, f"Expected 201, got {strategy_resp.status_code}: {strategy_resp.text}"
+                strategy = strategy_resp.json()
+                strategy_id = strategy["id"]
 
-                    # Step 3: Verify strategy details
-                    get_resp = await client.get(
-                        f"/api/v1/strategies/{strategy_id}",
-                        headers=auth_headers,
-                    )
-                    assert get_resp.status_code == 200
-                    assert get_resp.json()["name"] == "Test BTC Strategy"
+                # Step 3: Verify strategy details
+                get_resp = await client.get(
+                    f"/api/v1/strategies/{strategy_id}",
+                    headers=auth_headers,
+                )
+                assert get_resp.status_code == 200
+                assert get_resp.json()["name"] == "Test BTC Strategy"
 
-                    # Step 4: Delete strategy
-                    delete_resp = await client.delete(
-                        f"/api/v1/strategies/{strategy_id}",
-                        headers=auth_headers,
-                    )
-                    assert delete_resp.status_code == 204
+                # Step 4: Delete strategy
+                delete_resp = await client.delete(
+                    f"/api/v1/strategies/{strategy_id}",
+                    headers=auth_headers,
+                )
+                assert delete_resp.status_code == 204
 
     @pytest.mark.asyncio
     async def test_unauthorized_access_rejected(self, app_with_db):
@@ -187,8 +214,25 @@ class TestConcurrentExecution:
     """Test concurrent strategy execution safety."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_strategy_creation(self, app_with_db, auth_headers):
+    async def test_concurrent_strategy_creation(self, app_with_db, test_engine):
         """Test that multiple strategies can be created concurrently without conflicts."""
+        # Create a unique user for this test to avoid email conflicts
+        session_factory = async_sessionmaker(test_engine, expire_on_commit=False)
+        async with session_factory() as session:
+            user = UserDB(
+                id=uuid4(),
+                email=f"concurrent-{uuid4()}@example.com",
+                name="concurrent_tester",
+                password_hash=hash_password("StrongPass123!"),
+                created_at=datetime.now(UTC),
+            )
+            session.add(user)
+            await session.commit()
+            user_id = str(user.id)
+        
+        token = create_access_token(user_id)
+        auth_headers = {"Authorization": f"Bearer {token}"}
+        
         transport = ASGITransport(app=app_with_db)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             tasks = []
@@ -201,6 +245,7 @@ class TestConcurrentExecution:
                         "description": f"Test strategy {i}",
                         "prompt": f"Strategy {i}: Buy BTC when conditions are met. Conservative approach.",
                         "trading_mode": "conservative",
+                        "ai_model": "openai:gpt-4",
                     },
                 )
                 tasks.append(task)

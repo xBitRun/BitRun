@@ -18,6 +18,12 @@ jest.mock("@/types", () => ({
     { value: "weighted_average", label: "Weighted Average", description: "Weighted average of all models" },
     { value: "unanimous", label: "Unanimous", description: "All models must agree" },
   ],
+  DEFAULT_PROMPT_SECTIONS: {
+    roleDefinition: "You are an expert cryptocurrency trader with deep market analysis skills.",
+    tradingFrequency: "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
+    entryStandards: "Enter positions only when multiple indicators align and risk/reward is favorable.",
+    decisionProcess: "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+  },
   DEFAULT_STRATEGY_STUDIO_CONFIG: {
     name: "",
     description: "",
@@ -110,6 +116,12 @@ jest.mock("@/components/ui/toast", () => ({
     error: jest.fn(),
     info: jest.fn(),
   }),
+}));
+
+// Mock react-markdown
+jest.mock("react-markdown", () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 // Mock next/link
@@ -233,6 +245,8 @@ describe("PromptPreview", () => {
 
 describe("PromptTemplateEditor", () => {
   const defaultProps = {
+    promptMode: "simple" as const,
+    onPromptModeChange: jest.fn(),
     value: {
       roleDefinition: "",
       tradingFrequency: "",
@@ -242,8 +256,14 @@ describe("PromptTemplateEditor", () => {
     onChange: jest.fn(),
     customPrompt: "",
     onCustomPromptChange: jest.fn(),
+    advancedPrompt: "",
+    onAdvancedPromptChange: jest.fn(),
     tradingMode: "conservative" as const,
   };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it("should render title", () => {
     render(<PromptTemplateEditor {...defaultProps} />);
@@ -251,24 +271,48 @@ describe("PromptTemplateEditor", () => {
     expect(screen.getByText("promptEditor.title")).toBeInTheDocument();
   });
 
-  it("should render template preset buttons", () => {
+  it("should render mode toggle", () => {
     render(<PromptTemplateEditor {...defaultProps} />);
 
-    expect(screen.getByText("promptEditor.templateMomentum")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.templateMeanReversion")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.templateConservative")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.modeSimple")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.modeAdvanced")).toBeInTheDocument();
   });
 
-  it("should apply momentum template on click", () => {
-    render(<PromptTemplateEditor {...defaultProps} />);
+  it("should render section editors in simple mode", () => {
+    render(<PromptTemplateEditor {...defaultProps} promptMode="simple" />);
 
-    fireEvent.click(screen.getByText("promptEditor.templateMomentum"));
+    expect(screen.getByText("promptEditor.advancedSections")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.sections.roleDefinition")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.sections.tradingFrequency")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.sections.entryStandards")).toBeInTheDocument();
+    expect(screen.getByText("promptEditor.sections.decisionProcess")).toBeInTheDocument();
+  });
 
-    expect(defaultProps.onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        roleDefinition: expect.stringContaining("momentum"),
-      })
-    );
+  it("should render advanced editor in advanced mode", () => {
+    render(<PromptTemplateEditor {...defaultProps} promptMode="advanced" />);
+
+    expect(screen.getByText("promptEditor.advancedModeTitle")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("promptEditor.advancedModePlaceholder")).toBeInTheDocument();
+  });
+
+  it("should toggle between simple and advanced mode", () => {
+    render(<PromptTemplateEditor {...defaultProps} promptMode="simple" />);
+
+    const switchElement = screen.getByRole("switch");
+    fireEvent.click(switchElement);
+
+    expect(defaultProps.onPromptModeChange).toHaveBeenCalledWith("advanced");
+  });
+
+  it("should expand section when clicked", () => {
+    render(<PromptTemplateEditor {...defaultProps} promptMode="simple" />);
+
+    const roleSection = screen.getByText("promptEditor.sections.roleDefinition").closest("button");
+    if (roleSection) {
+      fireEvent.click(roleSection);
+      // After expanding, textarea should be visible
+      expect(screen.getByPlaceholderText("promptEditor.placeholders.roleDefinition")).toBeInTheDocument();
+    }
   });
 });
 

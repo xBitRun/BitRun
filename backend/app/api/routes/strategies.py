@@ -122,11 +122,13 @@ class StrategyStatusUpdate(BaseModel):
 
 class PromptPreviewRequest(BaseModel):
     """Request for previewing generated prompt"""
-    prompt: str = Field(default="", description="User's custom strategy prompt")
+    prompt: str = Field(default="", description="User's custom strategy prompt (deprecated in simple mode)")
     trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
     symbols: list[str] = Field(default=["BTC", "ETH"])
     timeframes: list[str] = Field(default=["15m", "1h", "4h"])
     language: str = Field(default="en", description="Prompt language: 'en' or 'zh'")
+    prompt_mode: str = Field(default="simple", description="Prompt editing mode: 'simple' or 'advanced'")
+    advanced_prompt: str = Field(default="", description="Full custom prompt content for advanced mode")
     indicators: Optional[dict] = Field(
         default=None,
         description="Technical indicator settings"
@@ -201,8 +203,10 @@ async def preview_prompt(
         indicators=indicators,
         timeframes=data.timeframes,
         risk_controls=risk_controls,
+        prompt_mode=data.prompt_mode or "simple",
         prompt_sections=prompt_sections,
         custom_prompt=data.prompt,
+        advanced_prompt=data.advanced_prompt or "",
         execution_interval_minutes=30,
         auto_execute=True,
     )

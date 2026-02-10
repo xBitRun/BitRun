@@ -112,11 +112,17 @@ export function StrategyStudioTabs({
 
         <TabsContent value="prompt" className="m-0">
           <PromptTemplateEditor
+            promptMode={config.promptMode}
+            onPromptModeChange={(mode) => updateConfig("promptMode", mode)}
             value={config.promptSections}
             onChange={(promptSections) => updateConfig("promptSections", promptSections)}
             customPrompt={config.customPrompt}
             onCustomPromptChange={(customPrompt) =>
               updateConfig("customPrompt", customPrompt)
+            }
+            advancedPrompt={config.advancedPrompt}
+            onAdvancedPromptChange={(advancedPrompt) =>
+              updateConfig("advancedPrompt", advancedPrompt)
             }
             tradingMode={config.tradingMode}
           />
@@ -142,6 +148,7 @@ export function StrategyStudioTabs({
             onRefresh={onRefreshPreview}
             onTest={onTestAI}
             isTestLoading={isTestLoading}
+            promptMode={config.promptMode}
           />
         </TabsContent>
       </div>

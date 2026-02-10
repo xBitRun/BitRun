@@ -17,6 +17,7 @@ interface PromptPreviewProps {
   onRefresh: () => void;
   onTest?: () => void;
   isTestLoading?: boolean;
+  promptMode?: "simple" | "advanced";
 }
 
 export function PromptPreview({
@@ -25,6 +26,7 @@ export function PromptPreview({
   onRefresh,
   onTest,
   isTestLoading,
+  promptMode = "simple",
 }: PromptPreviewProps) {
   const t = useTranslations("strategyStudio");
   const [copied, setCopied] = useState(false);
@@ -38,15 +40,18 @@ export function PromptPreview({
     }
   };
 
-  const sections = [
-    { key: "full", label: t("preview.fullPrompt"), icon: FileCode },
-    { key: "roleDefinition", label: t("preview.role"), icon: null },
-    { key: "tradingMode", label: t("preview.mode"), icon: null },
-    { key: "tradingFrequency", label: t("preview.frequency"), icon: null },
-    { key: "entryStandards", label: t("preview.entry"), icon: null },
-    { key: "decisionProcess", label: t("preview.process"), icon: null },
-    { key: "customPrompt", label: t("preview.custom"), icon: null },
-  ];
+  // In advanced mode, only show full prompt tab
+  const sections =
+    promptMode === "advanced"
+      ? [{ key: "full", label: t("preview.fullPrompt"), icon: FileCode }]
+      : [
+          { key: "full", label: t("preview.fullPrompt"), icon: FileCode },
+          { key: "roleDefinition", label: t("preview.role"), icon: null },
+          { key: "tradingMode", label: t("preview.mode"), icon: null },
+          { key: "tradingFrequency", label: t("preview.frequency"), icon: null },
+          { key: "entryStandards", label: t("preview.entry"), icon: null },
+          { key: "decisionProcess", label: t("preview.process"), icon: null },
+        ];
 
   const getSectionContent = (key: string): string => {
     if (!preview) return "";
@@ -101,17 +106,19 @@ export function PromptPreview({
       <CardContent className="space-y-4">
         {/* Section Tabs */}
         <Tabs value={activeSection} onValueChange={setActiveSection}>
-          <TabsList className="w-full flex-wrap h-auto gap-1 bg-transparent p-0">
-            {sections.map((section) => (
-              <TabsTrigger
-                key={section.key}
-                value={section.key}
-                className="text-xs data-[state=active]:bg-primary/20"
-              >
-                {section.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {sections.length > 1 && (
+            <TabsList className="w-full flex-wrap h-auto gap-1 bg-transparent p-0">
+              {sections.map((section) => (
+                <TabsTrigger
+                  key={section.key}
+                  value={section.key}
+                  className="text-xs data-[state=active]:bg-primary/20"
+                >
+                  {section.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          )}
 
           {sections.map((section) => (
             <TabsContent key={section.key} value={section.key} className="mt-4">

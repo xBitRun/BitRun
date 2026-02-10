@@ -102,15 +102,25 @@ class StrategyConfig(BaseModel):
     )
 
     # Prompt customization
+    prompt_mode: str = Field(
+        default="simple",
+        description="Prompt editing mode: 'simple' (section-based) or 'advanced' (full markdown editor)"
+    )
     prompt_sections: PromptSections = Field(
         default_factory=PromptSections,
-        description="Customizable prompt sections"
+        description="Customizable prompt sections (used in simple mode)"
     )
 
     # Custom prompt addition
     custom_prompt: str = Field(
         default="",
-        description="Additional custom instructions appended to system prompt"
+        description="Additional custom instructions appended to system prompt (used in simple mode, deprecated)"
+    )
+
+    # Advanced prompt (full markdown content for sections 1-6)
+    advanced_prompt: str = Field(
+        default="",
+        description="Full custom prompt content for advanced mode (replaces sections 1-6)"
     )
 
     # Execution settings

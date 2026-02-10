@@ -92,12 +92,14 @@ function configToApiFormat(config: StrategyStudioConfig): Record<string, unknown
         max_drawdown_percent: config.riskControls.maxDrawdownPercent,
         min_confidence: config.riskControls.minConfidence,
       },
+      prompt_mode: config.promptMode || "simple",
       prompt_sections: {
         role_definition: config.promptSections.roleDefinition,
         trading_frequency: config.promptSections.tradingFrequency,
         entry_standards: config.promptSections.entryStandards,
         decision_process: config.promptSections.decisionProcess,
       },
+      advanced_prompt: config.advancedPrompt || "",
       execution_interval_minutes: config.executionIntervalMinutes,
       auto_execute: config.autoExecute,
       // Debate configuration
@@ -127,7 +129,9 @@ export function apiResponseToConfig(response: Record<string, unknown>): Partial<
     timeframes: (config.timeframes as Timeframe[]) || ["15m", "1h", "4h"],
     executionIntervalMinutes: (config.execution_interval_minutes as number) || 30,
     autoExecute: (config.auto_execute as boolean) ?? true,
+    promptMode: (config.prompt_mode as "simple" | "advanced") || "simple",
     customPrompt: response.prompt as string || "",
+    advancedPrompt: (config.advanced_prompt as string) || "",
     indicators: {
       ema: {
         enabled: Array.isArray(indicators.ema_periods) && (indicators.ema_periods as number[]).length > 0,
@@ -197,6 +201,8 @@ export function useStrategyStudio(
       prompt: config.customPrompt,
       trading_mode: config.tradingMode,
       language: config.language,
+      prompt_mode: config.promptMode || "simple",
+      advanced_prompt: config.advancedPrompt || "",
       symbols: config.symbols,
       timeframes: config.timeframes,
       indicators: {
