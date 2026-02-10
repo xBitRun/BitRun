@@ -355,7 +355,8 @@
       "tradeAnalysis": "交易分析",
       "timeAnalysis": "时间分析",
       "symbolBreakdown": "品种分析",
-      "tradeList": "交易明细"
+      "tradeList": "交易明细",
+      "analysis": "策略分析"
     },
     "charts": {
       "equityCurve": "权益曲线",
@@ -439,6 +440,11 @@
     "toast": {
       "completed": "回测完成",
       "failed": "回测失败"
+    },
+    "analysis": {
+      "strengths": "策略优势",
+      "weaknesses": "不足之处",
+      "recommendations": "优化建议"
     }
   },
   "accounts": {

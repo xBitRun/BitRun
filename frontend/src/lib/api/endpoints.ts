@@ -609,6 +609,11 @@ export interface BacktestResponse {
   monthly_returns: MonthlyReturn[];
   trade_statistics?: TradeStatistics;
   symbol_breakdown: SymbolBreakdown[];
+  analysis?: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
 }
 
 export const backtestApi = {

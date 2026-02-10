@@ -355,7 +355,8 @@
       "tradeAnalysis": "Trade Analysis",
       "timeAnalysis": "Time Analysis",
       "symbolBreakdown": "Symbol Breakdown",
-      "tradeList": "Trade List"
+      "tradeList": "Trade List",
+      "analysis": "Strategy Analysis"
     },
     "charts": {
       "equityCurve": "Equity Curve",
@@ -439,6 +440,11 @@
     "toast": {
       "completed": "Backtest completed",
       "failed": "Backtest failed"
+    },
+    "analysis": {
+      "strengths": "Strengths",
+      "weaknesses": "Weaknesses",
+      "recommendations": "Recommendations"
     }
   },
   "accounts": {

@@ -25,6 +25,14 @@ settings = get_settings()
 
 
 @dataclass
+class BacktestAnalysis:
+    """Backtest result analysis"""
+    strengths: List[str] = field(default_factory=list)
+    weaknesses: List[str] = field(default_factory=list)
+    recommendations: List[str] = field(default_factory=list)
+
+
+@dataclass
 class BacktestResult:
     """Backtest result summary"""
     strategy_name: str
@@ -51,6 +59,7 @@ class BacktestResult:
     trade_statistics: Dict[str, Any] = field(default_factory=dict)
     symbol_breakdown: List[Dict[str, Any]] = field(default_factory=list)
     decisions: List[Dict[str, Any]] = field(default_factory=list)
+    analysis: Optional[BacktestAnalysis] = None
 
     def to_dict(self) -> dict:
         return {
@@ -105,6 +114,7 @@ class BacktestEngine:
         use_ai: bool = False,
         ai_client: Optional[BaseAIClient] = None,
         decision_interval_candles: int = 1,  # Make decision every N candles
+        analysis_ai_client: Optional[BaseAIClient] = None,  # Optional AI client for analysis
     ):
         """
         Initialize backtest engine.
@@ -134,6 +144,7 @@ class BacktestEngine:
                 "(e.g. resolve_provider_credentials) and pass ai_client."
             )
         self.ai_client = ai_client
+        self.analysis_ai_client = analysis_ai_client
 
         # Parse strategy config
         self.config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
@@ -365,6 +376,132 @@ class BacktestEngine:
             except Exception:
                 continue
 
+    async def _generate_analysis(
+        self,
+        stats: Dict[str, Any],
+        trades: List[Trade],
+        sharpe: Optional[float],
+        sortino: Optional[float],
+        calmar: Optional[float],
+        recovery_factor: Optional[float],
+        monthly_returns: List[Dict[str, Any]],
+        symbol_breakdown: List[Dict[str, Any]],
+    ) -> Optional[BacktestAnalysis]:
+        """Generate analysis of backtest results using AI if available"""
+        # If no AI client provided, return None (analysis is optional)
+        if not self.analysis_ai_client:
+            return None
+
+        try:
+            # Aggregate backtest data into structured format
+            analysis_data = {
+                "performance_metrics": {
+                    "total_return_percent": stats["total_pnl_percent"],
+                    "final_balance": self.trader.balance,
+                    "initial_balance": self.initial_balance,
+                    "total_trades": stats["total_trades"],
+                    "winning_trades": stats["winning_trades"],
+                    "losing_trades": stats["losing_trades"],
+                    "win_rate": stats["win_rate"],
+                    "profit_factor": stats["profit_factor"] if stats["profit_factor"] != float("inf") else None,
+                    "max_drawdown_percent": stats["max_drawdown"],
+                    "sharpe_ratio": sharpe,
+                    "sortino_ratio": sortino,
+                    "calmar_ratio": calmar,
+                    "recovery_factor": recovery_factor,
+                    "expectancy": stats.get("expectancy", 0),
+                    "total_fees": stats["total_fees"],
+                },
+                "trade_statistics": {
+                    "average_win": stats.get("average_win", 0),
+                    "average_loss": stats.get("average_loss", 0),
+                    "largest_win": stats.get("largest_win", 0),
+                    "largest_loss": stats.get("largest_loss", 0),
+                    "gross_profit": stats.get("gross_profit", 0),
+                    "gross_loss": stats.get("gross_loss", 0),
+                    "avg_holding_hours": stats.get("avg_holding_hours", 0),
+                    "max_consecutive_wins": stats.get("max_consecutive_wins", 0),
+                    "max_consecutive_losses": stats.get("max_consecutive_losses", 0),
+                },
+                "long_short_analysis": {
+                    "long_stats": stats.get("long_stats", {}),
+                    "short_stats": stats.get("short_stats", {}),
+                },
+                "monthly_performance": monthly_returns,
+                "symbol_performance": symbol_breakdown,
+                "time_period": {
+                    "start_date": self.start_date.isoformat(),
+                    "end_date": self.end_date.isoformat(),
+                    "duration_days": (self.end_date - self.start_date).days,
+                },
+            }
+
+            # Build prompt
+            import json
+            system_prompt = """你是一位专业的量化交易策略分析师。请基于提供的回测数据，进行深入分析并给出专业的建议。
+
+请从以下维度进行分析：
+1. 策略表现的优势（做得好的地方）
+2. 策略存在的问题和不足（做得不足的地方）
+3. 具体的优化方向和建议
+
+要求：
+- 分析要具体、有数据支撑
+- 建议要可操作、有针对性
+- 语言简洁专业，使用中文
+- 每个维度列出3-5条要点
+
+请以JSON格式返回，格式如下：
+{
+  "strengths": ["优势1", "优势2", ...],
+  "weaknesses": ["不足1", "不足2", ...],
+  "recommendations": ["建议1", "建议2", ...]
+}"""
+
+            user_prompt = f"""请分析以下回测结果：
+
+{json.dumps(analysis_data, ensure_ascii=False, indent=2)}
+
+请提供详细的分析和建议。"""
+
+            # Call AI
+            response = await self.analysis_ai_client.generate(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                json_mode=True,
+            )
+
+            # Parse response
+            import json as json_lib
+            try:
+                content = response.content.strip()
+                # Remove markdown code blocks if present
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.startswith("```"):
+                    content = content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                content = content.strip()
+
+                analysis_json = json_lib.loads(content)
+                return BacktestAnalysis(
+                    strengths=analysis_json.get("strengths", []),
+                    weaknesses=analysis_json.get("weaknesses", []),
+                    recommendations=analysis_json.get("recommendations", []),
+                )
+            except (json_lib.JSONDecodeError, KeyError) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to parse AI analysis response: {e}, content: {content[:200]}")
+                return None
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to generate AI analysis: {e}", exc_info=True)
+            return None
+
     async def _build_result(self) -> BacktestResult:
         """Build final backtest result"""
         import statistics as stats_mod
@@ -468,6 +605,18 @@ class BacktestEngine:
             "short_stats": stats["short_stats"],
         }
 
+        # Generate analysis (async, so we need to await)
+        analysis = await self._generate_analysis(
+            stats=stats,
+            trades=trades,
+            sharpe=sharpe,
+            sortino=sortino,
+            calmar=calmar,
+            recovery_factor=recovery_factor,
+            monthly_returns=monthly_returns,
+            symbol_breakdown=stats["symbol_breakdown"],
+        )
+
         return BacktestResult(
             strategy_name=self.strategy.name,
             start_date=self.start_date,
@@ -493,6 +642,7 @@ class BacktestEngine:
             trade_statistics=trade_statistics,
             symbol_breakdown=stats["symbol_breakdown"],
             decisions=self._decisions,
+            analysis=analysis,
         )
 
     async def cleanup(self) -> None:

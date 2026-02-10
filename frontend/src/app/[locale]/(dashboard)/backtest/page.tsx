@@ -21,6 +21,9 @@ import {
   ArrowUpDown,
   Trophy,
   Zap,
+  Lightbulb,
+  AlertCircle,
+  TrendingUp as TrendingUpIcon,
 } from "lucide-react";
 import {
   Card,
@@ -1158,6 +1161,82 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
   );
 }
 
+// ===================== Tab: Analysis =====================
+
+function AnalysisTab({ data }: { data: { strengths: string[]; weaknesses: string[]; recommendations: string[] } }) {
+  const t = useTranslations("backtest");
+
+  return (
+    <div className="space-y-6">
+      {/* Strengths */}
+      {data.strengths.length > 0 && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Trophy className="w-4 h-4 text-[var(--profit)]" />
+              {t("analysis.strengths")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {data.strengths.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm">
+                  <span className="text-[var(--profit)] mt-0.5">✓</span>
+                  <span className="text-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Weaknesses */}
+      {data.weaknesses.length > 0 && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <TrendingDown className="w-4 h-4 text-[var(--loss)]" />
+              {t("analysis.weaknesses")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {data.weaknesses.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm">
+                  <span className="text-[var(--loss)] mt-0.5">⚠</span>
+                  <span className="text-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recommendations */}
+      {data.recommendations.length > 0 && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Target className="w-4 h-4 text-primary" />
+              {t("analysis.recommendations")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {data.recommendations.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm">
+                  <span className="text-primary mt-0.5">→</span>
+                  <span className="text-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ===================== Tab: Trade List =====================
 
 function TradeListTab({ data }: { data: BacktestResponse }) {
@@ -1685,6 +1764,11 @@ export default function BacktestPage() {
                     <TabsTrigger value="trade-list">
                       {t("tabs.tradeList")}
                     </TabsTrigger>
+                    {results.analysis && (
+                      <TabsTrigger value="analysis">
+                        {t("tabs.analysis")}
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -1702,6 +1786,11 @@ export default function BacktestPage() {
                   <TabsContent value="trade-list">
                     <TradeListTab data={results} />
                   </TabsContent>
+                  {results.analysis && (
+                    <TabsContent value="analysis">
+                      <AnalysisTab data={results.analysis} />
+                    </TabsContent>
+                  )}
                 </Tabs>
               </CardContent>
             </Card>

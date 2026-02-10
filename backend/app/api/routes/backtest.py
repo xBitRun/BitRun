@@ -111,6 +111,13 @@ class SymbolBreakdown(BaseModel):
     average_pnl: float
 
 
+class BacktestAnalysis(BaseModel):
+    """Backtest result analysis"""
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+
 class BacktestResponse(BaseModel):
     """Backtest result response"""
     strategy_name: str
@@ -134,6 +141,7 @@ class BacktestResponse(BaseModel):
     monthly_returns: list[MonthlyReturn] = Field(default_factory=list)
     trade_statistics: Optional[TradeStatistics] = None
     symbol_breakdown: list[SymbolBreakdown] = Field(default_factory=list)
+    analysis: Optional[BacktestAnalysis] = None
 
 
 class QuickBacktestRequest(BaseModel):
@@ -197,6 +205,14 @@ def _build_response(result) -> BacktestResponse:
         SymbolBreakdown(**s) for s in (result.symbol_breakdown or [])
     ]
 
+    analysis = None
+    if result.analysis:
+        analysis = BacktestAnalysis(
+            strengths=result.analysis.strengths,
+            weaknesses=result.analysis.weaknesses,
+            recommendations=result.analysis.recommendations,
+        )
+
     return BacktestResponse(
         strategy_name=result.strategy_name,
         start_date=result.start_date,
@@ -218,6 +234,7 @@ def _build_response(result) -> BacktestResponse:
         monthly_returns=monthly_returns,
         trade_statistics=trade_statistics,
         symbol_breakdown=symbol_breakdown,
+        analysis=analysis,
     )
 
 
@@ -246,6 +263,7 @@ async def run_backtest(
 
     # Resolve AI client from DB when use_ai
     ai_client = None
+    analysis_ai_client = None
     if request.use_ai:
         model_id = strategy.ai_model
         if not model_id:
@@ -267,6 +285,22 @@ async def run_backtest(
         if base_url:
             kwargs["base_url"] = base_url
         ai_client = get_ai_client(model_id, **kwargs)
+    
+    # Resolve AI client for analysis (use strategy's AI model if available)
+    if strategy.ai_model:
+        try:
+            model_id = strategy.ai_model
+            api_key, base_url = await resolve_provider_credentials(
+                db, crypto, UUID(user_id), model_id
+            )
+            if api_key or "custom" in (model_id.split(":")[0] if ":" in model_id else "").lower():
+                kwargs = {"api_key": api_key or ""}
+                if base_url:
+                    kwargs["base_url"] = base_url
+                analysis_ai_client = get_ai_client(model_id, **kwargs)
+        except Exception as e:
+            logger.warning(f"Failed to initialize analysis AI client: {e}")
+            # Continue without analysis if AI client setup fails
 
     try:
         # Initialize data provider with user-selected exchange
@@ -293,6 +327,7 @@ async def run_backtest(
             data_provider=data_provider,
             use_ai=request.use_ai,
             ai_client=ai_client,
+            analysis_ai_client=analysis_ai_client,
         )
 
         result = await engine.run()
@@ -311,6 +346,8 @@ async def run_backtest(
 async def quick_backtest(
     request: QuickBacktestRequest,
     user_id: CurrentUserDep,
+    db: DbSessionDep = None,
+    crypto: CryptoDep = None,
     _rate_limit: RateLimitApiDep = None,
 ):
     """
@@ -340,6 +377,9 @@ async def quick_backtest(
         status="draft",
     )
 
+    # Quick backtest doesn't use AI for analysis (no strategy AI model)
+    analysis_ai_client = None
+
     try:
         # Initialize data provider with user-selected exchange
         data_provider = DataProvider(exchange=request.exchange)
@@ -361,6 +401,7 @@ async def quick_backtest(
             end_date=request.end_date,
             data_provider=data_provider,
             use_ai=False,
+            analysis_ai_client=analysis_ai_client,
         )
 
         result = await engine.run()
