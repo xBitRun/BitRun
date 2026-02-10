@@ -190,16 +190,7 @@ def create_app() -> FastAPI:
         openapi_url="/api/v1/openapi.json" if settings.is_debug else None,
     )
 
-    # CORS middleware - restrict methods and headers for production security
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.get_cors_origins(),
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
-    )
-
-    # Security headers middleware
+    # Security headers middleware (inner layer)
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next) -> Response:
         response = await call_next(request)
@@ -212,8 +203,20 @@ def create_app() -> FastAPI:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
-    # Prometheus metrics middleware
+    # Prometheus metrics middleware (middle layer)
     setup_prometheus_middleware(app)
+
+    # CORS middleware - added LAST = outermost = runs first
+    # Must be outermost to avoid BaseHTTPMiddleware interfering with CORS headers
+    cors_origins = settings.get_cors_origins()
+    logger.info(f"CORS origins: {cors_origins}")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    )
 
     # ==================== API v1 Routes ====================
     # All versioned API routes use /api/v1 prefix
