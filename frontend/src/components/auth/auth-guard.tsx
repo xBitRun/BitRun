@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, usePathname } from "@/i18n/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { TokenManager } from "@/lib/api/client";
@@ -19,34 +19,42 @@ interface AuthGuardProps {
  * - Token expires while user is on the page
  * - User manually clears cookies
  * - SPA navigation after authentication state changes
+ *
+ * NOTE: The full-screen loading state only shows on the initial auth check.
+ * Subsequent route changes rely on Next.js loading.tsx for content-area loading,
+ * keeping the header and sidebar visible at all times.
  */
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, checkAuth, isLoading } = useAuthStore();
+  const { isAuthenticated, checkAuth } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    const verifyAuth = async () => {
-      const locale = pathname.startsWith("/zh") ? "zh" : "en";
+    // Only run the blocking auth check once on initial mount.
+    // Subsequent navigations are handled by middleware + Next.js loading.tsx.
+    if (hasChecked.current) return;
 
+    const verifyAuth = async () => {
       // Check if access token exists
       if (!TokenManager.isAuthenticated()) {
         // Try to refresh using refresh token
         const refreshed = await TokenManager.refreshAccessToken();
         if (!refreshed) {
           // No valid tokens, redirect to login
-          router.replace(`/${locale}/login?callbackUrl=${encodeURIComponent(pathname)}`);
+          router.replace(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
           return;
         }
       }
 
-      // Verify token with backend (optional - can be skipped for performance)
+      // Verify token with backend
       try {
         await checkAuth();
       } catch {
         // Token might be invalid, let middleware handle redirect
       } finally {
+        hasChecked.current = true;
         setIsChecking(false);
       }
     };
@@ -54,8 +62,10 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
     verifyAuth();
   }, [pathname, router, checkAuth]);
 
-  // Still checking authentication
-  if (isChecking || isLoading) {
+  // Only show full-screen loading on the initial auth check.
+  // Store's isLoading is intentionally NOT used here to avoid
+  // re-blocking the entire layout on subsequent navigations.
+  if (isChecking) {
     return (
       fallback || (
         <div className="flex h-screen items-center justify-center">

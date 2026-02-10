@@ -7,8 +7,8 @@ export const routing = defineRouting({
   // Used when no locale matches
   defaultLocale: "en",
 
-  // The `pathnames` option can be used to customize URL paths for specific locales
-  localePrefix: "as-needed",
+  // No locale prefix in URL; language preference is persisted via NEXT_LOCALE cookie
+  localePrefix: "never",
 });
 
 export type Locale = (typeof routing.locales)[number];

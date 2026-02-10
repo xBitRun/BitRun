@@ -16,14 +16,13 @@ const ACCESS_TOKEN_KEY = "access_token";
 
 /**
  * Check if the current path is a public route (doesn't require auth)
+ * With localePrefix: "never", pathname has no locale prefix.
  */
 function isPublicRoute(pathname: string): boolean {
-  // Remove locale prefix if present
-  const pathWithoutLocale = pathname.replace(/^\/(en|zh)/, "") || "/";
   return publicRoutes.some((route) =>
     route === "/"
-      ? pathWithoutLocale === "/"
-      : pathWithoutLocale.startsWith(route)
+      ? pathname === "/"
+      : pathname.startsWith(route)
   );
 }
 
@@ -31,16 +30,7 @@ function isPublicRoute(pathname: string): boolean {
  * Check if the current path is an auth route (login/register)
  */
 function isAuthRoute(pathname: string): boolean {
-  const pathWithoutLocale = pathname.replace(/^\/(en|zh)/, "") || "/";
-  return authRoutes.some((route) => pathWithoutLocale.startsWith(route));
-}
-
-/**
- * Get the locale from pathname
- */
-function getLocaleFromPath(pathname: string): string {
-  const match = pathname.match(/^\/(en|zh)/);
-  return match ? match[1] : routing.defaultLocale;
+  return authRoutes.some((route) => pathname.startsWith(route));
 }
 
 export default async function middleware(request: NextRequest) {
@@ -59,32 +49,25 @@ export default async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_KEY)?.value;
   const isAuthenticated = !!accessToken;
 
-  // Get locale for redirects
-  const locale = getLocaleFromPath(pathname);
-
   // If user is authenticated and trying to access auth routes, redirect to dashboard
   if (isAuthenticated && isAuthRoute(pathname)) {
-    const homeUrl = new URL(`/${locale}/overview`, request.url);
+    const homeUrl = new URL("/overview", request.url);
     return NextResponse.redirect(homeUrl);
   }
 
   // If user is not authenticated and trying to access protected routes, redirect to login
   if (!isAuthenticated && !isPublicRoute(pathname)) {
-    const loginUrl = new URL(`/${locale}/login`, request.url);
+    const loginUrl = new URL("/login", request.url);
     // Preserve the original URL as callback
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Run intl middleware for locale handling
+  // Run intl middleware for locale handling (reads NEXT_LOCALE cookie)
   return intlMiddleware(request);
 }
 
 export const config = {
   // Match all paths except static files and api
-  matcher: [
-    "/",
-    "/(zh|en)/:path*",
-    "/((?!_next|api|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next|api|.*\\..*).*)", "/"],
 };
