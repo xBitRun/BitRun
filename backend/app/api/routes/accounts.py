@@ -495,12 +495,21 @@ async def test_connection(
 
     except TradeError as e:
         # Exchange-specific error - log and sanitize
-        logger.warning(f"Exchange error testing connection for account {account_id}: {e.message}")
+        error_code = getattr(e, 'code', None)
+        error_message = getattr(e, 'message', str(e))
+        
+        logger.warning(
+            f"Exchange error testing connection for account {account_id}: "
+            f"code={error_code}, message={error_message}"
+        )
+        
         await repo.update_connection_status(
             uuid.UUID(account_id),
             is_connected=False,
-            error=str(e.message)
+            error=error_message
         )
+        
+        # exchange_api_error will handle the specific error code and provide appropriate message
         raise exchange_api_error(e, operation="connection test")
 
     except Exception as e:

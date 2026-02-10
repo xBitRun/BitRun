@@ -280,6 +280,85 @@ class TestPrebuiltErrors:
             exc = exchange_api_error(RuntimeError("err"))
             assert exc.status_code == 502
 
+    def test_exchange_api_error_with_trade_error_auth(self):
+        """Test exchange_api_error with TradeError AUTH_ERROR code"""
+        from app.traders.base import TradeError
+        
+        with patch("app.core.errors.get_settings", return_value=self._mock_settings("development")):
+            trade_error = TradeError(
+                message="binanceusdm authentication failed: Invalid API key",
+                code="AUTH_ERROR"
+            )
+            exc = exchange_api_error(trade_error, operation="connection test")
+            assert exc.status_code == 502
+            assert "认证失败" in exc.detail
+            assert "connection test" in exc.detail
+            assert "API Key" in exc.detail
+            # In development, should include detailed error message
+            assert "Invalid API key" in exc.detail
+
+    def test_exchange_api_error_with_trade_error_auth_production(self):
+        """Test exchange_api_error with TradeError AUTH_ERROR code in production"""
+        from app.traders.base import TradeError
+        
+        with patch("app.core.errors.get_settings", return_value=self._mock_settings("production")):
+            trade_error = TradeError(
+                message="binanceusdm authentication failed: Invalid API key",
+                code="AUTH_ERROR"
+            )
+            exc = exchange_api_error(trade_error, operation="connection test")
+            assert exc.status_code == 502
+            assert "认证失败" in exc.detail
+            assert "API Key" in exc.detail
+            # In production, should not include detailed error message
+            assert "Invalid API key" not in exc.detail
+
+    def test_exchange_api_error_with_trade_error_exchange_error(self):
+        """Test exchange_api_error with TradeError EXCHANGE_ERROR code"""
+        from app.traders.base import TradeError
+        
+        with patch("app.core.errors.get_settings", return_value=self._mock_settings("development")):
+            trade_error = TradeError(
+                message="binanceusdm exchange error: Rate limit exceeded",
+                code="EXCHANGE_ERROR"
+            )
+            exc = exchange_api_error(trade_error, operation="connection test")
+            assert exc.status_code == 502
+            assert "交易所 API 错误" in exc.detail
+            assert "connection test" in exc.detail
+            # In development, should include detailed error message
+            assert "Rate limit exceeded" in exc.detail
+
+    def test_exchange_api_error_with_trade_error_exchange_error_production(self):
+        """Test exchange_api_error with TradeError EXCHANGE_ERROR code in production"""
+        from app.traders.base import TradeError
+        
+        with patch("app.core.errors.get_settings", return_value=self._mock_settings("production")):
+            trade_error = TradeError(
+                message="binanceusdm exchange error: Rate limit exceeded",
+                code="EXCHANGE_ERROR"
+            )
+            exc = exchange_api_error(trade_error, operation="connection test")
+            assert exc.status_code == 502
+            assert "交易所 API 错误" in exc.detail
+            # In production, should not include detailed error message
+            assert "Rate limit exceeded" not in exc.detail
+            assert "请稍后重试" in exc.detail
+
+    def test_exchange_api_error_with_trade_error_no_code(self):
+        """Test exchange_api_error with TradeError without code"""
+        from app.traders.base import TradeError
+        
+        with patch("app.core.errors.get_settings", return_value=self._mock_settings("development")):
+            trade_error = TradeError(
+                message="Some trading error occurred"
+            )
+            exc = exchange_api_error(trade_error, operation="connection test")
+            assert exc.status_code == 502
+            assert "交易所 API 错误" in exc.detail
+            # In development, should include detailed error message
+            assert "Some trading error occurred" in exc.detail
+
     def test_ai_service_error(self):
         with patch("app.core.errors.get_settings", return_value=self._mock_settings()):
             exc = ai_service_error(TimeoutError("timeout"))

@@ -18,6 +18,12 @@ from .config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Import TradeError for type checking (avoid circular import)
+try:
+    from ..traders.base import TradeError
+except ImportError:
+    TradeError = None  # type: ignore
+
 
 class ErrorCode(str, Enum):
     """Standard error codes for the application"""
@@ -229,6 +235,42 @@ def exchange_connection_error(error: Exception, exchange: str = "") -> HTTPExcep
 def exchange_api_error(error: Exception, operation: str = "") -> HTTPException:
     """Create standardized exchange API error"""
     op_info = f" during {operation}" if operation else ""
+    settings = get_settings()
+    
+    # Check if it's a TradeError with specific error code
+    if TradeError and isinstance(error, TradeError):
+        error_code = getattr(error, 'code', None)
+        error_message = getattr(error, 'message', str(error))
+        
+        if error_code == "AUTH_ERROR":
+            # Authentication error - provide clear guidance
+            user_message = f"认证失败{op_info}。请检查 API Key 和 Secret Key 是否正确，并确保已启用必要的权限。"
+            if settings.environment != "production":
+                user_message = f"{user_message} 详细错误: {error_message}"
+        elif error_code == "EXCHANGE_ERROR":
+            # Exchange-specific error - use the detailed message from TradeError
+            user_message = f"交易所 API 错误{op_info}。"
+            if settings.environment != "production":
+                user_message = f"{user_message} {error_message}"
+            else:
+                # In production, provide generic message but log the details
+                user_message = f"{user_message} 请稍后重试。"
+        else:
+            # Other TradeError - use generic message with details in dev
+            user_message = f"交易所 API 错误{op_info}。"
+            if settings.environment != "production":
+                user_message = f"{user_message} {error_message}"
+            else:
+                user_message = f"{user_message} 请稍后重试。"
+        
+        return create_http_exception(
+            code=ErrorCode.EXCHANGE_ERROR,
+            user_message=user_message,
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            internal_error=error,
+        )
+    
+    # Generic error handling
     return create_http_exception(
         code=ErrorCode.EXCHANGE_ERROR,
         user_message=f"Exchange API error{op_info}. Please try again later.",
