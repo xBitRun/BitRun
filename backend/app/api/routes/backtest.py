@@ -408,9 +408,9 @@ async def get_available_symbols(
 
         await data_provider.close()
 
-        # Return top 50 by alphabetical order
+        # Return all symbols sorted alphabetically
         symbols.sort(key=lambda x: x["symbol"])
-        return {"symbols": symbols[:50]}
+        return {"symbols": symbols}
 
     except HTTPException:
         raise
