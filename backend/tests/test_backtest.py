@@ -778,3 +778,371 @@ class TestBacktestEngine:
             
             with pytest.raises(ValueError, match="No data to backtest"):
                 await engine.run()
+
+    @pytest.mark.asyncio
+    async def test_backtest_initializes_data_provider(self, mock_strategy):
+        """Test that engine initializes data provider if not provided"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            with patch("app.backtest.engine.DataProvider") as mock_dp_class:
+                mock_dp = MagicMock()
+                mock_dp.initialize = AsyncMock()
+                mock_dp.load_data = AsyncMock()
+                mock_dp.iterate.return_value = []
+                mock_dp_class.return_value = mock_dp
+                
+                engine = BacktestEngine(
+                    strategy=mock_strategy,
+                    initial_balance=10000,
+                    use_ai=False,
+                )
+                
+                # Should raise ValueError because no data
+                with pytest.raises(ValueError):
+                    await engine.run()
+                
+                # Verify data provider was initialized
+                mock_dp.initialize.assert_called_once()
+                mock_dp.load_data.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_backtest_closes_remaining_positions(self, mock_strategy, mock_data_provider):
+        """Test that engine closes remaining positions at end"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            mock_trader = MagicMock()
+            mock_trader.set_current_time = MagicMock()
+            mock_trader.set_prices = MagicMock()
+            account_state = MagicMock()
+            account_state.equity = 10000
+            account_state.position_count = 1
+            mock_trader.get_account_state = AsyncMock(return_value=account_state)
+            mock_trader.balance = 10000
+            mock_trader._positions = {"BTC": MagicMock()}
+            mock_trader.close_position = AsyncMock()
+            
+            # Mock _build_result to avoid MagicMock comparison issues
+            with patch("app.backtest.engine.SimulatedTrader", return_value=mock_trader):
+                engine = BacktestEngine(
+                    strategy=mock_strategy,
+                    initial_balance=10000,
+                    data_provider=mock_data_provider,
+                    use_ai=False,
+                    decision_interval_candles=100,  # Skip decisions
+                )
+                
+                # Mock _build_result to return a simple result
+                mock_result = BacktestResult(
+                    strategy_name="Test",
+                    start_date=datetime(2024, 1, 1),
+                    end_date=datetime(2024, 1, 2),
+                    initial_balance=10000,
+                    final_balance=10000,
+                    total_return_percent=0,
+                    total_trades=0,
+                    winning_trades=0,
+                    losing_trades=0,
+                    win_rate=0,
+                    profit_factor=0,
+                    max_drawdown_percent=0,
+                )
+                engine._build_result = AsyncMock(return_value=mock_result)
+                
+                result = await engine.run()
+                
+                # Verify positions were closed
+                mock_trader.close_position.assert_called_with("BTC")
+
+    @pytest.mark.asyncio
+    async def test_backtest_ai_decision_path(self, mock_strategy, mock_data_provider):
+        """Test backtest with AI decision making"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            # Mock AI client and response
+            mock_ai_client = AsyncMock()
+            mock_ai_response = MagicMock()
+            mock_ai_response.content = '{"chain_of_thought": "test", "decisions": [], "overall_confidence": 70, "next_review_minutes": 60}'
+            mock_ai_client.generate = AsyncMock(return_value=mock_ai_response)
+            
+            # Mock decision parser
+            mock_parser = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.decisions = []
+            mock_decision.model_dump = MagicMock(return_value={})
+            mock_parser.parse = MagicMock(return_value=mock_decision)
+            mock_parser.should_execute = MagicMock(return_value=(False, ""))
+            
+            # Mock prompt builder
+            mock_pb = MagicMock()
+            mock_pb.build_system_prompt = MagicMock(return_value="system prompt")
+            mock_pb.build_user_prompt = MagicMock(return_value="user prompt")
+            
+            with patch("app.backtest.engine.DecisionParser", return_value=mock_parser):
+                with patch("app.backtest.engine.PromptBuilder", return_value=mock_pb):
+                    engine = BacktestEngine(
+                        strategy=mock_strategy,
+                        initial_balance=10000,
+                        data_provider=mock_data_provider,
+                        use_ai=True,
+                        ai_client=mock_ai_client,
+                        decision_interval_candles=1,
+                    )
+                    
+                    result = await engine.run()
+                    
+                    # Verify AI was called
+                    assert mock_ai_client.generate.called
+                    assert isinstance(result, BacktestResult)
+
+    @pytest.mark.asyncio
+    async def test_backtest_ai_decision_error_handling(self, mock_strategy, mock_data_provider):
+        """Test that AI decision errors don't crash backtest"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            # Mock AI client that raises error
+            mock_ai_client = AsyncMock()
+            mock_ai_client.generate = AsyncMock(side_effect=Exception("AI error"))
+            
+            # Mock prompt builder
+            mock_pb = MagicMock()
+            mock_pb.build_system_prompt = MagicMock(return_value="system prompt")
+            mock_pb.build_user_prompt = MagicMock(return_value="user prompt")
+            
+            with patch("app.backtest.engine.PromptBuilder", return_value=mock_pb):
+                engine = BacktestEngine(
+                    strategy=mock_strategy,
+                    initial_balance=10000,
+                    data_provider=mock_data_provider,
+                    use_ai=True,
+                    ai_client=mock_ai_client,
+                    decision_interval_candles=1,
+                )
+                
+                # Should complete despite AI error
+                result = await engine.run()
+                assert isinstance(result, BacktestResult)
+
+    @pytest.mark.asyncio
+    async def test_backtest_rule_based_decision_logic(self, mock_strategy):
+        """Test rule-based decision making with various scenarios"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            from app.backtest.data_provider import MarketSnapshot
+            from app.models.strategy import StrategyConfig, RiskControls
+            
+            # Create strategy config as dict (not StrategyConfig instance)
+            from app.models.strategy import StrategyConfig, RiskControls
+            config_dict = {
+                "symbols": ["BTC"],
+                "risk_controls": {
+                    "max_leverage": 10,
+                    "max_position_ratio": 0.1,
+                },
+            }
+            mock_strategy.config = config_dict
+            
+            # Create data provider with enough candles for SMA calculation
+            mock_provider = MagicMock()
+            mock_provider.initialize = AsyncMock()
+            mock_provider.load_data = AsyncMock()
+            
+            base_time = datetime(2024, 1, 1)
+            # Create 30 candles for SMA(20)
+            candles = []
+            for i in range(30):
+                candle = MagicMock()
+                candle.close = 50000 + i * 100
+                candle.timestamp = base_time + timedelta(hours=i)
+                candles.append(candle)
+            
+            mock_provider.get_data.return_value = candles
+            
+            # Create snapshots
+            snapshots = []
+            for i in range(25, 30):  # Start after SMA can be calculated
+                snapshot = MarketSnapshot(
+                    timestamp=base_time + timedelta(hours=i),
+                    prices={"BTC": 50000 + i * 100},
+                )
+                snapshots.append(snapshot)
+            
+            mock_provider.iterate.return_value = snapshots
+            
+            mock_trader = MagicMock()
+            mock_trader.set_current_time = MagicMock()
+            mock_trader.set_prices = MagicMock()
+            account_state = MagicMock()
+            account_state.equity = 10000
+            account_state.available_balance = 10000
+            account_state.position_count = 0
+            mock_trader.get_account_state = AsyncMock(return_value=account_state)
+            mock_trader.balance = 10000
+            mock_trader._positions = {}
+            mock_trader.get_position = AsyncMock(return_value=None)
+            mock_trader.open_long = AsyncMock()
+            mock_trader.open_short = AsyncMock()
+            mock_trader.close_position = AsyncMock()
+            mock_trader.get_trades = MagicMock(return_value=[])
+            # get_statistics is a regular method, not async
+            mock_trader.get_statistics = MagicMock(return_value={
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "total_pnl": 0,
+                "total_pnl_percent": 0,
+                "max_drawdown": 0,
+                "win_rate": 0,
+                "profit_factor": 0,
+                "average_win": 0,
+                "average_loss": 0,
+                "largest_win": 0,
+                "largest_loss": 0,
+                "gross_profit": 0,
+                "gross_loss": 0,
+                "avg_holding_hours": 0,
+                "max_consecutive_wins": 0,
+                "max_consecutive_losses": 0,
+                "expectancy": 0,
+                "total_fees": 0,
+                "long_stats": {},
+                "short_stats": {},
+                "symbol_breakdown": [],
+            })
+            
+            with patch("app.backtest.engine.SimulatedTrader", return_value=mock_trader):
+                engine = BacktestEngine(
+                    strategy=mock_strategy,
+                    initial_balance=10000,
+                    data_provider=mock_provider,
+                    use_ai=False,
+                    decision_interval_candles=1,
+                )
+                
+                result = await engine.run()
+                
+                # Verify rule-based decisions were made
+                assert isinstance(result, BacktestResult)
+                # Should have attempted to open positions based on SMA logic
+                assert mock_trader.open_long.called or mock_trader.open_short.called or not snapshots
+
+    @pytest.mark.asyncio
+    async def test_backtest_execute_decisions(self, mock_strategy, mock_data_provider):
+        """Test execution of parsed AI decisions"""
+        with patch("app.backtest.engine.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                simulator_maker_fee=0.0002,
+                simulator_taker_fee=0.0005,
+                simulator_default_slippage=0.001,
+            )
+            
+            from app.models.decision import DecisionResponse, TradingDecision, ActionType
+            
+            # Create mock decision with executable actions
+            decision = DecisionResponse(
+                chain_of_thought="test",
+                market_assessment="bullish",
+                decisions=[
+                    TradingDecision(
+                        symbol="BTC",
+                        action=ActionType.OPEN_LONG,
+                        leverage=5,
+                        position_size_usd=1000,
+                        confidence=70,
+                        reasoning="test reasoning for decision",
+                    ),
+                ],
+                overall_confidence=70,
+                next_review_minutes=60,
+            )
+            
+            mock_parser = MagicMock()
+            mock_parser.parse = MagicMock(return_value=decision)
+            mock_parser.should_execute = MagicMock(return_value=(True, ""))
+            
+            mock_ai_client = AsyncMock()
+            mock_ai_response = MagicMock()
+            mock_ai_response.content = '{"chain_of_thought": "test", "decisions": [{"symbol": "BTC", "action": "open_long", "leverage": 5, "position_size_usd": 1000, "confidence": 70, "reasoning": "test"}], "overall_confidence": 70, "next_review_minutes": 60}'
+            mock_ai_client.generate = AsyncMock(return_value=mock_ai_response)
+            
+            mock_pb = MagicMock()
+            mock_pb.build_system_prompt = MagicMock(return_value="system")
+            mock_pb.build_user_prompt = MagicMock(return_value="user")
+            
+            mock_trader = MagicMock()
+            mock_trader.set_current_time = MagicMock()
+            mock_trader.set_prices = MagicMock()
+            account_state = MagicMock()
+            account_state.equity = 10000
+            account_state.available_balance = 10000
+            account_state.position_count = 0
+            mock_trader.get_account_state = AsyncMock(return_value=account_state)
+            mock_trader.balance = 10000
+            mock_trader.open_long = AsyncMock()
+            mock_trader.get_trades = MagicMock(return_value=[])
+            # get_statistics is a regular method, not async
+            mock_trader.get_statistics = MagicMock(return_value={
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "total_pnl": 0,
+                "total_pnl_percent": 0,
+                "max_drawdown": 0,
+                "win_rate": 0,
+                "profit_factor": 0,
+                "average_win": 0,
+                "average_loss": 0,
+                "largest_win": 0,
+                "largest_loss": 0,
+                "gross_profit": 0,
+                "gross_loss": 0,
+                "avg_holding_hours": 0,
+                "max_consecutive_wins": 0,
+                "max_consecutive_losses": 0,
+                "expectancy": 0,
+                "total_fees": 0,
+                "long_stats": {},
+                "short_stats": {},
+                "symbol_breakdown": [],
+            })
+            
+            with patch("app.backtest.engine.DecisionParser", return_value=mock_parser):
+                with patch("app.backtest.engine.PromptBuilder", return_value=mock_pb):
+                    with patch("app.backtest.engine.SimulatedTrader", return_value=mock_trader):
+                        engine = BacktestEngine(
+                            strategy=mock_strategy,
+                            initial_balance=10000,
+                            data_provider=mock_data_provider,
+                            use_ai=True,
+                            ai_client=mock_ai_client,
+                            decision_interval_candles=1,
+                        )
+                        
+                        result = await engine.run()
+                        
+                        # Verify decision was executed
+                        assert mock_trader.open_long.called

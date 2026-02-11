@@ -183,4 +183,291 @@ describe("Auth Store", () => {
 
     expect(useAuthStore.getState().error).toBeNull();
   });
+
+  it("should handle login with ApiError details", async () => {
+    const { ApiError } = await import("@/lib/api");
+    const apiError = new ApiError("Invalid credentials", "AUTH_INVALID_CREDENTIALS", {
+      remaining_attempts: 2,
+      remaining_minutes: 5,
+    });
+
+    mockAuthApi.login.mockRejectedValue(apiError);
+
+    await act(async () => {
+      try {
+        await useAuthStore.getState().login({
+          email: "test@example.com",
+          password: "wrong",
+        });
+      } catch {
+        // Expected
+      }
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.error).toEqual({
+      code: "AUTH_INVALID_CREDENTIALS",
+      remaining_attempts: 2,
+      remaining_minutes: 5,
+    });
+  });
+
+  it("should handle login when me() fails but login succeeds", async () => {
+    const tokenResponse = {
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+    };
+
+    mockAuthApi.login.mockResolvedValue(tokenResponse);
+    mockAuthApi.me.mockRejectedValue(new Error("Failed to fetch user"));
+
+    await act(async () => {
+      await useAuthStore.getState().login({
+        email: "test@example.com",
+        password: "password123",
+      });
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isLoading).toBe(false);
+  });
+
+  it("should register and auto-login successfully", async () => {
+    const testUser = {
+      id: "test-id",
+      email: "new@example.com",
+      name: "New User",
+      is_active: true,
+    };
+
+    const tokenResponse = {
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+    };
+
+    mockAuthApi.register.mockResolvedValue({ message: "Registered" });
+    mockAuthApi.login.mockResolvedValue(tokenResponse);
+    mockAuthApi.me.mockResolvedValue(testUser);
+
+    await act(async () => {
+      await useAuthStore.getState().register({
+        email: "new@example.com",
+        password: "password123",
+        name: "New User",
+      });
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toEqual(testUser);
+    expect(state.isAuthenticated).toBe(true);
+    expect(mockAuthApi.register).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "password123",
+      name: "New User",
+    });
+    expect(mockAuthApi.login).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "password123",
+    });
+  });
+
+  it("should handle register failure with ApiError", async () => {
+    const { ApiError } = await import("@/lib/api");
+    const apiError = new ApiError("Email exists", "AUTH_EMAIL_EXISTS", null);
+
+    mockAuthApi.register.mockRejectedValue(apiError);
+
+    await act(async () => {
+      try {
+        await useAuthStore.getState().register({
+          email: "existing@example.com",
+          password: "password123",
+          name: "User",
+        });
+      } catch {
+        // Expected
+      }
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.error).toEqual({ code: "AUTH_EMAIL_EXISTS" });
+    expect(state.isAuthenticated).toBe(false);
+  });
+
+  it("should handle register failure with generic error", async () => {
+    mockAuthApi.register.mockRejectedValue(new Error("Network error"));
+
+    await act(async () => {
+      try {
+        await useAuthStore.getState().register({
+          email: "test@example.com",
+          password: "password123",
+          name: "User",
+        });
+      } catch {
+        // Expected
+      }
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.error).toEqual({ code: "REGISTER_FAILED" });
+  });
+
+  it("should handle register when me() fails after auto-login", async () => {
+    const tokenResponse = {
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+    };
+
+    mockAuthApi.register.mockResolvedValue({ message: "Registered" });
+    mockAuthApi.login.mockResolvedValue(tokenResponse);
+    mockAuthApi.me.mockRejectedValue(new Error("Failed to fetch user"));
+
+    await act(async () => {
+      await useAuthStore.getState().register({
+        email: "new@example.com",
+        password: "password123",
+        name: "New User",
+      });
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(true);
+  });
+
+  it("should handle logout even when API call fails", async () => {
+    mockAuthApi.logout.mockRejectedValue(new Error("Network error"));
+
+    await act(async () => {
+      await useAuthStore.getState().logout();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+    expect(mockTokenManager.clearTokens).toHaveBeenCalled();
+  });
+
+  it("should checkAuth successfully when token exists", async () => {
+    const testUser = {
+      id: "test-id",
+      email: "test@example.com",
+      name: "Test User",
+      is_active: true,
+    };
+
+    mockTokenManager.isAuthenticated.mockReturnValue(true);
+    mockAuthApi.me.mockResolvedValue(testUser);
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toEqual(testUser);
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isLoading).toBe(false);
+  });
+
+  it("should refresh token when checkAuth called without access token", async () => {
+    const testUser = {
+      id: "test-id",
+      email: "test@example.com",
+      name: "Test User",
+      is_active: true,
+    };
+
+    mockTokenManager.isAuthenticated.mockReturnValue(false);
+    mockTokenManager.refreshAccessToken.mockResolvedValue(true);
+    mockAuthApi.me.mockResolvedValue(testUser);
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toEqual(testUser);
+    expect(state.isAuthenticated).toBe(true);
+    expect(mockTokenManager.refreshAccessToken).toHaveBeenCalled();
+  });
+
+  it("should handle checkAuth when refresh fails", async () => {
+    mockTokenManager.isAuthenticated.mockReturnValue(false);
+    mockTokenManager.refreshAccessToken.mockResolvedValue(false);
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toBeNull();
+  });
+
+  it("should handle checkAuth with AuthError", async () => {
+    const { AuthError } = await import("@/lib/api");
+    const authError = new AuthError("Unauthorized");
+
+    mockTokenManager.isAuthenticated.mockReturnValue(true);
+    mockAuthApi.me.mockRejectedValue(authError);
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+    expect(mockTokenManager.clearTokens).toHaveBeenCalled();
+  });
+
+  it("should handle checkAuth with network error but keep authenticated state", async () => {
+    const testUser = {
+      id: "test-id",
+      email: "test@example.com",
+      name: "Test User",
+      is_active: true,
+    };
+
+    // Set initial state with user
+    useAuthStore.setState({
+      user: testUser,
+      isAuthenticated: true,
+    });
+
+    mockTokenManager.isAuthenticated.mockReturnValue(true);
+    mockAuthApi.me.mockRejectedValue(new Error("Network error"));
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    // Should keep existing user and authenticated state
+    expect(state.user).toEqual(testUser);
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isLoading).toBe(false);
+  });
+
+  it("should handle checkAuth with network error when no token", async () => {
+    mockTokenManager.isAuthenticated.mockReturnValue(false);
+    mockTokenManager.refreshAccessToken.mockResolvedValue(false);
+
+    await act(async () => {
+      await useAuthStore.getState().checkAuth();
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toBeNull();
+  });
 });

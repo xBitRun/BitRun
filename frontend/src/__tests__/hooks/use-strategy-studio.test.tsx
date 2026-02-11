@@ -438,4 +438,413 @@ describe("apiResponseToConfig", () => {
     expect(config.debateEnabled).toBe(false);
     expect(config.riskControls?.maxLeverage).toBe(5);
   });
+
+  it("should handle disabled indicators", () => {
+    const response = {
+      config: {
+        indicators: {
+          ema_periods: [],
+          rsi_period: 0,
+          macd_fast: 0,
+          macd_slow: 0,
+          macd_signal: 0,
+          atr_period: 0,
+        },
+      },
+    };
+
+    const config = apiResponseToConfig(response);
+
+    expect(config.indicators?.ema.enabled).toBe(false);
+    expect(config.indicators?.rsi.enabled).toBe(false);
+    expect(config.indicators?.macd.enabled).toBe(false);
+    expect(config.indicators?.atr.enabled).toBe(false);
+  });
+
+  it("should handle advanced prompt mode", () => {
+    const response = {
+      config: {
+        prompt_mode: "advanced",
+        advanced_prompt: "Full markdown prompt",
+      },
+    };
+
+    const config = apiResponseToConfig(response);
+
+    expect(config.promptMode).toBe("advanced");
+    expect(config.advancedPrompt).toBe("Full markdown prompt");
+  });
+
+  it("should handle null account_id", () => {
+    const response = {
+      account_id: null,
+    };
+
+    const config = apiResponseToConfig(response);
+
+    expect(config.accountId).toBe("");
+  });
+});
+
+describe("useStrategyStudio - update helpers", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should update timeframes", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.updateTimeframes(["1h", "4h", "1d"]);
+    });
+
+    expect(result.current.config.timeframes).toEqual(["1h", "4h", "1d"]);
+  });
+
+  it("should update indicators", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    const newIndicators = {
+      ema: { enabled: false, periods: [5, 10] },
+      rsi: { enabled: true, period: 21 },
+      macd: { enabled: true, fast: 8, slow: 17, signal: 9 },
+      atr: { enabled: false, period: 10 },
+    };
+
+    act(() => {
+      result.current.updateIndicators(newIndicators);
+    });
+
+    expect(result.current.config.indicators).toEqual(newIndicators);
+  });
+
+  it("should update risk controls", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    const newRiskControls = {
+      maxLeverage: 10,
+      maxPositionRatio: 0.3,
+      maxTotalExposure: 0.9,
+      minRiskRewardRatio: 1.5,
+      maxDrawdownPercent: 0.2,
+      minConfidence: 70,
+    };
+
+    act(() => {
+      result.current.updateRiskControls(newRiskControls);
+    });
+
+    expect(result.current.config.riskControls).toEqual(newRiskControls);
+  });
+
+  it("should update prompt sections", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    const newSections = {
+      roleDefinition: "You are a trader",
+      tradingFrequency: "Trade every hour",
+      entryStandards: "High confidence only",
+      decisionProcess: "Multi-step analysis",
+    };
+
+    act(() => {
+      result.current.updatePromptSections(newSections);
+    });
+
+    expect(result.current.config.promptSections).toEqual(newSections);
+  });
+
+  it("should update custom prompt", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.updateCustomPrompt("New custom prompt");
+    });
+
+    expect(result.current.config.customPrompt).toBe("New custom prompt");
+  });
+});
+
+describe("useStrategyStudio - validation edge cases", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should fail validation when timeframes is empty", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({ initialConfig: { name: "Test", timeframes: [] } }),
+      { wrapper: createWrapper() }
+    );
+
+    let valid: boolean;
+    act(() => {
+      valid = result.current.validate();
+    });
+
+    expect(valid!).toBe(false);
+    expect(result.current.errors.timeframes).toBe("At least one timeframe is required");
+  });
+
+  it("should pass validation when debate disabled even with < 2 models", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({ initialConfig: { name: "Test", debateEnabled: false, debateModels: ["model-1"] } }),
+      { wrapper: createWrapper() }
+    );
+
+    let valid: boolean;
+    act(() => {
+      valid = result.current.validate();
+    });
+
+    expect(valid!).toBe(true);
+  });
+
+  it("should pass validation when debate enabled with >= 2 models", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({ initialConfig: { name: "Test", debateEnabled: true, debateModels: ["model-1", "model-2"] } }),
+      { wrapper: createWrapper() }
+    );
+
+    let valid: boolean;
+    act(() => {
+      valid = result.current.validate();
+    });
+
+    expect(valid!).toBe(true);
+    expect(result.current.errors.debate).toBeUndefined();
+  });
+});
+
+describe("useStrategyStudio - toApiFormat", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should convert config to API format", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({
+        initialConfig: {
+          name: "Test Strategy",
+          description: "Test Description",
+          accountId: "acc-1",
+          aiModel: "deepseek:chat",
+          tradingMode: "aggressive",
+          symbols: ["BTC", "SOL"],
+          timeframes: ["1h", "4h"],
+          customPrompt: "Custom prompt",
+          advancedPrompt: "Advanced prompt",
+          debateEnabled: true,
+          debateModels: ["model-1", "model-2"],
+          debateConsensusMode: "weighted_average",
+          debateMinParticipants: 3,
+        },
+      }),
+      { wrapper: createWrapper() }
+    );
+
+    let apiFormat: Record<string, unknown>;
+    act(() => {
+      apiFormat = result.current.toApiFormat();
+    });
+
+    expect(apiFormat!.name).toBe("Test Strategy");
+    expect(apiFormat!.description).toBe("Test Description");
+    expect(apiFormat!.account_id).toBe("acc-1");
+    expect(apiFormat!.ai_model).toBe("deepseek:chat");
+    expect(apiFormat!.trading_mode).toBe("aggressive");
+    expect((apiFormat!.config as Record<string, unknown>).symbols).toEqual(["BTC", "SOL"]);
+    expect((apiFormat!.config as Record<string, unknown>).debate_enabled).toBe(true);
+    expect((apiFormat!.config as Record<string, unknown>).debate_models).toEqual(["model-1", "model-2"]);
+  });
+
+  it("should handle disabled indicators in API format", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({
+        initialConfig: {
+          name: "Test",
+          indicators: {
+            ema: { enabled: false, periods: [9, 21] },
+            rsi: { enabled: false, period: 14 },
+            macd: { enabled: false, fast: 12, slow: 26, signal: 9 },
+            atr: { enabled: false, period: 14 },
+          },
+        },
+      }),
+      { wrapper: createWrapper() }
+    );
+
+    let apiFormat: Record<string, unknown>;
+    act(() => {
+      apiFormat = result.current.toApiFormat();
+    });
+
+    const indicators = (apiFormat!.config as Record<string, unknown>).indicators as Record<string, unknown>;
+    expect(indicators.ema_periods).toEqual([]);
+    expect(indicators.rsi_period).toBe(0);
+    expect(indicators.macd_fast).toBe(0);
+  });
+
+  it("should handle null accountId", () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({
+        initialConfig: {
+          name: "Test",
+          accountId: "",
+        },
+      }),
+      { wrapper: createWrapper() }
+    );
+
+    let apiFormat: Record<string, unknown>;
+    act(() => {
+      apiFormat = result.current.toApiFormat();
+    });
+
+    expect(apiFormat!.account_id).toBe(null);
+  });
+});
+
+describe("useStrategyStudio - preview edge cases", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should not fetch preview when autoPreview is false", async () => {
+    const { result } = renderHook(
+      () => useStrategyStudio({ autoPreview: false }),
+      { wrapper: createWrapper() }
+    );
+
+    act(() => {
+      result.current.setActiveTab("preview");
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+
+  it("should refresh preview when refreshPreview called", async () => {
+    mockedApi.post.mockResolvedValue({
+      system_prompt: "Prompt",
+      estimated_tokens: 100,
+      sections: {},
+    });
+
+    const { result } = renderHook(
+      () => useStrategyStudio({ autoPreview: true }),
+      { wrapper: createWrapper() }
+    );
+
+    act(() => {
+      result.current.setActiveTab("preview");
+    });
+
+    await waitFor(() => expect(result.current.promptPreview).not.toBeNull());
+
+    const callCount = mockedApi.post.mock.calls.length;
+
+    act(() => {
+      result.current.refreshPreview();
+    });
+
+    await waitFor(() => expect(mockedApi.post.mock.calls.length).toBeGreaterThan(callCount));
+  });
+
+  it("should handle preview API error gracefully", async () => {
+    mockedApi.post.mockRejectedValue(new Error("API Error"));
+
+    const { result } = renderHook(
+      () => useStrategyStudio({ autoPreview: true }),
+      { wrapper: createWrapper() }
+    );
+
+    act(() => {
+      result.current.setActiveTab("preview");
+    });
+
+    await waitFor(() => {
+      // Should not crash, preview should be null
+      expect(result.current.promptPreview).toBeNull();
+    });
+  });
+});
+
+describe("useStrategyStudio - isValid computation", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should update isValid when errors change", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isValid).toBe(true);
+
+    act(() => {
+      result.current.validate();
+    });
+
+    // Should be invalid because name is empty
+    expect(result.current.isValid).toBe(false);
+
+    act(() => {
+      result.current.updateBasicInfo({ name: "Valid Name" });
+    });
+
+    act(() => {
+      result.current.validate();
+    });
+
+    expect(result.current.isValid).toBe(true);
+  });
+});
+
+describe("useStrategyStudio - setConfig", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should update config using setConfig with object", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.setConfig({
+        ...result.current.config,
+        name: "New Name",
+        tradingMode: "aggressive",
+      });
+    });
+
+    expect(result.current.config.name).toBe("New Name");
+    expect(result.current.config.tradingMode).toBe("aggressive");
+  });
+
+  it("should update config using setConfig with function", () => {
+    const { result } = renderHook(() => useStrategyStudio(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.setConfig((prev) => ({
+        ...prev,
+        name: "Function Name",
+      }));
+    });
+
+    expect(result.current.config.name).toBe("Function Name");
+  });
 });

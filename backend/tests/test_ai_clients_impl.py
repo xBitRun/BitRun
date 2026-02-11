@@ -296,6 +296,107 @@ class TestOpenAIClientImpl:
             with pytest.raises(AIAuthenticationError):
                 await client.test_connection()
 
+    @pytest.mark.asyncio
+    async def test_test_connection_rate_limit_error(self):
+        """Test test_connection() raises AIRateLimitError on rate limit."""
+        mock_openai, mock_async_client = _make_mock_openai()
+        mock_async_client.chat.completions.create = AsyncMock(
+            side_effect=mock_openai.RateLimitError("rate limit")
+        )
+
+        with patch("app.services.ai.openai_client._get_openai", return_value=mock_openai):
+            config = AIClientConfig(api_key="sk-test", model="gpt-4o")
+            client = OpenAIClient(config)
+
+            with pytest.raises(AIRateLimitError):
+                await client.test_connection()
+
+    @pytest.mark.asyncio
+    async def test_test_connection_connection_error(self):
+        """Test test_connection() raises AIConnectionError on network failure."""
+        mock_openai, mock_async_client = _make_mock_openai()
+        mock_async_client.chat.completions.create = AsyncMock(
+            side_effect=mock_openai.APIConnectionError("network failure")
+        )
+
+        with patch("app.services.ai.openai_client._get_openai", return_value=mock_openai):
+            config = AIClientConfig(api_key="sk-test", model="gpt-4o")
+            client = OpenAIClient(config)
+
+            with pytest.raises(AIConnectionError):
+                await client.test_connection()
+
+    @pytest.mark.asyncio
+    async def test_test_connection_api_status_error(self):
+        """Test test_connection() raises AIClientError on APIStatusError."""
+        mock_openai, mock_async_client = _make_mock_openai()
+        # Create APIStatusError instance properly
+        api_error = mock_openai.APIStatusError("API error")
+        mock_async_client.chat.completions.create = AsyncMock(side_effect=api_error)
+
+        with patch("app.services.ai.openai_client._get_openai", return_value=mock_openai):
+            config = AIClientConfig(api_key="sk-test", model="gpt-4o")
+            client = OpenAIClient(config)
+
+            with pytest.raises(AIClientError) as exc_info:
+                await client.test_connection()
+            assert exc_info.value.provider == AIProvider.OPENAI
+
+    @pytest.mark.asyncio
+    async def test_test_connection_unexpected_error(self):
+        """Test test_connection() wraps unexpected errors in AIClientError."""
+        mock_openai, mock_async_client = _make_mock_openai()
+        mock_async_client.chat.completions.create = AsyncMock(
+            side_effect=RuntimeError("unexpected error")
+        )
+
+        with patch("app.services.ai.openai_client._get_openai", return_value=mock_openai):
+            config = AIClientConfig(api_key="sk-test", model="gpt-4o")
+            client = OpenAIClient(config)
+
+            with pytest.raises(AIClientError) as exc_info:
+                await client.test_connection()
+            assert exc_info.value.provider == AIProvider.OPENAI
+
+    def test_get_openai_import_error(self):
+        """Test _get_openai() raises AIClientError when openai package not installed."""
+        # Reset the module-level cache
+        import app.services.ai.openai_client as openai_module
+        original_openai = openai_module.openai
+        openai_module.openai = None
+        
+        try:
+            with patch("builtins.__import__", side_effect=ImportError("No module named 'openai'")):
+                # Reload the function to test import error handling
+                from importlib import reload
+                reload(openai_module)
+                from app.services.ai.openai_client import _get_openai
+                
+                with pytest.raises(AIClientError) as exc_info:
+                    _get_openai()
+                assert exc_info.value.provider == AIProvider.OPENAI
+                assert "openai package not installed" in str(exc_info.value)
+        finally:
+            # Restore original state
+            openai_module.openai = original_openai
+            reload(openai_module)
+
+    @pytest.mark.asyncio
+    async def test_generate_api_status_error(self):
+        """Test generate() maps openai APIStatusError → AIClientError."""
+        mock_openai, mock_async_client = _make_mock_openai()
+        # Create APIStatusError instance properly
+        api_error = mock_openai.APIStatusError("API error")
+        mock_async_client.chat.completions.create = AsyncMock(side_effect=api_error)
+
+        with patch("app.services.ai.openai_client._get_openai", return_value=mock_openai):
+            config = AIClientConfig(api_key="sk-test", model="gpt-4o")
+            client = OpenAIClient(config)
+
+            with pytest.raises(AIClientError) as exc_info:
+                await client.generate("sys", "usr")
+            assert exc_info.value.provider == AIProvider.OPENAI
+
 
 # ============================================================================
 # BaseAIClient.generate_with_retry Tests

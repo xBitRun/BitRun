@@ -7,7 +7,7 @@
  * - IndicatorConfig
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -216,6 +216,220 @@ describe("RiskControlsPanel", () => {
       screen.getByText("riskControls.highRiskWarning")
     ).toBeInTheDocument();
   });
+
+  it("should update max leverage via input", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const leverageInput = screen.getByDisplayValue("5") as HTMLInputElement;
+    await user.clear(leverageInput);
+    await user.type(leverageInput, "10");
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...defaultRiskConfig,
+      maxLeverage: 10,
+    });
+  });
+
+  it("should update max leverage via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.maxLeverage")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "15" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        maxLeverage: 15,
+      });
+    }
+  });
+
+  it("should update max position ratio via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.maxPositionRatio")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "20" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        maxPositionRatio: 0.2,
+      });
+    }
+  });
+
+  it("should update max total exposure via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.maxTotalExposure")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "60" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        maxTotalExposure: 0.6,
+      });
+    }
+  });
+
+  it("should update min risk reward ratio via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.minRiskReward")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "30" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        minRiskRewardRatio: 3.0,
+      });
+    }
+  });
+
+  it("should update max drawdown via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.maxDrawdown")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "20" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        maxDrawdownPercent: 0.2,
+      });
+    }
+  });
+
+  it("should update min confidence via slider", async () => {
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const slider = screen
+      .getByText("riskControls.minConfidence")
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (slider) {
+      fireEvent.change(slider, { target: { value: "70" } });
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultRiskConfig,
+        minConfidence: 70,
+      });
+    }
+  });
+
+  it("should display low risk level for conservative settings", () => {
+    const lowRiskConfig: RiskControlsConfig = {
+      maxLeverage: 3,
+      maxPositionRatio: 0.1,
+      maxTotalExposure: 0.5,
+      minRiskRewardRatio: 2.5,
+      maxDrawdownPercent: 0.05,
+      minConfidence: 80,
+    };
+    render(
+      <RiskControlsPanel {...defaultProps} value={lowRiskConfig} />
+    );
+
+    expect(screen.getByText("riskControls.levels.low")).toBeInTheDocument();
+  });
+
+  it("should display medium risk level for balanced settings", () => {
+    const mediumRiskConfig: RiskControlsConfig = {
+      maxLeverage: 8,
+      maxPositionRatio: 0.15,
+      maxTotalExposure: 0.6,
+      minRiskRewardRatio: 2.0,
+      maxDrawdownPercent: 0.1,
+      minConfidence: 65,
+    };
+    render(
+      <RiskControlsPanel {...defaultProps} value={mediumRiskConfig} />
+    );
+
+    expect(screen.getByText("riskControls.levels.medium")).toBeInTheDocument();
+  });
+
+  it("should show recommendations for conservative mode", () => {
+    render(<RiskControlsPanel {...defaultProps} tradingMode="conservative" />);
+
+    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+  });
+
+  it("should show recommendations for balanced mode", () => {
+    render(<RiskControlsPanel {...defaultProps} tradingMode="balanced" />);
+
+    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+  });
+
+  it("should show recommendations for aggressive mode", () => {
+    render(<RiskControlsPanel {...defaultProps} tradingMode="aggressive" />);
+
+    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+  });
+
+  it("should handle invalid leverage input (defaults to 1)", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
+
+    const leverageInput = screen.getByDisplayValue("5") as HTMLInputElement;
+    await user.clear(leverageInput);
+    await user.type(leverageInput, "invalid");
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...defaultRiskConfig,
+      maxLeverage: 1,
+    });
+  });
+
+  it("should respect leverage min/max constraints", () => {
+    render(<RiskControlsPanel {...defaultProps} />);
+
+    const leverageInput = screen.getByDisplayValue("5") as HTMLInputElement;
+    expect(leverageInput.min).toBe("1");
+    expect(leverageInput.max).toBe("50");
+  });
+
+  it("should display all risk control labels", () => {
+    render(<RiskControlsPanel {...defaultProps} />);
+
+    expect(screen.getByText("riskControls.maxLeverage")).toBeInTheDocument();
+    expect(screen.getByText("riskControls.maxPositionRatio")).toBeInTheDocument();
+    expect(screen.getByText("riskControls.maxTotalExposure")).toBeInTheDocument();
+    expect(screen.getByText("riskControls.minRiskReward")).toBeInTheDocument();
+    expect(screen.getByText("riskControls.maxDrawdown")).toBeInTheDocument();
+    expect(screen.getByText("riskControls.minConfidence")).toBeInTheDocument();
+  });
+
+  it("should display tooltips for all controls", () => {
+    render(<RiskControlsPanel {...defaultProps} />);
+
+    const infoIcons = screen.getAllByRole("button", { hidden: true });
+    expect(infoIcons.length).toBeGreaterThan(0);
+  });
 });
 
 // ==================== StrategyPresetSelector ====================
@@ -400,5 +614,301 @@ describe("IndicatorConfig", () => {
     expect(
       screen.queryByText("indicators.atr.description")
     ).not.toBeInTheDocument();
+  });
+
+  it("should toggle EMA enabled state", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const emaSwitch = screen
+      .getByText("EMA")
+      .closest("div")
+      ?.querySelector('button[role="switch"]');
+    if (emaSwitch) {
+      await user.click(emaSwitch);
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultIndicators,
+        ema: { ...defaultIndicators.ema, enabled: false },
+      });
+    }
+  });
+
+  it("should update EMA period values", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const periodInputs = screen.getAllByDisplayValue("9");
+    // Find the first EMA period input (not MACD signal)
+    const firstPeriodInput = periodInputs.find(
+      (input) =>
+        input.getAttribute("type") === "number" &&
+        input.closest("div")?.textContent?.includes("Period 1")
+    ) || periodInputs[0];
+
+    await user.clear(firstPeriodInput);
+    await user.type(firstPeriodInput, "5");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.ema.periods).toContain(5);
+    expect(lastCall.ema.periods).toEqual(expect.arrayContaining([5, 21, 55]));
+  });
+
+  it("should sort EMA periods after update", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const periodInputs = screen.getAllByDisplayValue("9");
+    const firstPeriodInput = periodInputs[0];
+
+    // Change first period to 100 (should be sorted to last)
+    await user.clear(firstPeriodInput);
+    await user.type(firstPeriodInput, "100");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.ema.periods).toEqual([21, 55, 100]);
+  });
+
+  it("should handle invalid EMA period input (defaults to 9)", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const periodInputs = screen.getAllByDisplayValue("9");
+    const firstPeriodInput = periodInputs[0];
+
+    await user.clear(firstPeriodInput);
+    await user.type(firstPeriodInput, "abc");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.ema.periods[0]).toBe(9);
+  });
+
+  it("should toggle RSI enabled state", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const rsiSwitch = screen
+      .getByText("RSI")
+      .closest("div")
+      ?.querySelector('button[role="switch"]');
+    if (rsiSwitch) {
+      await user.click(rsiSwitch);
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultIndicators,
+        rsi: { ...defaultIndicators.rsi, enabled: false },
+      });
+    }
+  });
+
+  it("should update RSI period via slider", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    // Find RSI slider
+    const rsiSlider = screen
+      .getByText(/indicators\.rsi\.period/)
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (rsiSlider) {
+      // Simulate slider change
+      rsiSlider.value = "20";
+      await userEvent.type(rsiSlider, "20", { skipClick: true });
+      fireEvent.change(rsiSlider, { target: { value: "20" } });
+
+      expect(onChange).toHaveBeenCalled();
+      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      expect(lastCall.rsi.period).toBe(20);
+    }
+  });
+
+  it("should toggle MACD enabled state", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const macdSwitch = screen
+      .getByText("MACD")
+      .closest("div")
+      ?.querySelector('button[role="switch"]');
+    if (macdSwitch) {
+      await user.click(macdSwitch);
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultIndicators,
+        macd: { ...defaultIndicators.macd, enabled: false },
+      });
+    }
+  });
+
+  it("should update MACD fast parameter", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const fastInput = screen.getByDisplayValue("12");
+    await user.clear(fastInput);
+    await user.type(fastInput, "8");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.macd.fast).toBe(8);
+  });
+
+  it("should update MACD slow parameter", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const slowInput = screen.getByDisplayValue("26");
+    await user.clear(slowInput);
+    await user.type(slowInput, "30");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.macd.slow).toBe(30);
+  });
+
+  it("should update MACD signal parameter", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const signalInput = screen.getAllByDisplayValue("9").find(
+      (input) =>
+        input.getAttribute("type") === "number" &&
+        input.closest("div")?.textContent?.includes("signal")
+    );
+    if (signalInput) {
+      await user.clear(signalInput);
+      await user.type(signalInput, "10");
+
+      expect(onChange).toHaveBeenCalled();
+      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      expect(lastCall.macd.signal).toBe(10);
+    }
+  });
+
+  it("should handle invalid MACD input (defaults to original value)", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const fastInput = screen.getByDisplayValue("12");
+    await user.clear(fastInput);
+    await user.type(fastInput, "invalid");
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall.macd.fast).toBe(12);
+  });
+
+  it("should toggle ATR enabled state", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const atrSwitch = screen
+      .getByText("ATR")
+      .closest("div")
+      ?.querySelector('button[role="switch"]');
+    if (atrSwitch) {
+      await user.click(atrSwitch);
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultIndicators,
+        atr: { ...defaultIndicators.atr, enabled: true },
+      });
+    }
+  });
+
+  it("should update ATR period via slider when enabled", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    const enabledATR: IndicatorSettings = {
+      ...defaultIndicators,
+      atr: { enabled: true, period: 14 },
+    };
+    render(
+      <IndicatorConfig {...defaultProps} value={enabledATR} onChange={onChange} />
+    );
+
+    // Find ATR slider
+    const atrSlider = screen
+      .getByText(/indicators\.atr\.period/)
+      .closest("div")
+      ?.querySelector('input[type="range"]') as HTMLInputElement;
+
+    if (atrSlider) {
+      atrSlider.value = "20";
+      fireEvent.change(atrSlider, { target: { value: "20" } });
+
+      expect(onChange).toHaveBeenCalled();
+      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      expect(lastCall.atr.period).toBe(20);
+    }
+  });
+
+  it("should show RSI period slider when enabled", () => {
+    render(<IndicatorConfig {...defaultProps} />);
+
+    expect(screen.getByText(/indicators\.rsi\.period/)).toBeInTheDocument();
+    expect(screen.getByText(/14/)).toBeInTheDocument(); // Current period value
+  });
+
+  it("should show ATR period slider when enabled", () => {
+    const enabledATR: IndicatorSettings = {
+      ...defaultIndicators,
+      atr: { enabled: true, period: 14 },
+    };
+    render(<IndicatorConfig {...defaultProps} value={enabledATR} />);
+
+    expect(screen.getByText(/indicators\.atr\.period/)).toBeInTheDocument();
+  });
+
+  it("should respect EMA period min/max constraints", async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
+
+    const periodInputs = screen.getAllByDisplayValue("9");
+    const firstPeriodInput = periodInputs[0] as HTMLInputElement;
+
+    // Test min constraint (should allow 1)
+    await user.clear(firstPeriodInput);
+    await user.type(firstPeriodInput, "1");
+    expect(firstPeriodInput.min).toBe("1");
+
+    // Test max constraint (should allow 200)
+    await user.clear(firstPeriodInput);
+    await user.type(firstPeriodInput, "200");
+    expect(firstPeriodInput.max).toBe("200");
+  });
+
+  it("should respect MACD parameter constraints", () => {
+    render(<IndicatorConfig {...defaultProps} />);
+
+    const fastInput = screen.getByDisplayValue("12") as HTMLInputElement;
+    const slowInput = screen.getByDisplayValue("26") as HTMLInputElement;
+    const signalInput = screen.getAllByDisplayValue("9").find(
+      (input) =>
+        input.getAttribute("type") === "number" &&
+        input.closest("div")?.textContent?.includes("signal")
+    ) as HTMLInputElement;
+
+    expect(fastInput.min).toBe("1");
+    expect(fastInput.max).toBe("50");
+    expect(slowInput.min).toBe("1");
+    expect(slowInput.max).toBe("100");
+    if (signalInput) {
+      expect(signalInput.min).toBe("1");
+      expect(signalInput.max).toBe("50");
+    }
   });
 });
