@@ -1315,9 +1315,19 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
     </th>
   );
 
+  const isLimited = data.total_trades > data.trades.length;
+
   return (
     <Card className="bg-card/50 border-border/50">
       <CardContent className="pt-4">
+        {isLimited && (
+          <div className="mb-4 p-3 bg-muted/50 border border-border/50 rounded-md text-sm text-muted-foreground">
+            {t("tradeList.limited", {
+              count: data.trades.length,
+              total: data.total_trades,
+            })}
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -1732,7 +1742,30 @@ export default function BacktestPage() {
 
         {/* Results Panel */}
         <div>
-          {results ? (
+          {isRunning ? (
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  {t("results")}
+                </CardTitle>
+                <CardDescription>{t("running")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="p-4 rounded-full bg-muted/50 mb-4">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {t("running")}
+                  </h3>
+                  <p className="text-muted-foreground max-w-sm">
+                    {t("runningHint")}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : results ? (
             <Card className="bg-card/50 backdrop-blur-sm border-border/50">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2">

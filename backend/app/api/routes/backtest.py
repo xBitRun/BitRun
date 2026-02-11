@@ -159,6 +159,11 @@ class QuickBacktestRequest(BaseModel):
 def _build_response(result) -> BacktestResponse:
     """Convert BacktestResult to API response."""
     limit = settings.backtest_equity_curve_limit
+    trades_limit = settings.backtest_trades_limit
+
+    # Limit trades to most recent ones (trades are in chronological order)
+    # Keep the latest trades_limit trades to avoid large response size
+    trades_to_return = result.trades[-trades_limit:] if len(result.trades) > trades_limit else result.trades
 
     trade_records = [
         TradeRecord(
@@ -175,7 +180,7 @@ def _build_response(result) -> BacktestResponse:
             duration_minutes=round(t.duration_minutes, 1),
             exit_reason=t.exit_reason,
         )
-        for t in result.trades
+        for t in trades_to_return
     ]
 
     ts = result.trade_statistics

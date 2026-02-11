@@ -304,11 +304,12 @@
     }
   },
   "backtest": {
-    "title": "回测",
+    "title": "历史回测",
     "subtitle": "使用历史数据测试您的策略",
     "newBacktest": "新建回测",
     "runBacktest": "运行回测",
     "running": "运行中...",
+    "runningHint": "正在执行回测，请稍候...",
     "configuration": "配置",
     "dataSource": "数据源交易所",
     "selectExchange": "选择交易所",
@@ -418,7 +419,8 @@
       "liquidation": "强平",
       "signal": "策略平仓",
       "reverse": "反向开仓",
-      "noTrades": "暂无交易记录"
+      "noTrades": "暂无交易记录",
+      "limited": "仅显示最近 {count} 条交易记录（共 {total} 条）"
     },
     "symbolBreakdown": {
       "symbol": "品种",

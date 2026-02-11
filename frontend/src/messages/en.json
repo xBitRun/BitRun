@@ -309,6 +309,7 @@
     "newBacktest": "New Backtest",
     "runBacktest": "Run Backtest",
     "running": "Running...",
+    "runningHint": "Running backtest, please wait...",
     "configuration": "Configuration",
     "dataSource": "Data Source Exchange",
     "selectExchange": "Select exchange",
@@ -418,7 +419,8 @@
       "liquidation": "Liquidation",
       "signal": "Signal",
       "reverse": "Reverse",
-      "noTrades": "No trade records"
+      "noTrades": "No trade records",
+      "limited": "Showing only the most recent {count} trades (total: {total})"
     },
     "symbolBreakdown": {
       "symbol": "Symbol",

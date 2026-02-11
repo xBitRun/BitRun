@@ -112,6 +112,7 @@ class Settings(BaseSettings):
 
     # Backtest settings
     backtest_equity_curve_limit: int = 1000
+    backtest_trades_limit: int = 1000  # Limit number of trades returned in response
 
     # Execution worker settings
     worker_enabled: bool = True  # Enable/disable automatic strategy execution
