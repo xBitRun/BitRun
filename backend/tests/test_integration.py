@@ -135,22 +135,19 @@ class TestAuthEndpoints:
         mock_db = AsyncMock(spec=AsyncSession)
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch("app.api.routes.auth.get_redis_service") as mock_redis:
-            mock_redis.return_value = AsyncMock()
+        client = TestClient(app)
 
-            client = TestClient(app)
+        response = client.post(
+            "/api/auth/register",
+            json={
+                "email": "newuser@example.com",
+                "password": "securepassword123",
+                "name": "New User",
+            },
+        )
 
-            response = client.post(
-                "/api/auth/register",
-                json={
-                    "email": "newuser@example.com",
-                    "password": "securepassword123",
-                    "name": "New User",
-                },
-            )
-
-            # May fail due to DB mock, but should not crash
-            assert response.status_code in [200, 201, 400, 500]
+        # May fail due to DB mock, but should not crash
+        assert response.status_code in [200, 201, 400, 500]
 
         app.dependency_overrides.pop(get_db, None)
 
@@ -161,29 +158,24 @@ class TestAuthEndpoints:
         mock_db = AsyncMock(spec=AsyncSession)
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch("app.api.routes.auth.get_redis_service") as mock_redis:
-            mock_redis.return_value = AsyncMock()
-            mock_redis.return_value.is_account_locked = AsyncMock(return_value=False)
-            mock_redis.return_value.track_login_failure = AsyncMock(return_value=1)
+        # Mock UserRepository so authenticate returns None (user not found)
+        with patch("app.api.routes.auth.UserRepository") as MockUserRepo:
+            mock_repo = MagicMock()
+            mock_repo.authenticate = AsyncMock(return_value=None)
+            MockUserRepo.return_value = mock_repo
 
-            # Mock UserRepository so authenticate returns None (user not found)
-            with patch("app.api.routes.auth.UserRepository") as MockUserRepo:
-                mock_repo = MagicMock()
-                mock_repo.authenticate = AsyncMock(return_value=None)
-                MockUserRepo.return_value = mock_repo
+            client = TestClient(app)
 
-                client = TestClient(app)
+            response = client.post(
+                "/api/auth/login",
+                data={
+                    "username": "nonexistent@example.com",
+                    "password": "wrongpassword",
+                },
+            )
 
-                response = client.post(
-                    "/api/auth/login",
-                    data={
-                        "username": "nonexistent@example.com",
-                        "password": "wrongpassword",
-                    },
-                )
-
-                # Should reject (400 or 401)
-                assert response.status_code in [400, 401, 500]
+            # Should reject (400 or 401)
+            assert response.status_code in [400, 401, 500]
 
         app.dependency_overrides.pop(get_db, None)
 

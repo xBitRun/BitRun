@@ -2003,7 +2003,11 @@ class TestBacktestEngine:
                 data_provider=mock_data_provider,
                 use_ai=False,
                 analysis_ai_client=mock_analysis_ai,
+                start_date=datetime(2024, 1, 1, tzinfo=UTC),
+                end_date=datetime(2024, 12, 31, tzinfo=UTC),
             )
+            # Set trader balance for analysis_data generation
+            engine.trader.balance = 12000
             
             stats = {
                 "total_pnl_percent": 20,
@@ -2024,6 +2028,8 @@ class TestBacktestEngine:
                 "max_consecutive_losses": 2,
                 "expectancy": 110,
                 "total_fees": 50,
+                "long_stats": {},
+                "short_stats": {},
             }
             
             analysis = await engine._generate_analysis(
