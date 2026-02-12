@@ -15,7 +15,6 @@ import {
   Loader2,
   RefreshCw,
   Bot,
-  LineChart,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,22 +25,10 @@ import {
   useWebSocket,
   useDashboardStats,
   useAccounts,
-  useStrategies,
-  useQuantStrategies,
   useActivityFeed,
-  useRecentDecisions,
 } from '@/hooks';
-import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useEffect, useRef } from 'react';
 import type { ActivityItem } from '@/lib/api';
-
-const TradingViewChart = dynamic(
-  () =>
-    import('@/components/charts/tradingview-chart').then(
-      (mod) => mod.TradingViewChart
-    ),
-  { ssr: false }
-);
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -116,8 +103,6 @@ export default function DashboardPage() {
     mutate: refreshStats,
   } = useDashboardStats();
   const { isLoading: accountsLoading } = useAccounts();
-  const { data: strategies, isLoading: agentsLoading } = useStrategies();
-  const { data: quantStrategies } = useQuantStrategies();
 
   // Real-time updates via WebSocket
   const { isConnected, subscribe } = useWebSocket({
@@ -131,7 +116,7 @@ export default function DashboardPage() {
     subscribe('system');
   }, [subscribe]);
 
-  const isLoading = statsLoading || accountsLoading || agentsLoading;
+  const isLoading = statsLoading || accountsLoading;
 
   // Stats configuration - using real data
   const statsConfig = [
@@ -244,106 +229,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Market Chart with Decision Markers */}
+        {/* Market Overview */}
         <MarketChartSection />
-
-        {/* Agent strategies P&L and win rate */}
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50 shrink-0">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Bot className="w-5 h-5 text-primary" />
-              {t('agentStrategies.title')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {strategies && strategies.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {strategies.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/agents/${s.id}`}
-                    className="p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <p className="font-medium truncate">{s.name}</p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <span className="text-muted-foreground">{t('agentStrategies.totalPnl')}</span>
-                      <span
-                        className={cn(
-                          'font-mono font-semibold text-right',
-                          (s.total_pnl ?? 0) >= 0 ? 'text-[var(--profit)]' : 'text-[var(--loss)]'
-                        )}
-                      >
-                        {s.total_pnl !== undefined && s.total_pnl !== null
-                          ? `$${Math.abs(s.total_pnl).toLocaleString()}`
-                          : '—'}
-                      </span>
-                      <span className="text-muted-foreground">{t('agentStrategies.winRate')}</span>
-                      <span className="font-mono text-right">
-                        {s.win_rate !== undefined && s.win_rate !== null
-                          ? `${s.win_rate.toFixed(1)}%`
-                          : '—'}
-                      </span>
-                      <span className="text-muted-foreground">{t('agentStrategies.trades')}</span>
-                      <span className="font-mono text-right">{s.total_trades ?? 0}</span>
-                    </div>
-                    <p className="text-xs text-primary mt-2">{t('agentStrategies.viewAgent')}</p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-6 text-center">{t('agentStrategies.noData')}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quant strategies P&L and win rate */}
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50 shrink-0">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <LineChart className="w-5 h-5 text-primary" />
-              {t('quantStrategies.title')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quantStrategies && quantStrategies.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {quantStrategies.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/strategies/${s.id}`}
-                    className="p-4 rounded-lg bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <p className="font-medium truncate">{s.name}</p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <span className="text-muted-foreground">{t('quantStrategies.totalPnl')}</span>
-                      <span
-                        className={cn(
-                          'font-mono font-semibold text-right',
-                          (s.total_pnl ?? 0) >= 0 ? 'text-[var(--profit)]' : 'text-[var(--loss)]'
-                        )}
-                      >
-                        {s.total_pnl !== undefined && s.total_pnl !== null
-                          ? `$${Math.abs(s.total_pnl).toLocaleString()}`
-                          : '—'}
-                      </span>
-                      <span className="text-muted-foreground">{t('quantStrategies.winRate')}</span>
-                      <span className="font-mono text-right">
-                        {s.win_rate !== undefined && s.win_rate !== null
-                          ? `${s.win_rate.toFixed(1)}%`
-                          : '—'}
-                      </span>
-                      <span className="text-muted-foreground">{t('quantStrategies.trades')}</span>
-                      <span className="font-mono text-right">{s.total_trades ?? 0}</span>
-                    </div>
-                    <p className="text-xs text-primary mt-2">{t('quantStrategies.viewStrategy')}</p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-6 text-center">{t('quantStrategies.noData')}</p>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Main Content Grid - Activity Feed & Positions side by side, fill remaining height */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
@@ -460,138 +347,85 @@ export default function DashboardPage() {
   );
 }
 
-// Market Chart Section with Decision Markers
-type MarketCategory = 'crypto' | 'forex' | 'metals';
+// Market Overview Section - Core pairs from each category
+const marketPairs = [
+  { symbol: 'BINANCE:BTCUSDT', labelKey: 'crypto' },
+  { symbol: 'FX:EURUSD', labelKey: 'forex' },
+  { symbol: 'TVC:GOLD', labelKey: 'metals' },
+];
 
-const symbolGroups: Record<MarketCategory, { value: string; label: string }[]> = {
-  crypto: [
-    { value: 'BINANCE:BTCUSDT', label: 'BTC/USDT' },
-    { value: 'BINANCE:ETHUSDT', label: 'ETH/USDT' },
-    { value: 'BINANCE:SOLUSDT', label: 'SOL/USDT' },
-  ],
-  forex: [
-    { value: 'FX:EURUSD', label: 'EUR/USD' },
-    { value: 'FX:GBPUSD', label: 'GBP/USD' },
-    { value: 'FX:USDJPY', label: 'USD/JPY' },
-  ],
-  metals: [
-    { value: 'TVC:GOLD', label: 'XAU/USD' },
-    { value: 'TVC:SILVER', label: 'XAG/USD' },
-  ],
-};
+function MarketOverviewCard({ symbol }: { symbol: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string>(
+    `tv_mini_${Math.random().toString(36).slice(2, 10)}`
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Clear previous widget
+    container.innerHTML = '';
+
+    // Create widget div
+    const widgetDiv = document.createElement('div');
+    widgetDiv.id = widgetIdRef.current;
+    widgetDiv.className = 'tradingview-widget-container__widget';
+    container.appendChild(widgetDiv);
+
+    // Inject TradingView Mini Symbol Overview script
+    const script = document.createElement('script');
+    script.src =
+      'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+    script.type = 'text/javascript';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      symbol,
+      width: '100%',
+      height: '100%',
+      locale: 'en',
+      dateRange: '1D',
+      colorTheme: 'dark',
+      isTransparent: true,
+      autosize: true,
+      largeChartUrl: '',
+      noTimeScale: false,
+      chartOnly: false,
+    });
+
+    widgetDiv.appendChild(script);
+
+    return () => {
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [symbol]);
+
+  return (
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 overflow-hidden">
+      <CardContent className="p-0">
+        <div ref={containerRef} className="h-[180px] w-full" />
+      </CardContent>
+    </Card>
+  );
+}
 
 function MarketChartSection() {
   const t = useTranslations('dashboard');
-  const [marketCategory, setMarketCategory] = useState<MarketCategory>('crypto');
-  const [chartSymbol, setChartSymbol] = useState('BINANCE:BTCUSDT');
-  const { data: decisions } = useRecentDecisions(5);
-
-  const currentSymbols = symbolGroups[marketCategory];
-
-  // Extract recent decision markers
-  const recentDecisionMarkers = (decisions ?? []).slice(0, 5);
-
-  const handleCategoryChange = (cat: MarketCategory) => {
-    setMarketCategory(cat);
-    // Auto-select first symbol in category
-    setChartSymbol(symbolGroups[cat][0].value);
-  };
-
-  const categories: { key: MarketCategory; label: string }[] = [
-    { key: 'crypto', label: t('chart.crypto') },
-    { key: 'forex', label: t('chart.forex') },
-    { key: 'metals', label: t('chart.metals') },
-  ];
 
   return (
-    <Card className="bg-card/50 backdrop-blur-sm border-border/50 shrink-0">
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-3">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          {t('chart.title')}
-        </CardTitle>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-          {/* Market Category Tabs */}
-          <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5">
-            {categories.map((cat) => (
-              <Button
-                key={cat.key}
-                variant={marketCategory === cat.key ? 'default' : 'ghost'}
-                size="sm"
-                className={cn(
-                  'h-6 text-xs px-2.5',
-                  marketCategory === cat.key
-                    ? ''
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                onClick={() => handleCategoryChange(cat.key)}
-              >
-                {cat.label}
-              </Button>
-            ))}
-          </div>
-          {/* Symbol Buttons */}
-          <div className="flex items-center gap-1">
-            {currentSymbols.map((opt) => (
-              <Button
-                key={opt.value}
-                variant={chartSymbol === opt.value ? 'default' : 'outline'}
-                size="sm"
-                className="text-xs h-7"
-                onClick={() => setChartSymbol(opt.value)}
-              >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="h-[400px] rounded-lg overflow-hidden border border-border/30">
-          <TradingViewChart symbol={chartSymbol} interval="60" />
-        </div>
-
-        {/* Decision Markers */}
-        {recentDecisionMarkers.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {recentDecisionMarkers.map((d) => {
-              const action = d.decisions?.[0]?.action || 'hold';
-              const symbol = d.decisions?.[0]?.symbol || '';
-              const isLong = action.includes('long') && !action.includes('close');
-              const isShort = action.includes('short') && !action.includes('close');
-
-              return (
-                <Link
-                  key={d.id}
-                  href={`/agents/${d.strategy_id}?tab=decisions&decision=${d.id}`}
-                  className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border transition-colors hover:bg-muted/50',
-                    isLong
-                      ? 'border-[var(--profit)]/30 text-[var(--profit)]'
-                      : isShort
-                        ? 'border-[var(--loss)]/30 text-[var(--loss)]'
-                        : 'border-border/50 text-muted-foreground'
-                  )}
-                >
-                  {isLong ? (
-                    <ArrowUpRight className="w-3 h-3" />
-                  ) : isShort ? (
-                    <ArrowDownRight className="w-3 h-3" />
-                  ) : (
-                    <Activity className="w-3 h-3" />
-                  )}
-                  <span className="font-mono">{symbol}</span>
-                  <span>{action.replace(/_/g, ' ')}</span>
-                  <Badge variant="outline" className="text-[10px] px-1 py-0">
-                    {d.overall_confidence}%
-                  </Badge>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="shrink-0">
+      <div className="flex items-center gap-2 mb-4">
+        <TrendingUp className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold">{t('chart.title')}</h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {marketPairs.map((pair) => (
+          <MarketOverviewCard key={pair.symbol} symbol={pair.symbol} />
+        ))}
+      </div>
+    </div>
   );
 }
 

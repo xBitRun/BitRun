@@ -32,6 +32,11 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
+    titleKey: "competition",
+    href: "/competition",
+    icon: Trophy,
+  },
+  {
     titleKey: "agents",
     href: "/agents",
     icon: Bot,
@@ -45,11 +50,6 @@ const navItems = [
     titleKey: "accounts",
     href: "/accounts",
     icon: Wallet,
-  },
-  {
-    titleKey: "competition",
-    href: "/competition",
-    icon: Trophy,
   },
   {
     titleKey: "models",
