@@ -27,7 +27,7 @@ interface AuthGuardProps {
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, checkAuth } = useAuthStore();
+  const { isAuthenticated, user, checkAuth } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const hasChecked = useRef(false);
 
@@ -48,7 +48,15 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
         }
       }
 
-      // Verify token with backend
+      // Skip checkAuth if we already have user info from login response
+      // This avoids redundant GET /auth/me after successful login
+      if (isAuthenticated && user) {
+        hasChecked.current = true;
+        setIsChecking(false);
+        return;
+      }
+
+      // Verify token with backend (only needed on page refresh when store is empty)
       try {
         await checkAuth();
       } catch {
@@ -60,7 +68,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
     };
 
     verifyAuth();
-  }, [pathname, router, checkAuth]);
+  }, [pathname, router, checkAuth, isAuthenticated, user]);
 
   // Only show full-screen loading on the initial auth check.
   // Store's isLoading is intentionally NOT used here to avoid

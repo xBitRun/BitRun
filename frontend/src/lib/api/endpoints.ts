@@ -49,6 +49,7 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   expires_in: number;
+  user?: UserResponse;  // Inline user info from login to avoid extra /me call
 }
 
 // Login uses OAuth2 form data format, custom fetch needed

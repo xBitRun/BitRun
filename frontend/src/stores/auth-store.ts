@@ -53,22 +53,31 @@ export const useAuthStore = create<AuthState>()(
           // Store tokens
           TokenManager.setTokens(tokenResponse.access_token, tokenResponse.refresh_token);
 
-          // Fetch user info after login
-          try {
-            const user = await authApi.me();
+          // Use inline user info from login response (avoids extra GET /auth/me)
+          if (tokenResponse.user) {
             set({
-              user,
+              user: tokenResponse.user,
               isAuthenticated: true,
               isLoading: false,
             });
-          } catch {
-            // If fetching user info fails, still mark as authenticated
-            // User info will be fetched on next checkAuth
-            set({
-              user: null,
-              isAuthenticated: true,
-              isLoading: false,
-            });
+          } else {
+            // Fallback: fetch user info if not included in login response
+            try {
+              const user = await authApi.me();
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            } catch {
+              // If fetching user info fails, still mark as authenticated
+              // User info will be fetched on next checkAuth
+              set({
+                user: null,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            }
           }
         } catch (err) {
           // Extract structured error info from ApiError
@@ -103,21 +112,30 @@ export const useAuthStore = create<AuthState>()(
 
           TokenManager.setTokens(tokenResponse.access_token, tokenResponse.refresh_token);
 
-          // Fetch user info after login
-          try {
-            const user = await authApi.me();
+          // Use inline user info from login response (avoids extra GET /auth/me)
+          if (tokenResponse.user) {
             set({
-              user,
+              user: tokenResponse.user,
               isAuthenticated: true,
               isLoading: false,
             });
-          } catch {
-            // If fetching user info fails, still mark as authenticated
-            set({
-              user: null,
-              isAuthenticated: true,
-              isLoading: false,
-            });
+          } else {
+            // Fallback: fetch user info if not included in login response
+            try {
+              const user = await authApi.me();
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            } catch {
+              // If fetching user info fails, still mark as authenticated
+              set({
+                user: null,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            }
           }
         } catch (err) {
           // Extract structured error info from ApiError

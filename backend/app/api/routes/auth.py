@@ -45,6 +45,7 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds
+    user: Optional[UserResponse] = None  # Inline user info to avoid extra /me call
 
 
 class RefreshRequest(BaseModel):
@@ -130,6 +131,12 @@ async def login(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.jwt_access_token_expire_minutes * 60,
+        user=UserResponse(
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            is_active=user.is_active,
+        ),
     )
 
 
