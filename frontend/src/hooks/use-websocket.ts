@@ -261,7 +261,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const subscribe = useCallback((channel: string) => {
     setSubscribedChannels((prev) => new Set([...prev, channel]));
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'subscribe', channel }));
     }
   }, []);
@@ -274,14 +274,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       return next;
     });
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'unsubscribe', channel }));
     }
   }, []);
 
   // Send raw message
   const send = useCallback((message: WSMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     }
   }, []);
