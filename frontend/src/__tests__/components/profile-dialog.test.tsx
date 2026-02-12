@@ -13,11 +13,14 @@ const mockUser = {
   name: "Test User",
 };
 
+const mockCheckAuth = jest.fn().mockResolvedValue(undefined);
+const mockUseAuthStore = jest.fn(() => ({
+  user: mockUser,
+  checkAuth: mockCheckAuth,
+}));
+
 jest.mock("@/stores/auth-store", () => ({
-  useAuthStore: () => ({
-    user: mockUser,
-    checkAuth: jest.fn().mockResolvedValue(undefined),
-  }),
+  useAuthStore: (...args: unknown[]) => mockUseAuthStore(...args),
 }));
 
 // Mock API
@@ -38,6 +41,10 @@ describe("ProfileDialog", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseAuthStore.mockReturnValue({
+      user: mockUser,
+      checkAuth: mockCheckAuth,
+    });
   });
 
   it("should render dialog when open", () => {
@@ -139,17 +146,21 @@ describe("ProfileDialog", () => {
 
     await user.click(screen.getByText("changePassword"));
 
+    const currentPasswordInput = screen.getByLabelText(/currentPassword/i);
     const newPasswordInput = screen.getByLabelText(/newPassword/i);
     const confirmPasswordInput = screen.getByLabelText(/confirmPassword/i);
 
+    // Must fill currentPassword too, otherwise the button is disabled
+    await user.type(currentPasswordInput, "oldpassword123");
     await user.type(newPasswordInput, "password123");
     await user.type(confirmPasswordInput, "password456");
 
-    const changeButton = screen.getByRole("button", { name: /change/i });
+    // The "update password" button text is t("updatePassword")
+    const changeButton = screen.getByRole("button", { name: /updatePassword/i });
     await user.click(changeButton);
 
     expect(screen.getByText("passwordMismatch")).toBeInTheDocument();
-  });
+  }, 15000); // Increased timeout for slow userEvent typing
 
   it("should validate password too short", async () => {
     const user = userEvent.setup();
@@ -165,7 +176,7 @@ describe("ProfileDialog", () => {
     await user.type(newPasswordInput, "short");
     await user.type(confirmPasswordInput, "short");
 
-    const changeButton = screen.getByRole("button", { name: /change/i });
+    const changeButton = screen.getByRole("button", { name: /updatePassword/i });
     await user.click(changeButton);
 
     expect(screen.getByText("passwordTooShort")).toBeInTheDocument();
@@ -186,7 +197,7 @@ describe("ProfileDialog", () => {
     await user.type(newPasswordInput, "newpassword123");
     await user.type(confirmPasswordInput, "newpassword123");
 
-    const changeButton = screen.getByRole("button", { name: /change/i });
+    const changeButton = screen.getByRole("button", { name: /updatePassword/i });
     await user.click(changeButton);
 
     expect(authApi.changePassword).toHaveBeenCalledWith({
@@ -212,7 +223,7 @@ describe("ProfileDialog", () => {
     await user.type(newPasswordInput, "newpassword123");
     await user.type(confirmPasswordInput, "newpassword123");
 
-    const changeButton = screen.getByRole("button", { name: /change/i });
+    const changeButton = screen.getByRole("button", { name: /updatePassword/i });
     await user.click(changeButton);
 
     await screen.findByText("Invalid password");
@@ -224,13 +235,17 @@ describe("ProfileDialog", () => {
 
     await user.click(screen.getByText("changePassword"));
 
-    const passwordInputs = screen.getAllByLabelText(/password/i);
-    const toggleButtons = screen.getAllByRole("button", { name: /eye/i });
+    const currentPasswordInput = screen.getByLabelText(/currentPassword/i);
+    expect(currentPasswordInput).toHaveAttribute("type", "password");
 
-    if (toggleButtons.length > 0) {
-      await user.click(toggleButtons[0]);
+    // Eye toggle buttons are icon-only, find them by their position relative to the input
+    const passwordContainer = currentPasswordInput.closest(".relative");
+    const toggleButton = passwordContainer?.querySelector("button");
+
+    if (toggleButton) {
+      await user.click(toggleButton);
       // Password should be visible
-      expect(passwordInputs[0]).toHaveAttribute("type", "text");
+      expect(currentPasswordInput).toHaveAttribute("type", "text");
     }
   });
 
@@ -240,8 +255,11 @@ describe("ProfileDialog", () => {
 
     await user.click(screen.getByText("changePassword"));
 
-    const cancelButton = screen.getByRole("button", { name: /cancel/i });
-    await user.click(cancelButton);
+    // There are two cancel buttons: one in password section and one in footer
+    // The password section cancel button is inside the password form area
+    const cancelButtons = screen.getAllByRole("button", { name: /cancel/i });
+    // The first cancel button is in the password change section
+    await user.click(cancelButtons[0]);
 
     expect(screen.queryByText("currentPassword")).not.toBeInTheDocument();
   });
@@ -259,14 +277,13 @@ describe("ProfileDialog", () => {
   });
 
   it("should update profile when user changes", () => {
-    const { useAuthStore } = require("@/stores/auth-store");
     const newUser = {
       id: "new-user-id",
       email: "new@example.com",
       name: "New User",
     };
 
-    (useAuthStore as jest.Mock).mockReturnValue({
+    mockUseAuthStore.mockReturnValue({
       user: newUser,
       checkAuth: jest.fn().mockResolvedValue(undefined),
     });
@@ -318,7 +335,7 @@ describe("ProfileDialog", () => {
     await user.type(newPasswordInput, "newpassword123");
     await user.type(confirmPasswordInput, "newpassword123");
 
-    const changeButton = screen.getByRole("button", { name: /change/i });
+    const changeButton = screen.getByRole("button", { name: /updatePassword/i });
     await user.click(changeButton);
 
     // Should show loading indicator
@@ -326,7 +343,8 @@ describe("ProfileDialog", () => {
   });
 
   it("should close dialog after successful save", async () => {
-    const user = userEvent.setup();
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<ProfileDialog {...defaultProps} />);
 
     const nameInput = screen.getByDisplayValue("Test User");
@@ -336,23 +354,27 @@ describe("ProfileDialog", () => {
     const saveButton = screen.getByRole("button", { name: /save/i });
     await user.click(saveButton);
 
-    // Wait for success message and auto-close
-    await screen.findByText(/success/i);
-    // Dialog should close after 1 second
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    // Wait for success message - the text is t("profileUpdated")
+    await screen.findByText("profileUpdated");
+
+    // Dialog should close after 1 second timeout
+    jest.advanceTimersByTime(1100);
     expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
+
+    jest.useRealTimers();
   });
 
   it("should handle user being null", () => {
-    const { useAuthStore } = require("@/stores/auth-store");
-    (useAuthStore as jest.Mock).mockReturnValue({
+    mockUseAuthStore.mockReturnValue({
       user: null,
       checkAuth: jest.fn().mockResolvedValue(undefined),
     });
 
     render(<ProfileDialog {...defaultProps} />);
 
-    const nameInput = screen.getByDisplayValue("");
-    expect(nameInput).toBeInTheDocument();
+    // When user is null, both name and email are empty
+    // Use specific input IDs to avoid multiple matches
+    const nameInput = screen.getByPlaceholderText("namePlaceholder");
+    expect(nameInput).toHaveValue("");
   });
 });

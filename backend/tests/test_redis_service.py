@@ -550,6 +550,150 @@ class TestRedisService:
         
         mock_redis.close.assert_called_once()
 
+    # ==================== Account Balance Cache Tests ====================
+
+    @pytest.mark.asyncio
+    async def test_cache_account_balance(self, service, mock_redis):
+        """Test caching account balance"""
+        balance_data = {
+            "equity": 10000.0,
+            "available_balance": 5000.0,
+            "positions": [],
+        }
+        
+        result = await service.cache_account_balance("account-123", balance_data)
+        
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_get_cached_account_balance(self, service, mock_redis):
+        """Test getting cached account balance"""
+        balance_data = {"equity": 10000.0}
+        await service.cache_account_balance("account-123", balance_data)
+        
+        result = await service.get_cached_account_balance("account-123")
+        
+        assert result == balance_data
+
+    @pytest.mark.asyncio
+    async def test_get_cached_account_balance_not_found(self, service, mock_redis):
+        """Test getting non-cached account balance"""
+        result = await service.get_cached_account_balance("nonexistent")
+        
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_invalidate_account_balance(self, service, mock_redis):
+        """Test invalidating account balance cache"""
+        await service.cache_account_balance("account-123", {"equity": 10000.0})
+        
+        result = await service.invalidate_account_balance("account-123")
+        
+        assert result is True
+        
+        cached = await service.get_cached_account_balance("account-123")
+        assert cached is None
+
+    # ==================== Additional Edge Case Tests ====================
+
+    @pytest.mark.asyncio
+    async def test_check_account_lockout_pipeline(self, service, mock_redis):
+        """Test check_account_lockout uses pipeline for efficiency"""
+        # Setup pipeline mock to return locked state
+        pipeline = MagicMock()
+        pipeline.get = MagicMock()
+        pipeline.ttl = MagicMock()
+        pipeline.execute = AsyncMock(return_value=[b"5", 300])
+        mock_redis.pipeline = MagicMock(return_value=pipeline)
+        
+        is_locked, remaining = await service.check_account_lockout("test@example.com")
+        
+        assert is_locked is True
+        assert remaining == 300
+        mock_redis.pipeline.assert_called_once_with(transaction=False)
+
+    @pytest.mark.asyncio
+    async def test_check_account_lockout_not_locked(self, service, mock_redis):
+        """Test check_account_lockout when not locked"""
+        pipeline = MagicMock()
+        pipeline.get = MagicMock()
+        pipeline.ttl = MagicMock()
+        pipeline.execute = AsyncMock(return_value=[b"2", 300])  # Below threshold
+        mock_redis.pipeline = MagicMock(return_value=pipeline)
+        
+        is_locked, remaining = await service.check_account_lockout("test@example.com")
+        
+        assert is_locked is False
+        assert remaining == 0
+
+    @pytest.mark.asyncio
+    async def test_check_account_lockout_no_failures(self, service, mock_redis):
+        """Test check_account_lockout with no failures"""
+        pipeline = MagicMock()
+        pipeline.get = MagicMock()
+        pipeline.ttl = MagicMock()
+        pipeline.execute = AsyncMock(return_value=[None, -2])
+        mock_redis.pipeline = MagicMock(return_value=pipeline)
+        
+        is_locked, remaining = await service.check_account_lockout("new@example.com")
+        
+        assert is_locked is False
+        assert remaining == 0
+
+    @pytest.mark.asyncio
+    async def test_get_lockout_remaining_time_not_locked(self, service, mock_redis):
+        """Test lockout remaining time when not locked"""
+        # Account has some failures but not locked
+        await service.track_login_failure("test@example.com")
+        
+        remaining = await service.get_lockout_remaining_time("test@example.com")
+        
+        # Not locked (only 1 failure), so remaining should be 0
+        assert remaining == 0
+
+    @pytest.mark.asyncio
+    async def test_set_numeric_value(self, service, mock_redis):
+        """Test caching numeric value (stored as string, returned as JSON parsed value)"""
+        result = await service.set("my_number", 42)
+        
+        assert result is True
+        
+        # Value is stored as string "42", but get() parses JSON, so returns int 42
+        cached = await service.get("my_number")
+        assert cached == 42
+
+    @pytest.mark.asyncio
+    async def test_set_without_ttl(self, service, mock_redis):
+        """Test caching value without TTL"""
+        result = await service.set("key_no_ttl", "value")
+        
+        assert result is True
+        
+        # Verify redis.set was used (not setex)
+        cached = await service.get("key_no_ttl")
+        assert cached == "value"
+
+    @pytest.mark.asyncio
+    async def test_delete_strategy_status_not_exists(self, service, mock_redis):
+        """Test deleting non-existent strategy status"""
+        result = await service.delete_strategy_status("nonexistent-strategy")
+        
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_clear_login_failures_no_failures(self, service, mock_redis):
+        """Test clearing login failures when none exist"""
+        result = await service.clear_login_failures("clean@example.com")
+        
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_invalidate_dashboard_cache_not_exists(self, service, mock_redis):
+        """Test invalidating non-existent dashboard cache"""
+        result = await service.invalidate_dashboard_cache("nonexistent-user")
+        
+        assert result is False
+
 
 class TestRedisServiceSingleton:
     """Tests for Redis singleton management"""
@@ -604,3 +748,69 @@ class TestRedisServiceSingleton:
                 
                 assert redis_module._redis_service is None
                 assert redis_module._redis_client is None
+
+    @pytest.mark.asyncio
+    async def test_get_redis_client_reconnect_on_ping_failure(self):
+        """Test that get_redis_client reconnects when ping fails"""
+        import app.services.redis_service as redis_module
+        
+        with patch("app.services.redis_service.get_settings") as mock_settings:
+            mock_settings.return_value.redis_url = "redis://localhost:6379"
+            
+            # First client will fail ping
+            old_client = AsyncMock()
+            old_client.ping = AsyncMock(side_effect=Exception("Connection lost"))
+            old_client.close = AsyncMock()
+            
+            # New client will succeed
+            new_client = AsyncMock()
+            new_client.ping = AsyncMock(return_value=True)
+            
+            with patch("app.services.redis_service.redis.from_url") as mock_from_url:
+                mock_from_url.return_value = new_client
+                
+                # Set the old failing client
+                redis_module._redis_client = old_client
+                redis_module._redis_service = None
+                
+                # Should reconnect
+                client = await redis_module.get_redis_client()
+                
+                # Old client should have been closed
+                old_client.close.assert_called_once()
+                
+                # Should return new client
+                assert client is new_client
+                
+                # Cleanup
+                redis_module._redis_client = None
+
+    @pytest.mark.asyncio
+    async def test_get_redis_client_reconnect_close_error_handled(self):
+        """Test that close error during reconnect is handled gracefully"""
+        import app.services.redis_service as redis_module
+        
+        with patch("app.services.redis_service.get_settings") as mock_settings:
+            mock_settings.return_value.redis_url = "redis://localhost:6379"
+            
+            # Old client fails ping AND close
+            old_client = AsyncMock()
+            old_client.ping = AsyncMock(side_effect=Exception("Connection lost"))
+            old_client.close = AsyncMock(side_effect=Exception("Close failed"))
+            
+            new_client = AsyncMock()
+            new_client.ping = AsyncMock(return_value=True)
+            
+            with patch("app.services.redis_service.redis.from_url") as mock_from_url:
+                mock_from_url.return_value = new_client
+                
+                redis_module._redis_client = old_client
+                redis_module._redis_service = None
+                
+                # Should handle close error and still reconnect
+                client = await redis_module.get_redis_client()
+                
+                assert client is new_client
+                
+                # Cleanup
+                redis_module._redis_client = None

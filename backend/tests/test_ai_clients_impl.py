@@ -6,6 +6,7 @@ BaseAIClient.generate_with_retry, and credential resolution.
 Does NOT duplicate tests from test_ai_factory.py.
 """
 
+import builtins
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -362,13 +363,20 @@ class TestOpenAIClientImpl:
         """Test _get_openai() raises AIClientError when openai package not installed."""
         # Reset the module-level cache
         import app.services.ai.openai_client as openai_module
+        from importlib import reload
         original_openai = openai_module.openai
         openai_module.openai = None
         
+        original_import = builtins.__import__
+        
+        def selective_import(name, *args, **kwargs):
+            if name == "openai" or name.startswith("openai."):
+                raise ImportError(f"No module named '{name}'")
+            return original_import(name, *args, **kwargs)
+        
         try:
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'openai'")):
+            with patch("builtins.__import__", side_effect=selective_import):
                 # Reload the function to test import error handling
-                from importlib import reload
                 reload(openai_module)
                 from app.services.ai.openai_client import _get_openai
                 

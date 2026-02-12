@@ -217,14 +217,12 @@ describe("RiskControlsPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("should update max leverage via input", async () => {
-    const user = userEvent.setup();
+  it("should update max leverage via input", () => {
     const onChange = jest.fn();
     render(<RiskControlsPanel {...defaultProps} onChange={onChange} />);
 
     const leverageInput = screen.getByDisplayValue("5") as HTMLInputElement;
-    await user.clear(leverageInput);
-    await user.type(leverageInput, "10");
+    fireEvent.change(leverageInput, { target: { value: "10" } });
 
     expect(onChange).toHaveBeenCalledWith({
       ...defaultRiskConfig,
@@ -634,8 +632,7 @@ describe("IndicatorConfig", () => {
     }
   });
 
-  it("should update EMA period values", async () => {
-    const user = userEvent.setup();
+  it("should update EMA period values", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
@@ -647,8 +644,7 @@ describe("IndicatorConfig", () => {
         input.closest("div")?.textContent?.includes("Period 1")
     ) || periodInputs[0];
 
-    await user.clear(firstPeriodInput);
-    await user.type(firstPeriodInput, "5");
+    fireEvent.change(firstPeriodInput, { target: { value: "5" } });
 
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
@@ -656,8 +652,7 @@ describe("IndicatorConfig", () => {
     expect(lastCall.ema.periods).toEqual(expect.arrayContaining([5, 21, 55]));
   });
 
-  it("should sort EMA periods after update", async () => {
-    const user = userEvent.setup();
+  it("should sort EMA periods after update", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
@@ -665,8 +660,7 @@ describe("IndicatorConfig", () => {
     const firstPeriodInput = periodInputs[0];
 
     // Change first period to 100 (should be sorted to last)
-    await user.clear(firstPeriodInput);
-    await user.type(firstPeriodInput, "100");
+    fireEvent.change(firstPeriodInput, { target: { value: "100" } });
 
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
@@ -748,36 +742,31 @@ describe("IndicatorConfig", () => {
     }
   });
 
-  it("should update MACD fast parameter", async () => {
-    const user = userEvent.setup();
+  it("should update MACD fast parameter", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
     const fastInput = screen.getByDisplayValue("12");
-    await user.clear(fastInput);
-    await user.type(fastInput, "8");
+    fireEvent.change(fastInput, { target: { value: "8" } });
 
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.macd.fast).toBe(8);
   });
 
-  it("should update MACD slow parameter", async () => {
-    const user = userEvent.setup();
+  it("should update MACD slow parameter", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
     const slowInput = screen.getByDisplayValue("26");
-    await user.clear(slowInput);
-    await user.type(slowInput, "30");
+    fireEvent.change(slowInput, { target: { value: "30" } });
 
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.macd.slow).toBe(30);
   });
 
-  it("should update MACD signal parameter", async () => {
-    const user = userEvent.setup();
+  it("should update MACD signal parameter", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
@@ -787,8 +776,7 @@ describe("IndicatorConfig", () => {
         input.closest("div")?.textContent?.includes("signal")
     );
     if (signalInput) {
-      await user.clear(signalInput);
-      await user.type(signalInput, "10");
+      fireEvent.change(signalInput, { target: { value: "10" } });
 
       expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];

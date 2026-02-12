@@ -689,3 +689,180 @@ class TestMarketData:
         assert data.mid_price == 50000.0
         assert data.bid_price == 49990.0
         assert data.ask_price == 50010.0
+
+
+class TestBaseTraderExtended:
+    """Extended tests for BaseTrader methods."""
+
+    @pytest_asyncio.fixture
+    async def trader(self):
+        """Create and initialize mock trader."""
+        trader = MockTrader(testnet=True)
+        await trader.initialize()
+        return trader
+
+    @pytest.mark.asyncio
+    async def test_get_klines_default(self, trader):
+        """Test default get_klines returns empty list."""
+        result = await trader.get_klines("BTC", "1h", 100)
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_funding_history_default(self, trader):
+        """Test default get_funding_history returns empty list."""
+        result = await trader.get_funding_history("BTC", 24)
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_open_interest_default(self, trader):
+        """Test default get_open_interest returns None."""
+        result = await trader.get_open_interest("BTC")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_order_default(self, trader):
+        """Test default get_order returns None."""
+        from app.traders.base import BaseTrader
+        # Use base class method directly
+        result = await BaseTrader.get_order(trader, "BTC", "order_123")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_open_orders_default(self, trader):
+        """Test default get_open_orders returns empty list."""
+        from app.traders.base import BaseTrader
+        result = await BaseTrader.get_open_orders(trader, "BTC")
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_order_history_default(self, trader):
+        """Test default get_order_history returns empty list."""
+        from app.traders.base import BaseTrader
+        result = await BaseTrader.get_order_history(trader, "BTC", 50)
+        assert result == []
+
+
+class TestWaitForFill:
+    """Tests for wait_for_fill method."""
+
+    @pytest.mark.asyncio
+    async def test_wait_for_fill_order_not_found(self):
+        """Test wait_for_fill raises when order not found."""
+        trader = MockTrader(testnet=True)
+        await trader.initialize()
+        
+        # get_order returns None by default
+        with pytest.raises(TradeError) as exc_info:
+            await trader.wait_for_fill("BTC", "nonexistent_order", timeout_seconds=1)
+        
+        assert exc_info.value.code == "ORDER_NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_wait_for_fill_timeout(self):
+        """Test wait_for_fill raises on timeout."""
+        from app.traders.base import BaseTrader, Order, OrderStatus, OrderType
+        
+        class SlowFillTrader(MockTrader):
+            async def get_order(self, symbol: str, order_id: str):
+                # Return pending order that never completes
+                return Order(
+                    order_id=order_id,
+                    client_order_id=None,
+                    symbol=symbol,
+                    side="buy",
+                    order_type=OrderType.MARKET,
+                    size=0.1,
+                    filled_size=0,
+                    status=OrderStatus.PENDING,
+                )
+        
+        trader = SlowFillTrader(testnet=True)
+        await trader.initialize()
+        
+        with pytest.raises(TradeError) as exc_info:
+            await trader.wait_for_fill("BTC", "slow_order", timeout_seconds=0.1, poll_interval=0.05)
+        
+        assert exc_info.value.code == "ORDER_TIMEOUT"
+
+    @pytest.mark.asyncio
+    async def test_wait_for_fill_success(self):
+        """Test wait_for_fill returns when order completes."""
+        from app.traders.base import BaseTrader, Order, OrderStatus, OrderType
+        
+        class QuickFillTrader(MockTrader):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._call_count = 0
+            
+            async def get_order(self, symbol: str, order_id: str):
+                self._call_count += 1
+                # First call: pending, second call: filled
+                status = OrderStatus.PENDING if self._call_count == 1 else OrderStatus.FILLED
+                return Order(
+                    order_id=order_id,
+                    client_order_id=None,
+                    symbol=symbol,
+                    side="buy",
+                    order_type=OrderType.MARKET,
+                    size=0.1,
+                    price=50000.0,
+                    filled_size=0.1 if status == OrderStatus.FILLED else 0,
+                    status=status,
+                )
+        
+        trader = QuickFillTrader(testnet=True)
+        await trader.initialize()
+        
+        order = await trader.wait_for_fill("BTC", "quick_order", timeout_seconds=5, poll_interval=0.05)
+        
+        assert order.status == OrderStatus.FILLED
+        assert order.filled_size == 0.1
+
+
+class TestPositionIsProfitable:
+    """Tests for Position.is_profitable property."""
+
+    def test_is_profitable_positive_pnl(self):
+        """Test is_profitable returns True for positive unrealized P&L."""
+        position = Position(
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=5000.0,
+            entry_price=50000.0,
+            mark_price=51000.0,
+            unrealized_pnl=100.0,
+            unrealized_pnl_percent=2.0,
+            leverage=5,
+        )
+        assert position.is_profitable is True
+
+    def test_is_profitable_negative_pnl(self):
+        """Test is_profitable returns False for negative unrealized P&L."""
+        position = Position(
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=5000.0,
+            entry_price=50000.0,
+            mark_price=49000.0,
+            unrealized_pnl=-100.0,
+            unrealized_pnl_percent=-2.0,
+            leverage=5,
+        )
+        assert position.is_profitable is False
+
+    def test_is_profitable_zero_pnl(self):
+        """Test is_profitable returns False for zero unrealized P&L."""
+        position = Position(
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=5000.0,
+            entry_price=50000.0,
+            mark_price=50000.0,
+            unrealized_pnl=0.0,
+            unrealized_pnl_percent=0.0,
+            leverage=5,
+        )
+        assert position.is_profitable is False

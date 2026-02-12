@@ -5,6 +5,7 @@ Covers: place_order_with_tracking, cancel_order, get_pending_orders,
         cancel_all_orders, close(), persistence.
 """
 
+import asyncio
 import json
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -593,6 +594,98 @@ class TestOrderManager:
 
         # Should not raise
         await manager._handle_status_change(order, OrderStatus.SUBMITTED)
+
+    @pytest.mark.asyncio
+    async def test_handle_status_change_partial_fill(self, manager):
+        """Partial fill callback is triggered on PARTIALLY_FILLED status."""
+        partial_called = False
+
+        async def on_partial_fill(order):
+            nonlocal partial_called
+            partial_called = True
+
+        manager.callback = OrderCallback(on_partial_fill=on_partial_fill)
+        order = _make_order(
+            order_id="partial_cb",
+            status=OrderStatus.PARTIALLY_FILLED,
+            filled_size=0.05,
+            remaining_size=0.05,
+        )
+
+        await manager._handle_status_change(order, OrderStatus.SUBMITTED)
+        assert partial_called is True
+
+    @pytest.mark.asyncio
+    async def test_cancel_order_callback_exception(self, manager, mock_trader):
+        """Cancel callback exception should be caught."""
+        def on_cancel(order):
+            raise RuntimeError("cancel boom")
+
+        manager.callback = OrderCallback(on_cancel=on_cancel)
+        order = _make_order(order_id="cancel_boom", status=OrderStatus.SUBMITTED)
+        manager._orders["cancel_boom"] = order
+
+        # Should not raise
+        result = await manager.cancel_order("cancel_boom")
+        assert result.status == OrderStatus.CANCELLED
+
+    @pytest.mark.asyncio
+    async def test_cancel_all_orders_stops_tracking(self, manager, mock_trader):
+        """cancel_all_orders stops all tracking tasks."""
+        import asyncio
+
+        # Add tracking tasks
+        task1 = asyncio.create_task(asyncio.sleep(100))
+        task2 = asyncio.create_task(asyncio.sleep(100))
+        manager._tracking_tasks["track_1"] = task1
+        manager._tracking_tasks["track_2"] = task2
+
+        await manager.cancel_all_orders(symbol="BTC/USDT")
+
+        # All tracking tasks should be stopped
+        assert len(manager._tracking_tasks) == 0
+
+    @pytest.mark.asyncio
+    async def test_retry_order_exponential_backoff(self, manager, mock_trader):
+        """Retry uses exponential backoff delay."""
+        # First retry should use BASE_RETRY_DELAY
+        order = _make_order(order_id="backoff_1", status=OrderStatus.FAILED)
+        order.retry_count = 0
+        order.max_retries = 3
+        manager._orders["backoff_1"] = order
+
+        sleep_calls = []
+        original_sleep = asyncio.sleep
+
+        async def mock_sleep(delay):
+            sleep_calls.append(delay)
+            # Don't actually sleep
+
+        with patch("app.services.order_manager.asyncio.sleep", mock_sleep):
+            await manager._retry_order(order)
+
+        # Should have called sleep with base delay
+        assert len(sleep_calls) == 1
+        assert sleep_calls[0] == manager.BASE_RETRY_DELAY
+
+    @pytest.mark.asyncio
+    async def test_retry_order_second_attempt(self, manager, mock_trader):
+        """Second retry uses 2x base delay."""
+        order = _make_order(order_id="backoff_2", status=OrderStatus.FAILED)
+        order.retry_count = 1  # Already tried once
+        order.max_retries = 3
+        manager._orders["backoff_2"] = order
+
+        sleep_calls = []
+
+        async def mock_sleep(delay):
+            sleep_calls.append(delay)
+
+        with patch("app.services.order_manager.asyncio.sleep", mock_sleep):
+            await manager._retry_order(order)
+
+        # 2^1 * BASE_RETRY_DELAY = 2.0
+        assert sleep_calls[0] == manager.BASE_RETRY_DELAY * 2
 
     # ---------- Wait for Completion ----------
 

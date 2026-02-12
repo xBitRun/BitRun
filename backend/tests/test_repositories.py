@@ -509,6 +509,86 @@ class TestAccountRepository:
         deleted = await repo.get_by_id(account_id)
         assert deleted is None
 
+    @pytest.mark.asyncio
+    async def test_delete_account_not_found(
+        self, db_session: AsyncSession, test_user: UserDB, mock_crypto
+    ):
+        """Test deleting non-existent account returns False"""
+        repo = AccountRepository(db_session)
+        
+        result = await repo.delete(uuid.uuid4(), test_user.id)
+        
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_account_not_found(
+        self, db_session: AsyncSession, test_user: UserDB, mock_crypto
+    ):
+        """Test updating non-existent account returns None"""
+        repo = AccountRepository(db_session)
+        
+        result = await repo.update(uuid.uuid4(), test_user.id, name="New Name")
+        
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_connection_status_not_found(
+        self, db_session: AsyncSession, mock_crypto
+    ):
+        """Test updating connection status for non-existent account returns None"""
+        repo = AccountRepository(db_session)
+        
+        result = await repo.update_connection_status(
+            uuid.uuid4(), is_connected=True
+        )
+        
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_decrypted_credentials_not_found(
+        self, db_session: AsyncSession, test_user: UserDB, mock_crypto
+    ):
+        """Test getting credentials for non-existent account returns None"""
+        repo = AccountRepository(db_session)
+        
+        credentials = await repo.get_decrypted_credentials(
+            uuid.uuid4(), test_user.id
+        )
+        
+        assert credentials is None
+
+    @pytest.mark.asyncio
+    async def test_get_decrypted_credentials_decrypt_failure(
+        self, db_session: AsyncSession, test_user: UserDB, caplog
+    ):
+        """Test decryption failure returns None and logs error"""
+        import logging
+        
+        with patch("app.db.repositories.account.get_crypto_service") as mock:
+            crypto = MagicMock()
+            crypto.encrypt.side_effect = lambda x: f"encrypted_{x}" if x else None
+            # Decrypt raises exception
+            crypto.decrypt.side_effect = Exception("Decryption failed")
+            mock.return_value = crypto
+            
+            repo = AccountRepository(db_session)
+            
+            account = await repo.create(
+                user_id=test_user.id,
+                name="Test",
+                exchange="binance",
+                api_key="my_key",
+            )
+            await db_session.commit()
+            
+            with caplog.at_level(logging.ERROR):
+                credentials = await repo.get_decrypted_credentials(
+                    account.id, test_user.id
+                )
+            
+            assert credentials is None
+            assert any("Failed to decrypt" in record.message for record in caplog.records)
+
 
 # ============================================================================
 # StrategyRepository Tests
@@ -972,6 +1052,190 @@ class TestDecisionRepository:
         
         remaining = await repo.get_by_strategy(test_strategy.id)
         assert len(remaining) == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_old_records_empty_strategy(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test deleting old records when strategy has no decisions"""
+        repo = DecisionRepository(db_session)
+        
+        deleted_count = await repo.delete_old_records(
+            test_strategy.id, keep_count=10
+        )
+        
+        assert deleted_count == 0
+
+    @pytest.mark.asyncio
+    async def test_count_by_strategy(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test counting decisions for a strategy"""
+        repo = DecisionRepository(db_session)
+        
+        for i in range(3):
+            await repo.create(
+                strategy_id=test_strategy.id,
+                system_prompt=f"System {i}",
+                user_prompt=f"User {i}",
+                raw_response="{}",
+            )
+        await db_session.commit()
+        
+        count = await repo.count_by_strategy(test_strategy.id)
+        
+        assert count >= 3
+
+    @pytest.mark.asyncio
+    async def test_get_by_strategy_skipped_only(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test filtering for skipped (non-executed) decisions only"""
+        repo = DecisionRepository(db_session)
+        
+        # Create executed decision
+        d1 = await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
+        )
+        d1.executed = True
+        
+        # Create non-executed decision
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System 2",
+            user_prompt="User 2",
+            raw_response="{}",
+        )
+        await db_session.commit()
+        
+        skipped = await repo.get_by_strategy(
+            test_strategy.id, execution_filter="skipped"
+        )
+        
+        assert all(not d.executed for d in skipped)
+
+    @pytest.mark.asyncio
+    async def test_get_by_strategy_action_filter(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test filtering decisions by action type"""
+        repo = DecisionRepository(db_session)
+        
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
+            decisions=[{"action": "long", "symbol": "BTC"}],
+        )
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System 2",
+            user_prompt="User 2",
+            raw_response="{}",
+            decisions=[{"action": "hold", "symbol": "BTC"}],
+        )
+        await db_session.commit()
+        
+        long_decisions = await repo.get_by_strategy(
+            test_strategy.id, action_filter="long"
+        )
+        
+        # Should only include decisions with "long" action
+        assert len(long_decisions) >= 1
+
+    @pytest.mark.asyncio
+    async def test_get_by_strategy_invalid_action_filter(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test that invalid action filter returns empty results (SQL injection protection)"""
+        repo = DecisionRepository(db_session)
+        
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
+            decisions=[{"action": "long", "symbol": "BTC"}],
+        )
+        await db_session.commit()
+        
+        # Invalid action should return empty results
+        results = await repo.get_by_strategy(
+            test_strategy.id, action_filter="invalid_action; DROP TABLE"
+        )
+        
+        assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_with_user_id(
+        self, db_session: AsyncSession, test_strategy: StrategyDB,
+        test_user: UserDB
+    ):
+        """Test getting decision by ID with user ID verification"""
+        repo = DecisionRepository(db_session)
+        
+        decision = await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
+        )
+        await db_session.commit()
+        
+        # Should find with correct user
+        result = await repo.get_by_id(decision.id, user_id=test_user.id)
+        assert result is not None
+        
+        # Should not find with wrong user
+        result = await repo.get_by_id(decision.id, user_id=uuid.uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_mark_executed_not_found(
+        self, db_session: AsyncSession
+    ):
+        """Test marking non-existent decision returns False"""
+        repo = DecisionRepository(db_session)
+        
+        result = await repo.mark_executed(uuid.uuid4(), [{"status": "filled"}])
+        
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_get_stats_action_counts(
+        self, db_session: AsyncSession, test_strategy: StrategyDB
+    ):
+        """Test get_stats correctly counts actions"""
+        repo = DecisionRepository(db_session)
+        
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
+            decisions=[
+                {"action": "long", "symbol": "BTC"},
+                {"action": "long", "symbol": "ETH"},
+            ],
+        )
+        await repo.create(
+            strategy_id=test_strategy.id,
+            system_prompt="System 2",
+            user_prompt="User 2",
+            raw_response="{}",
+            decisions=[{"action": "hold", "symbol": "BTC"}],
+        )
+        await db_session.commit()
+        
+        stats = await repo.get_stats(test_strategy.id)
+        
+        assert "action_counts" in stats
+        assert stats["action_counts"].get("long", 0) >= 2
+        assert stats["action_counts"].get("hold", 0) >= 1
 
 
 # ============================================================================

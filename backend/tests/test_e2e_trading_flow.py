@@ -77,7 +77,12 @@ async def app_with_db(test_engine):
 
     async def override_get_db():
         async with session_factory() as session:
-            yield session
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
     app.dependency_overrides[get_db] = override_get_db
     yield app
@@ -140,19 +145,15 @@ class TestTradingFlowE2E:
                     json={
                         "name": "Test Account",
                         "exchange": "binance",
-                        "credentials": {
-                            "api_key": "test_key",
-                            "api_secret": "test_secret",
-                        },
+                        "api_key": "test_key",
+                        "api_secret": "test_secret",
                         "is_testnet": True,
                     },
                 )
-                # Account creation may require specific exchange validation
-                # This is a structural test - actual exchange calls are mocked
-                # If account creation fails, create strategy without account_id
-                account_id = None
-                if account_resp.status_code == 201:
-                    account_id = account_resp.json()["id"]
+                assert account_resp.status_code == 201, (
+                    f"Account creation failed: {account_resp.status_code}: {account_resp.text}"
+                )
+                account_id = account_resp.json()["id"]
 
                 # Step 2: Create strategy (with or without account_id)
                 strategy_data = {

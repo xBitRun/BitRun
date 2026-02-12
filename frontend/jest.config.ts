@@ -36,6 +36,8 @@ const config: Config = {
     "!src/app/**/page.tsx",
     "!src/app/**/global-error.tsx",
     "!src/components/ui/**",
+    "!src/components/landing/**",  // 营销页，无核心业务逻辑
+    "!src/components/charts/tradingview-chart.tsx",  // 第三方 TradingView widget
     "!src/i18n/**",
     "!src/providers/**",
     "!src/messages/**",

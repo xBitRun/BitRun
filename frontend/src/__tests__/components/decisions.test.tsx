@@ -375,7 +375,7 @@ describe("MarketSnapshotSection", () => {
       screen.getByText("decisions.marketSnapshot.title")
     );
 
-    expect(screen.getByText("decisions.marketSnapshot.recentKlines")).toBeInTheDocument();
+    expect(screen.getByText(/decisions\.marketSnapshot\.recentKlines/)).toBeInTheDocument();
     expect(screen.getByText("decisions.marketSnapshot.time")).toBeInTheDocument();
   });
 
@@ -468,7 +468,8 @@ describe("MarketSnapshotSection", () => {
     );
 
     // Avg = (0.0001 + 0.0002 + 0.0003) / 3 = 0.0002 = 0.0200%
-    expect(screen.getByText(/0\.0200%/)).toBeInTheDocument();
+    const avgFundingElements = screen.getAllByText(/0\.0200%/);
+    expect(avgFundingElements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("should toggle collapse/expand", async () => {

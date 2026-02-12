@@ -56,6 +56,14 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+// Mock Pointer Capture API (not available in jsdom, needed by Radix UI)
+Element.prototype.hasPointerCapture = jest.fn().mockReturnValue(false);
+Element.prototype.setPointerCapture = jest.fn();
+Element.prototype.releasePointerCapture = jest.fn();
+
+// Mock scrollIntoView (not available in jsdom, needed by Radix UI Select)
+Element.prototype.scrollIntoView = jest.fn();
+
 // Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),

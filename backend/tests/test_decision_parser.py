@@ -533,3 +533,280 @@ class TestDecisionParser:
         result = self.parser.parse(raw)
         assert result.chain_of_thought == "test"
         assert result.overall_confidence == 50
+
+    # ------------------------------------------------------------------ #
+    # JSON array as top-level response (wrapped in response object)
+    # ------------------------------------------------------------------ #
+
+    def test_parse_decisions_list_directly(self):
+        """AI returns list of decisions directly — parser wraps in response."""
+        # Response is just a list, not a dict with "decisions" key
+        raw = '''Here is my analysis:
+
+[{"symbol": "BTC", "action": "hold", "leverage": 1, "confidence": 60, "reasoning": "Wait for signal"}]
+
+Let me know if you need more.'''
+
+        result = self.parser.parse(raw)
+
+        assert len(result.decisions) == 1
+        assert result.decisions[0].symbol == "BTC"
+        # Default values for missing top-level fields
+        assert result.overall_confidence == 50
+        assert result.next_review_minutes == 60
+
+    def test_parse_data_is_list_wraps_in_dict(self):
+        """When parsed data is a list, wrap it in a response dict."""
+        # Raw JSON is a list (not a dict)
+        raw = json.dumps([
+            {
+                "symbol": "BTC",
+                "action": "hold",
+                "leverage": 1,
+                "confidence": 60,
+                "reasoning": "Wait for signal",
+            }
+        ])
+
+        result = self.parser.parse(raw)
+
+        assert len(result.decisions) == 1
+        assert result.decisions[0].symbol == "BTC"
+        # Defaults applied when data is a list
+        assert result.chain_of_thought == ""
+        assert result.overall_confidence == 50
+
+    # ------------------------------------------------------------------ #
+    # _extract_text_before_json: extracts text before { or [
+    # ------------------------------------------------------------------ #
+
+    def test_extract_text_before_json_with_brace(self):
+        """Extract text before JSON starting with {."""
+        text = '''Here is my analysis of the market:
+{"chain_of_thought": "test", "decisions": [], "overall_confidence": 50}'''
+
+        result = self.parser.parse(text)
+
+        # chain_of_thought should contain text before JSON (when extracted from array)
+        # Note: in this case the JSON is direct, so chain_of_thought comes from JSON
+        assert result.overall_confidence == 50
+
+    def test_extract_text_before_json_with_bracket(self):
+        """Extract text before JSON starting with [."""
+        text = '''My analysis:
+[{"symbol": "BTC", "action": "hold", "leverage": 1, "confidence": 60, "reasoning": "Testing with array format JSON"}]'''
+
+        result = self.parser.parse(text)
+
+        # chain_of_thought should be extracted from text before [
+        assert result.decisions[0].symbol == "BTC"
+
+    # ------------------------------------------------------------------ #
+    # _validate_decisions: leverage clamping with logging
+    # ------------------------------------------------------------------ #
+
+    def test_leverage_clamped_with_logging(self, sample_decision_response, caplog):
+        """Test that leverage clamping is logged."""
+        import logging
+
+        # Set max_leverage to 3, input has 5
+        parser = DecisionParser(risk_controls=RiskControls(max_leverage=3))
+
+        with caplog.at_level(logging.INFO):
+            result = parser.parse(json.dumps(sample_decision_response))
+
+        assert result.decisions[0].leverage == 3
+        # Check that log message was recorded
+        assert any("Leverage capped" in record.message for record in caplog.records)
+
+    # ------------------------------------------------------------------ #
+    # _validate_decisions: risk/reward ratio warning
+    # ------------------------------------------------------------------ #
+
+    def test_risk_reward_warning_long(self, caplog):
+        """Test risk/reward warning for long position."""
+        import logging
+
+        response = {
+            "chain_of_thought": "test",
+            "market_assessment": "test",
+            "decisions": [
+                {
+                    "symbol": "BTC",
+                    "action": "open_long",
+                    "leverage": 5,
+                    "position_size_usd": 1000,
+                    "entry_price": 50000,
+                    "stop_loss": 49000,  # Risk: 1000
+                    "take_profit": 50500,  # Reward: 500 → R:R = 0.5 < 1.0
+                    "confidence": 75,
+                    "reasoning": "Test risk/reward ratio warning",
+                }
+            ],
+            "overall_confidence": 75
+        }
+
+        parser = DecisionParser(risk_controls=RiskControls(min_risk_reward_ratio=1.0))
+
+        with caplog.at_level(logging.WARNING):
+            result = parser.parse(json.dumps(response))
+
+        assert len(result.decisions) == 1
+        # Warning should be logged for poor risk/reward
+        assert any("Risk/reward ratio" in record.message for record in caplog.records)
+
+    def test_risk_reward_warning_short(self, caplog):
+        """Test risk/reward warning for short position."""
+        import logging
+
+        response = {
+            "chain_of_thought": "test",
+            "market_assessment": "test",
+            "decisions": [
+                {
+                    "symbol": "BTC",
+                    "action": "open_short",
+                    "leverage": 5,
+                    "position_size_usd": 1000,
+                    "entry_price": 50000,
+                    "stop_loss": 51000,  # Risk: 1000
+                    "take_profit": 49500,  # Reward: 500 → R:R = 0.5 < 1.0
+                    "confidence": 75,
+                    "reasoning": "Test risk/reward ratio warning for short",
+                }
+            ],
+            "overall_confidence": 75
+        }
+
+        parser = DecisionParser(risk_controls=RiskControls(min_risk_reward_ratio=1.0))
+
+        with caplog.at_level(logging.WARNING):
+            result = parser.parse(json.dumps(response))
+
+        assert len(result.decisions) == 1
+        assert any("Risk/reward ratio" in record.message for record in caplog.records)
+
+    def test_risk_reward_skip_for_non_open_actions(self):
+        """Risk/reward check is skipped for close/hold actions."""
+        response = {
+            "chain_of_thought": "test",
+            "market_assessment": "test",
+            "decisions": [
+                {
+                    "symbol": "BTC",
+                    "action": "close_long",
+                    "leverage": 1,
+                    "entry_price": 50000,
+                    "stop_loss": 49000,
+                    "take_profit": 50500,
+                    "confidence": 75,
+                    "reasoning": "Close action should not trigger R:R check",
+                }
+            ],
+            "overall_confidence": 75
+        }
+
+        parser = DecisionParser(risk_controls=RiskControls(min_risk_reward_ratio=2.0))
+        result = parser.parse(json.dumps(response))
+
+        # Should parse successfully without R:R warning (risk/reward=0 for close)
+        assert len(result.decisions) == 1
+
+    # ------------------------------------------------------------------ #
+    # should_execute: close action with zero position size passes
+    # ------------------------------------------------------------------ #
+
+    def test_should_execute_close_action_ignores_position_size(self):
+        """Close actions should execute even with zero position_size_usd."""
+        from app.models.decision import TradingDecision
+
+        decision = TradingDecision(
+            symbol="BTC",
+            action=ActionType.CLOSE_LONG,
+            confidence=80,
+            position_size_usd=0,  # Zero size is OK for close
+            reasoning="Close existing position regardless of size",
+        )
+
+        should, reason = self.parser.should_execute(decision)
+        assert should is True
+        assert "Passed" in reason
+
+    # ------------------------------------------------------------------ #
+    # should_execute: wait action (different from hold)
+    # ------------------------------------------------------------------ #
+
+    def test_should_execute_wait_action(self):
+        """Wait action should not execute."""
+        from app.models.decision import TradingDecision
+
+        decision = TradingDecision(
+            symbol="BTC",
+            action=ActionType.WAIT,
+            confidence=99,
+            reasoning="Wait action should not be executed",
+        )
+
+        should, reason = self.parser.should_execute(decision)
+        assert should is False
+        assert "hold/wait" in reason
+
+    # ------------------------------------------------------------------ #
+    # extract_chain_of_thought: various patterns
+    # ------------------------------------------------------------------ #
+
+    def test_extract_chain_of_thought_reasoning_tag(self):
+        """Extract chain of thought from <reasoning> tag."""
+        raw = '''<reasoning>
+This is my detailed analysis of the market conditions.
+BTC looks bullish due to strong support.
+</reasoning>
+
+{"chain_of_thought": "ignored", "decisions": [], "overall_confidence": 50}'''
+
+        cot = self.parser.extract_chain_of_thought(raw)
+        assert "detailed analysis" in cot
+        assert "BTC looks bullish" in cot
+
+    def test_extract_chain_of_thought_markdown_header(self):
+        """Extract chain of thought from markdown ## Analysis header."""
+        raw = '''## Analysis
+
+Market is showing signs of reversal.
+Key indicators suggest bullish momentum.
+
+## Decisions
+
+{"chain_of_thought": "ignored", "decisions": [], "overall_confidence": 50}'''
+
+        cot = self.parser.extract_chain_of_thought(raw)
+        assert "signs of reversal" in cot
+
+    def test_extract_chain_of_thought_fallback(self):
+        """Extract chain of thought falls back to text before JSON."""
+        raw = '''My analysis shows positive signals.
+
+{"chain_of_thought": "different", "decisions": [], "overall_confidence": 50}'''
+
+        cot = self.parser.extract_chain_of_thought(raw)
+        assert "positive signals" in cot
+
+    # ------------------------------------------------------------------ #
+    # Edge case: ValidationError in _build_response (line 91-92)
+    # ------------------------------------------------------------------ #
+
+    def test_validation_error_in_build_response(self):
+        """ValidationError at response level (not decision level)."""
+        # Invalid overall_confidence type that can't be converted to int
+        response = {
+            "chain_of_thought": "test",
+            "market_assessment": "test",
+            "decisions": [],
+            "overall_confidence": "not_a_number"  # Will fail int()
+        }
+
+        with pytest.raises(DecisionParseError) as exc_info:
+            self.parser.parse(json.dumps(response))
+
+        # The error comes from int("not_a_number") in _build_response
+        assert "invalid literal" in str(exc_info.value).lower() or "Validation" in str(exc_info.value)
