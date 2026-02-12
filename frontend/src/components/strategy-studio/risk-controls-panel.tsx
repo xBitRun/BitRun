@@ -447,6 +447,99 @@ export function RiskControlsPanel({
             </p>
           </div>
 
+          {/* Stop Loss ATR Multiplier */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">
+                  {t("riskControls.defaultSlAtr")}
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      {t("riskControls.defaultSlAtrTooltip")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <span className="text-sm font-medium">
+                {value.defaultSlAtrMultiplier.toFixed(1)}x ATR
+              </span>
+            </div>
+            <Slider
+              value={[value.defaultSlAtrMultiplier * 10]}
+              onValueChange={([v]) => update("defaultSlAtrMultiplier", v / 10)}
+              min={5}
+              max={50}
+              step={1}
+            />
+          </div>
+
+          {/* Take Profit ATR Multiplier */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">
+                  {t("riskControls.defaultTpAtr")}
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      {t("riskControls.defaultTpAtrTooltip")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <span className="text-sm font-medium">
+                {value.defaultTpAtrMultiplier.toFixed(1)}x ATR
+              </span>
+            </div>
+            <Slider
+              value={[value.defaultTpAtrMultiplier * 10]}
+              onValueChange={([v]) => update("defaultTpAtrMultiplier", v / 10)}
+              min={10}
+              max={100}
+              step={1}
+            />
+          </div>
+
+          {/* Max Stop Loss Percent */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">
+                  {t("riskControls.maxSlPercent")}
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      {t("riskControls.maxSlPercentTooltip")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <span className="text-sm font-medium text-destructive">
+                {(value.maxSlPercent * 100).toFixed(0)}%
+              </span>
+            </div>
+            <Slider
+              value={[value.maxSlPercent * 100]}
+              onValueChange={([v]) => update("maxSlPercent", v / 100)}
+              min={1}
+              max={30}
+              step={1}
+            />
+          </div>
+
           {/* Warning */}
           {riskAssessment.level === "high" && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">

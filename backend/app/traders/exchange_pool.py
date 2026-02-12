@@ -72,9 +72,11 @@ class ExchangePool:
     """
 
     MAX_POOL_SIZE = 50  # Maximum number of cached exchange instances
+    LOAD_MARKETS_MAX_RETRIES = 3  # Max retries for load_markets() on rate limit
 
     _entries: dict[str, _PoolEntry] = {}
     _global_lock = asyncio.Lock()
+    _exchange_locks: dict[str, asyncio.Lock] = {}  # Per-exchange-id locks
     _cleanup_task: Optional[asyncio.Task] = None
 
     # ------------------------------------------------------------------
@@ -104,32 +106,38 @@ class ExchangePool:
                 logger.debug(f"ExchangePool hit for {exchange_id} (key={key[:24]}…)")
                 return entry.exchange
 
-        # Slow path – create under global lock to avoid duplicate creation
-        async with cls._global_lock:
-            # Double-check after acquiring global lock
+        # Slow path – serialise creation per exchange_id to avoid 429 rate limits
+        # when multiple strategies on the same exchange initialise concurrently.
+        exchange_lock = cls._get_exchange_lock(exchange_id)
+        async with exchange_lock:
+            # Double-check after acquiring per-exchange lock (another coroutine
+            # may have created the entry while we were waiting).
             entry = cls._entries.get(key)
             if entry is not None:
                 entry.touch()
                 return entry.exchange
 
-            # Evict oldest idle entry if pool is at capacity
-            if len(cls._entries) >= cls.MAX_POOL_SIZE:
-                oldest_key = min(
-                    cls._entries, key=lambda k: cls._entries[k].last_used
-                )
-                evicted = cls._entries.pop(oldest_key, None)
-                if evicted:
-                    try:
-                        await evicted.exchange.close()
-                    except Exception:
-                        pass
-                    logger.info(
-                        f"ExchangePool evicted LRU entry {oldest_key[:24]}… "
-                        f"to make room (max={cls.MAX_POOL_SIZE})"
+            # Evict oldest idle entry if pool is at capacity (under global lock)
+            async with cls._global_lock:
+                if len(cls._entries) >= cls.MAX_POOL_SIZE:
+                    oldest_key = min(
+                        cls._entries, key=lambda k: cls._entries[k].last_used
                     )
+                    evicted = cls._entries.pop(oldest_key, None)
+                    if evicted:
+                        try:
+                            await evicted.exchange.close()
+                        except Exception:
+                            pass
+                        logger.info(
+                            f"ExchangePool evicted LRU entry {oldest_key[:24]}… "
+                            f"to make room (max={cls.MAX_POOL_SIZE})"
+                        )
 
             exchange = await cls._create_exchange(exchange_id, ccxt_config, testnet)
-            cls._entries[key] = _PoolEntry(exchange)
+
+            async with cls._global_lock:
+                cls._entries[key] = _PoolEntry(exchange)
             logger.info(
                 f"ExchangePool new instance for {exchange_id} "
                 f"(key={key[:24]}…, pool_size={len(cls._entries)})"
@@ -180,13 +188,24 @@ class ExchangePool:
     # ------------------------------------------------------------------
 
     @classmethod
+    def _get_exchange_lock(cls, exchange_id: str) -> asyncio.Lock:
+        """Get or create a per-exchange-id lock for serialising load_markets()."""
+        if exchange_id not in cls._exchange_locks:
+            cls._exchange_locks[exchange_id] = asyncio.Lock()
+        return cls._exchange_locks[exchange_id]
+
+    @classmethod
     async def _create_exchange(
         cls,
         exchange_id: str,
         ccxt_config: dict[str, Any],
         testnet: bool,
     ) -> ccxt.Exchange:
-        """Instantiate, configure and load markets for a new exchange."""
+        """Instantiate, configure and load markets for a new exchange.
+
+        Includes retry with exponential backoff for rate-limit (429) errors
+        and ensures the exchange is closed on failure to prevent resource leaks.
+        """
         exchange_class = getattr(ccxt, exchange_id, None)
         if exchange_class is None:
             raise TradeError(f"Unsupported CCXT exchange: {exchange_id}")
@@ -196,8 +215,44 @@ class ExchangePool:
         if testnet:
             exchange.set_sandbox_mode(True)
 
-        await exchange.load_markets()
-        return exchange
+        max_retries = cls.LOAD_MARKETS_MAX_RETRIES
+        for attempt in range(max_retries):
+            try:
+                await exchange.load_markets()
+                return exchange
+            except (ccxt.RateLimitExceeded, ccxt.ExchangeNotAvailable) as e:
+                if attempt < max_retries - 1:
+                    wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
+                    logger.warning(
+                        f"Rate limited on load_markets() for {exchange_id} "
+                        f"(attempt {attempt + 1}/{max_retries}), "
+                        f"retrying in {wait}s: {e}"
+                    )
+                    await asyncio.sleep(wait)
+                else:
+                    logger.error(
+                        f"load_markets() for {exchange_id} failed after "
+                        f"{max_retries} attempts: {e}"
+                    )
+                    try:
+                        await exchange.close()
+                    except Exception:
+                        pass
+                    raise
+            except Exception:
+                # Any other error: close exchange to prevent aiohttp resource leak
+                try:
+                    await exchange.close()
+                except Exception:
+                    pass
+                raise
+
+        # Should not reach here, but just in case
+        try:
+            await exchange.close()
+        except Exception:
+            pass
+        raise TradeError(f"load_markets() for {exchange_id} failed unexpectedly")
 
     @classmethod
     def _ensure_cleanup_task(cls) -> None:

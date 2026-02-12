@@ -46,14 +46,27 @@ class DecisionParser:
     JSON_ARRAY_PATTERN = re.compile(r'\[\s*\{[\s\S]*?\}\s*\]')
     JSON_OBJECT_PATTERN = re.compile(r'\{[\s\S]*?"chain_of_thought"[\s\S]*?\}')
 
-    def __init__(self, risk_controls: Optional[RiskControls] = None):
+    # Fixed-percentage fallback when ATR is unavailable
+    _FALLBACK_SL_PERCENT = 0.05  # 5%
+    _FALLBACK_TP_PERCENT = 0.10  # 10%
+
+    def __init__(
+        self,
+        risk_controls: Optional[RiskControls] = None,
+        market_prices: Optional[dict[str, float]] = None,
+        market_atrs: Optional[dict[str, float]] = None,
+    ):
         """
         Initialize parser.
 
         Args:
             risk_controls: Risk controls for validation
+            market_prices: Current mid/mark prices keyed by symbol (e.g. {"BTC": 95000.0})
+            market_atrs: Current ATR values keyed by symbol (e.g. {"BTC": 1200.0})
         """
         self.risk_controls = risk_controls or RiskControls()
+        self.market_prices = market_prices or {}
+        self.market_atrs = market_atrs or {}
 
     def parse(self, raw_response: str) -> DecisionResponse:
         """
@@ -261,6 +274,114 @@ class DecisionParser:
             next_review_minutes=int(data.get("next_review_minutes", 60)),
         )
 
+    def update_market_data(
+        self,
+        market_prices: dict[str, float],
+        market_atrs: dict[str, float],
+    ) -> None:
+        """
+        Update market prices and ATR values used for SL/TP auto-fill.
+
+        Call this before ``parse()`` when market data becomes available
+        after the parser was constructed (e.g. in StrategyEngine).
+        """
+        self.market_prices = market_prices
+        self.market_atrs = market_atrs
+
+    # ------------------------------------------------------------------ #
+    # SL/TP auto-fill
+    # ------------------------------------------------------------------ #
+
+    def _ensure_sl_tp(self, decision: TradingDecision) -> None:
+        """
+        Ensure every open decision has stop_loss and take_profit.
+
+        Priority:
+        1. Use AI-provided values if present.
+        2. Compute from ATR (``default_sl_atr_multiplier`` / ``default_tp_atr_multiplier``).
+        3. Fallback to fixed percentage if ATR is unavailable.
+        4. Clamp SL distance to ``max_sl_percent`` of entry price.
+
+        Modifies the decision **in place**.
+        """
+        if decision.action not in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT):
+            return
+
+        # Both already provided by AI — nothing to do
+        if decision.stop_loss is not None and decision.take_profit is not None:
+            return
+
+        rc = self.risk_controls
+        symbol = decision.symbol
+
+        # Determine reference price (entry_price preferred, else market price)
+        entry = decision.entry_price or self.market_prices.get(symbol)
+        if entry is None or entry <= 0:
+            logger.warning(
+                f"[DecisionParser] Cannot compute SL/TP for {symbol}: "
+                "no entry_price and no market price available"
+            )
+            return
+
+        # Store the reference price back onto the decision when missing
+        if decision.entry_price is None:
+            decision.entry_price = entry
+
+        atr = self.market_atrs.get(symbol)
+
+        is_long = decision.action == ActionType.OPEN_LONG
+
+        # --- Stop Loss ---
+        if decision.stop_loss is None:
+            if atr and atr > 0:
+                sl_distance = rc.default_sl_atr_multiplier * atr
+            else:
+                sl_distance = entry * self._FALLBACK_SL_PERCENT
+                logger.info(
+                    f"[DecisionParser] ATR unavailable for {symbol}, "
+                    f"using fixed {self._FALLBACK_SL_PERCENT*100:.0f}% SL fallback"
+                )
+
+            # Clamp SL distance to max_sl_percent
+            max_sl_distance = entry * rc.max_sl_percent
+            if sl_distance > max_sl_distance:
+                logger.info(
+                    f"[DecisionParser] SL distance ${sl_distance:.2f} exceeds "
+                    f"max_sl_percent cap ${max_sl_distance:.2f} for {symbol}, clamping"
+                )
+                sl_distance = max_sl_distance
+
+            if is_long:
+                decision.stop_loss = entry - sl_distance
+            else:
+                decision.stop_loss = entry + sl_distance
+
+            logger.info(
+                f"[DecisionParser] Auto-filled SL for {symbol} "
+                f"{decision.action.value}: {decision.stop_loss:.2f} "
+                f"(entry={entry:.2f}, distance={sl_distance:.2f}, "
+                f"method={'ATR' if atr and atr > 0 else 'fixed%'})"
+            )
+
+        # --- Take Profit ---
+        if decision.take_profit is None:
+            if atr and atr > 0:
+                tp_distance = rc.default_tp_atr_multiplier * atr
+            else:
+                tp_distance = entry * self._FALLBACK_TP_PERCENT
+
+            if is_long:
+                decision.take_profit = entry + tp_distance
+            else:
+                decision.take_profit = entry - tp_distance
+
+            logger.info(
+                f"[DecisionParser] Auto-filled TP for {symbol} "
+                f"{decision.action.value}: {decision.take_profit:.2f} "
+                f"(entry={entry:.2f}, distance={tp_distance:.2f}, "
+                f"method={'ATR' if atr and atr > 0 else 'fixed%'})"
+            )
+
     def _validate_decisions(self, response: DecisionResponse) -> None:
         """
         Validate decisions against risk controls.
@@ -278,6 +399,9 @@ class DecisionParser:
                     f"[DecisionParser] Leverage capped for {decision.symbol}: "
                     f"{original}x -> {rc.max_leverage}x (max_leverage limit)"
                 )
+
+            # Ensure SL/TP for open actions (auto-fill if missing)
+            self._ensure_sl_tp(decision)
 
             # Validate risk/reward ratio for trades with SL/TP
             if decision.stop_loss and decision.take_profit and decision.entry_price:

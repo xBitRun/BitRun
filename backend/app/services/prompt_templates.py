@@ -121,6 +121,9 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             'For "close_long" or "close_short" actions, set leverage and position_size_usd to match the existing position being closed',
             "Set next_review_minutes based on market volatility",
             'NEVER return an empty decisions array. Always include at least one decision per symbol (use "hold" or "wait" if no trade opportunity)',
+            "IMPORTANT: For open_long and open_short actions, you MUST provide both stop_loss and take_profit prices. "
+            "Use ATR-based levels or key support/resistance levels. The system will auto-fill defaults if omitted, "
+            "but explicit values based on your analysis are strongly preferred.",
         ],
 
         # Section 8: Additional instructions
@@ -247,6 +250,8 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "根据市场波动性设置 next_review_minutes",
             "chain_of_thought、market_assessment 和 reasoning 字段必须使用中文书写",
             '绝对不要返回空的 decisions 数组。每个关注的交易对至少返回一个决策（如果没有交易机会，使用 "hold" 或 "wait"）',
+            "重要：对于 open_long 和 open_short 操作，必须同时提供 stop_loss 和 take_profit 价格。"
+            "请基于 ATR 波幅或关键支撑/阻力位设定。如果未提供，系统会自动填充默认值，但基于你分析的显式值更佳。",
         ],
 
         # Section 8: Additional instructions

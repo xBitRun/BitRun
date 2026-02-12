@@ -810,3 +810,376 @@ Key indicators suggest bullish momentum.
 
         # The error comes from int("not_a_number") in _build_response
         assert "invalid literal" in str(exc_info.value).lower() or "Validation" in str(exc_info.value)
+
+
+class TestEnsureSlTp:
+    """Tests for SL/TP auto-fill logic (_ensure_sl_tp)."""
+
+    # ------------------------------------------------------------------ #
+    # Helper: build a minimal open_long response JSON
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _make_response(
+        action: str = "open_long",
+        symbol: str = "BTC",
+        entry_price=50000,
+        stop_loss=None,
+        take_profit=None,
+    ) -> str:
+        return json.dumps({
+            "chain_of_thought": "test",
+            "market_assessment": "test",
+            "decisions": [{
+                "symbol": symbol,
+                "action": action,
+                "leverage": 5,
+                "position_size_usd": 1000,
+                "entry_price": entry_price,
+                "stop_loss": stop_loss,
+                "take_profit": take_profit,
+                "confidence": 80,
+                "risk_usd": 50,
+                "reasoning": "SL/TP auto-fill test decision entry",
+            }],
+            "overall_confidence": 75,
+        })
+
+    # ------------------------------------------------------------------ #
+    # AI returns complete SL/TP → not modified
+    # ------------------------------------------------------------------ #
+
+    def test_ai_provided_sl_tp_not_modified(self):
+        """When AI provides both SL and TP, they should not be overwritten."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1200},
+        )
+        raw = self._make_response(stop_loss=48000, take_profit=55000)
+        result = parser.parse(raw)
+
+        assert result.decisions[0].stop_loss == 48000
+        assert result.decisions[0].take_profit == 55000
+
+    # ------------------------------------------------------------------ #
+    # ATR-based auto-fill: missing SL only
+    # ------------------------------------------------------------------ #
+
+    def test_missing_sl_filled_with_atr_long(self):
+        """Missing SL on open_long → entry - sl_atr_mult * ATR."""
+        rc = RiskControls(default_sl_atr_multiplier=1.5)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(stop_loss=None, take_profit=55000)
+        result = parser.parse(raw)
+
+        # 50000 - 1.5 * 1000 = 48500
+        assert result.decisions[0].stop_loss == 48500.0
+        assert result.decisions[0].take_profit == 55000  # unchanged
+
+    def test_missing_sl_filled_with_atr_short(self):
+        """Missing SL on open_short → entry + sl_atr_mult * ATR."""
+        rc = RiskControls(default_sl_atr_multiplier=2.0)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(action="open_short", stop_loss=None, take_profit=45000)
+        result = parser.parse(raw)
+
+        # 50000 + 2.0 * 1000 = 52000
+        assert result.decisions[0].stop_loss == 52000.0
+        assert result.decisions[0].take_profit == 45000
+
+    # ------------------------------------------------------------------ #
+    # ATR-based auto-fill: missing TP only
+    # ------------------------------------------------------------------ #
+
+    def test_missing_tp_filled_with_atr_long(self):
+        """Missing TP on open_long → entry + tp_atr_mult * ATR."""
+        rc = RiskControls(default_tp_atr_multiplier=3.0)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(stop_loss=48000, take_profit=None)
+        result = parser.parse(raw)
+
+        # 50000 + 3.0 * 1000 = 53000
+        assert result.decisions[0].take_profit == 53000.0
+        assert result.decisions[0].stop_loss == 48000
+
+    def test_missing_tp_filled_with_atr_short(self):
+        """Missing TP on open_short → entry - tp_atr_mult * ATR."""
+        rc = RiskControls(default_tp_atr_multiplier=3.0)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(action="open_short", stop_loss=52000, take_profit=None)
+        result = parser.parse(raw)
+
+        # 50000 - 3.0 * 1000 = 47000
+        assert result.decisions[0].take_profit == 47000.0
+
+    # ------------------------------------------------------------------ #
+    # ATR-based auto-fill: both SL and TP missing
+    # ------------------------------------------------------------------ #
+
+    def test_both_missing_filled_long(self):
+        """Both SL and TP missing on open_long → both auto-filled from ATR."""
+        rc = RiskControls(default_sl_atr_multiplier=1.5, default_tp_atr_multiplier=3.0)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        assert d.stop_loss == 48500.0   # 50000 - 1.5 * 1000
+        assert d.take_profit == 53000.0  # 50000 + 3.0 * 1000
+
+    def test_both_missing_filled_short(self):
+        """Both SL and TP missing on open_short → both auto-filled from ATR."""
+        rc = RiskControls(default_sl_atr_multiplier=1.5, default_tp_atr_multiplier=3.0)
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(action="open_short", stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        assert d.stop_loss == 51500.0   # 50000 + 1.5 * 1000
+        assert d.take_profit == 47000.0  # 50000 - 3.0 * 1000
+
+    # ------------------------------------------------------------------ #
+    # Fallback to fixed percentage when ATR unavailable
+    # ------------------------------------------------------------------ #
+
+    def test_no_atr_falls_back_to_fixed_percent_long(self):
+        """No ATR data → SL = 5%, TP = 10% of entry price (long)."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={},  # No ATR
+        )
+        raw = self._make_response(stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        # SL: 50000 - 0.05 * 50000 = 47500
+        assert d.stop_loss == 47500.0
+        # TP: 50000 + 0.10 * 50000 = 55000
+        assert d.take_profit == 55000.0
+
+    def test_no_atr_falls_back_to_fixed_percent_short(self):
+        """No ATR data → SL = 5%, TP = 10% of entry price (short)."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={},
+        )
+        raw = self._make_response(action="open_short", stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        # SL: 50000 + 0.05 * 50000 = 52500
+        assert d.stop_loss == 52500.0
+        # TP: 50000 - 0.10 * 50000 = 45000
+        assert d.take_profit == 45000.0
+
+    # ------------------------------------------------------------------ #
+    # max_sl_percent hard cap
+    # ------------------------------------------------------------------ #
+
+    def test_max_sl_percent_clamps_atr_distance(self):
+        """When ATR-based SL exceeds max_sl_percent, it's clamped."""
+        rc = RiskControls(
+            default_sl_atr_multiplier=5.0,  # Very aggressive
+            max_sl_percent=0.05,  # 5% cap
+        )
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 2000},  # 5.0 * 2000 = 10000 → 20% > 5% cap
+        )
+        raw = self._make_response(stop_loss=None, take_profit=55000)
+        result = parser.parse(raw)
+
+        # Capped: 50000 * 0.05 = 2500; SL = 50000 - 2500 = 47500
+        assert result.decisions[0].stop_loss == 47500.0
+
+    def test_max_sl_percent_does_not_affect_small_distance(self):
+        """When ATR-based SL is within max_sl_percent, it's not clamped."""
+        rc = RiskControls(
+            default_sl_atr_multiplier=1.0,
+            max_sl_percent=0.10,  # 10% cap
+        )
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},  # 1.0 * 1000 = 1000 → 2% < 10%
+        )
+        raw = self._make_response(stop_loss=None, take_profit=55000)
+        result = parser.parse(raw)
+
+        # Not clamped: SL = 50000 - 1000 = 49000
+        assert result.decisions[0].stop_loss == 49000.0
+
+    # ------------------------------------------------------------------ #
+    # entry_price fallback to market_prices
+    # ------------------------------------------------------------------ #
+
+    def test_missing_entry_price_uses_market_price(self):
+        """When entry_price is None, market price is used as reference."""
+        parser = DecisionParser(
+            market_prices={"BTC": 48000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(entry_price=None, stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        # entry_price should be set to market price
+        assert d.entry_price == 48000
+        # SL: 48000 - 1.5 * 1000 = 46500
+        assert d.stop_loss == 46500.0
+
+    def test_no_entry_and_no_market_price_skips_fill(self):
+        """When neither entry_price nor market_prices available, SL/TP stay None."""
+        parser = DecisionParser(
+            market_prices={},  # No data
+            market_atrs={},
+        )
+        raw = self._make_response(entry_price=None, stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        assert d.stop_loss is None
+        assert d.take_profit is None
+
+    # ------------------------------------------------------------------ #
+    # Hold / close actions not affected
+    # ------------------------------------------------------------------ #
+
+    def test_hold_action_not_modified(self):
+        """Hold actions should not trigger SL/TP fill."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(action="hold", stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        assert d.stop_loss is None
+        assert d.take_profit is None
+
+    def test_close_long_action_not_modified(self):
+        """Close actions should not trigger SL/TP fill."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},
+        )
+        raw = self._make_response(action="close_long", stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        assert d.stop_loss is None
+        assert d.take_profit is None
+
+    # ------------------------------------------------------------------ #
+    # ATR = 0 treated as unavailable
+    # ------------------------------------------------------------------ #
+
+    def test_atr_zero_falls_back_to_fixed_percent(self):
+        """ATR value of 0 should be treated as unavailable."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 0},
+        )
+        raw = self._make_response(stop_loss=None, take_profit=None)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        # Fixed fallback: SL = 5%, TP = 10%
+        assert d.stop_loss == 47500.0
+        assert d.take_profit == 55000.0
+
+    # ------------------------------------------------------------------ #
+    # update_market_data works correctly
+    # ------------------------------------------------------------------ #
+
+    def test_update_market_data(self):
+        """Test that update_market_data correctly injects prices/ATR."""
+        parser = DecisionParser()
+        assert parser.market_prices == {}
+        assert parser.market_atrs == {}
+
+        parser.update_market_data(
+            market_prices={"BTC": 60000},
+            market_atrs={"BTC": 1500},
+        )
+        assert parser.market_prices == {"BTC": 60000}
+        assert parser.market_atrs == {"BTC": 1500}
+
+        # Parse should now use the updated data
+        raw = self._make_response(stop_loss=None, take_profit=None, entry_price=60000)
+        result = parser.parse(raw)
+
+        d = result.decisions[0]
+        # SL: 60000 - 1.5 * 1500 = 57750
+        assert d.stop_loss == 57750.0
+
+    # ------------------------------------------------------------------ #
+    # Boundary: max_sl_percent at boundaries
+    # ------------------------------------------------------------------ #
+
+    def test_max_sl_percent_exact_boundary(self):
+        """ATR-based SL distance exactly equals max_sl_percent → not clamped."""
+        rc = RiskControls(
+            default_sl_atr_multiplier=2.5,
+            max_sl_percent=0.05,  # 5%
+        )
+        parser = DecisionParser(
+            risk_controls=rc,
+            market_prices={"BTC": 50000},
+            market_atrs={"BTC": 1000},  # 2.5 * 1000 = 2500 → exactly 5%
+        )
+        raw = self._make_response(stop_loss=None, take_profit=55000)
+        result = parser.parse(raw)
+
+        # 2500 == 50000 * 0.05 → not clamped
+        assert result.decisions[0].stop_loss == 47500.0
+
+    # ------------------------------------------------------------------ #
+    # Multiple symbols with different ATRs
+    # ------------------------------------------------------------------ #
+
+    def test_multiple_symbols_different_atrs(self):
+        """Different symbols get different SL/TP based on their ATRs."""
+        parser = DecisionParser(
+            market_prices={"BTC": 50000, "ETH": 3000},
+            market_atrs={"BTC": 1000, "ETH": 100},
+        )
+        raw_btc = self._make_response(symbol="BTC", stop_loss=None, take_profit=None)
+        raw_eth = self._make_response(symbol="ETH", entry_price=3000, stop_loss=None, take_profit=None)
+
+        result_btc = parser.parse(raw_btc)
+        result_eth = parser.parse(raw_eth)
+
+        # BTC: SL = 50000 - 1500 = 48500, TP = 50000 + 3000 = 53000
+        assert result_btc.decisions[0].stop_loss == 48500.0
+        assert result_btc.decisions[0].take_profit == 53000.0
+
+        # ETH: SL = 3000 - 150 = 2850, TP = 3000 + 300 = 3300
+        assert result_eth.decisions[0].stop_loss == 2850.0
+        assert result_eth.decisions[0].take_profit == 3300.0

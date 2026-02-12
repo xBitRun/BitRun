@@ -325,16 +325,27 @@ class WorkerManager:
                         return False
 
                 # Create trader using the helper function
+                trader = None
                 try:
                     trader = create_trader_from_account(account, credentials)
                     await trader.initialize()
                 except ValueError as e:
                     logger.error(f"Failed to create trader for strategy {strategy_id}: {e}")
+                    if trader:
+                        try:
+                            await trader.close()
+                        except Exception:
+                            pass
                     await repo.update_status(strategy.id, "error", str(e))
                     await session.commit()
                     return False
                 except TradeError as e:
                     logger.error(f"Failed to initialize trader for strategy {strategy_id}: {e.message}")
+                    if trader:
+                        try:
+                            await trader.close()
+                        except Exception:
+                            pass
                     await repo.update_status(strategy.id, "error", e.message)
                     await session.commit()
                     return False
@@ -525,6 +536,10 @@ class WorkerManager:
                     logger.info(f"Auto-started worker for strategy {strategy.id}")
                 else:
                     logger.error(f"Failed to auto-start worker for strategy {strategy.id}")
+
+                # Brief delay between strategy initialisations to avoid
+                # overwhelming exchange APIs with concurrent load_markets() calls.
+                await asyncio.sleep(1)
 
     async def _monitor_loop(self) -> None:
         """Monitor workers and sync with database (legacy mode only)"""

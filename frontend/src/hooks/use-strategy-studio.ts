@@ -91,6 +91,9 @@ function configToApiFormat(config: StrategyStudioConfig): Record<string, unknown
         min_risk_reward_ratio: config.riskControls.minRiskRewardRatio,
         max_drawdown_percent: config.riskControls.maxDrawdownPercent,
         min_confidence: config.riskControls.minConfidence,
+        default_sl_atr_multiplier: config.riskControls.defaultSlAtrMultiplier,
+        default_tp_atr_multiplier: config.riskControls.defaultTpAtrMultiplier,
+        max_sl_percent: config.riskControls.maxSlPercent,
       },
       prompt_mode: config.promptMode || "simple",
       prompt_sections: {
@@ -159,6 +162,9 @@ export function apiResponseToConfig(response: Record<string, unknown>): Partial<
       minRiskRewardRatio: riskControls.min_risk_reward_ratio || 2.0,
       maxDrawdownPercent: riskControls.max_drawdown_percent || 0.1,
       minConfidence: riskControls.min_confidence || 60,
+      defaultSlAtrMultiplier: riskControls.default_sl_atr_multiplier || 1.5,
+      defaultTpAtrMultiplier: riskControls.default_tp_atr_multiplier || 3.0,
+      maxSlPercent: riskControls.max_sl_percent || 0.10,
     },
     promptSections: {
       roleDefinition: promptSections.role_definition || "",
@@ -220,6 +226,9 @@ export function useStrategyStudio(
         min_risk_reward_ratio: config.riskControls.minRiskRewardRatio,
         max_drawdown_percent: config.riskControls.maxDrawdownPercent,
         min_confidence: config.riskControls.minConfidence,
+        default_sl_atr_multiplier: config.riskControls.defaultSlAtrMultiplier,
+        default_tp_atr_multiplier: config.riskControls.defaultTpAtrMultiplier,
+        max_sl_percent: config.riskControls.maxSlPercent,
       },
       prompt_sections: {
         role_definition: config.promptSections.roleDefinition,

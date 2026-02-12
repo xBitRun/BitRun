@@ -9,6 +9,9 @@ export interface RiskControls {
   maxTotalExposure: number;
   minRiskRewardRatio: number;
   maxDrawdownPercent: number;
+  defaultSlAtrMultiplier?: number;
+  defaultTpAtrMultiplier?: number;
+  maxSlPercent?: number;
 }
 
 export interface Strategy {
@@ -156,6 +159,9 @@ export interface RiskControlsConfig {
   minRiskRewardRatio: number;
   maxDrawdownPercent: number;
   minConfidence: number;
+  defaultSlAtrMultiplier: number;
+  defaultTpAtrMultiplier: number;
+  maxSlPercent: number;
 }
 
 // Prompt Sections
@@ -216,6 +222,9 @@ export const DEFAULT_RISK_CONTROLS: RiskControlsConfig = {
   minRiskRewardRatio: 2.0,
   maxDrawdownPercent: 0.1,
   minConfidence: 60,
+  defaultSlAtrMultiplier: 1.5,
+  defaultTpAtrMultiplier: 3.0,
+  maxSlPercent: 0.10,
 };
 
 // Default prompt sections match backend PromptSections defaults
@@ -365,7 +374,7 @@ export interface StrategyPresetValues {
   timeframes: Timeframe[];
   executionIntervalMinutes: number;
   indicators: IndicatorSettings;
-  riskControls: RiskControlsConfig;
+  riskControls: Partial<RiskControlsConfig>;
 }
 
 export interface StrategyPreset {

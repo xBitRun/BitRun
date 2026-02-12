@@ -66,6 +66,25 @@ class RiskControls(BaseModel):
         le=100,
         description="Minimum confidence score to execute trades"
     )
+    # --- Stop Loss / Take Profit defaults ---
+    default_sl_atr_multiplier: float = Field(
+        default=1.5,
+        ge=0.5,
+        le=5.0,
+        description="Default stop loss distance as ATR multiplier (e.g. 1.5 = 1.5 × ATR)"
+    )
+    default_tp_atr_multiplier: float = Field(
+        default=3.0,
+        ge=1.0,
+        le=10.0,
+        description="Default take profit distance as ATR multiplier (e.g. 3.0 = 3.0 × ATR)"
+    )
+    max_sl_percent: float = Field(
+        default=0.10,
+        ge=0.01,
+        le=0.30,
+        description="Maximum stop loss as percentage of entry price (hard cap, e.g. 0.10 = 10%)"
+    )
 
 
 class TradingDecision(BaseModel):
@@ -214,8 +233,8 @@ _DECISION_JSON_SCHEMA_EN = """{
       "leverage": "integer - Leverage multiplier (1-50)",
       "position_size_usd": "number - Notional position value in USD (= margin × leverage). E.g. to use $40 margin at 20x leverage, set this to 800.",
       "entry_price": "number | null - Entry price for limit orders",
-      "stop_loss": "number | null - Stop loss price",
-      "take_profit": "number | null - Take profit price",
+      "stop_loss": "number - Stop loss price (REQUIRED for open_long/open_short)",
+      "take_profit": "number - Take profit price (REQUIRED for open_long/open_short)",
       "confidence": "integer - Confidence score 0-100",
       "risk_usd": "number - Estimated max risk in USD",
       "reasoning": "string - Reasoning for this specific decision"
@@ -235,8 +254,8 @@ _DECISION_JSON_SCHEMA_ZH = """{
       "leverage": "integer - 杠杆倍数 (1-50)",
       "position_size_usd": "number - 仓位名义价值（美元）（= 保证金 × 杠杆）。例如使用 $40 保证金、20x 杠杆时，设为 800。",
       "entry_price": "number | null - 限价单入场价格",
-      "stop_loss": "number | null - 止损价格",
-      "take_profit": "number | null - 止盈价格",
+      "stop_loss": "number - 止损价格（open_long/open_short 时必填）",
+      "take_profit": "number - 止盈价格（open_long/open_short 时必填）",
       "confidence": "integer - 置信度评分 0-100",
       "risk_usd": "number - 预估最大风险（美元）",
       "reasoning": "string - 该决策的具体推理依据（必须使用中文）"

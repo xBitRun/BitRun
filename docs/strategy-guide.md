@@ -45,14 +45,19 @@ AI Agent 策略的核心思路是：用自然语言描述交易逻辑，由 AI �
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `max_leverage` | 3 | 单个持仓最大杠杆倍数 |
-| `max_position_ratio` | 0.3 | 单个持仓占账户权益最大比例 (30%) |
-| `max_total_ratio` | 0.8 | 所有持仓占账户权益最大比例 (80%) |
-| `max_drawdown` | 0.15 | 最大回撤限制 (15%)，触发后暂停策略 |
-| `stop_loss_default` | 0.05 | 默认止损比例 (5%) |
-| `take_profit_default` | 0.10 | 默认止盈比例 (10%) |
+| `max_leverage` | 5 | 单个持仓最大杠杆倍数 |
+| `max_position_ratio` | 0.2 | 单个持仓占账户权益最大保证金比例 (20%) |
+| `max_total_exposure` | 0.8 | 所有持仓占账户权益最大比例 (80%) |
+| `min_risk_reward_ratio` | 2.0 | 最低风险收益比 |
+| `max_drawdown_percent` | 0.1 | 最大回撤限制 (10%)，触发后暂停开仓 |
+| `min_confidence` | 60 | 最低执行置信度 (0-100) |
+| `default_sl_atr_multiplier` | 1.5 | 默认止损距离 = ATR × 此倍数（AI 未提供止损时自动填充） |
+| `default_tp_atr_multiplier` | 3.0 | 默认止盈距离 = ATR × 此倍数（AI 未提供止盈时自动填充） |
+| `max_sl_percent` | 0.10 | 止损距离占入场价最大百分比 (10%)，防止 ATR 异常时止损过宽 |
 
 风控参数由代码层强制执行（写入 System Prompt 的 Hard Constraints 段），AI 无法绕过。
+
+**止盈止损自动补全机制**：每笔开仓必须携带止损（SL）和止盈（TP）。当 AI 未返回 SL/TP 时，系统基于 ATR（平均真实波幅）自动计算并填充默认值。若 ATR 数据不可用（K 线不足等），退化为固定百分比（SL=5%、TP=10%）。止损距离最大不超过 `max_sl_percent`，作为硬性兜底。
 
 #### Prompt — 自定义策略描述
 

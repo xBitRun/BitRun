@@ -321,6 +321,11 @@ class StrategyEngine:
                     "agreement_score": debate_result.agreement_score,
                     "consensus_mode": debate_result.consensus_mode.value,
                 }
+
+                # Debate bypasses parser.parse(), so run SL/TP fill + validation
+                # explicitly on the consensus DecisionResponse.
+                self._update_parser_market_data(market_contexts)
+                self.decision_parser._validate_decisions(decision)
             else:
                 # Single model decision
                 ai_response = await self.ai_client.generate(
@@ -329,6 +334,11 @@ class StrategyEngine:
                 )
                 result["tokens_used"] = ai_response.tokens_used
                 raw_response = ai_response.content
+
+                # Inject market prices & ATR into parser so it can auto-fill
+                # missing SL/TP on open decisions.
+                self._update_parser_market_data(market_contexts)
+
                 decision = self.decision_parser.parse(raw_response)
 
             self._last_decision = decision
@@ -834,6 +844,44 @@ class StrategyEngine:
     def get_last_market_contexts(self) -> Optional[dict[str, MarketContext]]:
         """Get the last fetched market contexts"""
         return self._last_market_contexts
+
+    def _update_parser_market_data(
+        self, market_contexts: Optional[dict[str, MarketContext]]
+    ) -> None:
+        """
+        Extract current prices and ATR values from market contexts and
+        inject them into the decision parser for SL/TP auto-fill.
+
+        For ATR we prefer the 1h timeframe; if unavailable we try the
+        first timeframe that has an ATR value.
+        """
+        market_prices: dict[str, float] = {}
+        market_atrs: dict[str, float] = {}
+
+        if market_contexts:
+            for symbol, ctx in market_contexts.items():
+                # Price: use mid_price from current market data
+                if ctx.current and ctx.current.mid_price:
+                    market_prices[symbol] = ctx.current.mid_price
+
+                # ATR: prefer 1h, fallback to first available timeframe
+                if ctx.indicators:
+                    atr_value = None
+                    for tf in ("1h", "4h", "15m", "30m", "1d"):
+                        ind = ctx.indicators.get(tf)
+                        if ind and ind.atr is not None:
+                            atr_value = ind.atr
+                            break
+                    # If preferred timeframes not found, try any
+                    if atr_value is None:
+                        for ind in ctx.indicators.values():
+                            if ind and ind.atr is not None:
+                                atr_value = ind.atr
+                                break
+                    if atr_value is not None:
+                        market_atrs[symbol] = atr_value
+
+        self.decision_parser.update_market_data(market_prices, market_atrs)
 
     async def _execute_decisions(
         self,
