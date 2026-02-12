@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useRecentDecisions } from "@/hooks";
 import { MarketSnapshotSection, AccountSnapshotSection } from "@/components/decisions/snapshot-sections";
+import { ChainOfThought } from "@/components/decisions/chain-of-thought";
 
 function getActionColor(action: string) {
   switch (action) {
@@ -259,16 +260,8 @@ export default function DecisionsPage() {
                     <MarketSnapshotSection snapshot={decision.market_snapshot} t={tAgent} />
                   )}
 
-                  {/* Chain of Thought */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-primary" />
-                      {t("details.chainOfThought")}
-                    </h4>
-                    <div className="p-4 rounded-lg bg-muted/20 border border-border/30 font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-                      {decision.chain_of_thought}
-                    </div>
-                  </div>
+                  {/* Chain of Thought - Enhanced Timeline View */}
+                  <ChainOfThought content={decision.chain_of_thought} />
 
                   {/* Trading Decisions */}
                   <div>

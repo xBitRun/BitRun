@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -8,10 +8,12 @@ import {
   EyeOff,
   AlertCircle,
   ShieldCheck,
+  ShieldAlert,
   Wallet,
   Lightbulb,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,12 +33,19 @@ import { useCreateAccount } from "@/hooks";
 import type { CreateAccountRequest } from "@/lib/api";
 import { accountsApi } from "@/lib/api";
 import type { ExchangeType } from "@/types";
+import { ExchangeGuide } from "@/components/accounts/exchange-guide";
+import { ServerIPBadge } from "@/components/accounts/server-ip-badge";
+import { encryptFields, isTransportEncryptionEnabled } from "@/lib/crypto";
+import { Badge } from "@/components/ui/badge";
 
 const exchangeOptions = [
   { value: "hyperliquid", label: "Hyperliquid (DEX)", icon: "🔷", description: "Decentralized perpetual exchange" },
   { value: "binance", label: "Binance", icon: "🟡", description: "World's largest crypto exchange" },
   { value: "bybit", label: "Bybit", icon: "🟠", description: "Popular derivatives exchange" },
   { value: "okx", label: "OKX", icon: "⬛", description: "Global crypto exchange" },
+  { value: "bitget", label: "Bitget", icon: "🔵", description: "Leading crypto derivatives exchange" },
+  { value: "kucoin", label: "KuCoin", icon: "🟢", description: "Global cryptocurrency exchange" },
+  { value: "gate", label: "Gate.io", icon: "🔴", description: "Multi-asset crypto exchange" },
 ];
 
 export default function NewAccountPage() {
@@ -57,11 +66,18 @@ export default function NewAccountPage() {
     isTestnet: false,
     apiKey: "",
     apiSecret: "",
+    passphrase: "",
     mnemonic: "",
   });
   const [hlImportType, setHlImportType] = useState<"privateKey" | "mnemonic">("privateKey");
+  const [transportEncrypted, setTransportEncrypted] = useState<boolean | null>(null);
 
   const [submitPhase, setSubmitPhase] = useState<"idle" | "creating" | "testing">("idle");
+
+  // Check transport encryption availability on mount
+  useEffect(() => {
+    isTransportEncryptionEnabled().then(setTransportEncrypted);
+  }, []);
 
   const handleCreateAccount = async () => {
     setIsSubmitting(true);
@@ -69,7 +85,8 @@ export default function NewAccountPage() {
     setSubmitPhase("creating");
 
     try {
-      const request: CreateAccountRequest = {
+      const needsPassphrase = ["okx", "bitget", "kucoin"].includes(newAccount.exchange);
+      let request: CreateAccountRequest = {
         name: newAccount.name,
         exchange: newAccount.exchange,
         is_testnet: newAccount.isTestnet,
@@ -77,8 +94,16 @@ export default function NewAccountPage() {
           ? hlImportType === "mnemonic"
             ? { mnemonic: newAccount.mnemonic }
             : { private_key: newAccount.apiKey }
-          : { api_key: newAccount.apiKey, api_secret: newAccount.apiSecret }),
+          : {
+              api_key: newAccount.apiKey,
+              api_secret: newAccount.apiSecret,
+              ...(needsPassphrase && newAccount.passphrase ? { passphrase: newAccount.passphrase } : {}),
+            }),
       };
+
+      // Encrypt sensitive fields if transport encryption is enabled
+      const sensitiveFields = ["api_key", "api_secret", "private_key", "mnemonic", "passphrase"];
+      request = await encryptFields(request, sensitiveFields) as CreateAccountRequest;
 
       const account = await createAccount(request);
 
@@ -245,9 +270,10 @@ export default function NewAccountPage() {
                 </div>
                 <div>
                   <p className="font-medium mb-1">{tNew("tipWhitelist")}</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-muted-foreground text-xs mb-2">
                     {tNew("tipWhitelistDesc")}
                   </p>
+                  <ServerIPBadge variant="compact" />
                 </div>
               </div>
             </div>
@@ -268,6 +294,9 @@ export default function NewAccountPage() {
               </div>
             </div>
           )}
+
+          {/* Exchange-specific API Setup Guide */}
+          <ExchangeGuide exchange={newAccount.exchange} />
 
           {/* Hyperliquid: Import Type Selection */}
           {newAccount.exchange === "hyperliquid" && (
@@ -400,6 +429,35 @@ export default function NewAccountPage() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Passphrase for exchanges that require it */}
+                {["okx", "bitget", "kucoin"].includes(newAccount.exchange) && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="passphrase">{t("dialog.passphrase")}</Label>
+                    <div className="relative">
+                      <Input
+                        id="passphrase"
+                        type={showSecret ? "text" : "password"}
+                        placeholder={t("dialog.enterPassphrase")}
+                        value={newAccount.passphrase}
+                        onChange={(e) =>
+                          setNewAccount({ ...newAccount, passphrase: e.target.value })
+                        }
+                        className="pr-10 font-mono"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full"
+                        onClick={() => setShowSecret(!showSecret)}
+                      >
+                        {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t("dialog.passphraseHint")}</p>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -414,16 +472,71 @@ export default function NewAccountPage() {
         description={tNew("securitySubtitle")}
         icon={<ShieldCheck className="w-4 h-4 text-primary" />}
       >
-        <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-          <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-primary">
-              {tNew("encryptionTitle")}
-            </p>
-            <p className="text-sm text-muted-foreground">{t("dialog.encryptionNote")}</p>
+        <div className="space-y-3">
+          {/* Storage encryption - always enabled */}
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-primary">
+                {tNew("encryptionTitle")}
+              </p>
+              <p className="text-sm text-muted-foreground">{t("dialog.encryptionNote")}</p>
+            </div>
           </div>
+
+          {/* Transport encryption - dynamic status */}
+          {transportEncrypted !== null && (
+            <div className={`flex items-start gap-3 p-4 rounded-lg border ${
+              transportEncrypted
+                ? "bg-emerald-500/5 border-emerald-500/20"
+                : "bg-amber-500/5 border-amber-500/20"
+            }`}>
+              {transportEncrypted ? (
+                <Lock className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+              ) : (
+                <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className={`text-sm font-medium ${
+                  transportEncrypted ? "text-emerald-500" : "text-amber-500"
+                }`}>
+                  {transportEncrypted
+                    ? tNew("transportEnabled")
+                    : tNew("transportDisabled")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {transportEncrypted
+                    ? tNew("transportEnabledDesc")
+                    : tNew("transportDisabledDesc")}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </CollapsibleCard>
+
+      {/* Transport Encryption Badge */}
+      {transportEncrypted !== null && (
+        <div className="flex justify-end">
+          <Badge
+            variant="outline"
+            className={`text-xs gap-1.5 ${
+              transportEncrypted
+                ? "border-emerald-500/30 text-emerald-500"
+                : "border-amber-500/30 text-amber-500"
+            }`}
+          >
+            {transportEncrypted ? (
+              <Lock className="w-3 h-3" />
+            ) : (
+              <ShieldAlert className="w-3 h-3" />
+            )}
+            {transportEncrypted
+              ? tNew("transportEnabled")
+              : tNew("transportDisabled")}
+          </Badge>
+        </div>
+      )}
     </div>
   );
 }

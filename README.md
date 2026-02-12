@@ -7,7 +7,9 @@
 - **Prompt 驱动策略** — 用自然语言描述你的交易逻辑，AI 自动分析市场数据并生成交易决策
 - **多模型辩论引擎 (Debate Engine)** — 多个 AI 模型并行分析、投票表决，提升决策质量
 - **量化策略引擎** — 内置网格交易 (Grid)、定投 (DCA)、RSI 策略，无需 AI 即可运行
-- **多交易所支持** — 通过 CCXT 统一接口对接 Binance、Bybit、OKX，原生支持 Hyperliquid DEX
+- **AI 竞赛模式** — 多策略同台竞技，实时 ROI 排行榜对比各策略表现
+- **多交易所支持** — 通过 CCXT 统一接口对接 Binance、Bybit、OKX、Bitget、KuCoin、Gate.io，原生支持 Hyperliquid DEX
+- **传统市场支持 (Beta)** — 外汇 (Forex) 和贵金属 (XAU/XAG) 交易框架，支持 CCXT 兼容的经纪商
 - **回测系统** — 基于历史数据验证策略表现，支持收益曲线、最大回撤、夏普比率等指标
 - **策略工作室** — 可视化配置交易标的、技术指标、风控参数、自定义 Prompt
 - **实时监控** — WebSocket 推送交易决策、持仓变动、账户状态，Dashboard 一览全局
@@ -114,6 +116,14 @@ Railway 部署步骤:
    - `NEXT_PUBLIC_WS_URL`: WebSocket 地址 (如 `wss://your-backend.up.railway.app/api/ws`)
 
 > 详细配置请查看 [Railway 部署指南](docs/deployment.md#railway-部署)
+
+### 一键安装 (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/BitRun/main/install.sh | bash
+```
+
+自动检查 Docker 环境、拉取镜像、生成密钥、启动全部服务。
 
 ### 本地一键启动 (推荐)
 

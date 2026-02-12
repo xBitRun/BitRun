@@ -52,6 +52,7 @@
     "strategies": "Quant Strategies",
     "accounts": "Account Management",
     "models": "Model Management",
+    "competition": "Competition",
     "backtest": "Backtest History",
     "settings": "Settings",
     "collapse": "Collapse"
@@ -110,6 +111,12 @@
       "long": "LONG",
       "short": "SHORT",
       "empty": "No open positions"
+    },
+    "chart": {
+      "title": "Market Overview",
+      "crypto": "Crypto",
+      "forex": "Forex",
+      "metals": "Metals"
     },
     "activity": {
       "title": "Live Activity Feed",
@@ -460,7 +467,7 @@
     },
     "info": {
       "title": "Exchange Account Connection",
-      "description": "Connect Hyperliquid, Binance, Bybit, OKX and more. Credentials are encrypted; use testnet to try without real funds."
+      "description": "Connect Hyperliquid, Binance, Bybit, OKX, Bitget, KuCoin, Gate.io and more. Credentials are encrypted; use testnet to try without real funds."
     },
     "dialog": {
       "title": "Add Exchange Account",
@@ -479,6 +486,9 @@
       "apiSecret": "API Secret",
       "enterApiKey": "Enter API key",
       "enterApiSecret": "Enter API secret",
+      "passphrase": "Passphrase",
+      "enterPassphrase": "Enter passphrase",
+      "passphraseHint": "Required for OKX, Bitget, and KuCoin. Set during API key creation.",
       "encryptionNote": "Credentials are encrypted with AES-256-GCM before storage",
       "cancel": "Cancel",
       "addAccount": "Add Account"
@@ -494,6 +504,10 @@
       "securityTitle": "Security Information",
       "securitySubtitle": "Learn how we protect your credentials",
       "encryptionTitle": "End-to-End Encryption",
+      "transportEnabled": "Transport Encryption Active",
+      "transportDisabled": "Transport Encryption Inactive",
+      "transportEnabledDesc": "API keys are encrypted in the browser before transmission using RSA-OAEP + AES-256-GCM",
+      "transportDisabledDesc": "API keys are protected by TLS during transmission and encrypted at rest on the server",
       "testnet": "Testnet",
       "mainnet": "Mainnet",
       "tips": "Tips",
@@ -512,6 +526,99 @@
       "testingConnection": "Testing connection...",
       "connectionOk": "Connection test passed",
       "connectionFailed": "Account created, but connection test failed. Please check your credentials"
+    },
+    "serverIP": {
+      "title": "Server Outbound IP",
+      "description": "Add this IP to your exchange API whitelist",
+      "loading": "Detecting server IP...",
+      "unavailable": "IP unavailable",
+      "clickToCopy": "Click to copy IP address",
+      "copied": "Copied!"
+    },
+    "guide": {
+      "title": "API Setup Guide",
+      "showGuide": "View Guide",
+      "hideGuide": "Hide Guide",
+      "registerLink": "Register Account",
+      "officialDocs": "Official Docs",
+      "stepsTitle": "Steps to Get API Key",
+      "permissionsTitle": "Required Permissions",
+      "notesTitle": "Important Notes",
+      "binance": {
+        "step1": "Log in to Binance website",
+        "step2": "Go to \"API Management\" (Avatar → API Management)",
+        "step3": "Click \"Create API\", select \"System Generated\"",
+        "step4": "Complete security verification (Email + Phone / 2FA)",
+        "step5": "Save your API Key and Secret Key (Secret is shown only once)",
+        "perm1": "Enable \"Spot & Margin Trading\" or \"Futures Trading\"",
+        "perm2": "Enable \"Read Info\"",
+        "perm3": "Recommended: Bind IP whitelist",
+        "contractNote": "Make sure USDT-M Futures trading is enabled and you have funds in the Futures account.",
+        "ipWhitelist": "Strongly recommended to bind server IP whitelist in Binance API settings for better security."
+      },
+      "bybit": {
+        "step1": "Log in to Bybit website",
+        "step2": "Go to \"API Management\" (Avatar → API)",
+        "step3": "Click \"Create New Key\", select \"System-generated API Key\"",
+        "step4": "Complete security verification",
+        "step5": "Save your API Key and Secret Key",
+        "perm1": "Contract Trading: Read & Write",
+        "perm2": "Assets: Read Only",
+        "perm3": "Recommended: Bind IP whitelist",
+        "proxyNote": "Bybit API may require a proxy to access in certain regions."
+      },
+      "okx": {
+        "step1": "Log in to OKX website",
+        "step2": "Go to \"API\" (Avatar → API)",
+        "step3": "Click \"Create API Key\"",
+        "step4": "Set a Passphrase (OKX's unique third credential)",
+        "step5": "Complete security verification",
+        "step6": "Save your API Key, Secret Key, and Passphrase",
+        "perm1": "Trading permission: Enabled",
+        "perm2": "Read permission: Enabled",
+        "perm3": "Recommended: Bind IP whitelist",
+        "passphraseNote": "The Passphrase acts as a third credential. Keep it safe. You'll need to enter it when adding your account.",
+        "proxyNote": "OKX API may require a proxy to access in certain regions."
+      },
+      "bitget": {
+        "step1": "Log in to Bitget website",
+        "step2": "Go to \"API Management\" (Avatar → API Management)",
+        "step3": "Click \"Create API\", set Passphrase and permissions",
+        "step4": "Save API Key, Secret Key, and Passphrase",
+        "perm1": "Futures Trading: Read & Write",
+        "perm2": "Read Info: Enabled",
+        "perm3": "Recommended: Bind IP whitelist",
+        "passphraseNote": "Passphrase is required for Bitget API access. Set it during API key creation and keep it safe.",
+        "note": "Make sure to enable USDT-M Futures trading and deposit funds to your Futures account."
+      },
+      "kucoin": {
+        "step1": "Log in to KuCoin website",
+        "step2": "Go to \"API Management\" (Avatar → API Management)",
+        "step3": "Click \"Create API\", set Passphrase and permissions",
+        "step4": "Save API Key, Secret Key, and Passphrase",
+        "perm1": "Futures Trading: Enabled",
+        "perm2": "General: Read Only",
+        "perm3": "Recommended: Bind IP whitelist",
+        "passphraseNote": "Passphrase is required for KuCoin API access. You set it when creating the API key.",
+        "note": "KuCoin Futures uses a separate account. Transfer funds to your Futures account before trading."
+      },
+      "gate": {
+        "step1": "Log in to Gate.io website",
+        "step2": "Go to \"API Management\" (Security → API Management)",
+        "step3": "Click \"Create API Key\", configure permissions",
+        "step4": "Save API Key and Secret Key",
+        "perm1": "Futures Trading: Enabled",
+        "perm2": "Read Info: Enabled",
+        "perm3": "Recommended: Bind IP whitelist",
+        "note": "Gate.io Futures requires funds in your Futures account. Transfer USDT from Spot to Futures."
+      },
+      "hyperliquid": {
+        "title": "Hyperliquid is a decentralized exchange. Instead of API Keys, it uses Ethereum private key to sign transactions.",
+        "privateKeyGuide": "Export your private key from an Ethereum wallet (e.g. MetaMask) and paste it into the \"Private Key\" field.",
+        "mnemonicGuide": "Prepare your 12 or 24-word seed phrase and paste it into the \"Mnemonic\" field. The system will derive the private key via BIP-44 path automatically.",
+        "securityNote": "Use a dedicated trading wallet — do not use your main wallet. Private keys and seed phrases are encrypted with AES-256-GCM in the database.",
+        "fundingNote": "Deposit USDC from Arbitrum to Hyperliquid on the Hyperliquid app. Make sure your account has enough USDC for trading."
+      }
     },
     "card": {
       "testnet": "Testnet",
@@ -572,6 +679,9 @@
     "details": {
       "marketAssessment": "Market Assessment",
       "chainOfThought": "Chain of Thought",
+      "steps": "steps",
+      "expandAll": "Show {count} more steps",
+      "collapseAll": "Collapse",
       "tradingDecisions": "Trading Decisions",
       "leverage": "Leverage",
       "size": "Size",
@@ -1377,15 +1487,25 @@
     },
     "coinSelector": {
       "title": "Trading Pairs",
-      "description": "Select the cryptocurrency pairs you want to trade",
-      "selectedCoins": "Selected Coins",
-      "noCoinsSelected": "No coins selected. Add coins below.",
+      "description": "Select the trading pairs you want to trade",
+      "selectedCoins": "Selected Instruments",
+      "noCoinsSelected": "No instruments selected. Add instruments below.",
       "popularCoins": "Popular Coins",
-      "searchPlaceholder": "Search coins...",
-      "noResults": "No matching coins",
+      "searchPlaceholder": "Search instruments...",
+      "noResults": "No matching instruments",
       "addCustom": "Add Custom Symbol",
       "customPlaceholder": "e.g., ARB",
-      "add": "Add"
+      "add": "Add",
+      "marketType": {
+        "crypto": "Crypto",
+        "forex": "Forex",
+        "metals": "Metals"
+      },
+      "forexSymbols": "Major Forex Pairs",
+      "metalsSymbols": "Precious Metals",
+      "forexNote": "Forex trading requires a supported broker account (e.g. OANDA via CCXT)",
+      "metalsNote": "Metals trading requires a supported broker account",
+      "mixedMarketWarning": "You have selected Forex/Metals instruments. Please ensure you have a broker account that supports these markets."
     },
     "timeframes": {
       "title": "Timeframes",
@@ -1800,6 +1920,54 @@
     "resetToPreset": "Reapply Preset",
     "presetActive": "Active Preset",
     "customized": "Parameters have been customized"
+  },
+  "competition": {
+    "title": "AI Competition",
+    "subtitle": "Compare AI strategy performance in real-time",
+    "leaderboard": "Leaderboard",
+    "refresh": "Refresh",
+    "stats": {
+      "totalStrategies": "Total Strategies",
+      "activeStrategies": "Active Strategies",
+      "bestPerformer": "Best Performer",
+      "avgWinRate": "Avg Win Rate",
+      "totalTrades": "Total Trades",
+      "bestPnl": "Best P/L",
+      "worstPnl": "Worst P/L"
+    },
+    "table": {
+      "rank": "#",
+      "name": "Strategy",
+      "status": "Status",
+      "model": "AI Model",
+      "totalPnl": "Total P/L",
+      "pnlPercent": "ROI %",
+      "winRate": "Win Rate",
+      "trades": "Trades",
+      "maxDrawdown": "Max DD",
+      "actions": "Actions"
+    },
+    "sortBy": {
+      "total_pnl": "Total P/L",
+      "win_rate": "Win Rate",
+      "total_trades": "Total Trades",
+      "max_drawdown": "Max Drawdown"
+    },
+    "empty": {
+      "title": "No strategies yet",
+      "description": "Create AI agent strategies to see them compete here",
+      "createFirst": "Create Strategy"
+    },
+    "viewDetails": "View Details",
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "paused": "Paused"
+    },
+    "chart": {
+      "title": "P&L Comparison",
+      "noData": "No data to display"
+    }
   },
   "landing": {
     "nav": {

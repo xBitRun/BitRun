@@ -20,10 +20,12 @@ from .base import (
     BaseTrader,
     FundingRate,
     MarketData,
+    MarketType,
     OHLCV,
     OrderResult,
     Position,
     TradeError,
+    detect_market_type,
 )
 from .exchange_pool import ExchangePool
 
@@ -40,6 +42,9 @@ _KLINE_MAX: dict[str, int] = {
     "okx": 300,
     "binanceusdm": 1500,
     "bybit": 1000,
+    "bitget": 1000,
+    "kucoinfutures": 200,
+    "gateio": 1000,
 }
 
 # Default slippage per exchange (only matters for Hyperliquid market orders)
@@ -100,6 +105,22 @@ def _build_ccxt_config(
         cfg["secret"] = credentials.get("api_secret", "")
         cfg["options"]["defaultType"] = "linear"
 
+    elif exchange_id == "bitget":
+        cfg["apiKey"] = credentials.get("api_key", "")
+        cfg["secret"] = credentials.get("api_secret", "")
+        cfg["password"] = credentials.get("passphrase", "")
+        cfg["options"]["defaultType"] = "swap"
+
+    elif exchange_id == "kucoinfutures":
+        cfg["apiKey"] = credentials.get("api_key", "")
+        cfg["secret"] = credentials.get("api_secret", "")
+        cfg["password"] = credentials.get("passphrase", "")
+
+    elif exchange_id == "gateio":
+        cfg["apiKey"] = credentials.get("api_key", "")
+        cfg["secret"] = credentials.get("api_secret", "")
+        cfg["options"]["defaultType"] = "swap"
+
     else:
         # Generic fallback – just forward apiKey / secret
         cfg["apiKey"] = credentials.get("api_key", "")
@@ -119,6 +140,9 @@ EXCHANGE_ID_MAP: dict[str, str] = {
     "okx": "okx",
     "binance": "binanceusdm",
     "bybit": "bybit",
+    "bitget": "bitget",
+    "kucoin": "kucoinfutures",
+    "gate": "gateio",
 }
 
 
@@ -251,10 +275,26 @@ class CCXTTrader(BaseTrader):
 
     def _to_ccxt_symbol(self, symbol: str) -> str:
         """
-        Normalise a bare symbol ("BTC") into the CCXT unified format
-        used by the current exchange (e.g. "BTC/USDT:USDT").
+        Normalise a bare symbol ("BTC") or pair ("EUR/USD") into the CCXT
+        unified format used by the current exchange.
+
+        Crypto perpetuals  → "BTC/USDT:USDT" (or USDC for Hyperliquid)
+        Forex / Metals     → "EUR/USD" / "XAU/USD" (already standard)
         """
         symbol = symbol.upper().strip()
+
+        # Detect market type to decide normalisation strategy
+        mtype = detect_market_type(symbol)
+
+        # Forex and metals symbols are already in CCXT format (e.g. EUR/USD)
+        if mtype in (MarketType.FOREX, MarketType.METALS):
+            # If already a pair, return as-is
+            if "/" in symbol:
+                return symbol
+            # Bare metal code → default to /USD
+            return f"{symbol}/USD"
+
+        # --- Crypto path (existing logic) ---
         if "/" in symbol:
             return symbol
 
@@ -416,18 +456,21 @@ class CCXTTrader(BaseTrader):
     async def get_market_data(self, symbol: str) -> MarketData:
         self._ensure_initialized()
         ccxt_symbol = self._to_ccxt_symbol(symbol)
+        mtype = detect_market_type(symbol)
         try:
             ticker = await self._exchange.fetch_ticker(ccxt_symbol)
             bid = float(ticker.get("bid", 0) or 0)
             ask = float(ticker.get("ask", 0) or 0)
             last = float(ticker.get("last", 0) or ticker.get("close", 0))
 
+            # Funding rate only applies to crypto perpetuals
             funding_rate = None
-            try:
-                funding = await self._exchange.fetch_funding_rate(ccxt_symbol)
-                funding_rate = float(funding.get("fundingRate", 0) or 0)
-            except Exception:
-                logger.debug(f"Could not fetch funding rate for {symbol}")
+            if mtype == MarketType.CRYPTO_PERP:
+                try:
+                    funding = await self._exchange.fetch_funding_rate(ccxt_symbol)
+                    funding_rate = float(funding.get("fundingRate", 0) or 0)
+                except Exception:
+                    logger.debug(f"Could not fetch funding rate for {symbol}")
 
             base = self._base_symbol(ccxt_symbol)
             return MarketData(
@@ -472,6 +515,12 @@ class CCXTTrader(BaseTrader):
         self, symbol: str, limit: int = 24,
     ) -> list[FundingRate]:
         self._ensure_initialized()
+
+        # Funding rates are only applicable to crypto perpetuals
+        mtype = detect_market_type(symbol)
+        if mtype in (MarketType.FOREX, MarketType.METALS):
+            return []
+
         ccxt_symbol = self._to_ccxt_symbol(symbol)
         try:
             data = await self._exchange.fetch_funding_rate_history(

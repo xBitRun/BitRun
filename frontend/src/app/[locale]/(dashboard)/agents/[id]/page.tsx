@@ -61,6 +61,7 @@ import { TradingViewChart } from "@/components/charts/tradingview-chart";
 import type { StrategyStatus } from "@/types";
 import { MarketSnapshotSection, AccountSnapshotSection } from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
+import { ChainOfThought as ChainOfThoughtView } from "@/components/decisions/chain-of-thought";
 
 function getStatusColor(status: StrategyStatus) {
   switch (status) {
@@ -1113,16 +1114,8 @@ function DecisionsTab({
                   <MarketSnapshotSection snapshot={decision.market_snapshot} t={t} />
                 )}
 
-                {/* Chain of Thought */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-primary" />
-                    {t("decisions.chainOfThought")}
-                  </h4>
-                  <div className="p-4 rounded-lg bg-muted/20 border border-border/30">
-                    <MarkdownToggle content={decision.chain_of_thought} />
-                  </div>
-                </div>
+                {/* Chain of Thought - Enhanced Timeline View */}
+                <ChainOfThoughtView content={decision.chain_of_thought} />
 
                 {/* Trading Decisions */}
                 <div>

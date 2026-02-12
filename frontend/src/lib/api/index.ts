@@ -11,6 +11,8 @@ export {
   decisionsApi,
   backtestApi,
   dashboardApi,
+  competitionApi,
+  systemApi,
   healthApi,
   modelsApi,
   providersApi,
@@ -70,4 +72,10 @@ export type {
   QuantStrategyApiResponse,
   // Workers
   TriggerExecutionResponse,
+  // Competition
+  LeaderboardEntry,
+  CompetitionStats,
+  LeaderboardResponse,
+  // System
+  OutboundIPResponse,
 } from './endpoints';

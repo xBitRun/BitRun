@@ -884,3 +884,58 @@ export const providersApi = {
   deleteModel: (providerId: string, modelId: string) =>
     api.delete<void>(`/providers/${providerId}/models/${encodeURIComponent(modelId)}`),
 };
+
+// ==================== Competition ====================
+
+export interface LeaderboardEntry {
+  strategy_id: string;
+  name: string;
+  status: string;
+  trading_mode: string;
+  ai_model: string | null;
+  total_pnl: number;
+  total_pnl_percent: number;
+  win_rate: number;
+  total_trades: number;
+  max_drawdown: number;
+  rank: number;
+  created_at: string | null;
+}
+
+export interface CompetitionStats {
+  total_strategies: number;
+  active_strategies: number;
+  best_performer: string | null;
+  best_pnl: number;
+  worst_pnl: number;
+  avg_win_rate: number;
+  total_trades: number;
+}
+
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[];
+  stats: CompetitionStats;
+}
+
+export const competitionApi = {
+  getLeaderboard: (sortBy?: string, order?: string) => {
+    const params = new URLSearchParams();
+    if (sortBy) params.set('sort_by', sortBy);
+    if (order) params.set('order', order);
+    const qs = params.toString();
+    return api.get<LeaderboardResponse>(`/competition/leaderboard${qs ? `?${qs}` : ''}`);
+  },
+};
+
+// ==================== System ====================
+
+export interface OutboundIPResponse {
+  ip: string | null;
+  source: string;
+  cached: boolean;
+}
+
+export const systemApi = {
+  getOutboundIP: () =>
+    api.get<OutboundIPResponse>('/system/outbound-ip'),
+};

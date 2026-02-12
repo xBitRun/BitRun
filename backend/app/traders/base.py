@@ -15,6 +15,59 @@ from typing import Literal, Optional
 logger = logging.getLogger(__name__)
 
 
+class MarketType(str, Enum):
+    """Market / asset class type"""
+    CRYPTO_PERP = "crypto_perp"    # Crypto perpetual futures (default)
+    CRYPTO_SPOT = "crypto_spot"    # Crypto spot
+    FOREX = "forex"                # Foreign exchange (EUR/USD, etc.)
+    METALS = "metals"              # Precious metals (XAU/USD, XAG/USD)
+
+
+# Well-known Forex major & minor pairs
+FOREX_SYMBOLS: set[str] = {
+    "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD",
+    "USD/CAD", "EUR/GBP", "EUR/JPY", "GBP/JPY", "AUD/JPY", "EUR/AUD",
+    "EUR/CHF", "GBP/CHF", "CAD/JPY", "NZD/JPY",
+}
+
+# Well-known metal pairs
+METALS_SYMBOLS: set[str] = {
+    "XAU/USD", "XAG/USD", "XPT/USD", "XPD/USD",
+}
+
+# All known FX / metals base codes (used for quick detection)
+_FX_BASES = {"EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"}
+_METAL_BASES = {"XAU", "XAG", "XPT", "XPD"}
+
+
+def detect_market_type(symbol: str) -> MarketType:
+    """
+    Heuristically determine the market type from a symbol string.
+
+    Examples:
+        "BTC" / "BTC/USDT:USDT" → CRYPTO_PERP
+        "EUR/USD"                → FOREX
+        "XAU/USD"                → METALS
+    """
+    s = symbol.upper().strip()
+
+    # Exact match first
+    if s in FOREX_SYMBOLS:
+        return MarketType.FOREX
+    if s in METALS_SYMBOLS:
+        return MarketType.METALS
+
+    # Check base part
+    base = s.split("/")[0] if "/" in s else s
+    if base in _FX_BASES:
+        return MarketType.FOREX
+    if base in _METAL_BASES:
+        return MarketType.METALS
+
+    # Default to crypto perpetuals
+    return MarketType.CRYPTO_PERP
+
+
 class OrderType(str, Enum):
     """Order type"""
     MARKET = "market"

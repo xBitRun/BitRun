@@ -81,6 +81,12 @@ export {
   apiResponseToConfig,
 } from './use-strategy-studio';
 
+// Competition hook
+export { useLeaderboard } from './use-competition';
+
+// System hooks
+export { useOutboundIP } from './use-system';
+
 // Quant Strategies hooks
 export {
   useQuantStrategies,

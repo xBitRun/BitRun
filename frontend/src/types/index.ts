@@ -81,7 +81,7 @@ export interface DecisionRecord {
 }
 
 // Account Types
-export type ExchangeType = "hyperliquid" | "binance" | "bybit" | "okx";
+export type ExchangeType = "hyperliquid" | "binance" | "bybit" | "okx" | "bitget" | "kucoin" | "gate";
 
 export interface ExchangeAccount {
   id: string;
@@ -273,7 +273,11 @@ export interface PromptPreviewResponse {
   };
 }
 
-// Popular trading pairs for quick selection
+// ==================== Market Type ====================
+
+export type MarketType = "crypto_perp" | "crypto_spot" | "forex" | "metals";
+
+// Popular trading pairs for quick selection – grouped by market type
 export const POPULAR_SYMBOLS = [
   "BTC",
   "ETH",
@@ -286,6 +290,38 @@ export const POPULAR_SYMBOLS = [
   "LINK",
   "DOT",
 ] as const;
+
+export const FOREX_SYMBOLS = [
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "AUD/USD",
+  "NZD/USD",
+  "USD/CAD",
+  "EUR/GBP",
+  "EUR/JPY",
+  "GBP/JPY",
+] as const;
+
+export const METALS_SYMBOLS = [
+  "XAU/USD",
+  "XAG/USD",
+] as const;
+
+/**
+ * Detect market type from a symbol string.
+ * Mirrors backend `detect_market_type()`.
+ */
+export function detectMarketType(symbol: string): MarketType {
+  const s = symbol.toUpperCase().trim();
+  const fxBases = new Set(["EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"]);
+  const metalBases = new Set(["XAU", "XAG", "XPT", "XPD"]);
+  const base = s.includes("/") ? s.split("/")[0] : s;
+  if (fxBases.has(base) || (FOREX_SYMBOLS as readonly string[]).includes(s)) return "forex";
+  if (metalBases.has(base) || (METALS_SYMBOLS as readonly string[]).includes(s)) return "metals";
+  return "crypto_perp";
+}
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
   { value: "1m", label: "1 minute" },

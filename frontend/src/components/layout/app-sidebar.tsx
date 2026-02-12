@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Menu,
   Cpu,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,11 @@ const navItems = [
     titleKey: "accounts",
     href: "/accounts",
     icon: Wallet,
+  },
+  {
+    titleKey: "competition",
+    href: "/competition",
+    icon: Trophy,
   },
   {
     titleKey: "models",

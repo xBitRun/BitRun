@@ -41,6 +41,9 @@ const exchangeLogos: Record<ExchangeType, string> = {
   binance: "🟡",
   bybit: "🟠",
   okx: "⬛",
+  bitget: "🟢",
+  kucoin: "🟩",
+  gate: "🔵",
 };
 
 const exchangeNames: Record<ExchangeType, string> = {
@@ -48,6 +51,9 @@ const exchangeNames: Record<ExchangeType, string> = {
   binance: "Binance",
   bybit: "Bybit",
   okx: "OKX",
+  bitget: "Bitget",
+  kucoin: "KuCoin",
+  gate: "Gate.io",
 };
 
 interface AccountCardProps {

@@ -5,6 +5,7 @@ from .base import (
     BaseTrader,
     FundingRate,
     MarketData,
+    MarketType,
     OHLCV,
     Order,
     OrderResult,
@@ -12,6 +13,7 @@ from .base import (
     OrderType,
     Position,
     TradeError,
+    detect_market_type,
 )
 from .ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
 from .exchange_pool import ExchangePool
@@ -22,10 +24,12 @@ __all__ = [
     "BaseTrader",
     "CCXTTrader",
     "create_trader_from_account",
+    "detect_market_type",
     "EXCHANGE_ID_MAP",
     "ExchangePool",
     "FundingRate",
     "MarketData",
+    "MarketType",
     "mnemonic_to_private_key",
     "OHLCV",
     "Order",
