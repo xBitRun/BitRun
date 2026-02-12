@@ -23,63 +23,14 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-async def check_token_blacklist(token_data: TokenData) -> bool:
-    """
-    Check if a token is blacklisted.
-
-    Args:
-        token_data: Verified token data containing JTI
-
-    Returns:
-        True if token is blacklisted or check failed in production
-        False if token is not blacklisted
-
-    Raises:
-        HTTPException: In production when Redis is unavailable (fail-secure)
-    """
-    if not token_data.jti:
-        return False
-
-    settings = get_settings()
-
-    try:
-        redis = await get_redis_service()
-        return await redis.is_token_blacklisted(token_data.jti)
-    except Exception as e:
-        # Log the Redis failure
-        logger.error(f"Redis unavailable for token blacklist check: {e}")
-
-        # In production, fail securely - reject the request
-        if settings.environment == "production":
-            logger.warning(
-                f"Rejecting request due to Redis unavailability in production "
-                f"(token JTI: {token_data.jti[:8]}...)"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Authentication service temporarily unavailable. Please try again.",
-                headers={"Retry-After": "5"},
-            )
-
-        # In development/staging, log warning but allow request
-        logger.warning(
-            f"Allowing request without blacklist check in {settings.environment} "
-            f"(Redis unavailable)"
-        )
-        return False
-
-
 async def get_current_user_id(
     token: Annotated[Optional[str], Depends(oauth2_scheme)]
 ) -> str:
     """
     Dependency to get current authenticated user ID from JWT token.
 
-    Checks if token is blacklisted (logged out).
-
     Raises:
-        HTTPException 401: If token is missing, invalid, or blacklisted
-        HTTPException 503: In production if Redis is unavailable
+        HTTPException 401: If token is missing or invalid
     """
     if not token:
         raise HTTPException(
@@ -90,19 +41,7 @@ async def get_current_user_id(
 
     try:
         token_data = verify_token(token, token_type="access")
-
-        # Check if token is blacklisted
-        if await check_token_blacklist(token_data):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
         return token_data.sub
-    except HTTPException:
-        # Re-raise HTTPExceptions (including 503 from blacklist check)
-        raise
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,11 +73,8 @@ async def get_current_token_data(
     """
     Dependency to get full token data including JTI.
 
-    Use this when you need access to the JTI for blacklisting.
-
     Raises:
         HTTPException 401: If token is missing or invalid
-        HTTPException 503: In production if Redis is unavailable
     """
     if not token:
         raise HTTPException(
@@ -149,19 +85,7 @@ async def get_current_token_data(
 
     try:
         token_data = verify_token(token, token_type="access")
-
-        # Check if token is blacklisted
-        if await check_token_blacklist(token_data):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
         return token_data
-    except HTTPException:
-        # Re-raise HTTPExceptions (including 503 from blacklist check)
-        raise
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
