@@ -90,6 +90,8 @@ class DecisionParser:
             response = self._build_response(data, raw_response)
         except ValidationError as e:
             raise DecisionParseError(f"Validation error: {e}", raw_response)
+        except (ValueError, TypeError) as e:
+            raise DecisionParseError(f"Data conversion error: {e}", raw_response)
 
         # Validate decisions
         self._validate_decisions(response)
@@ -149,6 +151,26 @@ class DecisionParser:
                 "overall_confidence": 50,
                 "next_review_minutes": 60,
             })
+
+        # Try to find JSON object with chain_of_thought (for text before JSON cases)
+        match = self.JSON_OBJECT_PATTERN.search(text)
+        if match:
+            try:
+                # Find the complete JSON object by matching braces
+                json_start = text.find('{')
+                if json_start >= 0:
+                    brace_count = 0
+                    for i, c in enumerate(text[json_start:]):
+                        if c == '{':
+                            brace_count += 1
+                        elif c == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_str = text[json_start:json_start + i + 1]
+                                json.loads(json_str)  # Validate
+                                return json_str
+            except json.JSONDecodeError:
+                pass
 
         logger.warning(
             f"[DecisionParser] Failed to extract JSON from response. "

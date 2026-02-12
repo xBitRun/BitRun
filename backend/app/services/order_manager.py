@@ -393,6 +393,13 @@ class OrderManager:
                 except Exception as e:
                     logger.error(f"Fill callback error: {e}")
         
+        elif order.status == OrderStatus.PARTIALLY_FILLED:
+            if self.callback.on_partial_fill:
+                try:
+                    await self._maybe_await(self.callback.on_partial_fill(order))
+                except Exception as e:
+                    logger.error(f"Partial fill callback error: {e}")
+        
         elif order.status in (OrderStatus.CANCELLED, OrderStatus.EXPIRED):
             if self.callback.on_cancel:
                 try:
