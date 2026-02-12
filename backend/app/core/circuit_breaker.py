@@ -427,11 +427,11 @@ async def get_circuit_breaker(
     
     try:
         yield breaker
-        # Success - record it using internal state machine
-        breaker._breaker._state.on_success(breaker._breaker)
+        # Success - record it
         breaker._success_count += 1
+        breaker.listener.success(breaker._breaker)
     except Exception as e:
-        # Failure - record it using internal error handler
+        # Failure - record it using internal counter
         breaker._breaker._inc_counter()
         breaker.listener.failure(breaker._breaker, e)
         raise
