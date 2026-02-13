@@ -103,7 +103,7 @@ export default function NewAccountPage() {
 
       // Encrypt sensitive fields if transport encryption is enabled
       const sensitiveFields = ["api_key", "api_secret", "private_key", "mnemonic", "passphrase"];
-      request = await encryptFields(request, sensitiveFields) as CreateAccountRequest;
+      request = await encryptFields(request, sensitiveFields);
 
       const account = await createAccount(request);
 
