@@ -5,19 +5,18 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
   Plus,
-  Play,
-  Pause,
   MoreHorizontal,
-  TrendingUp,
-  TrendingDown,
   LineChart,
   Grid3X3,
   ArrowDownUp,
   Activity,
   Filter,
-  Loader2,
-  Square,
-  RotateCcw,
+  Bot,
+  GitFork,
+  Eye,
+  Pencil,
+  Trash2,
+  Zap,
 } from "lucide-react";
 import {
   ListPageSkeleton,
@@ -32,6 +31,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -41,30 +41,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useQuantStrategies } from "@/hooks";
+import { useStrategies } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import type { StrategyStatus } from "@/types";
-import type { QuantStrategyApiResponse } from "@/lib/api";
-
-function getStatusColor(status: StrategyStatus) {
-  switch (status) {
-    case "active":
-      return "bg-[var(--profit)]/20 text-[var(--profit)]";
-    case "paused":
-      return "bg-[var(--warning)]/20 text-[var(--warning)]";
-    case "stopped":
-      return "bg-muted text-muted-foreground";
-    case "error":
-      return "bg-[var(--loss)]/20 text-[var(--loss)]";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
+import type { StrategyResponse } from "@/lib/api";
+import type { StrategyType } from "@/types";
 
 function getTypeIcon(type: string) {
   switch (type) {
+    case "ai":
+      return Bot;
     case "grid":
       return Grid3X3;
     case "dca":
@@ -78,37 +64,34 @@ function getTypeIcon(type: string) {
 
 function getTypeColor(type: string) {
   switch (type) {
+    case "ai":
+      return "border-violet-500/30 text-violet-500";
     case "grid":
       return "border-blue-500/30 text-blue-500";
     case "dca":
       return "border-emerald-500/30 text-emerald-500";
     case "rsi":
-      return "border-violet-500/30 text-violet-500";
+      return "border-amber-500/30 text-amber-500";
     default:
       return "";
   }
 }
 
-interface StrategyCardProps {
-  strategy: QuantStrategyApiResponse;
-  onStatusChange: (id: string, status: StrategyStatus) => void;
-  onDelete: (id: string) => void;
-  t: ReturnType<typeof useTranslations>;
+function getVisibilityColor(vis: string) {
+  return vis === "public"
+    ? "border-emerald-500/30 text-emerald-500"
+    : "border-muted-foreground/30 text-muted-foreground";
 }
 
-function StrategyCard({ strategy, onStatusChange, onDelete, t }: StrategyCardProps) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const TypeIcon = getTypeIcon(strategy.strategy_type);
+interface StrategyCardProps {
+  strategy: StrategyResponse;
+  onDelete: (id: string) => void;
+  t: ReturnType<typeof useTranslations>;
+  tType: ReturnType<typeof useTranslations>;
+}
 
-  const handleStatusChange = async (newStatus: StrategyStatus) => {
-    setIsUpdating(true);
-    try {
-      await onStatusChange(strategy.id, newStatus);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+function StrategyCard({ strategy, onDelete, t, tType }: StrategyCardProps) {
+  const TypeIcon = getTypeIcon(strategy.type);
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors gap-3">
@@ -120,22 +103,25 @@ function StrategyCard({ strategy, onStatusChange, onDelete, t }: StrategyCardPro
             </div>
             <div className="min-w-0">
               <CardTitle className="text-lg">{strategy.name}</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getStatusColor(strategy.status as StrategyStatus))}
+                  className={cn("text-xs", getTypeColor(strategy.type))}
                 >
-                  {t(`status.${strategy.status}`)}
+                  {tType(strategy.type)}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getTypeColor(strategy.strategy_type))}
+                  className={cn("text-xs", getVisibilityColor(strategy.visibility))}
                 >
-                  {t(`types.${strategy.strategy_type}`)}
+                  {t(`visibility.${strategy.visibility}`)}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {strategy.symbol}
-                </Badge>
+                {strategy.symbols.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {strategy.symbols.slice(0, 3).join(", ")}
+                    {strategy.symbols.length > 3 && ` +${strategy.symbols.length - 3}`}
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground truncate mt-1">
                 {strategy.description || t("empty.noDescription")}
@@ -149,208 +135,97 @@ function StrategyCard({ strategy, onStatusChange, onDelete, t }: StrategyCardPro
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/strategies/${strategy.id}`} className="flex items-center">
+                  <Eye className="w-4 h-4 mr-2" />
+                  {t("actions.viewDetails")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/agents/new?strategyId=${strategy.id}`} className="flex items-center">
+                  <Zap className="w-4 h-4 mr-2" />
+                  {t("actions.createAgent")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                className={["stopped", "draft"].includes(strategy.status) ? "text-destructive" : "text-muted-foreground"}
-                disabled={!["stopped", "draft"].includes(strategy.status)}
-                onClick={() => ["stopped", "draft"].includes(strategy.status) && onDelete(strategy.id)}
+                className="text-destructive"
+                onClick={() => onDelete(strategy.id)}
               >
+                <Trash2 className="w-4 h-4 mr-2" />
                 {t("actions.delete")}
-                {!["stopped", "draft"].includes(strategy.status) && (
-                  <span className="ml-1 text-xs">({t("actions.deleteRequireStopped")})</span>
-                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/30">
-          <div>
-            <p className="text-xs text-muted-foreground">{t("stats.totalPL")}</p>
-            <p
-              className={cn(
-                "font-mono font-semibold flex items-center gap-1",
-                strategy.total_pnl >= 0
-                  ? "text-[var(--profit)]"
-                  : "text-[var(--loss)]"
-              )}
-            >
-              {strategy.total_pnl >= 0 ? (
-                <TrendingUp className="w-3 h-3" />
-              ) : (
-                <TrendingDown className="w-3 h-3" />
-              )}
-              ${Math.abs(strategy.total_pnl).toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{t("stats.winRate")}</p>
-            <p className="font-mono font-semibold">
-              {strategy.win_rate.toFixed(1)}%
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{t("stats.trades")}</p>
-            <p className="font-mono font-semibold">{strategy.total_trades}</p>
+        {/* Tags and metadata */}
+        <div className="flex items-center gap-4 pt-2 border-t border-border/30">
+          {strategy.tags.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {strategy.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-3 ml-auto text-xs text-muted-foreground">
+            {strategy.fork_count > 0 && (
+              <span className="flex items-center gap-1">
+                <GitFork className="w-3 h-3" />
+                {strategy.fork_count}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          {strategy.status === "active" ? (
-            <Button
-              variant="default"
-              size="sm"
-              className="flex-1 bg-primary/20 text-primary hover:bg-primary/30"
-              onClick={() => handleStatusChange("paused")}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Pause className="w-4 h-4 mr-2" />
-              )}
-              {t("actions.pause")}
+          <Link href={`/agents/new?strategyId=${strategy.id}`} className="flex-1">
+            <Button variant="default" size="sm" className="w-full">
+              <Zap className="w-4 h-4 mr-2" />
+              {t("actions.createAgent")}
             </Button>
-          ) : strategy.status === "paused" || strategy.status === "draft" ? (
-            <>
-              <Button
-                variant="default"
-                size="sm"
-                className="flex-1"
-                onClick={() => handleStatusChange("active")}
-                disabled={isUpdating}
-              >
-                {isUpdating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="w-4 h-4 mr-2" />
-                )}
-                {strategy.status === "draft" ? t("actions.start") : t("actions.resume")}
-              </Button>
-              {strategy.status === "paused" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-                  onClick={() => setShowStopConfirm(true)}
-                  disabled={isUpdating}
-                >
-                  <Square className="w-4 h-4 mr-2" />
-                  {t("actions.stop")}
-                </Button>
-              )}
-            </>
-          ) : (strategy.status === "error" || strategy.status === "warning") ? (
-            <>
-              <Button
-                variant="default"
-                size="sm"
-                className="flex-1"
-                onClick={() => handleStatusChange("active")}
-                disabled={isUpdating}
-              >
-                {isUpdating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                )}
-                {t("actions.restart")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-                onClick={() => setShowStopConfirm(true)}
-                disabled={isUpdating}
-              >
-                <Square className="w-4 h-4 mr-2" />
-                {t("actions.stop")}
-              </Button>
-            </>
-          ) : null}
+          </Link>
           <Link href={`/strategies/${strategy.id}`}>
             <Button variant="ghost" size="sm">
               {t("actions.viewDetails")}
             </Button>
           </Link>
-
-          {/* Stop Confirm Dialog */}
-          <Dialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
-            <DialogContent showCloseButton={false}>
-              <DialogHeader>
-                <DialogTitle>{t("actions.stopConfirmTitle")}</DialogTitle>
-                <DialogDescription>{t("actions.stopConfirmDesc")}</DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowStopConfirm(false)}>
-                  {t("actions.cancel")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    setShowStopConfirm(false);
-                    await handleStatusChange("stopped");
-                  }}
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Square className="w-4 h-4 mr-2" />
-                  )}
-                  {t("actions.confirmStop")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-export default function QuantStrategiesPage() {
-  const t = useTranslations("quantStrategies");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+export default function StrategiesPage() {
+  const t = useTranslations("strategies");
+  const tType = useTranslations("strategies.type");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { strategies, error, isLoading, refresh } = useQuantStrategies();
+  const { strategies, error, isLoading, refresh } = useStrategies();
   const toast = useToast();
-
-  const handleStatusChange = async (id: string, status: StrategyStatus) => {
-    try {
-      const { quantStrategiesApi } = await import("@/lib/api");
-      await quantStrategiesApi.updateStatus(id, status);
-      refresh();
-      const statusKey = status === "active" ? "started" : status;
-      toast.success(t(`toast.${statusKey}`));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.updateFailed");
-      toast.error(t("toast.updateFailed"), message);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("confirmDelete"))) return;
     try {
-      const { quantStrategiesApi } = await import("@/lib/api");
-      await quantStrategiesApi.delete(id);
+      const { strategiesApi } = await import("@/lib/api");
+      await strategiesApi.delete(id);
       refresh();
-      toast.success(t("toast.deleteSuccess"));
+      toast.success(t("toast.deleted"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.deleteFailed");
-      toast.error(t("toast.deleteFailed"), message);
+      const message = err instanceof Error ? err.message : t("error.deleteFailed");
+      toast.error(t("error.deleteFailed"), message);
     }
   };
 
   const filteredStrategies = strategies.filter((s) => {
-    const matchesStatus = statusFilter === "all" || s.status === statusFilter;
-    const matchesType = typeFilter === "all" || s.strategy_type === typeFilter;
+    const matchesType = typeFilter === "all" || s.type === typeFilter;
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesType && matchesSearch;
+    return matchesType && matchesSearch;
   });
 
   const hasNoStrategies = !isLoading && !error && strategies.length === 0;
@@ -371,19 +246,6 @@ export default function QuantStrategiesPage() {
         </Link>
       </div>
 
-      {/* Info Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="flex items-center gap-4 py-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <LineChart className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold">{t("info.title")}</h3>
-            <p className="text-sm text-muted-foreground">{t("info.description")}</p>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Filters */}
       {!hasNoStrategies && (
         <div className="flex items-center gap-4">
@@ -395,28 +257,17 @@ export default function QuantStrategiesPage() {
               className="bg-muted/50"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 bg-muted/50">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("filter.allStatus")}</SelectItem>
-              <SelectItem value="active">{t("filter.active")}</SelectItem>
-              <SelectItem value="paused">{t("filter.paused")}</SelectItem>
-              <SelectItem value="draft">{t("filter.draft")}</SelectItem>
-              <SelectItem value="stopped">{t("filter.stopped")}</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-40 bg-muted/50">
+              <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
-              <SelectItem value="grid">{t("types.grid")}</SelectItem>
-              <SelectItem value="dca">{t("types.dca")}</SelectItem>
-              <SelectItem value="rsi">{t("types.rsi")}</SelectItem>
+              <SelectItem value="ai">{tType("ai")}</SelectItem>
+              <SelectItem value="grid">{tType("grid")}</SelectItem>
+              <SelectItem value="dca">{tType("dca")}</SelectItem>
+              <SelectItem value="rsi">{tType("rsi")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -439,8 +290,8 @@ export default function QuantStrategiesPage() {
         <ListPageEmpty
           icon={LineChart}
           title={t("empty.title")}
-          description={t("empty.description")}
-          actionLabel={t("empty.createFirst")}
+          description={t("empty.createHint")}
+          actionLabel={t("createStrategy")}
           actionHref="/strategies/new"
           actionIcon={Plus}
         />
@@ -455,9 +306,9 @@ export default function QuantStrategiesPage() {
                 <StrategyCard
                   key={strategy.id}
                   strategy={strategy}
-                  onStatusChange={handleStatusChange}
                   onDelete={handleDelete}
                   t={t}
+                  tType={tType}
                 />
               ))}
               <Link href="/strategies/new" className="block h-full">
@@ -467,9 +318,6 @@ export default function QuantStrategiesPage() {
                       <Plus className="w-6 h-6" />
                     </div>
                     <p className="font-medium">{t("createStrategy")}</p>
-                    <p className="text-sm text-center mt-1 text-muted-foreground">
-                      {t("empty.description")}
-                    </p>
                   </CardContent>
                 </Card>
               </Link>

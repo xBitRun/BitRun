@@ -301,72 +301,115 @@ class WorkerManager:
                     logger.error(f"Strategy {strategy_id} not found")
                     return False
 
-                if not strategy.account_id:
-                    logger.error(f"Strategy {strategy_id} has no account configured")
-                    return False
+                # Check for active agent with execution mode
+                from sqlalchemy import select
+                from sqlalchemy.orm import selectinload
+                from ..db.models import AgentDB
 
-                # Get account if not provided
-                if account is None:
-                    account_repo = AccountRepository(session)
-                    account = await account_repo.get_by_id(strategy.account_id)
-                    if not account:
-                        logger.error(f"Account {strategy.account_id} not found for strategy {strategy_id}")
-                        return False
-
-                # Get credentials if not provided
-                if credentials is None:
-                    account_repo = AccountRepository(session)
-                    credentials = await account_repo.get_decrypted_credentials(
-                        strategy.account_id,
-                        strategy.user_id
+                agent_stmt = (
+                    select(AgentDB)
+                    .where(
+                        AgentDB.strategy_id == strategy.id,
+                        AgentDB.status == "active",
                     )
-                    if not credentials:
-                        logger.error(f"Failed to get credentials for account {strategy.account_id}")
+                    .options(selectinload(AgentDB.strategy))
+                    .limit(1)
+                )
+                agent_result = await session.execute(agent_stmt)
+                agent = agent_result.scalar_one_or_none()
+
+                trader = None
+                if agent and agent.execution_mode == "mock":
+                    # Mock mode: create MockTrader
+                    from ..traders.mock_trader import MockTrader
+
+                    symbols = strategy.symbols or ["BTC"]
+                    mock_balance = agent.mock_initial_balance or 10000.0
+                    trader = MockTrader(
+                        initial_balance=mock_balance,
+                        symbols=symbols,
+                    )
+                    try:
+                        await trader.initialize()
+                        # Restore state from persisted positions (survives restarts)
+                        from .tasks import _restore_mock_trader_state
+                        await _restore_mock_trader_state(
+                            session, agent.id, mock_balance, trader,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to initialize MockTrader for strategy {strategy_id}: {e}")
+                        return False
+                else:
+                    # Live mode: require account
+                    account_id = agent.account_id if agent else strategy.account_id
+                    if not account_id:
+                        logger.error(f"Strategy {strategy_id} has no account configured")
                         return False
 
-                # Create trader using the helper function
-                trader = None
-                try:
-                    trader = create_trader_from_account(account, credentials)
-                    await trader.initialize()
-                except ValueError as e:
-                    logger.error(f"Failed to create trader for strategy {strategy_id}: {e}")
-                    if trader:
-                        try:
-                            await trader.close()
-                        except Exception:
-                            pass
-                    await repo.update_status(strategy.id, "error", str(e))
-                    await session.commit()
-                    return False
-                except TradeError as e:
-                    logger.error(f"Failed to initialize trader for strategy {strategy_id}: {e.message}")
-                    if trader:
-                        try:
-                            await trader.close()
-                        except Exception:
-                            pass
-                    await repo.update_status(strategy.id, "error", e.message)
-                    await session.commit()
-                    return False
+                    # Get account if not provided
+                    if account is None:
+                        account_repo = AccountRepository(session)
+                        account = await account_repo.get_by_id(account_id)
+                        if not account:
+                            logger.error(f"Account {account_id} not found for strategy {strategy_id}")
+                            return False
 
-                # Get interval from config
-                config = strategy.config or {}
-                interval = config.get("execution_interval_minutes", 30)
+                    # Get credentials if not provided
+                    if credentials is None:
+                        account_repo = AccountRepository(session)
+                        user_id = agent.user_id if agent else strategy.user_id
+                        credentials = await account_repo.get_decrypted_credentials(
+                            account_id, user_id
+                        )
+                        if not credentials:
+                            logger.error(f"Failed to get credentials for account {account_id}")
+                            return False
+
+                    # Create trader using the helper function
+                    try:
+                        trader = create_trader_from_account(account, credentials)
+                        await trader.initialize()
+                    except ValueError as e:
+                        logger.error(f"Failed to create trader for strategy {strategy_id}: {e}")
+                        if trader:
+                            try:
+                                await trader.close()
+                            except Exception:
+                                pass
+                        await repo.update_status(strategy.id, "error", str(e))
+                        await session.commit()
+                        return False
+                    except TradeError as e:
+                        logger.error(f"Failed to initialize trader for strategy {strategy_id}: {e.message}")
+                        if trader:
+                            try:
+                                await trader.close()
+                            except Exception:
+                                pass
+                        await repo.update_status(strategy.id, "error", e.message)
+                        await session.commit()
+                        return False
+
+                # Get interval from agent or config
+                if agent:
+                    interval = agent.execution_interval_minutes or 30
+                else:
+                    config = strategy.config or {}
+                    interval = config.get("execution_interval_minutes", 30)
 
                 # Create and start worker
-                # AI client is created per strategy by StrategyEngine based on strategy.ai_model
                 worker = ExecutionWorker(
                     strategy_id=strategy_id,
                     trader=trader,
-                    ai_client=None,  # Let StrategyEngine create based on strategy config
+                    ai_client=None,  # Let StrategyEngine create based on config
                     interval_minutes=interval,
                 )
 
                 await worker.start()
                 self._workers[strategy_id] = worker
 
-                logger.info(f"Started worker for strategy {strategy_id} on {account.exchange}")
+                mode = "mock" if (agent and agent.execution_mode == "mock") else "live"
+                logger.info(f"Started worker for strategy {strategy_id} ({mode} mode)")
                 return True
 
         except Exception as e:
@@ -429,39 +472,87 @@ class WorkerManager:
                 if not strategy:
                     return {"success": False, "error": "Strategy not found"}
 
-                if not strategy.account_id:
-                    return {"success": False, "error": "Strategy has no account configured"}
+                # Check for active agent
+                from sqlalchemy import select as sa_select
+                from sqlalchemy.orm import selectinload as sa_selectinload
+                from ..db.models import AgentDB
 
-                # Get account & credentials
-                account_repo = AccountRepository(session)
-                account = await account_repo.get_by_id(strategy.account_id)
-                if not account:
-                    return {"success": False, "error": "Account not found"}
-
-                credentials = await account_repo.get_decrypted_credentials(
-                    strategy.account_id,
-                    strategy.user_id,
+                agent_stmt = (
+                    sa_select(AgentDB)
+                    .where(
+                        AgentDB.strategy_id == strategy.id,
+                        AgentDB.status == "active",
+                    )
+                    .options(sa_selectinload(AgentDB.strategy))
+                    .limit(1)
                 )
-                if not credentials:
-                    return {"success": False, "error": "Failed to decrypt account credentials"}
+                agent_result = await session.execute(agent_stmt)
+                agent = agent_result.scalar_one_or_none()
 
-                # Create trader
-                trader = create_trader_from_account(account, credentials)
-                await trader.initialize()
+                if agent and agent.execution_mode == "mock":
+                    # Mock mode: use MockTrader
+                    from ..traders.mock_trader import MockTrader
+
+                    symbols = strategy.symbols or ["BTC"]
+                    mock_balance = agent.mock_initial_balance or 10000.0
+                    trader = MockTrader(
+                        initial_balance=mock_balance,
+                        symbols=symbols,
+                    )
+                    await trader.initialize()
+                    # Restore state from persisted positions (survives restarts)
+                    from .tasks import _restore_mock_trader_state
+                    await _restore_mock_trader_state(
+                        session, agent.id, mock_balance, trader,
+                    )
+                else:
+                    # Live mode: use exchange credentials
+                    account_id = agent.account_id if agent else strategy.account_id
+                    if not account_id:
+                        return {"success": False, "error": "Strategy has no account configured"}
+
+                    account_repo = AccountRepository(session)
+                    account = await account_repo.get_by_id(account_id)
+                    if not account:
+                        return {"success": False, "error": "Account not found"}
+
+                    u_id = agent.user_id if agent else strategy.user_id
+                    credentials = await account_repo.get_decrypted_credentials(
+                        account_id, u_id,
+                    )
+                    if not credentials:
+                        return {"success": False, "error": "Failed to decrypt account credentials"}
+
+                    trader = create_trader_from_account(account, credentials)
+                    await trader.initialize()
+
+                # Create agent position service
+                from ..services.redis_service import get_redis_service
+                from ..services.agent_position_service import AgentPositionService
+                try:
+                    redis_service = await get_redis_service()
+                except Exception:
+                    redis_service = None
+                position_service = AgentPositionService(db=session, redis=redis_service)
 
                 # Create engine and run one cycle
                 engine = StrategyEngine(
+                    agent=agent if agent else None,
                     strategy=strategy,
                     trader=trader,
                     ai_client=None,
                     db_session=session,
+                    position_service=position_service,
                 )
 
                 result = await engine.run_cycle()
 
                 # Update strategy timestamps
-                config = strategy.config or {}
-                interval = config.get("execution_interval_minutes", 30)
+                if agent:
+                    interval = agent.execution_interval_minutes or 30
+                else:
+                    config = strategy.config or {}
+                    interval = config.get("execution_interval_minutes", 30)
                 await repo.update(
                     strategy.id,
                     strategy.user_id,
@@ -477,8 +568,6 @@ class WorkerManager:
                     f"latency={result['latency_ms']}ms"
                 )
 
-                # The trigger itself succeeded (the cycle ran).
-                # Cycle-level errors (e.g. risk limits) are informational, not trigger failures.
                 return {
                     "success": True,
                     "decision_id": result.get("decision_record_id"),

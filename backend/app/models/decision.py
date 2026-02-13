@@ -196,9 +196,11 @@ class DecisionRecord(BaseModel):
     Stored decision record for audit trail.
     
     Includes all information about a decision cycle for later analysis.
+    Linked to Agent (not Strategy) because decisions are made by
+    specific agent instances with specific model/account bindings.
     """
     id: str
-    strategy_id: str
+    agent_id: str
     timestamp: datetime
     
     # AI outputs

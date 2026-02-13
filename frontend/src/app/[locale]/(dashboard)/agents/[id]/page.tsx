@@ -54,11 +54,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useStrategy, useStrategyDecisions, useDecisionStats, useUpdateStrategyStatus, useUserModels, groupModelsByProvider, getProviderDisplayName } from "@/hooks";
-import { strategiesApi, workersApi } from "@/lib/api";
+import { useUserModels, groupModelsByProvider, getProviderDisplayName } from "@/hooks";
+import { useAgent, useUpdateAgentStatus } from "@/hooks/use-agents";
+import { useAgentDecisions, useAgentDecisionStats } from "@/hooks/use-decisions";
+import { agentsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { TradingViewChart } from "@/components/charts/tradingview-chart";
-import type { StrategyStatus } from "@/types";
+import type { AgentStatus } from "@/types";
+
+// Backward compat alias used throughout this file
+type StrategyStatus = AgentStatus;
 import { MarketSnapshotSection, AccountSnapshotSection } from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
 import { ChainOfThought as ChainOfThoughtView } from "@/components/decisions/chain-of-thought";
@@ -101,7 +106,7 @@ function OverviewTab({
   agentId,
   t,
 }: {
-  agent: NonNullable<ReturnType<typeof useStrategy>["data"]>;
+  agent: NonNullable<ReturnType<typeof useAgent>["data"]>;
   agentId: string;
   t: ReturnType<typeof useTranslations>;
 }) {
@@ -124,7 +129,7 @@ function OverviewTab({
     data: tradePageData,
     isValidating: isTradeValidating,
     mutate: mutateTrades,
-  } = useStrategyDecisions(agentId, tradePage, TRADES_PAGE_SIZE, tradeFilters);
+  } = useAgentDecisions(agentId, tradePage, TRADES_PAGE_SIZE, tradeFilters);
   const tradeDecisions = tradePageData?.items ?? [];
   const tradeTotalItems = tradePageData?.total ?? 0;
   const tradeTotalPages = Math.max(1, Math.ceil(tradeTotalItems / TRADES_PAGE_SIZE));
@@ -257,7 +262,7 @@ function OverviewTab({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("overview.tradingMode")}</span>
-                <span className="font-medium">{t(`tradingModeValue.${agent.trading_mode}`)}</span>
+                <span className="font-medium">{t(`tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("overview.aiModel")}</span>
@@ -503,7 +508,7 @@ function OverviewTab({
 }
 
 // Strategy Configuration Section (read-only, compact layout)
-function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<ReturnType<typeof useStrategy>["data"]>; agentId: string; t: ReturnType<typeof useTranslations> }) {
+function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<ReturnType<typeof useAgent>["data"]>; agentId: string; t: ReturnType<typeof useTranslations> }) {
   const config = agent.config as Record<string, unknown>;
   const riskControls = (config?.risk_controls as Record<string, number>) || {};
   const symbols = (config?.symbols as string[]) || [];
@@ -558,7 +563,7 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm text-muted-foreground">{t("overview.tradingMode")}</span>
-              <span className="text-sm font-medium">{t(`tradingModeValue.${agent.trading_mode}`)}</span>
+              <span className="text-sm font-medium">{t(`tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`)}</span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm text-muted-foreground">{t("overview.aiModel")}</span>
@@ -798,8 +803,8 @@ function DecisionsTab({
   const [actionFilter, setActionFilter] = useState<string>("");
 
   const filters = { executionFilter, action: actionFilter || undefined };
-  const { data: pageData, isLoading, isValidating, mutate } = useStrategyDecisions(agentId, page, DECISIONS_PAGE_SIZE, filters);
-  const { data: stats } = useDecisionStats(agentId);
+  const { data: pageData, isLoading, isValidating, mutate } = useAgentDecisions(agentId, page, DECISIONS_PAGE_SIZE, filters);
+  const { data: stats } = useAgentDecisionStats(agentId);
 
   const decisions = pageData?.items ?? [];
   const totalItems = pageData?.total ?? 0;
@@ -1393,7 +1398,7 @@ function SettingsTab({
   t,
   onUpdate
 }: {
-  agent: NonNullable<ReturnType<typeof useStrategy>["data"]>;
+  agent: NonNullable<ReturnType<typeof useAgent>["data"]>;
   agentId: string;
   t: ReturnType<typeof useTranslations>;
   onUpdate: () => void;
@@ -1426,15 +1431,11 @@ function SettingsTab({
     setSaveSuccess(false);
 
     try {
-      await strategiesApi.update(agentId, {
+      await agentsApi.update(agentId, {
         name: formData.name,
-        description: formData.description,
         ai_model: formData.ai_model || undefined,
-        config: {
-          ...config,
-          execution_interval_minutes: formData.execution_interval_minutes,
-          auto_execute: formData.auto_execute,
-        },
+        execution_interval_minutes: formData.execution_interval_minutes,
+        auto_execute: formData.auto_execute,
       });
       setSaveSuccess(true);
       onUpdate();
@@ -1450,7 +1451,7 @@ function SettingsTab({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await strategiesApi.delete(agentId);
+      await agentsApi.delete(agentId);
       window.location.href = "/agents";
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete agent";
@@ -1654,17 +1655,17 @@ export default function AgentDetailPage() {
   const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
 
-  const { data: agent, isLoading, error, mutate } = useStrategy(agentId);
-  const { trigger: updateStatus, isMutating: isUpdating } = useUpdateStrategyStatus(agentId);
+  const { data: agent, isLoading, error, mutate } = useAgent(agentId);
+  const { trigger: updateStatus, isMutating: isUpdating } = useUpdateAgentStatus(agentId);
   const [isRunningNow, setIsRunningNow] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const handleRunNow = async () => {
     setIsRunningNow(true);
     try {
-      await workersApi.triggerExecution(agentId);
+      await agentsApi.trigger(agentId);
       toast.success(t("toast.runNowSuccess"));
-      mutate(); // refresh strategy data
+      mutate(); // refresh agent data
     } catch (err) {
       const message = err instanceof Error ? err.message : t("toast.runNowFailed");
       toast.error(t("toast.runNowFailed"), message);

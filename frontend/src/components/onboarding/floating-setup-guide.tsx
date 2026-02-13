@@ -7,6 +7,7 @@ import {
   Wallet,
   Bot,
   Cpu,
+  Lightbulb,
   Check,
   ChevronDown,
   ChevronUp,
@@ -18,7 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useAccounts, useStrategies, useModels } from "@/hooks";
+import { useAccounts, useModels, useStrategies } from "@/hooks";
+import { useAgents } from "@/hooks/use-agents";
 
 const STORAGE_KEY = "bitrun-setup-guide-dismissed";
 
@@ -39,8 +41,9 @@ interface FloatingSetupGuideProps {
 export function FloatingSetupGuide({ className }: FloatingSetupGuideProps) {
   const t = useTranslations("setupGuide");
   const { accounts, isLoading: accountsLoading } = useAccounts();
-  const { strategies, isLoading: agentsLoading } = useStrategies();
+  const { agents, isLoading: agentsLoading } = useAgents();
   const { models, isLoading: modelsLoading } = useModels();
+  const { strategies, isLoading: strategiesLoading } = useStrategies();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDismissed, setIsDismissed] = useState(true); // Default to true to prevent flash
@@ -52,21 +55,15 @@ export function FloatingSetupGuide({ className }: FloatingSetupGuideProps) {
     setIsDismissed(dismissed === "true");
   }, []);
 
-  const isLoading = accountsLoading || agentsLoading || modelsLoading;
+  const isLoading = accountsLoading || agentsLoading || modelsLoading || strategiesLoading;
 
   const hasAccounts = accounts.length > 0;
-  const hasAgents = strategies.length > 0;
+  const hasAgents = agents.length > 0;
   const hasModels = models.length > 0;
+  const hasStrategies = (strategies ?? []).length > 0;
 
+  // New flow: Models -> Strategy -> Agent, Account is optional (for live trading)
   const steps: SetupStep[] = [
-    {
-      id: "account",
-      titleKey: "steps.account.title",
-      descKey: "steps.account.desc",
-      href: "/accounts/new",
-      icon: Wallet,
-      isComplete: hasAccounts,
-    },
     {
       id: "models",
       titleKey: "steps.models.title",
@@ -76,12 +73,29 @@ export function FloatingSetupGuide({ className }: FloatingSetupGuideProps) {
       isComplete: hasModels,
     },
     {
+      id: "strategy",
+      titleKey: "steps.strategy.title",
+      descKey: "steps.strategy.desc",
+      href: "/strategies/new",
+      icon: Lightbulb,
+      isComplete: hasStrategies,
+    },
+    {
       id: "agent",
       titleKey: "steps.agent.title",
       descKey: "steps.agent.desc",
       href: "/agents/new",
       icon: Bot,
       isComplete: hasAgents,
+    },
+    {
+      id: "account",
+      titleKey: "steps.account.title",
+      descKey: "steps.account.desc",
+      href: "/accounts/new",
+      icon: Wallet,
+      isComplete: hasAccounts,
+      isOptional: true,
     },
   ];
 

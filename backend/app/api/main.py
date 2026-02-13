@@ -17,7 +17,7 @@ from ..core.config import get_settings
 from ..db.database import close_db, init_db
 from ..services.redis_service import close_redis, get_redis_service
 from ..traders.exchange_pool import ExchangePool
-from .routes import accounts, auth, backtest, competition, crypto, dashboard, data, decisions, metrics, models, notifications, providers, quant_strategies, strategies, system, workers, ws
+from .routes import accounts, agents, auth, backtest, competition, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
 from ..monitoring.middleware import setup_prometheus_middleware
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.sentry import init_sentry
@@ -224,7 +224,7 @@ def create_app() -> FastAPI:
     app.include_router(crypto.router, prefix="/api/v1")
     app.include_router(accounts.router, prefix="/api/v1")
     app.include_router(strategies.router, prefix="/api/v1")
-    app.include_router(quant_strategies.router, prefix="/api/v1")
+    app.include_router(agents.router, prefix="/api/v1")
     app.include_router(decisions.router, prefix="/api/v1")
     app.include_router(backtest.router, prefix="/api/v1")
     app.include_router(competition.router, prefix="/api/v1")
@@ -246,7 +246,7 @@ def create_app() -> FastAPI:
         app.include_router(crypto.router, prefix="/api", include_in_schema=False)
         app.include_router(accounts.router, prefix="/api", include_in_schema=False)
         app.include_router(strategies.router, prefix="/api", include_in_schema=False)
-        app.include_router(quant_strategies.router, prefix="/api", include_in_schema=False)
+        app.include_router(agents.router, prefix="/api", include_in_schema=False)
         app.include_router(decisions.router, prefix="/api", include_in_schema=False)
         app.include_router(backtest.router, prefix="/api", include_in_schema=False)
         app.include_router(competition.router, prefix="/api", include_in_schema=False)

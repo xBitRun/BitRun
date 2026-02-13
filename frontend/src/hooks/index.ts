@@ -5,17 +5,31 @@
 // Mobile detection
 export { useIsMobile } from './use-mobile';
 
-// Data hooks
+// Strategy hooks (v2 - unified templates)
 export {
   useStrategies,
   useStrategy,
   useCreateStrategy,
   useUpdateStrategy,
   useDeleteStrategy,
-  useUpdateStrategyStatus,
-  useActiveStrategiesCount,
+  useForkStrategy,
+  useMarketplaceStrategies,
 } from './use-strategies';
 
+// Agent hooks (execution instances)
+export {
+  useAgents,
+  useAgent,
+  useCreateAgent,
+  useUpdateAgent,
+  useDeleteAgent,
+  useUpdateAgentStatus,
+  useTriggerAgent,
+  useAgentPositions,
+  useActiveAgentsCount,
+} from './use-agents';
+
+// Account hooks
 export {
   useAccounts,
   useAccount,
@@ -27,15 +41,19 @@ export {
   useTotalEquity,
 } from './use-accounts';
 
+// Decision hooks
 export {
   useRecentDecisions,
+  useAgentDecisions,
   useStrategyDecisions,
   useDecision,
+  useAgentDecisionStats,
   useDecisionStats,
   useLatestDecision,
 } from './use-decisions';
 export type { DecisionFilters } from './use-decisions';
 
+// Backtest hooks
 export {
   useRunBacktest,
   useQuickBacktest,
@@ -87,7 +105,7 @@ export { useLeaderboard } from './use-competition';
 // System hooks
 export { useOutboundIP } from './use-system';
 
-// Quant Strategies hooks
+// Quant Strategies hooks (deprecated - use agents + strategies)
 export {
   useQuantStrategies,
   useQuantStrategy,

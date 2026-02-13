@@ -1,30 +1,49 @@
 /**
  * Quant Strategies Hooks
  *
- * SWR hooks for quant strategy data fetching and mutations.
+ * @deprecated MIGRATION GUIDE - Replace with unified agent/strategy hooks:
+ *
+ * | Old (deprecated)              | New                                  |
+ * |-------------------------------|--------------------------------------|
+ * | useQuantStrategies()          | useAgents()                          |
+ * | useQuantStrategy(id)          | useAgent(id)                         |
+ * | useCreateQuantStrategy()      | useCreateStrategy() + useCreateAgent()|
+ * | useUpdateQuantStrategy(id)    | useUpdateAgent(id)                   |
+ * | useDeleteQuantStrategy(id)    | useDeleteAgent(id)                   |
+ * | useUpdateQuantStrategyStatus()| useUpdateAgentStatus(id)             |
+ *
+ * All hooks above are re-exported from '@/hooks/index.ts'.
+ * The quantStrategies i18n namespace is retained for grid/dca/rsi
+ * parameter labels; full removal is planned for Phase 2.
+ *
+ * This backward-compat layer delegates to the agents API.
  */
 
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
-import { quantStrategiesApi } from '@/lib/api';
+import { agentsApi } from '@/lib/api';
 import type {
-  QuantStrategyApiResponse,
-  CreateQuantStrategyRequest,
-  UpdateQuantStrategyRequest,
+  AgentResponse,
+  UpdateAgentRequest,
 } from '@/lib/api';
-import type { StrategyStatus } from '@/types';
+import type { AgentStatus, StrategyType } from '@/types';
+
+// Re-export for backward compat
+export type QuantStrategyApiResponse = AgentResponse;
+export type CreateQuantStrategyRequest = never;
+export type UpdateQuantStrategyRequest = UpdateAgentRequest;
 
 // Keys
-const QUANT_STRATEGIES_KEY = '/quant-strategies';
-const quantStrategyKey = (id: string) => `/quant-strategies/${id}`;
+const QUANT_STRATEGIES_KEY = '/agents?quant';
+const quantStrategyKey = (id: string) => `/agents/${id}`;
 
 /**
- * Fetch all quant strategies.
+ * @deprecated Use useAgents instead.
  */
 export function useQuantStrategies() {
-  const swr = useSWR<QuantStrategyApiResponse[]>(
+  const swr = useSWR<AgentResponse[]>(
     QUANT_STRATEGIES_KEY,
-    () => quantStrategiesApi.list(),
+    () => agentsApi.list({ strategy_type: 'grid' as StrategyType }),
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
@@ -38,12 +57,12 @@ export function useQuantStrategies() {
 }
 
 /**
- * Fetch single quant strategy
+ * @deprecated Use useAgent instead.
  */
 export function useQuantStrategy(id: string | null) {
-  return useSWR<QuantStrategyApiResponse>(
+  return useSWR<AgentResponse>(
     id ? quantStrategyKey(id) : null,
-    () => quantStrategiesApi.get(id!),
+    () => agentsApi.get(id!),
     {
       revalidateOnFocus: false,
     }
@@ -51,49 +70,49 @@ export function useQuantStrategy(id: string | null) {
 }
 
 /**
- * Create quant strategy mutation
+ * @deprecated Use useCreateAgent + useCreateStrategy instead.
  */
 export function useCreateQuantStrategy() {
-  return useSWRMutation<QuantStrategyApiResponse, Error, string, CreateQuantStrategyRequest>(
+  return useSWRMutation<AgentResponse, Error, string, Record<string, unknown>>(
     QUANT_STRATEGIES_KEY,
-    async (_, { arg }) => {
-      return quantStrategiesApi.create(arg);
+    async () => {
+      throw new Error('useCreateQuantStrategy is deprecated. Use useCreateAgent + useCreateStrategy instead.');
     }
   );
 }
 
 /**
- * Update quant strategy mutation
+ * @deprecated Use useUpdateAgent instead.
  */
 export function useUpdateQuantStrategy(id: string) {
-  return useSWRMutation<QuantStrategyApiResponse, Error, string, UpdateQuantStrategyRequest>(
+  return useSWRMutation<AgentResponse, Error, string, UpdateAgentRequest>(
     quantStrategyKey(id),
     async (_, { arg }) => {
-      return quantStrategiesApi.update(id, arg);
+      return agentsApi.update(id, arg);
     }
   );
 }
 
 /**
- * Delete quant strategy mutation
+ * @deprecated Use useDeleteAgent instead.
  */
 export function useDeleteQuantStrategy(id: string) {
   return useSWRMutation<void, Error, string>(
     quantStrategyKey(id),
     async () => {
-      return quantStrategiesApi.delete(id);
+      return agentsApi.delete(id);
     }
   );
 }
 
 /**
- * Update quant strategy status mutation
+ * @deprecated Use useUpdateAgentStatus instead.
  */
 export function useUpdateQuantStrategyStatus(id: string) {
-  return useSWRMutation<QuantStrategyApiResponse, Error, string, StrategyStatus>(
+  return useSWRMutation<AgentResponse, Error, string, AgentStatus>(
     quantStrategyKey(id),
     async (_, { arg }) => {
-      return quantStrategiesApi.updateStatus(id, arg);
+      return agentsApi.updateStatus(id, arg);
     }
   );
 }

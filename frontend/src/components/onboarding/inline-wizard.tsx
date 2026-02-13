@@ -862,16 +862,19 @@ export function InlineOnboardingWizard({ onComplete }: InlineOnboardingWizardPro
   const handleLaunch = async () => {
     setIsLoading(true);
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { strategiesApi, agentsApi } = await import("@/lib/api");
 
-      await strategiesApi.create({
+      const symbols = state.tradingPairs.map((p) => p.replace("/", ""));
+      const tradingMode = state.tradingMode === "moderate" ? "conservative" : state.tradingMode;
+
+      // Step 1: Create strategy template
+      const strategy = await strategiesApi.create({
+        type: "ai",
         name: state.agentName,
-        prompt: state.prompt,
-        trading_mode:
-          state.tradingMode === "moderate" ? "conservative" : state.tradingMode,
-        symbols: state.tradingPairs.map((p) => p.replace("/", "")),
-        account_id: accountId!,
+        symbols,
         config: {
+          prompt: state.prompt,
+          trading_mode: tradingMode,
           risk_controls: {
             maxLeverage: state.maxLeverage,
             maxPositionRatio: state.maxPositionSize / 100,
@@ -879,6 +882,14 @@ export function InlineOnboardingWizard({ onComplete }: InlineOnboardingWizardPro
             minRiskRewardRatio: state.confidenceThreshold,
           },
         },
+      });
+
+      // Step 2: Create agent binding
+      await agentsApi.create({
+        name: state.agentName,
+        strategy_id: strategy.id,
+        execution_mode: "live",
+        account_id: accountId!,
       });
 
       // Reset state and call onComplete

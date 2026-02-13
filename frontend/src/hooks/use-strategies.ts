@@ -1,7 +1,9 @@
 /**
- * Strategies Hooks
+ * Strategies Hooks (v2 - unified strategy templates)
  * 
  * SWR hooks for strategy data fetching and mutations.
+ * Strategy is a pure logic template - no runtime bindings.
+ * For execution instances, see use-agents.ts.
  */
 
 import useSWR from 'swr';
@@ -12,20 +14,21 @@ import type {
   CreateStrategyRequest, 
   UpdateStrategyRequest 
 } from '@/lib/api';
-import type { StrategyStatus } from '@/types';
+import type { StrategyType, StrategyVisibility } from '@/types';
 
 // Keys
 const STRATEGIES_KEY = '/strategies';
 const strategyKey = (id: string) => `/strategies/${id}`;
+const MARKETPLACE_KEY = '/strategies/marketplace';
 
 /**
- * Fetch all strategies.
- * Prefer `strategies` (always array) and `refresh` for consistent list-page usage.
+ * Fetch all user strategies (templates).
  */
-export function useStrategies() {
+export function useStrategies(params?: { type_filter?: StrategyType; visibility?: StrategyVisibility }) {
+  const key = params ? [STRATEGIES_KEY, params] : STRATEGIES_KEY;
   const swr = useSWR<StrategyResponse[]>(
-    STRATEGIES_KEY,
-    () => strategiesApi.list(),
+    key,
+    () => strategiesApi.list(params),
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
@@ -88,21 +91,40 @@ export function useDeleteStrategy(id: string) {
 }
 
 /**
- * Update strategy status mutation
+ * Fork strategy mutation
  */
-export function useUpdateStrategyStatus(id: string) {
-  return useSWRMutation<StrategyResponse, Error, string, StrategyStatus>(
-    strategyKey(id),
-    async (_, { arg }) => {
-      return strategiesApi.updateStatus(id, arg);
+export function useForkStrategy() {
+  return useSWRMutation<StrategyResponse, Error, string, string>(
+    STRATEGIES_KEY,
+    async (_, { arg: strategyId }) => {
+      return strategiesApi.fork(strategyId);
     }
   );
 }
 
 /**
- * Get active strategies count
+ * Browse marketplace strategies (public)
  */
-export function useActiveStrategiesCount() {
-  const { data } = useStrategies();
-  return data?.filter(s => s.status === 'active').length ?? 0;
+export function useMarketplaceStrategies(params?: {
+  type_filter?: StrategyType;
+  category?: string;
+  search?: string;
+  sort_by?: 'popular' | 'recent';
+  limit?: number;
+  offset?: number;
+}) {
+  const key = params ? [MARKETPLACE_KEY, params] : MARKETPLACE_KEY;
+  const swr = useSWR<StrategyResponse[]>(
+    key,
+    () => strategiesApi.marketplace(params),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
+    }
+  );
+  return {
+    ...swr,
+    strategies: swr.data ?? [],
+    refresh: swr.mutate,
+  };
 }

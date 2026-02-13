@@ -1,4 +1,8 @@
-"""Decision record routes"""
+"""Decision record routes
+
+Decisions are linked to Agents (not Strategies) because decisions are
+made by specific agent instances with specific model/account bindings.
+"""
 
 import uuid
 from typing import Optional
@@ -7,8 +11,8 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
+from ...db.repositories.agent import AgentRepository
 from ...db.repositories.decision import DecisionRepository
-from ...db.repositories.strategy import StrategyRepository
 
 router = APIRouter(prefix="/decisions", tags=["Decisions"])
 
@@ -18,7 +22,7 @@ router = APIRouter(prefix="/decisions", tags=["Decisions"])
 class DecisionResponse(BaseModel):
     """Decision record response"""
     id: str
-    strategy_id: str
+    agent_id: str
     timestamp: str
 
     chain_of_thought: str
@@ -76,20 +80,16 @@ async def get_recent_decisions(
     user_id: CurrentUserDep,
     limit: int = 20,
 ):
-    """
-    Get recent decisions across all user's strategies.
-
-    Returns newest first.
-    """
+    """Get recent decisions across all user's agents."""
     repo = DecisionRepository(db)
     decisions = await repo.get_recent(uuid.UUID(user_id), limit=limit)
 
     return [_decision_to_response(d) for d in decisions]
 
 
-@router.get("/strategy/{strategy_id}", response_model=PaginatedDecisionResponse)
-async def get_strategy_decisions(
-    strategy_id: str,
+@router.get("/agent/{agent_id}", response_model=PaginatedDecisionResponse)
+async def get_agent_decisions(
+    agent_id: str,
     db: DbSessionDep,
     user_id: CurrentUserDep,
     limit: int = 10,
@@ -98,33 +98,31 @@ async def get_strategy_decisions(
     action: Optional[str] = None,
 ):
     """
-    Get decisions for a specific strategy (paginated).
-
-    Returns newest first.
+    Get decisions for a specific agent (paginated, newest first).
 
     - execution_filter: "all" | "executed" | "skipped"
     - action: filter by action type (e.g. "open_long", "hold")
     """
-    # Verify user owns the strategy
-    strategy_repo = StrategyRepository(db)
-    strategy = await strategy_repo.get_by_id(uuid.UUID(strategy_id), uuid.UUID(user_id))
-    if not strategy:
+    # Verify user owns the agent
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+    if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            detail="Agent not found"
         )
 
     repo = DecisionRepository(db)
-    sid = uuid.UUID(strategy_id)
+    aid = uuid.UUID(agent_id)
 
-    decisions = await repo.get_by_strategy(
-        sid,
+    decisions = await repo.get_by_agent(
+        aid,
         limit=limit,
         offset=offset,
         execution_filter=execution_filter,
         action_filter=action,
     )
-    total = await repo.count_by_strategy(sid, execution_filter=execution_filter, action_filter=action)
+    total = await repo.count_by_agent(aid, execution_filter=execution_filter, action_filter=action)
 
     return PaginatedDecisionResponse(
         items=[_decision_to_response(d) for d in decisions],
@@ -134,26 +132,53 @@ async def get_strategy_decisions(
     )
 
 
+@router.get("/agent/{agent_id}/stats", response_model=DecisionStatsResponse)
+async def get_agent_decision_stats(
+    agent_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """Get decision statistics for an agent"""
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    repo = DecisionRepository(db)
+    stats = await repo.get_stats(uuid.UUID(agent_id))
+
+    return DecisionStatsResponse(**stats)
+
+
+# Backward compatibility: keep strategy/{strategy_id} routes that
+# redirect to agent routes. These will be removed in a future version.
+@router.get("/strategy/{strategy_id}", response_model=PaginatedDecisionResponse)
+async def get_strategy_decisions_compat(
+    strategy_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    limit: int = 10,
+    offset: int = 0,
+    execution_filter: str = "all",
+    action: Optional[str] = None,
+):
+    """DEPRECATED: Use /decisions/agent/{agent_id} instead."""
+    return await get_agent_decisions(
+        strategy_id, db, user_id, limit, offset, execution_filter, action
+    )
+
+
 @router.get("/strategy/{strategy_id}/stats", response_model=DecisionStatsResponse)
-async def get_strategy_decision_stats(
+async def get_strategy_decision_stats_compat(
     strategy_id: str,
     db: DbSessionDep,
     user_id: CurrentUserDep,
 ):
-    """Get decision statistics for a strategy"""
-    # Verify user owns the strategy
-    strategy_repo = StrategyRepository(db)
-    strategy = await strategy_repo.get_by_id(uuid.UUID(strategy_id), uuid.UUID(user_id))
-    if not strategy:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
-        )
-
-    repo = DecisionRepository(db)
-    stats = await repo.get_stats(uuid.UUID(strategy_id))
-
-    return DecisionStatsResponse(**stats)
+    """DEPRECATED: Use /decisions/agent/{agent_id}/stats instead."""
+    return await get_agent_decision_stats(strategy_id, db, user_id)
 
 
 @router.get("/{decision_id}", response_model=DecisionResponse)
@@ -172,15 +197,6 @@ async def get_decision(
             detail="Decision not found"
         )
 
-    # Verify user owns the strategy
-    strategy_repo = StrategyRepository(db)
-    strategy = await strategy_repo.get_by_id(decision.strategy_id, uuid.UUID(user_id))
-    if not strategy:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Decision not found"
-        )
-
     return _decision_to_response(decision)
 
 
@@ -192,7 +208,7 @@ def _decision_to_response(decision) -> DecisionResponse:
     timestamp = ts.isoformat() + ("Z" if ts.tzinfo is None else "")
     return DecisionResponse(
         id=str(decision.id),
-        strategy_id=str(decision.strategy_id),
+        agent_id=str(decision.agent_id),
         timestamp=timestamp,
         chain_of_thought=decision.chain_of_thought,
         market_assessment=decision.market_assessment,

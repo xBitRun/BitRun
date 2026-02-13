@@ -8,6 +8,7 @@ import {
   Grid3X3,
   ArrowDownUp,
   Activity,
+  Bot,
   Check,
   Loader2,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,36 +25,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useAccounts } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import type { QuantStrategyType } from "@/types";
+import type { StrategyType } from "@/types";
 
 const STRATEGY_TYPES: {
-  type: QuantStrategyType;
+  type: StrategyType;
   icon: typeof Grid3X3;
   color: string;
 }[] = [
+  { type: "ai", icon: Bot, color: "text-purple-500 bg-purple-500/10 border-purple-500/30" },
   { type: "grid", icon: Grid3X3, color: "text-blue-500 bg-blue-500/10 border-blue-500/30" },
   { type: "dca", icon: ArrowDownUp, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" },
   { type: "rsi", icon: Activity, color: "text-violet-500 bg-violet-500/10 border-violet-500/30" },
 ];
 
-export default function CreateQuantStrategyPage() {
+export default function CreateStrategyPage() {
   const t = useTranslations("quantStrategies");
-  const tCap = useTranslations("strategyStudio.capitalAllocation");
   const router = useRouter();
   const toast = useToast();
-  const { accounts } = useAccounts();
 
   const [step, setStep] = useState(0); // 0: type, 1: basic info, 2: params
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [selectedType, setSelectedType] = useState<QuantStrategyType | null>(null);
+  const [selectedType, setSelectedType] = useState<StrategyType | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [symbol, setSymbol] = useState("BTC");
-  const [accountId, setAccountId] = useState("");
+
+  // AI-specific state
+  const [aiSymbols, setAiSymbols] = useState("BTC, ETH");
+  const [aiTradingMode, setAiTradingMode] = useState<string>("balanced");
+  const [aiPrompt, setAiPrompt] = useState("");
 
   // Grid params
   const [gridUpperPrice, setGridUpperPrice] = useState("50000");
@@ -68,11 +72,6 @@ export default function CreateQuantStrategyPage() {
   const [dcaTotalBudget, setDcaTotalBudget] = useState("0");
   const [dcaMaxOrders, setDcaMaxOrders] = useState("0");
 
-  // Capital allocation
-  const [capitalMode, setCapitalMode] = useState<"none" | "fixed" | "percent">("none");
-  const [allocatedCapital, setAllocatedCapital] = useState("");
-  const [allocatedCapitalPercent, setAllocatedCapitalPercent] = useState("");
-
   // RSI params
   const [rsiPeriod, setRsiPeriod] = useState("14");
   const [rsiOverbought, setRsiOverbought] = useState("70");
@@ -81,8 +80,15 @@ export default function CreateQuantStrategyPage() {
   const [rsiTimeframe, setRsiTimeframe] = useState("1h");
   const [rsiLeverage, setRsiLeverage] = useState("1");
 
+  const isAiType = selectedType === "ai";
+
   const buildConfig = (): Record<string, unknown> => {
     switch (selectedType) {
+      case "ai":
+        return {
+          trading_mode: aiTradingMode,
+          custom_prompt: aiPrompt || undefined,
+        };
       case "grid":
         return {
           upper_price: parseFloat(gridUpperPrice),
@@ -113,30 +119,49 @@ export default function CreateQuantStrategyPage() {
     }
   };
 
+  const getSymbols = (): string[] => {
+    if (isAiType) {
+      return aiSymbols
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+    }
+    return [symbol.toUpperCase()];
+  };
+
   const handleSubmit = async () => {
-    if (!selectedType || !name || !symbol) return;
+    if (!selectedType || !name) return;
+    const symbols = getSymbols();
+    if (symbols.length === 0) return;
 
     setIsSubmitting(true);
     try {
-      const { quantStrategiesApi } = await import("@/lib/api");
-      await quantStrategiesApi.create({
+      const { strategiesApi } = await import("@/lib/api");
+      const strategy = await strategiesApi.create({
+        type: selectedType,
         name,
         description,
-        strategy_type: selectedType,
-        symbol: symbol.toUpperCase(),
-        account_id: accountId || undefined,
+        symbols,
         config: buildConfig(),
-        allocated_capital: capitalMode === "fixed" ? parseFloat(allocatedCapital) : undefined,
-        allocated_capital_percent: capitalMode === "percent" ? parseFloat(allocatedCapitalPercent) / 100 : undefined,
       });
       toast.success(t("toast.createSuccess"));
-      router.push("/strategies");
+      // Redirect to the agent wizard with this strategy pre-selected
+      router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : t("toast.createFailed");
       toast.error(t("toast.createFailed"), message);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const canProceedStep1 = () => {
+    if (!name) return false;
+    if (isAiType) {
+      const symbols = getSymbols();
+      return symbols.length > 0;
+    }
+    return !!symbol;
   };
 
   return (
@@ -156,7 +181,7 @@ export default function CreateQuantStrategyPage() {
       {step === 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">{t("create.selectType")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {STRATEGY_TYPES.map(({ type, icon: Icon, color }) => (
               <Card
                 key={type}
@@ -221,105 +246,83 @@ export default function CreateQuantStrategyPage() {
                   placeholder={t("create.descriptionPlaceholder")}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>{t("create.symbol")}</Label>
-                <Input
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  placeholder={t("create.symbolPlaceholder")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("create.account")}</Label>
-                <Select value={accountId} onValueChange={setAccountId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("create.accountPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.length === 0 ? (
-                      <SelectItem value="none" disabled>{t("create.noAccounts")}</SelectItem>
-                    ) : (
-                      accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} ({acc.exchange})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Capital Allocation */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{tCap("title")}</CardTitle>
-              <CardDescription>{tCap("description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>{tCap("mode")}</Label>
-                <Select value={capitalMode} onValueChange={(v) => setCapitalMode(v as "none" | "fixed" | "percent")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{tCap("modeNone")}</SelectItem>
-                    <SelectItem value="fixed">{tCap("modeFixed")}</SelectItem>
-                    <SelectItem value="percent">{tCap("modePercent")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {capitalMode === "fixed" && (
+              {isAiType ? (
+                <>
+                  {/* AI: multi-symbol input */}
+                  <div className="space-y-2">
+                    <Label>{t("create.symbols")}</Label>
+                    <Input
+                      value={aiSymbols}
+                      onChange={(e) => setAiSymbols(e.target.value)}
+                      placeholder={t("create.symbolsPlaceholder")}
+                    />
+                  </div>
+                  {/* AI: trading mode */}
+                  <div className="space-y-2">
+                    <Label>{t("create.tradingMode")}</Label>
+                    <Select value={aiTradingMode} onValueChange={setAiTradingMode}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="conservative">Conservative</SelectItem>
+                        <SelectItem value="balanced">Balanced</SelectItem>
+                        <SelectItem value="aggressive">Aggressive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* AI: prompt */}
+                  <div className="space-y-2">
+                    <Label>{t("create.prompt")}</Label>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder={t("create.promptPlaceholder")}
+                      rows={5}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Quant: single symbol */
                 <div className="space-y-2">
-                  <Label>{tCap("fixedAmount")}</Label>
+                  <Label>{t("create.symbol")}</Label>
                   <Input
-                    type="number"
-                    value={allocatedCapital}
-                    onChange={(e) => setAllocatedCapital(e.target.value)}
-                    placeholder={tCap("fixedAmountPlaceholder")}
-                    min="0"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    placeholder={t("create.symbolPlaceholder")}
                   />
                 </div>
               )}
-
-              {capitalMode === "percent" && (
-                <div className="space-y-2">
-                  <Label>{tCap("percentAmount")}</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={allocatedCapitalPercent}
-                      onChange={(e) => setAllocatedCapitalPercent(e.target.value)}
-                      placeholder="30"
-                      min="1"
-                      max="100"
-                    />
-                    <span className="text-muted-foreground text-sm shrink-0">%</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{tCap("percentAmountTooltip")}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
+
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(0)}>
               {t("create.back")}
             </Button>
             <Button
-              onClick={() => setStep(2)}
-              disabled={!name || !symbol}
+              onClick={() => {
+                if (isAiType) {
+                  // AI strategies skip params step, submit directly
+                  handleSubmit();
+                } else {
+                  setStep(2);
+                }
+              }}
+              disabled={!canProceedStep1() || (isAiType && isSubmitting)}
             >
-              {t("create.next")}
+              {isAiType && isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              {isAiType ? t("create.submit") : t("create.next")}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Strategy Parameters */}
-      {step === 2 && (
+      {/* Step 2: Strategy Parameters (quant only) */}
+      {step === 2 && !isAiType && (
         <div className="space-y-4">
           <Card>
             <CardHeader>

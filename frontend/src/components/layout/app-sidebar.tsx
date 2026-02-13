@@ -32,9 +32,9 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    titleKey: "competition",
-    href: "/competition",
-    icon: Trophy,
+    titleKey: "strategies",
+    href: "/strategies",
+    icon: Sigma,
   },
   {
     titleKey: "agents",
@@ -42,9 +42,9 @@ const navItems = [
     icon: Bot,
   },
   {
-    titleKey: "strategies",
-    href: "/strategies",
-    icon: Sigma,
+    titleKey: "competition",
+    href: "/competition",
+    icon: Trophy,
   },
   {
     titleKey: "accounts",

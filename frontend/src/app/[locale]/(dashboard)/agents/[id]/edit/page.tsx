@@ -30,7 +30,6 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { StrategyStudioTabs, StrategyPresetSelector } from "@/components/strategy-studio";
 import {
-  useStrategy,
   useAccount,
   useUserModels,
   groupModelsByProvider,
@@ -38,6 +37,7 @@ import {
   useStrategyStudio,
   apiResponseToConfig,
 } from "@/hooks";
+import { useAgent } from "@/hooks/use-agents";
 import type { TradingMode, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
 import { getStrategyPreset, DEFAULT_PROMPT_SECTIONS } from "@/types";
 
@@ -68,8 +68,8 @@ export default function EditAgentPage() {
   const { mutate } = useSWRConfig();
   const agentId = params.id as string;
 
-  const { data: agent, isLoading, error } = useStrategy(agentId);
-  const { data: account } = useAccount(agent?.account_id || null);
+  const { data: agent, isLoading, error } = useAgent(agentId);
+  const { data: account } = useAccount(agent?.account_id ?? null);
   const { models } = useUserModels();
   const groupedModels = groupModelsByProvider(models);
 
@@ -135,7 +135,9 @@ export default function EditAgentPage() {
   // Populate form when agent data loads
   useEffect(() => {
     if (agent && !isInitialized) {
-      const convertedConfig = apiResponseToConfig(agent as unknown as Record<string, unknown>);
+      // Agent response has strategy config inline; reconstruct for strategy studio
+      const agentAny = agent as unknown as Record<string, unknown>;
+      const convertedConfig = apiResponseToConfig(agentAny);
       // Use stored language if available, otherwise fall back to current locale
       const agentLanguage = convertedConfig.language || (locale === "zh" ? "zh" : "en");
       setConfig((prev) => ({
@@ -143,11 +145,11 @@ export default function EditAgentPage() {
         ...convertedConfig,
         language: agentLanguage,
         accountId: agent.account_id || "",
+        aiModel: agent.ai_model || "",
       }) as StrategyStudioConfig);
 
       // Restore preset state from stored config
-      const agentConfig = agent.config as Record<string, unknown> | undefined;
-      const storedPreset = agentConfig?.preset as string | undefined;
+      const storedPreset = (agentAny.config as Record<string, unknown> | undefined)?.preset as string | undefined;
       if (storedPreset && storedPreset !== "custom") {
         const parts = storedPreset.split("_");
         if (parts.length === 2) {
@@ -169,7 +171,7 @@ export default function EditAgentPage() {
     setSubmitError(null);
 
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { agentsApi, strategiesApi } = await import("@/lib/api");
 
       if (!config.name.trim()) {
         throw new Error("Agent name is required");
@@ -187,18 +189,27 @@ export default function EditAgentPage() {
       configObj.preset = isCustomPreset
         ? "custom"
         : `${selectedRiskProfile}_${selectedTimeHorizon}`;
+      configObj.prompt = apiData.prompt as string;
+      configObj.trading_mode = apiData.trading_mode as string;
 
-      await strategiesApi.update(agent.id, {
+      // Update the strategy template config if agent has a strategy
+      if (agent.strategy_id) {
+        await strategiesApi.update(agent.strategy_id, {
+          name: apiData.name as string,
+          description: apiData.description as string,
+          symbols: (apiData.config as Record<string, unknown>).symbols as string[] || [],
+          config: configObj,
+        });
+      }
+
+      // Update agent-specific fields
+      await agentsApi.update(agent.id, {
         name: apiData.name as string,
-        description: apiData.description as string,
-        prompt: apiData.prompt as string,
-        trading_mode: apiData.trading_mode as TradingMode,
         ai_model: apiData.ai_model as string,
-        config: configObj,
       });
 
       toast.success(tEdit("success") || "Agent updated successfully");
-      await mutate(`/strategies/${agent.id}`);
+      await mutate(`/agents/${agent.id}`);
       router.push(`/agents/${agent.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update agent";

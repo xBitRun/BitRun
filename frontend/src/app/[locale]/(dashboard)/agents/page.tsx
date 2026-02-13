@@ -16,6 +16,8 @@ import {
   Square,
   Pencil,
   RotateCcw,
+  Zap,
+  Eye,
 } from "lucide-react";
 import {
   ListPageSkeleton,
@@ -41,12 +43,12 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useStrategies } from "@/hooks";
+import { useAgents } from "@/hooks/use-agents";
 import { useToast } from "@/components/ui/toast";
-import type { StrategyResponse } from "@/lib/api";
-import type { StrategyStatus, TradingMode, Timeframe, TimeHorizon } from "@/types";
+import type { AgentResponse } from "@/lib/api";
+import type { AgentStatus } from "@/types";
 
-function getStatusColor(status: StrategyStatus) {
+function getStatusColor(status: AgentStatus) {
   switch (status) {
     case "active":
       return "bg-[var(--profit)]/20 text-[var(--profit)]";
@@ -56,68 +58,37 @@ function getStatusColor(status: StrategyStatus) {
       return "bg-muted text-muted-foreground";
     case "error":
       return "bg-[var(--loss)]/20 text-[var(--loss)]";
+    case "warning":
+      return "bg-[var(--warning)]/20 text-[var(--warning)]";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-// Map trading_mode to a risk-profile style color
-function getRiskProfileColor(mode: TradingMode) {
-  switch (mode) {
-    case "aggressive":
-      return "border-red-500/30 text-red-500";
-    case "balanced":
-      return "border-amber-500/30 text-amber-500";
-    case "conservative":
-      return "border-emerald-500/30 text-emerald-500";
-    default:
-      return "";
-  }
+function getExecutionModeColor(mode: string) {
+  return mode === "live"
+    ? "border-emerald-500/30 text-emerald-500"
+    : "border-amber-500/30 text-amber-500";
 }
 
-// Map trading_mode to a user-friendly risk profile label key
-function getRiskProfileLabelKey(mode: TradingMode): string {
-  switch (mode) {
-    case "aggressive":
-      return "aggressive";
-    case "balanced":
-      return "balanced";
-    case "conservative":
-    default:
-      return "conservative";
-  }
-}
-
-// Infer time horizon from stored timeframes array
-function inferTimeHorizon(timeframes: Timeframe[]): TimeHorizon {
-  if (!timeframes || timeframes.length === 0) return "swing";
-  const hasShort = timeframes.some((tf) => ["1m", "5m"].includes(tf));
-  const hasLong = timeframes.some((tf) => ["4h", "1d"].includes(tf));
-  const hasMid = timeframes.some((tf) => ["15m", "30m", "1h"].includes(tf));
-  // If the shortest timeframe is 1m/5m and no daily frames -> scalp
-  if (hasShort && !hasLong) return "scalp";
-  // If the longest is 4h/1d and no very short frames -> position
-  if (hasLong && !hasShort && !hasMid) return "position";
-  // Default -> swing
-  return "swing";
-}
-
-function getTimeHorizonColor(horizon: TimeHorizon) {
-  switch (horizon) {
-    case "scalp":
-      return "border-amber-500/30 text-amber-500";
-    case "swing":
+function getStrategyTypeColor(type: string | null | undefined) {
+  switch (type) {
+    case "ai":
       return "border-violet-500/30 text-violet-500";
-    case "position":
-      return "border-cyan-500/30 text-cyan-500";
+    case "grid":
+      return "border-blue-500/30 text-blue-500";
+    case "dca":
+      return "border-emerald-500/30 text-emerald-500";
+    case "rsi":
+      return "border-amber-500/30 text-amber-500";
     default:
-      return "";
+      return "border-muted-foreground/30 text-muted-foreground";
   }
 }
 
 interface AgentCardProps {
-  agent: StrategyResponse;
-  onStatusChange: (id: string, status: StrategyStatus) => void;
+  agent: AgentResponse;
+  onStatusChange: (id: string, status: AgentStatus) => void;
   onDelete: (id: string) => void;
   t: ReturnType<typeof useTranslations>;
 }
@@ -126,7 +97,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
-  const handleStatusChange = async (newStatus: StrategyStatus) => {
+  const handleStatusChange = async (newStatus: AgentStatus) => {
     setIsUpdating(true);
     try {
       await onStatusChange(agent.id, newStatus);
@@ -134,14 +105,6 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
       setIsUpdating(false);
     }
   };
-
-  const config = agent.config as Record<string, unknown>;
-  const riskControls = (config?.risk_controls as Record<string, number>) || {};
-  const maxLeverage = riskControls.max_leverage || 1;
-  const timeframes = (config?.timeframes as Timeframe[]) || [];
-  const timeHorizon = inferTimeHorizon(timeframes);
-  const preset = config?.preset as string | undefined;
-  const isCustomPreset = preset === "custom";
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors gap-3">
@@ -153,37 +116,33 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             </div>
             <div className="min-w-0">
               <CardTitle className="text-lg">{agent.name}</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge
                   variant="outline"
                   className={cn("text-xs", getStatusColor(agent.status))}
                 >
                   {t(`status.${agent.status}`)}
                 </Badge>
-                {isCustomPreset ? (
-                  <Badge variant="outline" className="text-xs">
-                    {t("mode.custom")}
+                {agent.strategy_type && (
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs", getStrategyTypeColor(agent.strategy_type))}
+                  >
+                    {agent.strategy_type.toUpperCase()}
                   </Badge>
-                ) : (
-                  <>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", getRiskProfileColor(agent.trading_mode))}
-                    >
-                      {t(`mode.${getRiskProfileLabelKey(agent.trading_mode)}`)}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", getTimeHorizonColor(timeHorizon))}
-                    >
-                      {t(`timeHorizon.${timeHorizon}`)}
-                    </Badge>
-                  </>
                 )}
+                <Badge
+                  variant="outline"
+                  className={cn("text-xs", getExecutionModeColor(agent.execution_mode))}
+                >
+                  {t(`executionMode.${agent.execution_mode}`)}
+                </Badge>
               </div>
-              <p className="text-sm text-muted-foreground truncate mt-1">
-                {agent.description || t("empty.noDescription")}
-              </p>
+              {agent.strategy_name && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {agent.strategy_name}
+                </p>
+              )}
             </div>
           </div>
           <DropdownMenu>
@@ -194,20 +153,24 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
+                <Link href={`/agents/${agent.id}`} className="flex items-center">
+                  <Eye className="w-4 h-4 mr-2" />
+                  {t("actions.viewDetails")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link href={`/agents/${agent.id}/edit`} className="flex items-center">
                   <Pencil className="w-4 h-4 mr-2" />
                   {t("actions.edit")}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>{t("actions.duplicate")}</DropdownMenuItem>
-              <DropdownMenuItem>{t("actions.viewDecisions")}</DropdownMenuItem>
               <DropdownMenuItem
-                className={agent.status === "stopped" ? "text-destructive" : "text-muted-foreground"}
-                disabled={agent.status !== "stopped"}
-                onClick={() => agent.status === "stopped" && onDelete(agent.id)}
+                className={["stopped", "draft"].includes(agent.status) ? "text-destructive" : "text-muted-foreground"}
+                disabled={!["stopped", "draft"].includes(agent.status)}
+                onClick={() => ["stopped", "draft"].includes(agent.status) && onDelete(agent.id)}
               >
                 {t("actions.delete")}
-                {agent.status !== "stopped" && (
+                {!["stopped", "draft"].includes(agent.status) && (
                   <span className="ml-1 text-xs">({t("actions.deleteRequireStopped")})</span>
                 )}
               </DropdownMenuItem>
@@ -220,39 +183,31 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
         <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/30">
           <div>
             <p className="text-xs text-muted-foreground">{t("stats.totalPL")}</p>
-            {agent.total_pnl !== undefined ? (
-              <p
-                className={cn(
-                  "font-mono font-semibold flex items-center gap-1",
-                  agent.total_pnl >= 0
-                    ? "text-[var(--profit)]"
-                    : "text-[var(--loss)]"
-                )}
-              >
-                {agent.total_pnl >= 0 ? (
-                  <TrendingUp className="w-3 h-3" />
-                ) : (
-                  <TrendingDown className="w-3 h-3" />
-                )}
-                ${Math.abs(agent.total_pnl).toLocaleString()}
-              </p>
-            ) : (
-              <p className="text-muted-foreground">—</p>
-            )}
+            <p
+              className={cn(
+                "font-mono font-semibold flex items-center gap-1",
+                agent.total_pnl >= 0
+                  ? "text-[var(--profit)]"
+                  : "text-[var(--loss)]"
+              )}
+            >
+              {agent.total_pnl >= 0 ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : (
+                <TrendingDown className="w-3 h-3" />
+              )}
+              ${Math.abs(agent.total_pnl).toLocaleString()}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t("stats.winRate")}</p>
-            {agent.win_rate !== undefined ? (
-              <p className="font-mono font-semibold">
-                {agent.win_rate.toFixed(1)}%
-              </p>
-            ) : (
-              <p className="text-muted-foreground">—</p>
-            )}
+            <p className="font-mono font-semibold">
+              {agent.win_rate.toFixed(1)}%
+            </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("stats.maxLeverage")}</p>
-            <p className="font-mono font-semibold">{maxLeverage}x</p>
+            <p className="text-xs text-muted-foreground">{t("stats.totalTrades")}</p>
+            <p className="font-mono font-semibold">{agent.total_trades}</p>
           </div>
         </div>
 
@@ -376,16 +331,14 @@ export default function AgentsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { strategies, error, isLoading, refresh } = useStrategies();
-
-  // Toast notifications
+  const { agents, error, isLoading, refresh } = useAgents();
   const toast = useToast();
 
   // Status update handler
-  const handleStatusChange = async (id: string, status: StrategyStatus) => {
+  const handleStatusChange = async (id: string, status: AgentStatus) => {
     try {
-      const { strategiesApi } = await import("@/lib/api");
-      await strategiesApi.updateStatus(id, status);
+      const { agentsApi } = await import("@/lib/api");
+      await agentsApi.updateStatus(id, status);
       refresh();
       const statusKey = status === 'active' ? 'started' : status;
       toast.success(t(`toast.${statusKey}`));
@@ -397,11 +350,9 @@ export default function AgentsPage() {
 
   // Delete handler
   const handleDelete = async (id: string) => {
-    if (!confirm(t("confirmDelete"))) return;
-
     try {
-      const { strategiesApi } = await import("@/lib/api");
-      await strategiesApi.delete(id);
+      const { agentsApi } = await import("@/lib/api");
+      await agentsApi.delete(id);
       refresh();
       toast.success(t("toast.deleteSuccess"));
     } catch (err) {
@@ -410,17 +361,17 @@ export default function AgentsPage() {
     }
   };
 
-  const filteredAgents = strategies.filter((a) => {
+  const filteredAgents = agents.filter((a) => {
     const matchesFilter = filter === "all" || a.status === filter;
     const matchesSearch = a.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const hasNoAgents = !isLoading && !error && strategies.length === 0;
+  const hasNoAgents = !isLoading && !error && agents.length === 0;
 
   return (
     <div className="space-y-6">
-      {/* Page Header - always show CTA */}
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
@@ -447,7 +398,7 @@ export default function AgentsPage() {
         </CardContent>
       </Card>
 
-      {/* Filters - only when has data */}
+      {/* Filters */}
       {!hasNoAgents && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
@@ -480,13 +431,13 @@ export default function AgentsPage() {
       {/* Error */}
       {error && (
         <ListPageError
-          message={error.message || t("error.loadFailed")}
+          message={error.message || t("toast.updateFailed")}
           onRetry={() => refresh()}
-          retryLabel={t("retry")}
+          retryLabel={t("actions.restart")}
         />
       )}
 
-      {/* Empty - no agents at all */}
+      {/* Empty */}
       {hasNoAgents && (
         <ListPageEmpty
           icon={Bot}
@@ -498,8 +449,8 @@ export default function AgentsPage() {
         />
       )}
 
-      {/* Agent Cards + Add card when has data */}
-      {!isLoading && !error && strategies.length > 0 && (
+      {/* Agent Cards */}
+      {!isLoading && !error && agents.length > 0 && (
         <>
           {filteredAgents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

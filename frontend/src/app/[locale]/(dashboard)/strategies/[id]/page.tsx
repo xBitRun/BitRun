@@ -17,6 +17,7 @@ import {
   Trash2,
   Clock,
   RotateCcw,
+  Bot,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,11 +33,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useQuantStrategy } from "@/hooks";
+import { useAgent } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { TradingViewChart } from "@/components/charts/tradingview-chart";
-import type { StrategyStatus } from "@/types";
-import type { QuantStrategyApiResponse } from "@/lib/api";
+import type { StrategyStatus, AgentStatus } from "@/types";
+import type { AgentResponse } from "@/lib/api";
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -55,6 +56,8 @@ function getStatusColor(status: string) {
 
 function getTypeIcon(type: string) {
   switch (type) {
+    case "ai":
+      return Bot;
     case "grid":
       return Grid3X3;
     case "dca":
@@ -70,12 +73,14 @@ function getTypeIcon(type: string) {
 
 function QuantTradeSection({
   strategy,
+  strategyType,
   t,
 }: {
-  strategy: QuantStrategyApiResponse;
+  strategy: AgentResponse;
+  strategyType: string;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const runtimeState = strategy.runtime_state as Record<string, unknown>;
+  const runtimeState = (strategy.runtime_state || {}) as Record<string, unknown>;
   const hasRuntimeState = Object.keys(runtimeState).length > 0;
 
   if (!hasRuntimeState && strategy.total_trades === 0) {
@@ -95,7 +100,7 @@ function QuantTradeSection({
   }
 
   // Grid Strategy — show grid levels table
-  if (strategy.strategy_type === "grid" && hasRuntimeState) {
+  if (strategyType === "grid" && hasRuntimeState) {
     const gridLevels = (runtimeState.grid_levels as number[]) || [];
     const filledBuys = new Set((runtimeState.filled_buys as string[]) || []);
     const filledSells = new Set((runtimeState.filled_sells as string[]) || []);
@@ -199,7 +204,7 @@ function QuantTradeSection({
   }
 
   // DCA Strategy — show DCA state
-  if (strategy.strategy_type === "dca" && hasRuntimeState) {
+  if (strategyType === "dca" && hasRuntimeState) {
     const ordersPlaced = (runtimeState.orders_placed as number) || 0;
     const totalInvested = (runtimeState.total_invested as number) || 0;
     const totalQuantity = (runtimeState.total_quantity as number) || 0;
@@ -263,7 +268,7 @@ function QuantTradeSection({
   }
 
   // RSI Strategy — show RSI state
-  if (strategy.strategy_type === "rsi" && hasRuntimeState) {
+  if (strategyType === "rsi" && hasRuntimeState) {
     const hasPosition = (runtimeState.has_position as boolean) || false;
     const entryPrice = (runtimeState.entry_price as number) || 0;
     const positionSizeUsd = (runtimeState.position_size_usd as number) || 0;
@@ -371,7 +376,7 @@ function QuantTradeSection({
   );
 }
 
-export default function QuantStrategyDetailPage({
+export default function StrategyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -380,15 +385,15 @@ export default function QuantStrategyDetailPage({
   const t = useTranslations("quantStrategies");
   const router = useRouter();
   const toast = useToast();
-  const { data: strategy, error, isLoading, mutate } = useQuantStrategy(id);
+  const { data: strategy, error, isLoading, mutate } = useAgent(id);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const handleStatusChange = async (newStatus: StrategyStatus) => {
     setIsUpdating(true);
     try {
-      const { quantStrategiesApi } = await import("@/lib/api");
-      await quantStrategiesApi.updateStatus(id, newStatus);
+      const { agentsApi } = await import("@/lib/api");
+      await agentsApi.updateStatus(id, newStatus as AgentStatus);
       mutate();
       const statusKey = newStatus === "active" ? "started" : newStatus;
       toast.success(t(`toast.${statusKey}`));
@@ -403,8 +408,8 @@ export default function QuantStrategyDetailPage({
   const handleDelete = async () => {
     if (!confirm(t("detail.settings.deleteConfirm"))) return;
     try {
-      const { quantStrategiesApi } = await import("@/lib/api");
-      await quantStrategiesApi.delete(id);
+      const { agentsApi } = await import("@/lib/api");
+      await agentsApi.delete(id);
       toast.success(t("toast.deleteSuccess"));
       router.push("/strategies");
     } catch (err) {
@@ -437,8 +442,12 @@ export default function QuantStrategyDetailPage({
     );
   }
 
-  const TypeIcon = getTypeIcon(strategy.strategy_type);
-  const config = strategy.config as Record<string, unknown>;
+  // Compat: extract fields from AgentResponse shape
+  const agentConfig = (strategy.config || {}) as Record<string, unknown>;
+  const strategyType = strategy.strategy_type || (agentConfig.strategy_type as string) || "grid";
+  const strategySymbol = (agentConfig.symbol as string) || strategy.strategy_name || "BTC";
+  const TypeIcon = getTypeIcon(strategyType);
+  const config = agentConfig;
 
   return (
     <div className="space-y-6">
@@ -459,10 +468,10 @@ export default function QuantStrategyDetailPage({
                   {t(`status.${strategy.status}`)}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  {t(`types.${strategy.strategy_type}`)}
+                  {t(`types.${strategyType}`)}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  {strategy.symbol}
+                  {strategySymbol}
                 </Badge>
               </div>
             </div>
@@ -575,13 +584,13 @@ export default function QuantStrategyDetailPage({
               {/* Current trading pair display */}
               <div className="flex items-center gap-2 px-4 pt-3 pb-0">
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono text-xs">
-                  {strategy.symbol}/USDT
+                  {strategySymbol}/USDT
                 </Badge>
-                <span className="text-xs text-muted-foreground">{t(`types.${strategy.strategy_type}`)}</span>
+                <span className="text-xs text-muted-foreground">{t(`types.${strategyType}`)}</span>
               </div>
               <CardContent className="p-0 flex-1">
                 <TradingViewChart
-                  symbol={`BINANCE:${strategy.symbol}USDT`}
+                  symbol={`BINANCE:${strategySymbol}USDT`}
                   interval="60"
                 />
               </CardContent>
@@ -603,11 +612,11 @@ export default function QuantStrategyDetailPage({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("detail.overview.symbol")}</span>
-                    <span className="font-mono font-medium">{strategy.symbol}/USDT</span>
+                    <span className="font-mono font-medium">{strategySymbol}/USDT</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("detail.overview.strategyType")}</span>
-                    <span className="font-medium">{t(`types.${strategy.strategy_type}`)}</span>
+                    <span className="font-medium">{t(`types.${strategyType}`)}</span>
                   </div>
 
                   {/* Strategy-specific config params */}
@@ -672,12 +681,12 @@ export default function QuantStrategyDetailPage({
           </div>
 
           {/* Trade Execution / Runtime State */}
-          <QuantTradeSection strategy={strategy} t={t} />
+          <QuantTradeSection strategy={strategy} strategyType={strategyType} t={t} />
         </TabsContent>
 
         {/* Trades Tab — same content as overview trade section for dedicated view */}
         <TabsContent value="trades" className="space-y-6">
-          <QuantTradeSection strategy={strategy} t={t} />
+          <QuantTradeSection strategy={strategy} strategyType={strategyType} t={t} />
         </TabsContent>
 
         {/* Settings Tab */}

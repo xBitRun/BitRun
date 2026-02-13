@@ -19,21 +19,21 @@ from typing import Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import get_settings
-from ..db.models import DecisionRecordDB, StrategyDB
+from ..db.models import AgentDB, DecisionRecordDB, StrategyDB
+from ..db.repositories.agent import AgentRepository
 from ..db.repositories.decision import DecisionRepository
-from ..db.repositories.strategy import StrategyRepository
 from ..models.decision import ActionType, DecisionResponse, RiskControls
 from ..models.debate import ConsensusMode, DebateConfig, DebateResult
 from ..models.market_context import MarketContext
-from ..models.strategy import StrategyConfig, TradingMode
+from ..models.strategy import AIStrategyConfig, StrategyConfig, TradingMode
 from ..traders.base import AccountState, BaseTrader, MarketData, OrderResult
 from .ai import BaseAIClient, get_ai_client, resolve_provider_credentials
 from ..core.security import get_crypto_service
 from .data_access_layer import DataAccessLayer
 from .debate_engine import DebateEngine
 from .decision_parser import DecisionParser, DecisionParseError
-from .position_service import (
-    PositionService,
+from .agent_position_service import (
+    AgentPositionService,
     PositionConflictError,
     CapitalExceededError,
 )
@@ -71,39 +71,40 @@ class StrategyEngine:
 
     def __init__(
         self,
-        strategy: StrategyDB,
+        agent: AgentDB,
         trader: BaseTrader,
         ai_client: Optional[BaseAIClient] = None,
         db_session: Optional[AsyncSession] = None,
         auto_execute: bool = True,
         use_enhanced_context: bool = True,
-        position_service: Optional[PositionService] = None,
+        position_service: Optional[AgentPositionService] = None,
+        # Backward compat: accept strategy= kwarg, wrap in agent-like object
+        strategy: Optional[StrategyDB] = None,
     ):
         """
         Initialize strategy engine.
 
         Args:
-            strategy: Strategy configuration from database
+            agent: Agent execution instance (has .strategy loaded)
             trader: Exchange trading adapter
-            ai_client: AI client for generating decisions (if None, auto-created based on strategy config)
+            ai_client: AI client for generating decisions
             db_session: Database session for persisting decisions
             auto_execute: If True, automatically execute decisions
             use_enhanced_context: If True, use DataAccessLayer for enhanced market context
-                                  with K-lines and technical indicators
-            position_service: PositionService for strategy-level position isolation.
-                              If None, position isolation is disabled (backward compatible).
+            position_service: AgentPositionService for agent-level position isolation.
         """
-        self.strategy = strategy
+        self.agent = agent
+        self.strategy = agent.strategy if agent else strategy  # strategy from agent
         self.trader = trader
         self.db_session = db_session
         self.use_enhanced_context = use_enhanced_context
         self.position_service = position_service
 
-        # Parse config
-        self.config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        # Parse AI config from strategy.config
+        self.config = AIStrategyConfig(**self.strategy.config) if self.strategy.config else AIStrategyConfig()
 
         # Respect both constructor param and config.auto_execute
-        self.auto_execute = auto_execute and self.config.auto_execute
+        self.auto_execute = auto_execute and (agent.auto_execute if agent else True)
         self.risk_controls = self.config.risk_controls
 
         # Settings
@@ -116,9 +117,10 @@ class StrategyEngine:
         self._ai_model_id = self._get_effective_model_id()
 
         # Initialize components
+        trading_mode = TradingMode(self.config.trading_mode) if hasattr(self.config, 'trading_mode') else TradingMode.CONSERVATIVE
         self.prompt_builder = PromptBuilder(
             config=self.config,
-            trading_mode=TradingMode(strategy.trading_mode),
+            trading_mode=trading_mode,
             custom_prompt=self.config.custom_prompt,
             max_positions=self._settings.default_max_positions,
         )
@@ -163,12 +165,12 @@ class StrategyEngine:
         self._last_market_contexts: Optional[dict[str, MarketContext]] = None
 
     def _get_effective_model_id(self) -> str:
-        """Get the effective model ID configured on the strategy."""
-        if self.strategy.ai_model:
-            return self.strategy.ai_model
+        """Get the effective model ID configured on the agent."""
+        if self.agent and self.agent.ai_model:
+            return self.agent.ai_model
         raise StrategyExecutionError(
-            "No AI model configured for this strategy. "
-            "Edit the strategy and select an AI model."
+            "No AI model configured for this agent. "
+            "Edit the agent and select an AI model."
         )
 
     async def _resolve_and_set_ai_client(self) -> None:
@@ -179,10 +181,11 @@ class StrategyEngine:
                 "Pass ai_client or db_session when creating StrategyEngine."
             )
         model_id = self._get_effective_model_id()
+        user_id = self.agent.user_id if self.agent else self.strategy.user_id
         api_key, base_url = await resolve_provider_credentials(
             self.db_session,
             get_crypto_service(),
-            self.strategy.user_id,
+            user_id,
             model_id,
         )
         if not api_key and "custom" not in model_id.lower().split(":")[0]:
@@ -229,8 +232,26 @@ class StrategyEngine:
             await self._resolve_and_set_ai_client()
 
         try:
-            # 1. Get current account state
-            account_state = await self.trader.get_account_state()
+            # 1. Get current account state (agent-isolated when possible)
+            if self.position_service and self.agent:
+                # Fetch current prices for unrealized P&L calculation
+                current_prices: dict[str, float] = {}
+                if self.strategy and self.strategy.symbols:
+                    for sym in self.strategy.symbols:
+                        try:
+                            md = await self.trader.get_market_data(sym)
+                            if md and md.price > 0:
+                                current_prices[sym] = md.price
+                        except Exception:
+                            pass
+                agent_account = await self.position_service.get_agent_account_state(
+                    agent_id=self.agent.id,
+                    agent=self.agent,
+                    current_prices=current_prices,
+                )
+                account_state = agent_account.to_account_state(current_prices)
+            else:
+                account_state = await self.trader.get_account_state()
             self._last_account_state = account_state
 
             # 2. Check if we can trade (risk limits)
@@ -392,24 +413,24 @@ class StrategyEngine:
             result["decision_record_id"] = str(decision_record_id) if decision_record_id else None
             self._last_decision_record_id = decision_record_id
 
-            # Update strategy performance for executed closes (realized PnL)
-            if self.db_session and result.get("executed"):
-                strategy_repo = StrategyRepository(self.db_session)
+            # Update agent performance for executed closes (realized PnL)
+            if self.db_session and result.get("executed") and self.agent:
+                agent_repo = AgentRepository(self.db_session)
                 for er in result["executed"]:
                     if er.get("executed") and er.get("realized_pnl") is not None:
                         pnl = float(er["realized_pnl"])
                         try:
-                            await strategy_repo.update_performance(
-                                self.strategy.id,
+                            await agent_repo.update_performance(
+                                self.agent.id,
                                 pnl_change=pnl,
                                 is_win=pnl > 0,
                             )
                             logger.info(
-                                f"Updated strategy {self.strategy.id} performance: "
+                                f"Updated agent {self.agent.id} performance: "
                                 f"realized_pnl={pnl:.2f} is_win={pnl > 0}"
                             )
                         except Exception as perf_e:
-                            logger.warning(f"Failed to update strategy performance: {perf_e}")
+                            logger.warning(f"Failed to update agent performance: {perf_e}")
                 await self.db_session.flush()
         except Exception as e:
             logger.error(f"Failed to save decision record: {e}")
@@ -427,16 +448,21 @@ class StrategyEngine:
     ) -> None:
         """Publish decision to WebSocket for real-time client updates"""
         try:
-            # Get user_id from strategy
-            user_id = str(self.strategy.user_id) if self.strategy.user_id else None
+            # Get user_id from agent
+            user_id = str(self.agent.user_id) if self.agent else (
+                str(self.strategy.user_id) if self.strategy.user_id else None
+            )
             if not user_id:
                 return
+
+            agent_id = str(self.agent.id) if self.agent else str(self.strategy.id)
 
             # Build decision data for WebSocket
             decision_data = {
                 "id": result.get("decision_record_id"),
-                "strategy_id": str(self.strategy.id),
-                "strategy_name": self.strategy.name,
+                "agent_id": agent_id,
+                "strategy_id": str(self.strategy.id) if self.strategy else None,
+                "strategy_name": self.strategy.name if self.strategy else "",
                 "timestamp": datetime.now(UTC).isoformat(),
                 "success": result.get("success", False),
                 "latency_ms": result.get("latency_ms", 0),
@@ -473,26 +499,42 @@ class StrategyEngine:
             # If trades were executed, also publish position update
             executed_trades = [e for e in result.get("executed", []) if e.get("executed")]
             if executed_trades and self._last_account_state:
-                # Re-fetch positions after execution
+                # Re-fetch positions after execution (agent-isolated when possible)
                 try:
-                    new_account_state = await self.trader.get_account_state()
-                    positions_data = [
-                        {
-                            "symbol": pos.get("symbol", ""),
-                            "side": pos.get("side", ""),
-                            "size": pos.get("size", 0),
-                            "entry_price": pos.get("entry_price", 0),
-                            "unrealized_pnl": pos.get("unrealized_pnl", 0),
-                        }
-                        for pos in getattr(new_account_state, "positions", [])
-                    ]
+                    if self.position_service and self.agent:
+                        agent_state = await self.position_service.get_agent_account_state(
+                            agent_id=self.agent.id,
+                            agent=self.agent,
+                        )
+                        positions_data = [
+                            {
+                                "symbol": p.symbol,
+                                "side": p.side,
+                                "size": p.size,
+                                "entry_price": p.entry_price,
+                                "unrealized_pnl": 0.0,
+                            }
+                            for p in agent_state.positions
+                        ]
+                    else:
+                        new_account_state = await self.trader.get_account_state()
+                        positions_data = [
+                            {
+                                "symbol": pos.get("symbol", ""),
+                                "side": pos.get("side", ""),
+                                "size": pos.get("size", 0),
+                                "entry_price": pos.get("entry_price", 0),
+                                "unrealized_pnl": pos.get("unrealized_pnl", 0),
+                            }
+                            for pos in getattr(new_account_state, "positions", [])
+                        ]
 
-                    # Get account_id from strategy
-                    account_id = str(self.strategy.account_id) if hasattr(self.strategy, "account_id") else "unknown"
+                    # Get account_id from agent
+                    ws_account_id = str(self.agent.account_id) if self.agent and self.agent.account_id else "unknown"
 
                     await publish_position_update(
                         user_id=user_id,
-                        account_id=account_id,
+                        account_id=ws_account_id,
                         positions=positions_data,
                     )
                 except Exception as e:
@@ -517,8 +559,9 @@ class StrategyEngine:
                 return
 
             # Send decision notification
+            agent_id = str(self.agent.id) if self.agent else str(self.strategy.id)
             decision_data = {
-                "strategy_id": str(self.strategy.id),
+                "agent_id": agent_id,
                 "overall_confidence": decision.overall_confidence if decision else 0,
                 "decisions": [
                     {
@@ -687,8 +730,9 @@ class StrategyEngine:
                 logger.warning(f"Failed to serialize account snapshot: {e}")
 
         # Create the decision record
+        agent_id = self.agent.id if self.agent else self.strategy.id
         record = await repo.create(
-            strategy_id=self.strategy.id,
+            agent_id=agent_id,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             raw_response=raw_response or (debate_result.combined_chain_of_thought if debate_result else ""),
@@ -761,16 +805,16 @@ class StrategyEngine:
         rc = self.risk_controls
         max_positions = self._settings.default_max_positions
 
-        # Strategy-level position count (preferred)
-        if self.position_service:
-            strategy_positions = await self.position_service.get_strategy_positions(
-                self.strategy.id, status_filter="open"
+        # Agent-level position count (preferred)
+        if self.position_service and self.agent:
+            agent_positions = await self.position_service.get_agent_positions(
+                self.agent.id, status_filter="open"
             )
-            strategy_position_count = len(strategy_positions)
-            if strategy_position_count >= max_positions:
+            agent_position_count = len(agent_positions)
+            if agent_position_count >= max_positions:
                 return False, (
-                    f"Strategy max positions ({max_positions}) reached "
-                    f"(strategy has {strategy_position_count})"
+                    f"Agent max positions ({max_positions}) reached "
+                    f"(agent has {agent_position_count})"
                 )
         else:
             # Fallback: account-level check (backward compatible)
@@ -1087,9 +1131,10 @@ class StrategyEngine:
         rc = self.risk_controls
         lev = max(leverage, 1)
 
-        # If strategy has allocated capital, use it as the equity base
+        # If agent has allocated capital, use it as the equity base
         effective_equity = account.equity
-        effective_capital = self.strategy.get_effective_capital(account.equity)
+        capital_source = self.agent if self.agent else self.strategy
+        effective_capital = capital_source.get_effective_capital(account.equity)
         if effective_capital is not None:
             effective_equity = effective_capital
 
@@ -1129,18 +1174,22 @@ class StrategyEngine:
         Execute a single decision with position isolation.
 
         For OPEN actions:
-          1. Claim the symbol slot (pending record in strategy_positions)
+          1. Claim the symbol slot (pending record in agent_positions)
           2. Check capital allocation
           3. Place the order
           4. On success → confirm the record; on failure → release the claim
 
         For CLOSE actions:
-          1. Look up the strategy's position record
+          1. Look up the agent's position record
           2. Close on exchange
           3. Mark the record as closed
         """
         symbol = decision.symbol
         ps = self.position_service  # may be None (backward compatible)
+
+        # Get account_id from agent (None for mock agents)
+        account_id = self.agent.account_id if self.agent else getattr(self.strategy, 'account_id', None)
+        agent_id = self.agent.id if self.agent else self.strategy.id
 
         # ------ OPEN LONG / SHORT ------
         if decision.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT):
@@ -1148,20 +1197,18 @@ class StrategyEngine:
             claim = None
 
             # Step 1: Atomically check capital + claim symbol slot
-            # Uses account-level lock to prevent TOCTOU race where two
-            # strategies on different symbols both pass the capital check.
+            # For mock agents, account_id is None but we still track positions
             if ps:
                 try:
                     claim = await ps.claim_position_with_capital_check(
-                        strategy_id=self.strategy.id,
-                        strategy_type="ai",
-                        account_id=self.strategy.account_id,
+                        agent_id=agent_id,
+                        account_id=account_id,
                         symbol=symbol,
                         side=side,
                         leverage=decision.leverage,
                         account_equity=account.equity,
                         requested_size_usd=position_size,
-                        strategy=self.strategy,
+                        agent=self.agent,
                     )
                 except CapitalExceededError as e:
                     return OrderResult(
@@ -1258,16 +1305,16 @@ class StrategyEngine:
 
         # ------ CLOSE LONG / SHORT ------
         elif decision.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT):
-            # Look up the strategy's position record (if isolation is enabled)
+            # Look up the agent's position record (if isolation is enabled)
             pos_record = None
             if ps:
-                pos_record = await ps.get_strategy_position_for_symbol(
-                    self.strategy.id, symbol
+                pos_record = await ps.get_agent_position_for_symbol(
+                    agent_id, symbol
                 )
                 if not pos_record:
                     logger.warning(
                         f"[Execution] No position record for {symbol} owned by "
-                        f"strategy {self.strategy.id} – closing anyway"
+                        f"agent {agent_id} – closing anyway"
                     )
 
             result = await self.trader.close_position(symbol=symbol)

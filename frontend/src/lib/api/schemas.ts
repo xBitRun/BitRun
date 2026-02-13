@@ -22,24 +22,60 @@ export const UserProfileSchema = z.object({
   created_at: z.string(),
 });
 
-// ==================== Strategies ====================
+// ==================== Strategies (v2 - unified) ====================
 
 export const StrategySchema = z.object({
   id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  type: z.enum(['ai', 'grid', 'dca', 'rsi']),
   name: z.string(),
-  status: z.string(),
-  trading_mode: z.string(),
-  prompt: z.string().optional(),
-  description: z.string().optional(),
-  account_id: z.string().uuid().nullable().optional(),
-  config: z.record(z.string(), z.unknown()).nullable().optional(),
+  description: z.string().optional().default(''),
+  symbols: z.array(z.string()),
+  config: z.record(z.string(), z.unknown()),
+  visibility: z.enum(['private', 'public']).default('private'),
+  category: z.string().nullable().optional(),
+  tags: z.array(z.string()).default([]),
+  forked_from: z.string().uuid().nullable().optional(),
+  fork_count: z.number().default(0),
   created_at: z.string(),
-  updated_at: z.string().optional(),
+  updated_at: z.string(),
+});
+
+export const StrategyListSchema = z.array(StrategySchema);
+
+// ==================== Agents ====================
+
+export const AgentSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  name: z.string(),
+  strategy_id: z.string().uuid(),
+  strategy_type: z.string().nullable().optional(),
+  strategy_name: z.string().nullable().optional(),
+  ai_model: z.string().nullable().optional(),
+  execution_mode: z.enum(['live', 'mock']),
+  account_id: z.string().uuid().nullable().optional(),
+  mock_initial_balance: z.number().nullable().optional(),
+  allocated_capital: z.number().nullable().optional(),
+  allocated_capital_percent: z.number().nullable().optional(),
+  execution_interval_minutes: z.number().default(30),
+  auto_execute: z.boolean().default(true),
+  runtime_state: z.record(z.string(), z.unknown()).nullable().optional(),
+  status: z.string(),
+  error_message: z.string().nullable().optional(),
+  total_pnl: z.number().default(0),
+  total_trades: z.number().default(0),
+  winning_trades: z.number().default(0),
+  losing_trades: z.number().default(0),
+  win_rate: z.number().default(0),
+  max_drawdown: z.number().default(0),
+  created_at: z.string(),
+  updated_at: z.string(),
   last_run_at: z.string().nullable().optional(),
   next_run_at: z.string().nullable().optional(),
 });
 
-export const StrategyListSchema = z.array(StrategySchema);
+export const AgentListSchema = z.array(AgentSchema);
 
 // ==================== Accounts ====================
 

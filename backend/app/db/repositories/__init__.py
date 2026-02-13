@@ -1,13 +1,15 @@
 """Repository layer for database operations"""
 
-from .user import UserRepository
 from .account import AccountRepository
-from .strategy import StrategyRepository
+from .agent import AgentRepository
 from .decision import DecisionRepository
+from .strategy import StrategyRepository
+from .user import UserRepository
 
 __all__ = [
-    "UserRepository",
     "AccountRepository",
-    "StrategyRepository",
+    "AgentRepository",
     "DecisionRepository",
+    "StrategyRepository",
+    "UserRepository",
 ]

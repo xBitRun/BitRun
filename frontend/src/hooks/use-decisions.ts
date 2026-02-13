@@ -2,6 +2,7 @@
  * Decisions Hooks
  *
  * SWR hooks for AI decision data fetching.
+ * Decisions are now associated with Agents (not Strategies directly).
  */
 
 import useSWR from 'swr';
@@ -12,7 +13,7 @@ import type { DecisionResponse, PaginatedDecisionResponse, DecisionStatsResponse
 const DECISIONS_RECENT_KEY = '/decisions/recent';
 const DECISIONS_STATS_KEY = '/decisions/stats';
 const decisionKey = (id: string) => `/decisions/${id}`;
-const strategyDecisionsKey = (strategyId: string) => `/decisions/strategy/${strategyId}`;
+const agentDecisionsKey = (agentId: string) => `/decisions/agent/${agentId}`;
 
 /**
  * Fetch recent decisions
@@ -22,20 +23,43 @@ export function useRecentDecisions(limit: number = 20) {
     [DECISIONS_RECENT_KEY, limit],
     () => decisionsApi.listRecent(limit),
     {
-      refreshInterval: 60000, // Refresh every minute
+      refreshInterval: 60000,
       revalidateOnFocus: true,
     }
   );
 }
 
 /**
- * Fetch decisions for a specific strategy (paginated)
+ * Fetch decisions for a specific agent (paginated)
  */
 export interface DecisionFilters {
   executionFilter?: "all" | "executed" | "skipped";
   action?: string;
 }
 
+export function useAgentDecisions(
+  agentId: string | null,
+  page: number = 1,
+  pageSize: number = 10,
+  filters: DecisionFilters = {},
+) {
+  const offset = (page - 1) * pageSize;
+  const { executionFilter = "all", action } = filters;
+  return useSWR<PaginatedDecisionResponse>(
+    agentId ? [agentDecisionsKey(agentId), page, pageSize, executionFilter, action ?? ""] : null,
+    () => decisionsApi.listByAgent(agentId!, pageSize, offset, executionFilter, action),
+    {
+      refreshInterval: 60000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
+}
+
+/**
+ * @deprecated Use useAgentDecisions instead.
+ * Kept for backward compatibility during migration.
+ */
 export function useStrategyDecisions(
   strategyId: string | null,
   page: number = 1,
@@ -45,7 +69,7 @@ export function useStrategyDecisions(
   const offset = (page - 1) * pageSize;
   const { executionFilter = "all", action } = filters;
   return useSWR<PaginatedDecisionResponse>(
-    strategyId ? [strategyDecisionsKey(strategyId), page, pageSize, executionFilter, action ?? ""] : null,
+    strategyId ? [agentDecisionsKey(strategyId), page, pageSize, executionFilter, action ?? ""] : null,
     () => decisionsApi.listByStrategy(strategyId!, pageSize, offset, executionFilter, action),
     {
       refreshInterval: 60000,
@@ -69,7 +93,21 @@ export function useDecision(id: string | null) {
 }
 
 /**
- * Fetch decision statistics
+ * Fetch decision statistics for an agent
+ */
+export function useAgentDecisionStats(agentId?: string) {
+  return useSWR<DecisionStatsResponse>(
+    agentId ? [DECISIONS_STATS_KEY, agentId] : null,
+    () => decisionsApi.getStatsByAgent(agentId!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30000,
+    }
+  );
+}
+
+/**
+ * @deprecated Use useAgentDecisionStats instead.
  */
 export function useDecisionStats(strategyId?: string) {
   return useSWR<DecisionStatsResponse>(
@@ -83,9 +121,9 @@ export function useDecisionStats(strategyId?: string) {
 }
 
 /**
- * Get latest decision for a strategy
+ * Get latest decision for an agent
  */
-export function useLatestDecision(strategyId: string | null) {
-  const { data } = useStrategyDecisions(strategyId, 1, 1, {});
+export function useLatestDecision(agentId: string | null) {
+  const { data } = useAgentDecisions(agentId, 1, 1, {});
   return data?.items?.[0] ?? null;
 }

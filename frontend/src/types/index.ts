@@ -1,7 +1,15 @@
-// Strategy Types
-export type StrategyStatus = "draft" | "active" | "paused" | "stopped" | "error" | "warning";
+// Strategy Types (v2 - unified, pure logic template)
+export type StrategyType = "ai" | "grid" | "dca" | "rsi";
+export type StrategyVisibility = "private" | "public";
 export type TradingMode = "aggressive" | "balanced" | "conservative";
 export type ActionType = "open_long" | "open_short" | "close_long" | "close_short" | "hold" | "wait";
+
+// Agent status (runtime status lives on Agent, not Strategy)
+export type AgentStatus = "draft" | "active" | "paused" | "stopped" | "error" | "warning";
+export type ExecutionMode = "live" | "mock";
+
+// Backward compat alias
+export type StrategyStatus = AgentStatus;
 
 export interface RiskControls {
   maxLeverage: number;
@@ -14,22 +22,102 @@ export interface RiskControls {
   maxSlPercent?: number;
 }
 
+/**
+ * Unified Strategy - pure trading logic template.
+ * No runtime bindings (account, model, status, performance).
+ * Those live on Agent.
+ */
 export interface Strategy {
   id: string;
+  userId: string;
+  type: StrategyType;
   name: string;
-  prompt: string;
-  tradingMode: TradingMode;
-  riskControls: RiskControls;
-  status: StrategyStatus;
-  accountId: string;
-  aiModel?: string; // AI model in format 'provider:model_id'
-  // Capital allocation (pick one mode)
-  allocatedCapital?: number | null; // Fixed USD amount
-  allocatedCapitalPercent?: number | null; // Fraction of equity (e.g. 0.3 = 30%)
+  description: string;
+  symbols: string[];
+  config: Record<string, unknown>;
+
+  // Marketplace
+  visibility: StrategyVisibility;
+  category?: string | null;
+  tags: string[];
+  forkedFrom?: string | null;
+  forkCount: number;
+
+  // Timestamps
   createdAt: string;
   updatedAt: string;
-  totalPnl?: number;
-  winRate?: number;
+}
+
+/**
+ * Execution Agent = Strategy + AI Model + Account/Mock.
+ * Contains all runtime state, status, and performance.
+ */
+export interface Agent {
+  id: string;
+  userId: string;
+  name: string;
+
+  // Strategy binding
+  strategyId: string;
+  strategyType?: StrategyType | null;
+  strategyName?: string | null;
+
+  // AI model (only for AI strategies)
+  aiModel?: string | null;
+
+  // Execution mode
+  executionMode: ExecutionMode;
+  accountId?: string | null;
+  mockInitialBalance?: number | null;
+
+  // Capital allocation
+  allocatedCapital?: number | null;
+  allocatedCapitalPercent?: number | null;
+
+  // Execution config
+  executionIntervalMinutes: number;
+  autoExecute: boolean;
+
+  // Quant runtime state
+  runtimeState?: Record<string, unknown> | null;
+
+  // Status
+  status: AgentStatus;
+  errorMessage?: string | null;
+
+  // Performance
+  totalPnl: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  maxDrawdown: number;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+}
+
+/**
+ * Agent position (isolated per-agent)
+ */
+export interface AgentPosition {
+  id: string;
+  agentId: string;
+  accountId: string;
+  symbol: string;
+  side: "long" | "short";
+  size: number;
+  sizeUsd: number;
+  entryPrice: number;
+  leverage: number;
+  status: "pending" | "open" | "closed";
+  realizedPnl: number;
+  closePrice?: number | null;
+  openedAt?: string | null;
+  closedAt?: string | null;
 }
 
 // AI Model Types
@@ -70,7 +158,9 @@ export interface TradingDecision {
 
 export interface DecisionRecord {
   id: string;
-  strategyId: string;
+  agentId: string;
+  /** @deprecated use agentId */
+  strategyId?: string;
   timestamp: string;
   chainOfThought: string;
   marketAssessment: string;

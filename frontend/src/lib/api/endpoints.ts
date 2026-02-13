@@ -6,11 +6,17 @@
 
 import { api, ApiError } from './client';
 import type {
-  StrategyStatus,
+  StrategyType,
+  StrategyVisibility,
+  AgentStatus,
+  ExecutionMode,
   TradingMode,
   ExchangeType,
   DashboardStats,
 } from '@/types';
+
+// Backward compat
+type StrategyStatus = AgentStatus;
 
 // ==================== Auth Error Types ====================
 
@@ -126,64 +132,58 @@ export const authApi = {
     api.post<{ message: string }>('/auth/change-password', data),
 };
 
-// ==================== Strategies ====================
+// ==================== Strategies (v2 - unified logic templates) ====================
 
 export interface CreateStrategyRequest {
+  type: StrategyType;
   name: string;
   description?: string;
-  prompt: string;
-  trading_mode: TradingMode;
   symbols: string[];
-  account_id: string;
-  ai_model?: string; // AI model in format 'provider:model_id'
-  config?: Record<string, unknown>;
-  // Capital allocation (pick one)
-  allocated_capital?: number | null;
-  allocated_capital_percent?: number | null;
+  config: Record<string, unknown>;
+  visibility?: StrategyVisibility;
+  category?: string;
+  tags?: string[];
 }
 
 export interface UpdateStrategyRequest {
   name?: string;
   description?: string;
-  prompt?: string;
-  trading_mode?: TradingMode;
   symbols?: string[];
-  ai_model?: string; // AI model in format 'provider:model_id'
   config?: Record<string, unknown>;
-  allocated_capital?: number | null;
-  allocated_capital_percent?: number | null;
+  visibility?: StrategyVisibility;
+  category?: string;
+  tags?: string[];
 }
 
 export interface StrategyResponse {
   id: string;
+  user_id: string;
+  type: StrategyType;
   name: string;
   description: string;
-  prompt: string;
-  trading_mode: TradingMode;
-  status: StrategyStatus;
-  error_message?: string | null;
-  account_id?: string | null;
-  ai_model?: string | null; // AI model in format 'provider:model_id'
+  symbols: string[];
   config: Record<string, unknown>;
-  // Capital allocation
-  allocated_capital?: number | null;
-  allocated_capital_percent?: number | null;
-  // Performance metrics
-  total_pnl: number;
-  total_trades: number;
-  winning_trades: number;
-  losing_trades: number;
-  win_rate: number;
-  max_drawdown: number;
+
+  // Marketplace
+  visibility: StrategyVisibility;
+  category?: string | null;
+  tags: string[];
+  forked_from?: string | null;
+  fork_count: number;
+
   // Timestamps
   created_at: string;
   updated_at: string;
-  last_run_at?: string | null;
 }
 
 export const strategiesApi = {
-  list: () =>
-    api.get<StrategyResponse[]>('/strategies'),
+  list: (params?: { type_filter?: StrategyType; visibility?: StrategyVisibility }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
+    if (params?.visibility) searchParams.set('visibility', params.visibility);
+    const query = searchParams.toString();
+    return api.get<StrategyResponse[]>(`/strategies${query ? `?${query}` : ''}`);
+  },
 
   get: (id: string) =>
     api.get<StrategyResponse>(`/strategies/${id}`),
@@ -197,17 +197,28 @@ export const strategiesApi = {
   delete: (id: string) =>
     api.delete<void>(`/strategies/${id}`),
 
-  updateStatus: (id: string, status: StrategyStatus, close_positions?: boolean) =>
-    api.post<StrategyResponse>(`/strategies/${id}/status`, { status, close_positions }),
+  fork: (id: string) =>
+    api.post<StrategyResponse>(`/strategies/${id}/fork`),
 
-  activate: (id: string) =>
-    api.post<StrategyResponse>(`/strategies/${id}/status`, { status: 'active' }),
-
-  pause: (id: string) =>
-    api.post<StrategyResponse>(`/strategies/${id}/status`, { status: 'paused' }),
-
-  stop: (id: string, close_positions?: boolean) =>
-    api.post<StrategyResponse>(`/strategies/${id}/status`, { status: 'stopped', close_positions }),
+  /** Browse public strategies (marketplace) */
+  marketplace: (params?: {
+    type_filter?: StrategyType;
+    category?: string;
+    search?: string;
+    sort_by?: 'popular' | 'recent';
+    limit?: number;
+    offset?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
+    if (params?.category) searchParams.set('category', params.category);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const query = searchParams.toString();
+    return api.get<StrategyResponse[]>(`/strategies/marketplace${query ? `?${query}` : ''}`);
+  },
 
   previewPrompt: (data: Record<string, unknown>) =>
     api.post<{
@@ -217,8 +228,150 @@ export const strategiesApi = {
     }>('/strategies/preview-prompt', data),
 };
 
-// ==================== Quant Strategies ====================
+// ==================== Agents (execution instances) ====================
 
+export interface CreateAgentRequest {
+  name: string;
+  strategy_id: string;
+  ai_model?: string | null;
+  execution_mode: ExecutionMode;
+  account_id?: string | null;
+  mock_initial_balance?: number | null;
+  allocated_capital?: number | null;
+  allocated_capital_percent?: number | null;
+  execution_interval_minutes?: number;
+  auto_execute?: boolean;
+}
+
+export interface UpdateAgentRequest {
+  name?: string;
+  ai_model?: string | null;
+  execution_mode?: ExecutionMode;
+  account_id?: string | null;
+  mock_initial_balance?: number | null;
+  allocated_capital?: number | null;
+  allocated_capital_percent?: number | null;
+  execution_interval_minutes?: number;
+  auto_execute?: boolean;
+}
+
+export interface AgentStatusRequest {
+  status: AgentStatus;
+  close_positions?: boolean;
+}
+
+export interface AgentResponse {
+  id: string;
+  user_id: string;
+  name: string;
+
+  // Strategy
+  strategy_id: string;
+  strategy_type?: string | null;
+  strategy_name?: string | null;
+
+  // AI model
+  ai_model?: string | null;
+
+  // Execution mode
+  execution_mode: ExecutionMode;
+  account_id?: string | null;
+  mock_initial_balance?: number | null;
+
+  // Capital allocation
+  allocated_capital?: number | null;
+  allocated_capital_percent?: number | null;
+
+  // Execution config
+  execution_interval_minutes: number;
+  auto_execute: boolean;
+
+  // Quant runtime state
+  runtime_state?: Record<string, unknown> | null;
+
+  // Strategy config (populated by backend for convenience)
+  config?: Record<string, unknown> | null;
+  description?: string | null;
+
+  // Status
+  status: AgentStatus;
+  error_message?: string | null;
+
+  // Performance
+  total_pnl: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number;
+  max_drawdown: number;
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+  last_run_at?: string | null;
+  next_run_at?: string | null;
+}
+
+export interface AgentPositionResponse {
+  id: string;
+  agent_id: string;
+  account_id: string;
+  symbol: string;
+  side: 'long' | 'short';
+  size: number;
+  size_usd: number;
+  entry_price: number;
+  leverage: number;
+  status: string;
+  realized_pnl: number;
+  close_price?: number | null;
+  opened_at?: string | null;
+  closed_at?: string | null;
+}
+
+export const agentsApi = {
+  list: (params?: { status_filter?: AgentStatus; strategy_type?: StrategyType }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status_filter) searchParams.set('status_filter', params.status_filter);
+    if (params?.strategy_type) searchParams.set('strategy_type', params.strategy_type);
+    const query = searchParams.toString();
+    return api.get<AgentResponse[]>(`/agents${query ? `?${query}` : ''}`);
+  },
+
+  get: (id: string) =>
+    api.get<AgentResponse>(`/agents/${id}`),
+
+  create: (data: CreateAgentRequest) =>
+    api.post<AgentResponse>('/agents', data),
+
+  update: (id: string, data: UpdateAgentRequest) =>
+    api.patch<AgentResponse>(`/agents/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete<void>(`/agents/${id}`),
+
+  updateStatus: (id: string, status: AgentStatus, close_positions?: boolean) =>
+    api.post<AgentResponse>(`/agents/${id}/status`, { status, close_positions }),
+
+  activate: (id: string) =>
+    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'active' }),
+
+  pause: (id: string) =>
+    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'paused' }),
+
+  stop: (id: string, close_positions?: boolean) =>
+    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'stopped', close_positions }),
+
+  getPositions: (id: string) =>
+    api.get<AgentPositionResponse[]>(`/agents/${id}/positions`),
+
+  trigger: (id: string) =>
+    api.post<TriggerExecutionResponse>(`/agents/${id}/trigger`),
+};
+
+// ==================== Quant Strategies (DEPRECATED - use strategiesApi + agentsApi) ====================
+
+/** @deprecated Use CreateStrategyRequest + CreateAgentRequest instead */
 export interface CreateQuantStrategyRequest {
   name: string;
   description?: string;
@@ -230,6 +383,7 @@ export interface CreateQuantStrategyRequest {
   allocated_capital_percent?: number | null;
 }
 
+/** @deprecated Use UpdateStrategyRequest + UpdateAgentRequest instead */
 export interface UpdateQuantStrategyRequest {
   name?: string;
   description?: string;
@@ -240,6 +394,7 @@ export interface UpdateQuantStrategyRequest {
   allocated_capital_percent?: number | null;
 }
 
+/** @deprecated Use StrategyResponse + AgentResponse instead */
 export interface QuantStrategyApiResponse {
   id: string;
   name: string;
@@ -251,7 +406,6 @@ export interface QuantStrategyApiResponse {
   status: StrategyStatus;
   error_message?: string | null;
   account_id?: string | null;
-  // Capital allocation
   allocated_capital?: number | null;
   allocated_capital_percent?: number | null;
   total_pnl: number;
@@ -265,29 +419,34 @@ export interface QuantStrategyApiResponse {
   last_run_at?: string | null;
 }
 
+/**
+ * @deprecated Backend /quant-strategies endpoints have been removed.
+ * Use strategiesApi (for strategy templates) and agentsApi (for execution instances) instead.
+ */
 export const quantStrategiesApi = {
   list: (params?: { status_filter?: string; strategy_type?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.status_filter) searchParams.set('status_filter', params.status_filter);
-    if (params?.strategy_type) searchParams.set('strategy_type', params.strategy_type);
-    const query = searchParams.toString();
-    return api.get<QuantStrategyApiResponse[]>(`/quant-strategies${query ? `?${query}` : ''}`);
+    // Redirect to unified agents API filtered by quant types
+    return agentsApi.list({
+      status_filter: params?.status_filter as AgentStatus,
+      strategy_type: params?.strategy_type as StrategyType,
+    });
   },
 
   get: (id: string) =>
-    api.get<QuantStrategyApiResponse>(`/quant-strategies/${id}`),
+    agentsApi.get(id),
 
-  create: (data: CreateQuantStrategyRequest) =>
-    api.post<QuantStrategyApiResponse>('/quant-strategies', data),
+  create: (_data: CreateQuantStrategyRequest) => {
+    throw new Error('quantStrategiesApi.create is deprecated. Use strategiesApi.create + agentsApi.create instead.');
+  },
 
   update: (id: string, data: UpdateQuantStrategyRequest) =>
-    api.patch<QuantStrategyApiResponse>(`/quant-strategies/${id}`, data),
+    agentsApi.update(id, data),
 
   delete: (id: string) =>
-    api.delete<void>(`/quant-strategies/${id}`),
+    agentsApi.delete(id),
 
   updateStatus: (id: string, status: StrategyStatus, close_positions?: boolean) =>
-    api.post<QuantStrategyApiResponse>(`/quant-strategies/${id}/status`, { status, close_positions }),
+    agentsApi.updateStatus(id, status, close_positions),
 };
 
 // ==================== Workers ====================
@@ -300,8 +459,9 @@ export interface TriggerExecutionResponse {
 }
 
 export const workersApi = {
-  triggerExecution: (strategyId: string) =>
-    api.post<TriggerExecutionResponse>(`/workers/${strategyId}/trigger`),
+  /** @deprecated Use agentsApi.trigger(agentId) instead */
+  triggerExecution: (agentId: string) =>
+    agentsApi.trigger(agentId),
 };
 
 // ==================== Accounts ====================
@@ -415,7 +575,9 @@ export interface MarketSnapshotItem {
 
 export interface DecisionResponse {
   id: string;
-  strategy_id: string;
+  agent_id: string;
+  /** @deprecated use agent_id */
+  strategy_id?: string;
   timestamp: string;  // Backend uses timestamp, not created_at
   chain_of_thought: string;
   market_assessment: string;
@@ -483,6 +645,13 @@ export const decisionsApi = {
   listRecent: (limit: number = 20) =>
     api.get<DecisionResponse[]>('/decisions/recent', { params: { limit } }),
 
+  /** List decisions by agent (new primary endpoint) */
+  listByAgent: (agentId: string, limit: number = 10, offset: number = 0, executionFilter: string = "all", action?: string) =>
+    api.get<PaginatedDecisionResponse>(`/decisions/agent/${agentId}`, {
+      params: { limit, offset, execution_filter: executionFilter, ...(action ? { action } : {}) }
+    }),
+
+  /** @deprecated Use listByAgent instead */
   listByStrategy: (strategyId: string, limit: number = 10, offset: number = 0, executionFilter: string = "all", action?: string) =>
     api.get<PaginatedDecisionResponse>(`/decisions/strategy/${strategyId}`, {
       params: { limit, offset, execution_filter: executionFilter, ...(action ? { action } : {}) }
@@ -491,6 +660,11 @@ export const decisionsApi = {
   get: (id: string) =>
     api.get<DecisionResponse>(`/decisions/${id}`),
 
+  /** Get stats by agent (new primary endpoint) */
+  getStatsByAgent: (agentId: string) =>
+    api.get<DecisionStatsResponse>(`/decisions/agent/${agentId}/stats`),
+
+  /** @deprecated Use getStatsByAgent instead */
   getStats: (strategyId: string) =>
     api.get<DecisionStatsResponse>(`/decisions/strategy/${strategyId}/stats`),
 };
@@ -693,18 +867,18 @@ export const dashboardApi = {
       };
     } catch (_error) {
       // Fallback to local aggregation if backend endpoint fails
-      const [accounts, strategies] = await Promise.all([
+      const [_accounts, agents] = await Promise.all([
         accountsApi.list(),
-        strategiesApi.list(),
+        agentsApi.list(),
       ]);
 
-      const activeStrategies = strategies.filter(s => s.status === 'active').length;
+      const activeAgents = agents.filter(a => a.status === 'active').length;
 
       return {
         totalEquity: 0,
         dailyPnl: 0,
         dailyPnlPercent: 0,
-        activeStrategies,
+        activeStrategies: activeAgents,
         openPositions: 0,
         todayTrades: 0,
       };

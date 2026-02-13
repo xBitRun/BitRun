@@ -9,7 +9,7 @@
  */
 
 import useSWR from "swr";
-import { accountsApi, strategiesApi, dashboardApi } from "@/lib/api";
+import { accountsApi, agentsApi, dashboardApi } from "@/lib/api";
 import type {
   AccountResponse,
   AccountBalanceResponse,
@@ -139,9 +139,9 @@ export function useDashboardStats() {
       }
 
       // Client-side fallback: Fetch all required data in parallel
-      const [accounts, strategies] = await Promise.all([
+      const [accounts, agents] = await Promise.all([
         accountsApi.list(),
-        strategiesApi.list(),
+        agentsApi.list(),
       ]);
 
       // Fetch balances for all connected accounts
@@ -202,9 +202,9 @@ export function useDashboardStats() {
       const unrealizedPnlPercent =
         totalEquity > 0 ? (unrealizedPnl / (totalEquity - unrealizedPnl)) * 100 : 0;
 
-      // Count strategies
-      const activeStrategies = strategies.filter(
-        (s) => s.status === "active"
+      // Count agents (execution instances)
+      const activeStrategies = agents.filter(
+        (a) => a.status === "active"
       ).length;
 
       // Count accounts
@@ -218,7 +218,7 @@ export function useDashboardStats() {
         dailyPnl: unrealizedPnl, // Use unrealized PnL as daily PnL estimate
         dailyPnlPercent: unrealizedPnlPercent,
         activeStrategies,
-        totalStrategies: strategies.length,
+        totalStrategies: agents.length,
         openPositions,
         profitablePositions,
         connectedAccounts,
@@ -312,13 +312,13 @@ interface PerformanceStats {
 }
 
 /**
- * Fetch aggregated performance statistics from strategies
+ * Fetch aggregated performance statistics from agents
  */
 export function usePerformanceStats() {
   return useSWR<PerformanceStats>(
     "/dashboard/performance",
     async () => {
-      const strategies = await strategiesApi.list();
+      const agents = await agentsApi.list();
 
       let totalPnl = 0;
       let totalTrades = 0;
@@ -326,12 +326,12 @@ export function usePerformanceStats() {
       let losingTrades = 0;
       let maxDrawdown = 0;
 
-      strategies.forEach((strategy) => {
-        totalPnl += strategy.total_pnl;
-        totalTrades += strategy.total_trades;
-        winningTrades += strategy.winning_trades;
-        losingTrades += strategy.losing_trades;
-        maxDrawdown = Math.max(maxDrawdown, strategy.max_drawdown);
+      agents.forEach((agent) => {
+        totalPnl += agent.total_pnl;
+        totalTrades += agent.total_trades;
+        winningTrades += agent.winning_trades;
+        losingTrades += agent.losing_trades;
+        maxDrawdown = Math.max(maxDrawdown, agent.max_drawdown);
       });
 
       const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;

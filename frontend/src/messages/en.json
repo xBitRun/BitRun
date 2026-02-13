@@ -48,8 +48,9 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "agents": "Agent Strategies",
-    "strategies": "Quant Strategies",
+    "strategies": "Strategies",
+    "agents": "Agents",
+    "marketplace": "Strategy Market",
     "accounts": "Account Management",
     "models": "Model Management",
     "competition": "Strategy Market",
@@ -146,12 +147,13 @@
     }
   },
   "agents": {
-    "title": "Agent Strategies",
-    "subtitle": "Create and manage trading strategies driven by AI agents",
-    "createAgent": "Create Strategy",
-    "searchPlaceholder": "Search agent strategies...",
+    "title": "Agents",
+    "subtitle": "Execution agents - bind strategies to accounts and AI models",
+    "createAgent": "Create Agent",
+    "searchPlaceholder": "Search agents...",
     "filter": {
       "allStatus": "All Status",
+      "allTypes": "All Types",
       "active": "Active",
       "paused": "Paused",
       "draft": "Draft",
@@ -162,7 +164,12 @@
       "paused": "paused",
       "stopped": "stopped",
       "error": "error",
-      "draft": "draft"
+      "draft": "draft",
+      "warning": "warning"
+    },
+    "executionMode": {
+      "live": "Live Trading",
+      "mock": "Mock Trading"
     },
     "mode": {
       "aggressive": "Aggressive",
@@ -175,54 +182,74 @@
       "swing": "Swing",
       "position": "Position"
     },
+    "fields": {
+      "name": "Agent Name",
+      "strategy": "Strategy",
+      "aiModel": "AI Model",
+      "account": "Exchange Account",
+      "executionMode": "Execution Mode",
+      "mockBalance": "Mock Initial Balance",
+      "capital": "Capital Allocation",
+      "capitalPercent": "Capital Percentage",
+      "interval": "Execution Interval (min)",
+      "autoExecute": "Auto Execute"
+    },
     "stats": {
       "totalPL": "Total P/L",
       "winRate": "Win Rate",
-      "maxLeverage": "Max Leverage"
+      "maxLeverage": "Max Leverage",
+      "totalTrades": "Total Trades",
+      "maxDrawdown": "Max Drawdown"
     },
     "actions": {
       "edit": "Edit",
       "duplicate": "Duplicate",
       "viewDecisions": "View Decisions",
+      "viewPositions": "View Positions",
       "delete": "Delete",
       "pause": "Pause",
       "start": "Start",
       "resume": "Resume",
       "stop": "Stop",
       "restart": "Restart",
+      "trigger": "Trigger Now",
       "stopConfirmTitle": "Confirm Stop",
       "stopConfirmDesc": "Stopping is irreversible. The agent will be permanently stopped and cannot be resumed. Are you sure?",
       "closePositionsOption": "Close all open positions",
-      "closePositionsHint": "Automatically close all positions held by this strategy on the exchange",
+      "closePositionsHint": "Automatically close all positions held by this agent on the exchange",
       "confirmStop": "Confirm Stop",
       "cancel": "Cancel",
-      "deleteRequireStopped": "Running strategy must be stopped before deletion",
+      "deleteRequireStopped": "Running agent must be stopped before deletion",
       "viewDetails": "View Details"
     },
     "info": {
-      "title": "AI Agent Strategies",
-      "description": "Create and manage trading strategies driven by AI agents. Each strategy runs 24/7 with natural language prompts and full decision audit."
+      "title": "Execution Agents",
+      "description": "Agents bind strategies to AI models and exchange accounts. Each agent runs independently with isolated positions."
     },
     "empty": {
-      "title": "No agent strategies yet",
-      "description": "Create your first AI agent-driven trading strategy",
-      "feature1Title": "Natural Language",
-      "feature1Desc": "Describe strategy",
+      "title": "No agents yet",
+      "description": "Create your first execution agent by selecting a strategy",
+      "feature1Title": "Strategy Binding",
+      "feature1Desc": "Choose any strategy",
       "feature2Title": "Auto Execute",
       "feature2Desc": "24/7 trading",
-      "feature3Title": "Full Audit",
-      "feature3Desc": "Every decision tracked",
-      "createFirst": "Create Your First Strategy",
+      "feature3Title": "Position Isolation",
+      "feature3Desc": "Isolated per agent",
+      "createFirst": "Create Your First Agent",
       "searchHint": "Try adjusting your search or filters",
       "noDescription": "No description"
     },
     "toast": {
-      "started": "Agent strategy started",
-      "paused": "Agent strategy paused",
-      "stopped": "Agent strategy stopped",
-      "updateFailed": "Failed to update agent strategy",
-      "deleteSuccess": "Agent strategy deleted",
-      "deleteFailed": "Failed to delete agent strategy"
+      "created": "Agent created successfully",
+      "started": "Agent started",
+      "paused": "Agent paused",
+      "stopped": "Agent stopped",
+      "triggered": "Agent execution triggered",
+      "updateFailed": "Failed to update agent",
+      "updateSuccess": "Agent updated successfully",
+      "deleteSuccess": "Agent deleted",
+      "deleteFailed": "Failed to delete agent",
+      "createFailed": "Failed to create agent"
     },
     "error": {
       "loadFailed": "Failed to load agent strategies"
@@ -258,6 +285,79 @@
       "submit": "Create Agent"
     },
     "confirmDelete": "Are you sure you want to delete this agent?",
+    "wizard": {
+      "title": "Create Agent",
+      "subtitle": "Set up a new execution agent step by step",
+      "back": "Back",
+      "next": "Next",
+      "steps": {
+        "strategy": "Strategy",
+        "model": "AI Model",
+        "execution": "Execution",
+        "review": "Review"
+      },
+      "strategyStep": {
+        "title": "Select Strategy",
+        "subtitle": "Choose a strategy template for this agent",
+        "search": "Search strategies...",
+        "filterAll": "All",
+        "filterAi": "AI",
+        "filterGrid": "Grid",
+        "filterDca": "DCA",
+        "filterRsi": "RSI",
+        "empty": "No strategies found",
+        "emptyDesc": "Create a strategy first, then come back to set up an agent.",
+        "createStrategy": "Create Strategy",
+        "selected": "Selected",
+        "symbols": "Symbols",
+        "agents": "agents"
+      },
+      "modelStep": {
+        "title": "Select AI Model",
+        "subtitle": "Choose an AI model to power this agent's decisions",
+        "noModels": "No AI models configured",
+        "noModelsDesc": "Add an AI provider in Model Management first.",
+        "addModel": "Configure Models",
+        "skipped": "Not required for quantitative strategies",
+        "selected": "Selected"
+      },
+      "executionStep": {
+        "title": "Execution Mode",
+        "subtitle": "Choose how this agent will execute trades",
+        "live": "Live Trading",
+        "liveDesc": "Trade with real funds on your exchange account",
+        "mock": "Mock Trading",
+        "mockDesc": "Simulate trading with virtual funds, no real money at risk",
+        "selectAccount": "Exchange Account",
+        "selectAccountPlaceholder": "Select an account",
+        "noAccounts": "No accounts available",
+        "addAccount": "Add Account",
+        "mockBalance": "Initial Virtual Balance (USDT)",
+        "mockBalancePlaceholder": "10000",
+        "riskWarning": "Live trading involves real funds. Start with conservative settings."
+      },
+      "reviewStep": {
+        "title": "Review & Launch",
+        "subtitle": "Review your configuration and create the agent",
+        "agentName": "Agent Name",
+        "agentNamePlaceholder": "e.g., My BTC Agent",
+        "interval": "Decision Interval",
+        "intervalMinutes": "Every {minutes} min",
+        "intervalHours": "Every {hours} hr",
+        "autoExecute": "Auto-Execute Trades",
+        "autoExecuteDesc": "Automatically execute AI decisions without manual confirmation",
+        "summary": "Configuration Summary",
+        "summaryStrategy": "Strategy",
+        "summaryType": "Type",
+        "summaryModel": "AI Model",
+        "summaryMode": "Execution Mode",
+        "summaryAccount": "Account",
+        "summaryCapital": "Capital",
+        "summaryNone": "No limit",
+        "createAgent": "Create Agent",
+        "creating": "Creating..."
+      }
+    },
     "edit": {
       "title": "Edit Strategy",
       "description": "Update your trading strategy configuration."
@@ -721,11 +821,24 @@
   },
   "strategies": {
     "title": "Strategies",
-    "subtitle": "Manage your trading strategies",
+    "subtitle": "Trading strategy templates - create and share your trading logic",
     "createStrategy": "Create Strategy",
     "searchPlaceholder": "Search strategies...",
     "confirmDelete": "Are you sure you want to delete this strategy?",
+    "confirmDeleteWithAgents": "This strategy is referenced by {count} agent(s). Delete them first or unbind them.",
+    "type": {
+      "all": "All Types",
+      "ai": "AI Strategy",
+      "grid": "Grid Trading",
+      "dca": "DCA",
+      "rsi": "RSI"
+    },
+    "visibility": {
+      "private": "Private",
+      "public": "Public"
+    },
     "filter": {
+      "allTypes": "All Types",
       "allStatus": "All Status",
       "active": "Active",
       "paused": "Paused",
@@ -747,17 +860,32 @@
     "stats": {
       "totalPL": "Total P/L",
       "winRate": "Win Rate",
-      "maxLeverage": "Max Leverage"
+      "maxLeverage": "Max Leverage",
+      "forkCount": "Forks",
+      "agentCount": "Agents"
     },
     "actions": {
       "edit": "Edit",
       "duplicate": "Duplicate",
+      "fork": "Fork",
       "viewDecisions": "View Decisions",
       "delete": "Delete",
       "pause": "Pause",
       "start": "Start",
       "resume": "Resume",
-      "viewDetails": "View Details"
+      "viewDetails": "View Details",
+      "createAgent": "Create Agent",
+      "makePublic": "Publish to Market",
+      "makePrivate": "Make Private"
+    },
+    "marketplace": {
+      "title": "Strategy Market",
+      "subtitle": "Browse and fork community strategies",
+      "searchPlaceholder": "Search market strategies...",
+      "sortPopular": "Most Popular",
+      "sortRecent": "Most Recent",
+      "forkSuccess": "Strategy forked successfully",
+      "forkError": "Failed to fork strategy"
     },
     "empty": {
       "title": "No strategies yet",
@@ -766,7 +894,15 @@
       "noDescription": "No description"
     },
     "error": {
-      "loadFailed": "Failed to load strategies"
+      "loadFailed": "Failed to load strategies",
+      "createFailed": "Failed to create strategy",
+      "updateFailed": "Failed to update strategy",
+      "deleteFailed": "Failed to delete strategy"
+    },
+    "toast": {
+      "created": "Strategy created successfully",
+      "updated": "Strategy updated successfully",
+      "deleted": "Strategy deleted successfully"
     },
     "retry": "Retry"
   },
@@ -1340,17 +1476,21 @@
     "go": "Go",
     "optional": "Optional",
     "steps": {
-      "account": {
-        "title": "Connect Account",
-        "desc": "Link your exchange account"
-      },
-      "agent": {
-        "title": "Create AI Agent",
-        "desc": "Set up your first trading agent"
-      },
       "models": {
         "title": "Configure Models",
         "desc": "Add AI provider API keys"
+      },
+      "strategy": {
+        "title": "Create Strategy",
+        "desc": "Define your first trading strategy"
+      },
+      "agent": {
+        "title": "Launch Agent",
+        "desc": "Start an execution agent (live or mock)"
+      },
+      "account": {
+        "title": "Connect Account",
+        "desc": "Link exchange account for live trading"
       }
     }
   },
@@ -1717,11 +1857,13 @@
       "draft": "Draft"
     },
     "types": {
+      "ai": "AI Strategy",
       "grid": "Grid Trading",
       "dca": "DCA",
       "rsi": "RSI Strategy"
     },
     "typeDescriptions": {
+      "ai": "Use AI to analyze markets and make autonomous trading decisions based on your natural language instructions.",
       "grid": "Profit from market volatility by creating a grid of buy/sell orders within a price range.",
       "dca": "Dollar-cost average into a position with scheduled orders, and sell when take-profit is reached.",
       "rsi": "Trade based on RSI indicator values — buy when oversold, sell when overbought."
@@ -1788,7 +1930,14 @@
       "cancel": "Cancel",
       "submit": "Create Strategy",
       "back": "Back",
-      "next": "Next"
+      "next": "Next",
+      "prompt": "Trading Instructions",
+      "promptPlaceholder": "Describe your trading strategy in natural language...",
+      "tradingMode": "Trading Mode",
+      "symbols": "Trading Symbols",
+      "symbolsPlaceholder": "e.g., BTC, ETH, SOL",
+      "aiTitle": "AI Strategy Configuration",
+      "aiDesc": "Configure how AI should analyze and trade"
     },
     "grid": {
       "title": "Grid Trading Parameters",

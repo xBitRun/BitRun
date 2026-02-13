@@ -6,6 +6,7 @@ export { api, ApiError, AuthError, TokenManager } from './client';
 export {
   authApi,
   strategiesApi,
+  agentsApi,
   quantStrategiesApi,
   accountsApi,
   decisionsApi,
@@ -27,10 +28,16 @@ export type {
   TokenResponse,
   ProfileUpdateRequest,
   ChangePasswordRequest,
-  // Strategies
+  // Strategies (v2 - unified)
   CreateStrategyRequest,
   UpdateStrategyRequest,
   StrategyResponse,
+  // Agents (new)
+  CreateAgentRequest,
+  UpdateAgentRequest,
+  AgentStatusRequest,
+  AgentResponse,
+  AgentPositionResponse,
   // Accounts
   CreateAccountRequest,
   AccountResponse,
@@ -66,7 +73,7 @@ export type {
   UpdateProviderRequest,
   ApiFormatInfo,
   ProviderModelItem,
-  // Quant Strategies
+  // Quant Strategies (deprecated)
   CreateQuantStrategyRequest,
   UpdateQuantStrategyRequest,
   QuantStrategyApiResponse,

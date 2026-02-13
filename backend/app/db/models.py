@@ -3,6 +3,11 @@ SQLAlchemy ORM Models
 
 Database schema for BITRUN trading agent platform.
 All sensitive credentials are encrypted using CryptoService before storage.
+
+Architecture (v2 - Strategy/Agent decoupling):
+- Strategy: Pure trading logic template (AI or Quant), no runtime bindings
+- Agent: Execution instance = Strategy + AI Model + Account/Mock
+- AgentPosition: Per-agent position tracking with isolation
 """
 
 import uuid
@@ -12,14 +17,12 @@ from typing import Optional
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum,
     Float,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -79,11 +82,11 @@ class UserDB(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
-    ai_providers: Mapped[list["AIProviderConfigDB"]] = relationship(
+    agents: Mapped[list["AgentDB"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
-    quant_strategies: Mapped[list["QuantStrategyDB"]] = relationship(
+    ai_providers: Mapped[list["AIProviderConfigDB"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
@@ -150,18 +153,28 @@ class ExchangeAccountDB(Base):
 
     # Relationships
     user: Mapped["UserDB"] = relationship(back_populates="accounts")
-    strategies: Mapped[list["StrategyDB"]] = relationship(back_populates="account")
+    agents: Mapped[list["AgentDB"]] = relationship(back_populates="account")
 
     def __repr__(self) -> str:
         return f"<ExchangeAccount {self.name} ({self.exchange})>"
 
 
+# =============================================================================
+# Strategy Layer - Pure trading logic, no runtime bindings
+# =============================================================================
+
 class StrategyDB(Base):
     """
-    Trading strategy model.
+    Unified trading strategy model (pure logic template).
 
-    Stores the user's natural language prompt, trading configuration,
-    and performance metrics.
+    Supports multiple strategy types via polymorphic config:
+    - ai: AI-driven strategy with LLM prompt, indicators, risk controls
+    - grid: Grid trading with price range and grid levels
+    - dca: Dollar-cost averaging with scheduled buys
+    - rsi: RSI indicator-based trading
+
+    Strategies are DECOUPLED from execution - they don't reference any
+    exchange account or AI model. Those bindings live on Agent.
     """
     __tablename__ = "strategies"
 
@@ -176,42 +189,157 @@ class StrategyDB(Base):
         nullable=False,
         index=True
     )
-    account_id: Mapped[uuid.UUID] = mapped_column(
+
+    # Strategy type discriminator
+    type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True
+    )  # "ai", "grid", "dca", "rsi"
+
+    # Basic info
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+
+    # Trading symbols (unified: AI = multi-symbol, Quant = typically single)
+    symbols: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Polymorphic configuration (structure depends on type)
+    # AI: {prompt, trading_mode, indicators, timeframes, risk_controls,
+    #       prompt_sections, prompt_mode, advanced_prompt, custom_prompt, language,
+    #       debate_enabled, debate_models, debate_consensus_mode, debate_min_participants}
+    # Grid: {upper_price, lower_price, grid_count, total_investment, leverage}
+    # DCA: {order_amount, interval_minutes, take_profit_percent, total_budget, max_orders}
+    # RSI: {rsi_period, overbought_threshold, oversold_threshold, order_amount, timeframe, leverage}
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    # Strategy marketplace fields
+    visibility: Mapped[str] = mapped_column(
+        String(20),
+        default="private"
+    )  # "private", "public"
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    forked_from: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("strategies.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    fork_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="strategies")
+    agents: Mapped[list["AgentDB"]] = relationship(
+        back_populates="strategy",
+        cascade="all, delete-orphan"
+    )
+    source_strategy: Mapped[Optional["StrategyDB"]] = relationship(
+        remote_side="StrategyDB.id",
+        foreign_keys=[forked_from],
+    )
+
+    def __repr__(self) -> str:
+        return f"<Strategy {self.name} (type={self.type})>"
+
+
+# =============================================================================
+# Agent Layer - Execution instance = Strategy + Model + Account/Mock
+# =============================================================================
+
+class AgentDB(Base):
+    """
+    Execution agent - a running instance of a strategy.
+
+    Binds a Strategy to runtime resources:
+    - AI model (for AI strategies only)
+    - Exchange account (for live mode) or mock config (for simulation)
+    - Capital allocation and execution settings
+
+    One Strategy can have multiple Agents (different models, accounts, modes).
+    """
+    __tablename__ = "agents"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Strategy binding
+    strategy_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # AI model binding (required for AI strategies, null for quant)
+    # Format: "provider:model_id" (e.g., "deepseek:deepseek-chat")
+    ai_model: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
+        default=None
+    )
+
+    # Execution mode
+    execution_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="mock"
+    )  # "live", "mock"
+
+    # Live mode: exchange account binding
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
 
-    # Strategy info
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str] = mapped_column(Text, default="")
-    prompt: Mapped[str] = mapped_column(Text, nullable=False)
-
-    # AI Model configuration
-    # Format: "provider:model_id" (e.g., "anthropic:claude-sonnet-4-5-20250514")
-    ai_model: Mapped[Optional[str]] = mapped_column(
-        String(100),
-        nullable=True,
-        default=None
-    )  # If None, uses global default from settings
-
-    # Configuration
-    trading_mode: Mapped[str] = mapped_column(
-        String(20),
-        default="conservative"
-    )  # aggressive, balanced, conservative
-    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Mock mode: simulated initial balance
+    mock_initial_balance: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
 
     # Capital allocation (pick one mode: fixed amount or percentage)
-    # Fixed amount in USD (e.g. 5000.0 = $5,000)
     allocated_capital: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, default=None
     )
-    # Percentage of account equity (e.g. 0.3 = 30%)
     allocated_capital_percent: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, default=None
     )
+
+    # Execution configuration
+    execution_interval_minutes: Mapped[int] = mapped_column(
+        Integer, default=30
+    )
+    auto_execute: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Quant strategy runtime state (only for grid/dca/rsi)
+    # Grid: {filled_grids, active_orders, ...}
+    # DCA: {orders_placed, total_invested, avg_cost, ...}
+    # RSI: {current_position, last_signal, ...}
+    runtime_state: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # Status
     status: Mapped[str] = mapped_column(
@@ -229,8 +357,12 @@ class StrategyDB(Base):
     max_drawdown: Mapped[float] = mapped_column(Float, default=0.0)
 
     # Execution tracking
-    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -246,10 +378,15 @@ class StrategyDB(Base):
     )
 
     # Relationships
-    user: Mapped["UserDB"] = relationship(back_populates="strategies")
-    account: Mapped[Optional["ExchangeAccountDB"]] = relationship(back_populates="strategies")
+    user: Mapped["UserDB"] = relationship(back_populates="agents")
+    strategy: Mapped["StrategyDB"] = relationship(back_populates="agents")
+    account: Mapped[Optional["ExchangeAccountDB"]] = relationship(back_populates="agents")
     decisions: Mapped[list["DecisionRecordDB"]] = relationship(
-        back_populates="strategy",
+        back_populates="agent",
+        cascade="all, delete-orphan"
+    )
+    positions: Mapped[list["AgentPositionDB"]] = relationship(
+        back_populates="agent",
         cascade="all, delete-orphan"
     )
 
@@ -272,8 +409,109 @@ class StrategyDB(Base):
         return None
 
     def __repr__(self) -> str:
-        return f"<Strategy {self.name} ({self.status})>"
+        return f"<Agent {self.name} (status={self.status})>"
 
+
+# =============================================================================
+# Position Layer - Agent-level position isolation
+# =============================================================================
+
+class AgentPositionDB(Base):
+    """
+    Agent-level position tracking with isolation.
+
+    Each agent has its own position ledger, isolated from other agents
+    even when sharing the same exchange account. This prevents Agent A
+    from accidentally closing Agent B's positions.
+
+    Rules:
+    - Only ONE open position per (agent_id, symbol) at any time
+      (enforced by partial unique index).
+    - A 'pending' record is created BEFORE the order is placed to
+      reserve the symbol slot (crash-safe "claim-then-execute" pattern).
+    - On successful fill the record transitions to 'open'.
+    - On failure the record is deleted (rollback).
+
+    Exchange-level reconciliation:
+    - The actual exchange position = SUM of all agent positions on that
+      account for that symbol.
+    - Reconciliation task periodically verifies consistency.
+    """
+    __tablename__ = "agent_positions"
+
+    # Partial unique index: only one open/pending position per agent+symbol
+    __table_args__ = (
+        Index(
+            "ix_agent_positions_unique_open",
+            "agent_id",
+            "symbol",
+            unique=True,
+            postgresql_where=text("status IN ('open', 'pending')"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    # Agent that owns this position
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Exchange account (kept for exchange-level aggregation and reconciliation).
+    # Nullable for mock agents which have no exchange account.
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Position details
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False)
+    side: Mapped[str] = mapped_column(String(10), nullable=False)  # "long" | "short"
+    size: Mapped[float] = mapped_column(Float, default=0.0)  # Contract size
+    size_usd: Mapped[float] = mapped_column(Float, default=0.0)  # Notional USD
+    entry_price: Mapped[float] = mapped_column(Float, default=0.0)
+    leverage: Mapped[int] = mapped_column(Integer, default=1)
+
+    # Lifecycle
+    status: Mapped[str] = mapped_column(
+        String(10),
+        default="pending",
+        index=True,
+    )  # pending -> open -> closed
+
+    # PnL tracking
+    realized_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    close_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Timestamps
+    opened_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
+    )
+    closed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Relationships
+    agent: Mapped["AgentDB"] = relationship(back_populates="positions")
+    account: Mapped["ExchangeAccountDB"] = relationship()
+
+    def __repr__(self) -> str:
+        return (
+            f"<AgentPosition {self.symbol} {self.side} "
+            f"status={self.status} agent={self.agent_id}>"
+        )
+
+
+# =============================================================================
+# AI Provider Configuration
+# =============================================================================
 
 class AIProviderConfigDB(Base):
     """
@@ -355,209 +593,9 @@ class AIProviderConfigDB(Base):
         return f"<AIProviderConfig {self.name} ({self.provider_type})>"
 
 
-class QuantStrategyDB(Base):
-    """
-    Traditional quantitative strategy model.
-
-    Stores rule-based trading strategies such as Grid, DCA, and RSI.
-    Unlike AI strategies (StrategyDB), these execute deterministic
-    trading rules without AI involvement.
-    """
-    __tablename__ = "quant_strategies"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
-    )
-    account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
-    )
-
-    # Strategy info
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str] = mapped_column(Text, default="")
-
-    # Strategy type: grid, dca, rsi
-    strategy_type: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        index=True
-    )
-
-    # Trading pair (single symbol, e.g. "BTC")
-    symbol: Mapped[str] = mapped_column(String(20), nullable=False)
-
-    # Type-specific configuration (JSON)
-    # Grid: {upper_price, lower_price, grid_count, total_investment, leverage}
-    # DCA: {order_amount, interval_minutes, take_profit_percent, total_budget, max_orders}
-    # RSI: {rsi_period, overbought_threshold, oversold_threshold, order_amount, timeframe, leverage}
-    config: Mapped[dict] = mapped_column(JSON, default=dict)
-
-    # Runtime state (JSON) - tracks execution state between cycles
-    # Grid: {filled_grids, active_orders, ...}
-    # DCA: {orders_placed, total_invested, avg_cost, ...}
-    # RSI: {current_position, last_signal, ...}
-    runtime_state: Mapped[dict] = mapped_column(JSON, default=dict)
-
-    # Capital allocation (pick one mode: fixed amount or percentage)
-    allocated_capital: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, default=None
-    )
-    allocated_capital_percent: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, default=None
-    )
-
-    # Status
-    status: Mapped[str] = mapped_column(
-        String(20),
-        default="draft",
-        index=True
-    )  # draft, active, paused, stopped, error, warning
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    # Performance metrics
-    total_pnl: Mapped[float] = mapped_column(Float, default=0.0)
-    total_trades: Mapped[int] = mapped_column(Integer, default=0)
-    winning_trades: Mapped[int] = mapped_column(Integer, default=0)
-    losing_trades: Mapped[int] = mapped_column(Integer, default=0)
-    max_drawdown: Mapped[float] = mapped_column(Float, default=0.0)
-
-    # Execution tracking
-    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
-        nullable=False
-    )
-
-    # Relationships
-    user: Mapped["UserDB"] = relationship(back_populates="quant_strategies")
-    account: Mapped[Optional["ExchangeAccountDB"]] = relationship()
-
-    @property
-    def win_rate(self) -> float:
-        """Calculate win rate percentage"""
-        if self.total_trades == 0:
-            return 0.0
-        return (self.winning_trades / self.total_trades) * 100
-
-    def get_effective_capital(self, account_equity: float) -> Optional[float]:
-        """Calculate effective allocated capital based on mode."""
-        if self.allocated_capital is not None:
-            return self.allocated_capital
-        if self.allocated_capital_percent is not None:
-            return account_equity * self.allocated_capital_percent
-        return None
-
-    def __repr__(self) -> str:
-        return f"<QuantStrategy {self.name} ({self.strategy_type}/{self.status})>"
-
-
-class StrategyPositionDB(Base):
-    """
-    Strategy-level position tracking.
-
-    Records which strategy owns which position on which account.
-    This is the application-level bookkeeping layer that sits above
-    the exchange's account-level positions.
-
-    Rules:
-    - Only ONE open position per (account_id, symbol) at any time
-      (enforced by partial unique index).
-    - A 'pending' record is created BEFORE the order is placed to
-      reserve the symbol slot (crash-safe "claim-then-execute" pattern).
-    - On successful fill the record transitions to 'open'.
-    - On failure the record is deleted (rollback).
-    """
-    __tablename__ = "strategy_positions"
-
-    # Partial unique index: only one open/pending position per account+symbol
-    __table_args__ = (
-        Index(
-            "ix_strategy_positions_unique_open",
-            "account_id",
-            "symbol",
-            unique=True,
-            postgresql_where=text("status IN ('open', 'pending')"),
-        ),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    # Generic strategy reference (works for both AI and quant strategies)
-    strategy_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=False,
-        index=True,
-    )
-    strategy_type: Mapped[str] = mapped_column(
-        String(10),
-        nullable=False,
-    )  # "ai" | "quant"
-
-    account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("exchange_accounts.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    # Position details
-    symbol: Mapped[str] = mapped_column(String(20), nullable=False)
-    side: Mapped[str] = mapped_column(String(10), nullable=False)  # "long" | "short"
-    size: Mapped[float] = mapped_column(Float, default=0.0)  # Contract size
-    size_usd: Mapped[float] = mapped_column(Float, default=0.0)  # Notional USD
-    entry_price: Mapped[float] = mapped_column(Float, default=0.0)
-    leverage: Mapped[int] = mapped_column(Integer, default=1)
-
-    # Lifecycle
-    status: Mapped[str] = mapped_column(
-        String(10),
-        default="pending",
-        index=True,
-    )  # pending -> open -> closed
-
-    # PnL tracking
-    realized_pnl: Mapped[float] = mapped_column(Float, default=0.0)
-    close_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-
-    # Timestamps
-    opened_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
-    )
-    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    account: Mapped["ExchangeAccountDB"] = relationship()
-
-    def __repr__(self) -> str:
-        return (
-            f"<StrategyPosition {self.symbol} {self.side} "
-            f"status={self.status} strategy={self.strategy_id}>"
-        )
-
+# =============================================================================
+# Decision Records - Audit trail for AI decisions
+# =============================================================================
 
 class DecisionRecordDB(Base):
     """
@@ -565,6 +603,9 @@ class DecisionRecordDB(Base):
 
     Stores complete information about each decision cycle including
     prompts, AI response, chain of thought, and execution results.
+
+    Linked to Agent (not Strategy) because decisions are made by
+    specific agent instances with specific model/account bindings.
     """
     __tablename__ = "decision_records"
 
@@ -573,9 +614,9 @@ class DecisionRecordDB(Base):
         primary_key=True,
         default=uuid.uuid4
     )
-    strategy_id: Mapped[uuid.UUID] = mapped_column(
+    agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("strategies.id", ondelete="CASCADE"),
+        ForeignKey("agents.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
@@ -624,7 +665,7 @@ class DecisionRecordDB(Base):
     debate_agreement_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Relationships
-    strategy: Mapped["StrategyDB"] = relationship(back_populates="decisions")
+    agent: Mapped["AgentDB"] = relationship(back_populates="decisions")
 
     def __repr__(self) -> str:
         return f"<DecisionRecord {self.id} at {self.timestamp}>"

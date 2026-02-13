@@ -1,37 +1,54 @@
 """
-Strategy models for trading strategies.
+Unified strategy models for trading strategies.
 
-A strategy combines:
-- User prompt (natural language trading instructions)
-- Trading mode (aggressive/balanced/conservative)
-- Risk controls (hard limits enforced by code)
-- Account binding (which exchange account to use)
+A strategy is a PURE LOGIC TEMPLATE that defines trading rules.
+It does NOT bind to any exchange account or AI model - those
+bindings are on the Agent (execution instance).
+
+Supports multiple strategy types via polymorphic config:
+- ai: AI-driven with LLM prompt, indicators, risk controls
+- grid: Grid trading with price ranges
+- dca: Dollar-cost averaging
+- rsi: RSI indicator-based trading
 """
 
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .decision import RiskControls
 
 
-class StrategyStatus(str, Enum):
-    """Strategy lifecycle status"""
-    DRAFT = "draft"
-    ACTIVE = "active"
-    PAUSED = "paused"
-    STOPPED = "stopped"
-    ERROR = "error"
+# =============================================================================
+# Enums
+# =============================================================================
+
+class StrategyType(str, Enum):
+    """Strategy type discriminator"""
+    AI = "ai"
+    GRID = "grid"
+    DCA = "dca"
+    RSI = "rsi"
 
 
 class TradingMode(str, Enum):
-    """Trading style/mode"""
-    AGGRESSIVE = "aggressive"  # Higher risk, higher reward
-    BALANCED = "balanced"  # Balanced risk/reward
-    CONSERVATIVE = "conservative"  # Lower risk, steady returns
+    """Trading style/mode (AI strategies only)"""
+    AGGRESSIVE = "aggressive"
+    BALANCED = "balanced"
+    CONSERVATIVE = "conservative"
 
+
+class StrategyVisibility(str, Enum):
+    """Strategy visibility in marketplace"""
+    PRIVATE = "private"
+    PUBLIC = "public"
+
+
+# =============================================================================
+# AI Strategy Config
+# =============================================================================
 
 class PromptSections(BaseModel):
     """
@@ -58,23 +75,31 @@ class PromptSections(BaseModel):
     )
 
 
-class StrategyConfig(BaseModel):
+class AIStrategyConfig(BaseModel):
     """
-    Complete strategy configuration.
+    Configuration for AI-driven strategies.
 
-    Includes coin selection, indicators, risk controls, and prompt customization.
+    Contains all the settings that were previously split between
+    StrategyDB top-level fields and StrategyConfig.
     """
-    # Prompt language (auto-set from frontend locale)
-    language: str = Field(
-        default="en",
-        description="Prompt language: 'en' or 'zh'"
+    # Prompt (the user's natural language trading instructions)
+    prompt: str = Field(
+        default="",
+        description="Natural language trading instructions"
     )
 
-    # Coin selection
+    # Trading mode
+    trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
+
+    # Symbols (kept here for PromptBuilder compatibility;
+    # also stored at StrategyDB.symbols top level)
     symbols: list[str] = Field(
         default=["BTC", "ETH"],
-        description="Symbols to trade"
+        description="Trading symbols to analyze"
     )
+
+    # Prompt language (auto-set from frontend locale)
+    language: str = Field(default="en", description="Prompt language: 'en' or 'zh'")
 
     # Indicator settings
     indicators: dict = Field(
@@ -123,18 +148,6 @@ class StrategyConfig(BaseModel):
         description="Full custom prompt content for advanced mode (replaces sections 1-6)"
     )
 
-    # Execution settings
-    execution_interval_minutes: int = Field(
-        default=30,
-        ge=5,
-        le=1440,
-        description="How often to run the strategy (minutes)"
-    )
-    auto_execute: bool = Field(
-        default=True,
-        description="Automatically execute decisions above confidence threshold"
-    )
-
     # Multi-model debate settings
     debate_enabled: bool = Field(
         default=False,
@@ -156,84 +169,152 @@ class StrategyConfig(BaseModel):
     )
 
 
+# =============================================================================
+# Quant Strategy Configs (reuse existing, no changes)
+# =============================================================================
+
+class GridConfig(BaseModel):
+    """Configuration for Grid trading strategy"""
+    upper_price: float = Field(..., gt=0, description="Upper price boundary of the grid")
+    lower_price: float = Field(..., gt=0, description="Lower price boundary of the grid")
+    grid_count: int = Field(..., ge=2, le=200, description="Number of grid levels")
+    total_investment: float = Field(..., gt=0, description="Total investment amount (USD)")
+    leverage: float = Field(default=1.0, ge=1.0, le=50.0, description="Leverage multiplier")
+
+    @model_validator(mode="after")
+    def validate_price_range(self):
+        if self.upper_price <= self.lower_price:
+            raise ValueError("upper_price must be greater than lower_price")
+        return self
+
+
+class DCAConfig(BaseModel):
+    """Configuration for DCA (Dollar-Cost Averaging) strategy"""
+    order_amount: float = Field(..., gt=0, description="Amount per order (USD)")
+    interval_minutes: int = Field(..., ge=1, le=43200, description="Time between orders (minutes)")
+    take_profit_percent: float = Field(default=5.0, ge=0.1, le=100.0, description="Take profit percentage")
+    total_budget: float = Field(default=0, ge=0, description="Total budget limit (0 = unlimited)")
+    max_orders: int = Field(default=0, ge=0, description="Max number of orders (0 = unlimited)")
+
+
+class RSIConfig(BaseModel):
+    """Configuration for RSI-based trading strategy"""
+    rsi_period: int = Field(default=14, ge=2, le=100, description="RSI calculation period")
+    overbought_threshold: float = Field(default=70.0, ge=50.0, le=95.0, description="RSI overbought level (sell signal)")
+    oversold_threshold: float = Field(default=30.0, ge=5.0, le=50.0, description="RSI oversold level (buy signal)")
+    order_amount: float = Field(..., gt=0, description="Amount per order (USD)")
+    timeframe: str = Field(default="1h", description="Timeframe for RSI calculation (e.g., 15m, 1h, 4h)")
+    leverage: float = Field(default=1.0, ge=1.0, le=50.0, description="Leverage multiplier")
+
+    @model_validator(mode="after")
+    def validate_thresholds(self):
+        if self.overbought_threshold <= self.oversold_threshold:
+            raise ValueError("overbought_threshold must be greater than oversold_threshold")
+        return self
+
+
+# Strategy type -> config model mapping
+STRATEGY_CONFIG_MODELS: dict[str, type[BaseModel]] = {
+    "ai": AIStrategyConfig,
+    "grid": GridConfig,
+    "dca": DCAConfig,
+    "rsi": RSIConfig,
+}
+
+
+# =============================================================================
+# Strategy Entity & Request/Response Models
+# =============================================================================
+
 class Strategy(BaseModel):
     """
-    Trading strategy entity.
+    Trading strategy entity (read model).
 
-    Represents a user-created strategy that can be activated to trade.
+    Represents a user-created strategy template that can be
+    instantiated as one or more Agents.
     """
     id: str
     user_id: str
+    type: StrategyType
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
+    symbols: list[str] = Field(default_factory=list)
+    config: dict = Field(default_factory=dict)
 
-    # Core configuration
-    prompt: str = Field(
-        ...,
-        min_length=10,
-        description="Natural language trading instructions"
-    )
-    trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
-    config: StrategyConfig = Field(default_factory=StrategyConfig)
-
-    # AI Model selection
-    # Format: "provider:model_id" (e.g., "anthropic:claude-sonnet-4-5-20250514")
-    ai_model: Optional[str] = Field(
-        default=None,
-        description="AI model to use. If None, uses global default."
-    )
-
-    # Account binding
-    account_id: str = Field(..., description="Exchange account to use")
-
-    # Status
-    status: StrategyStatus = Field(default=StrategyStatus.DRAFT)
-    error_message: Optional[str] = None
-
-    # Performance tracking
-    total_pnl: float = Field(default=0.0)
-    total_trades: int = Field(default=0)
-    winning_trades: int = Field(default=0)
-    losing_trades: int = Field(default=0)
-    max_drawdown: float = Field(default=0.0)
+    # Marketplace
+    visibility: StrategyVisibility = Field(default=StrategyVisibility.PRIVATE)
+    category: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    forked_from: Optional[str] = None
+    fork_count: int = Field(default=0)
 
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    last_run_at: Optional[datetime] = None
-
-    @property
-    def win_rate(self) -> float:
-        """Calculate win rate percentage"""
-        if self.total_trades == 0:
-            return 0.0
-        return (self.winning_trades / self.total_trades) * 100
 
 
 class StrategyCreate(BaseModel):
     """Request model for creating a strategy"""
+    type: StrategyType
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
-    prompt: str = Field(..., min_length=10)
-    trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
-    config: StrategyConfig = Field(default_factory=StrategyConfig)
-    account_id: str
-    ai_model: Optional[str] = Field(
-        default=None,
-        description="AI model in format 'provider:model_id'. If None, uses global default."
-    )
+    symbols: list[str] = Field(default_factory=list)
+    config: dict = Field(..., description="Strategy-specific configuration")
+
+    # Optional marketplace fields
+    visibility: StrategyVisibility = Field(default=StrategyVisibility.PRIVATE)
+    category: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_config(self):
+        """Validate config against the strategy type's config model."""
+        config_model = STRATEGY_CONFIG_MODELS.get(self.type.value)
+        if config_model:
+            try:
+                config_model(**self.config)
+            except Exception as e:
+                raise ValueError(f"Invalid config for strategy type '{self.type.value}': {e}")
+        return self
+
+    @model_validator(mode="after")
+    def validate_symbols(self):
+        """Ensure at least one symbol is provided."""
+        if not self.symbols:
+            raise ValueError("At least one trading symbol is required")
+        return self
+
+    @model_validator(mode="after")
+    def validate_ai_prompt(self):
+        """AI strategies must have a prompt in config."""
+        if self.type == StrategyType.AI:
+            prompt = self.config.get("prompt", "")
+            if not prompt or len(prompt.strip()) < 10:
+                raise ValueError("AI strategy requires a prompt with at least 10 characters")
+        return self
 
 
 class StrategyUpdate(BaseModel):
     """Request model for updating a strategy"""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
-    prompt: Optional[str] = Field(None, min_length=10)
-    trading_mode: Optional[TradingMode] = None
-    config: Optional[StrategyConfig] = None
-    account_id: Optional[str] = None
-    ai_model: Optional[str] = Field(
-        default=None,
-        description="AI model in format 'provider:model_id'. Set to empty string to use global default."
-    )
-    status: Optional[StrategyStatus] = None
+    symbols: Optional[list[str]] = None
+    config: Optional[dict] = None
+    visibility: Optional[StrategyVisibility] = None
+    category: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+class StrategyFork(BaseModel):
+    """Request model for forking a strategy from marketplace"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Override name (defaults to source name)")
+
+
+# =============================================================================
+# Backward compatibility - keep StrategyConfig as alias for AIStrategyConfig
+# =============================================================================
+
+# These are used by PromptBuilder and other services that specifically
+# deal with AI strategy configuration.
+StrategyConfig = AIStrategyConfig
+StrategyStatus = None  # Removed - status is on Agent now

@@ -490,8 +490,8 @@ function ActivityFeed({
         ) : activityData && activityData.items.length > 0 ? (
           <div className="space-y-3">
             {activityData.items.map((item: ActivityItem) => {
-              const strategyId = item.data?.strategy_id as string | undefined;
-              const isClickable = !!strategyId;
+              const agentId = (item.data?.agent_id || item.data?.strategy_id) as string | undefined;
+              const isClickable = !!agentId;
 
               const content = (
                 <>
@@ -536,7 +536,7 @@ function ActivityFeed({
               return isClickable ? (
                 <Link
                   key={item.id}
-                  href={`/agents/${strategyId}?tab=decisions&decision=${item.id}`}
+                  href={`/agents/${agentId}?tab=decisions&decision=${item.id}`}
                   className={sharedClassName}
                   title={t('activity.viewDetail')}
                 >

@@ -18,12 +18,84 @@ from ..db.database import AsyncSessionLocal
 from ..db.models import DecisionRecordDB, ExchangeAccountDB, StrategyDB
 from ..db.repositories.account import AccountRepository
 from ..db.repositories.strategy import StrategyRepository
-from ..services.position_service import PositionService
 from ..services.strategy_engine import StrategyEngine
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== Mock State Restoration ====================
+
+async def _restore_mock_trader_state(
+    session,
+    agent_id: uuid.UUID,
+    initial_balance: float,
+    trader,
+) -> None:
+    """
+    Restore MockTrader state from persisted AgentPositionDB data.
+
+    Reconstructs the SimulatedTrader's in-memory balance and open positions
+    so that mock agents survive worker restarts.
+
+    Args:
+        session: AsyncSession
+        agent_id: UUID of the agent
+        initial_balance: Agent's mock_initial_balance
+        trader: MockTrader instance (already initialized)
+    """
+    from sqlalchemy import select, func
+    from ..db.models import AgentPositionDB
+
+    # Load open positions
+    open_stmt = (
+        select(AgentPositionDB)
+        .where(
+            AgentPositionDB.agent_id == agent_id,
+            AgentPositionDB.status == "open",
+        )
+    )
+    open_result = await session.execute(open_stmt)
+    open_positions = open_result.scalars().all()
+
+    # Calculate realized PnL from closed positions to reconstruct balance
+    pnl_stmt = (
+        select(func.coalesce(func.sum(AgentPositionDB.realized_pnl), 0.0))
+        .where(
+            AgentPositionDB.agent_id == agent_id,
+            AgentPositionDB.status == "closed",
+        )
+    )
+    pnl_result = await session.execute(pnl_stmt)
+    total_realized_pnl = float(pnl_result.scalar_one())
+
+    # Reconstruct balance
+    restored_balance = initial_balance + total_realized_pnl
+
+    # Build position data for restoration
+    positions_data = []
+    for pos in open_positions:
+        positions_data.append({
+            "symbol": pos.symbol,
+            "side": pos.side,
+            "size": pos.size,
+            "entry_price": pos.entry_price,
+            "leverage": pos.leverage,
+            "opened_at": pos.opened_at,
+        })
+
+    if positions_data or total_realized_pnl != 0.0:
+        trader.restore_state(
+            balance=restored_balance,
+            positions=positions_data,
+        )
+        logger.info(
+            f"Restored mock state for agent {agent_id}: "
+            f"balance=${restored_balance:,.2f} "
+            f"(initial=${initial_balance:,.0f} + pnl=${total_realized_pnl:,.2f}), "
+            f"{len(positions_data)} open positions"
+        )
 
 
 # ==================== Task Definitions ====================
@@ -35,8 +107,12 @@ async def execute_strategy_cycle(
     """
     Execute a single decision cycle for a strategy.
 
+    Loads the strategy's active agent to determine execution mode:
+    - live: uses CCXTTrader with exchange credentials
+    - mock: uses MockTrader with real-time public market data
+
     This task is submitted to the queue and executed by a worker.
-    After execution, it schedules the next cycle based on strategy config.
+    After execution, it schedules the next cycle based on agent config.
 
     Args:
         ctx: ARQ context (contains redis connection)
@@ -68,9 +144,6 @@ async def execute_strategy_cycle(
         # SET NX with 5-minute TTL (matches job_timeout)
         lock_acquired = await redis.set(lock_key, "1", nx=True, ex=300)
     except Exception as e:
-        # Fail-safe: if Redis is unavailable, do NOT proceed without a
-        # lock – this prevents duplicate execution when multiple workers
-        # pick up the same job.
         logger.error(f"Failed to acquire exec lock for {strategy_id}: {e}")
         result["error"] = f"Redis lock unavailable: {e}"
         return result
@@ -101,64 +174,109 @@ async def execute_strategy_cycle(
                 logger.info(result["error"])
                 return result
             
-            if not strategy.account_id:
-                result["error"] = f"Strategy {strategy_id} has no account configured"
-                logger.error(result["error"])
-                await strategy_repo.update_status(strategy.id, "error", result["error"])
-                await session.commit()
-                return result
-            
-            # Get account
-            account = strategy.account
-            if not account:
-                result["error"] = f"Account not found for strategy {strategy_id}"
-                logger.error(result["error"])
-                return result
-            
-            # Get decrypted credentials
-            credentials = await account_repo.get_decrypted_credentials(
-                strategy.account_id,
-                strategy.user_id
+            # ── Load active agent for this strategy ──
+            from ..db.repositories.agent import AgentRepository
+            from ..db.models import AgentDB
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+
+            agent_stmt = (
+                select(AgentDB)
+                .where(
+                    AgentDB.strategy_id == strategy.id,
+                    AgentDB.status == "active",
+                )
+                .options(selectinload(AgentDB.strategy))
+                .limit(1)
             )
-            if not credentials:
-                result["error"] = f"Failed to get credentials for strategy {strategy_id}"
-                logger.error(result["error"])
-                return result
+            agent_result = await session.execute(agent_stmt)
+            agent = agent_result.scalar_one_or_none()
+
+            # ── Determine execution mode and create trader ──
+            if agent and agent.execution_mode == "mock":
+                # Mock mode: use MockTrader with real-time public prices
+                from ..traders.mock_trader import MockTrader
+
+                symbols = strategy.symbols or ["BTC"]
+                mock_balance = agent.mock_initial_balance or 10000.0
+                trader = MockTrader(
+                    initial_balance=mock_balance,
+                    symbols=symbols,
+                )
+                try:
+                    await trader.initialize()
+                    # Restore state from persisted positions (survives restarts)
+                    await _restore_mock_trader_state(
+                        session, agent.id, mock_balance, trader,
+                    )
+                except Exception as e:
+                    result["error"] = f"Failed to initialize MockTrader: {e}"
+                    logger.error(result["error"])
+                    return result
+
+            else:
+                # Live mode: use CCXTTrader with exchange credentials
+                account_id = agent.account_id if agent else strategy.account_id
+                if not account_id:
+                    result["error"] = f"Strategy {strategy_id} has no account configured"
+                    logger.error(result["error"])
+                    await strategy_repo.update_status(strategy.id, "error", result["error"])
+                    await session.commit()
+                    return result
+
+                account = await account_repo.get_by_id(account_id)
+                if not account:
+                    result["error"] = f"Account not found for strategy {strategy_id}"
+                    logger.error(result["error"])
+                    return result
+
+                user_id = agent.user_id if agent else strategy.user_id
+                credentials = await account_repo.get_decrypted_credentials(
+                    account_id, user_id
+                )
+                if not credentials:
+                    result["error"] = f"Failed to get credentials for strategy {strategy_id}"
+                    logger.error(result["error"])
+                    return result
+
+                try:
+                    trader = create_trader_from_account(account, credentials)
+                    await trader.initialize()
+                except (ValueError, TradeError) as e:
+                    error_msg = str(e) if isinstance(e, ValueError) else e.message
+                    result["error"] = f"Failed to initialize trader: {error_msg}"
+                    logger.error(result["error"])
+                    await strategy_repo.update_status(strategy.id, "error", error_msg)
+                    await session.commit()
+                    return result
             
-            # Create trader
-            try:
-                trader = create_trader_from_account(account, credentials)
-                await trader.initialize()
-            except (ValueError, TradeError) as e:
-                error_msg = str(e) if isinstance(e, ValueError) else e.message
-                result["error"] = f"Failed to initialize trader: {error_msg}"
-                logger.error(result["error"])
-                await strategy_repo.update_status(strategy.id, "error", error_msg)
-                await session.commit()
-                return result
-            
-            # Create position service for strategy isolation
+            # Create agent position service
             from ..services.redis_service import get_redis_service
+            from ..services.agent_position_service import AgentPositionService
             try:
                 redis_service = await get_redis_service()
             except Exception:
                 redis_service = None
-            position_service = PositionService(db=session, redis=redis_service)
+            position_service = AgentPositionService(db=session, redis=redis_service)
 
             # Create strategy engine and run cycle
             engine = StrategyEngine(
+                agent=agent if agent else None,
                 strategy=strategy,
                 trader=trader,
-                ai_client=None,  # Engine creates based on strategy config
+                ai_client=None,  # Engine creates based on agent/strategy config
                 db_session=session,
                 position_service=position_service,
             )
             
             cycle_result = await engine.run_cycle()
             
-            # Get interval from config for scheduling next run
-            config = strategy.config or {}
-            interval_minutes = config.get("execution_interval_minutes", 30)
+            # Get interval from agent or strategy config
+            if agent:
+                interval_minutes = agent.execution_interval_minutes or 30
+            else:
+                config = strategy.config or {}
+                interval_minutes = config.get("execution_interval_minutes", 30)
             
             # Update strategy timestamps
             await strategy_repo.update(
@@ -376,6 +494,8 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
     """
     Periodic reconciliation: compare DB position records with exchange state.
 
+    Uses AgentPositionService for agent-level position isolation.
+
     Detects and handles:
     - Zombie records (DB=open, exchange=no position) → mark closed
     - Orphan positions (exchange has it, DB doesn't) → log warning
@@ -396,12 +516,13 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
     try:
         async with AsyncSessionLocal() as session:
             from sqlalchemy import select, distinct
-            from ..db.models import StrategyPositionDB
+            from ..db.models import AgentPositionDB
+            from ..services.agent_position_service import AgentPositionService
 
-            # Find all accounts that have open/pending positions
+            # Find all accounts that have open/pending agent positions
             stmt = (
-                select(distinct(StrategyPositionDB.account_id))
-                .where(StrategyPositionDB.status.in_(["open", "pending"]))
+                select(distinct(AgentPositionDB.account_id))
+                .where(AgentPositionDB.status.in_(["open", "pending"]))
             )
             result = await session.execute(stmt)
             account_ids = [row[0] for row in result.all()]
@@ -411,7 +532,12 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
                 return total_summary
 
             account_repo = AccountRepository(session)
-            position_service = PositionService(db=session)
+            from ..services.redis_service import get_redis_service
+            try:
+                redis_service = await get_redis_service()
+            except Exception:
+                redis_service = None
+            agent_position_service = AgentPositionService(db=session, redis=redis_service)
 
             for account_id in account_ids:
                 trader = None
@@ -430,13 +556,13 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
                     await trader.initialize()
                     exchange_positions = await trader.get_positions()
 
-                    summary = await position_service.reconcile(
+                    summary = await agent_position_service.reconcile(
                         account_id=account_id,
                         exchange_positions=exchange_positions,
                     )
 
                     # Clean stale pending claims
-                    stale = await position_service.cleanup_stale_pending()
+                    stale = await agent_position_service.cleanup_stale_pending()
 
                     total_summary["accounts_checked"] += 1
                     total_summary["zombies_closed"] += summary["zombies_closed"]

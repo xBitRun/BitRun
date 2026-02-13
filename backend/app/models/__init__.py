@@ -1,5 +1,15 @@
-"""Data models for strategies, decisions, and accounts"""
+"""Data models for strategies, agents, decisions, and accounts"""
 
+from .agent import (
+    Agent,
+    AgentAccountState,
+    AgentCreate,
+    AgentPosition,
+    AgentStatus,
+    AgentStatusUpdate,
+    AgentUpdate,
+    ExecutionMode,
+)
 from .decision import (
     ActionType,
     DecisionRecord,
@@ -15,9 +25,31 @@ from .market_context import (
     MarketContext,
     TechnicalIndicators,
 )
-from .strategy import Strategy, StrategyConfig, StrategyStatus, TradingMode
+from .strategy import (
+    AIStrategyConfig,
+    DCAConfig,
+    GridConfig,
+    RSIConfig,
+    STRATEGY_CONFIG_MODELS,
+    Strategy,
+    StrategyConfig,
+    StrategyCreate,
+    StrategyType,
+    StrategyUpdate,
+    StrategyVisibility,
+    TradingMode,
+)
 
 __all__ = [
+    # Agent models
+    "Agent",
+    "AgentAccountState",
+    "AgentCreate",
+    "AgentPosition",
+    "AgentStatus",
+    "AgentStatusUpdate",
+    "AgentUpdate",
+    "ExecutionMode",
     # Decision models
     "ActionType",
     "DecisionRecord",
@@ -25,9 +57,17 @@ __all__ = [
     "RiskControls",
     "TradingDecision",
     # Strategy models
+    "AIStrategyConfig",
+    "DCAConfig",
+    "GridConfig",
+    "RSIConfig",
+    "STRATEGY_CONFIG_MODELS",
     "Strategy",
     "StrategyConfig",
-    "StrategyStatus",
+    "StrategyCreate",
+    "StrategyType",
+    "StrategyUpdate",
+    "StrategyVisibility",
     "TradingMode",
     # Market context models
     "OHLCV",
