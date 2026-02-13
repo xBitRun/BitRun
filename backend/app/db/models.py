@@ -227,6 +227,13 @@ class StrategyDB(Base):
     )
     fork_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Pricing fields (paid strategies)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    price_monthly: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    revenue_share_percent: Mapped[float] = mapped_column(Float, default=0.0)
+    # "free", "one_time", "monthly"
+    pricing_model: Mapped[str] = mapped_column(String(20), default="free")
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -250,9 +257,129 @@ class StrategyDB(Base):
         remote_side="StrategyDB.id",
         foreign_keys=[forked_from],
     )
+    versions: Mapped[list["StrategyVersionDB"]] = relationship(
+        back_populates="strategy",
+        cascade="all, delete-orphan",
+        order_by="StrategyVersionDB.version.desc()"
+    )
 
     def __repr__(self) -> str:
         return f"<Strategy {self.name} (type={self.type})>"
+
+
+# =============================================================================
+# Strategy Versioning - Config change history
+# =============================================================================
+
+class StrategyVersionDB(Base):
+    """
+    Strategy version snapshot.
+
+    Automatically created when a strategy's config, symbols, or description
+    is changed. Allows users to view change history and restore previous
+    configurations.
+    """
+    __tablename__ = "strategy_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    strategy_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Version number (auto-incremented per strategy)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Snapshot of strategy state at this version
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    symbols: Mapped[list] = mapped_column(JSON, default=list)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    # Change description (auto-generated or user-provided)
+    change_note: Mapped[str] = mapped_column(Text, default="")
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    strategy: Mapped["StrategyDB"] = relationship(back_populates="versions")
+
+    def __repr__(self) -> str:
+        return f"<StrategyVersion {self.strategy_id} v{self.version}>"
+
+
+# =============================================================================
+# Strategy Subscriptions - Paid strategy access
+# =============================================================================
+
+class StrategySubscriptionDB(Base):
+    """
+    Subscription record for a paid strategy.
+
+    Tracks which users have subscribed to (purchased access to) a paid
+    strategy, along with their subscription status and expiry.
+    """
+    __tablename__ = "strategy_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    strategy_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("strategies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Subscription status
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="active"
+    )  # "active", "expired", "cancelled"
+
+    # Pricing at time of subscription
+    price_paid: Mapped[float] = mapped_column(Float, default=0.0)
+    pricing_model: Mapped[str] = mapped_column(String(20), default="free")
+
+    # Subscription period
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<Subscription user={self.user_id} strategy={self.strategy_id}>"
 
 
 # =============================================================================

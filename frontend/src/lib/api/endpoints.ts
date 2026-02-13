@@ -170,10 +170,35 @@ export interface StrategyResponse {
   tags: string[];
   forked_from?: string | null;
   fork_count: number;
+  author_name?: string | null;
+
+  // Pricing
+  is_paid: boolean;
+  price_monthly?: number | null;
+  pricing_model: 'free' | 'one_time' | 'monthly';
 
   // Timestamps
   created_at: string;
   updated_at: string;
+}
+
+export interface MarketplaceResponse {
+  items: StrategyResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface StrategyVersionResponse {
+  id: string;
+  strategy_id: string;
+  version: number;
+  name: string;
+  description: string;
+  symbols: string[];
+  config: Record<string, unknown>;
+  change_note: string;
+  created_at: string;
 }
 
 export const strategiesApi = {
@@ -210,14 +235,14 @@ export const strategiesApi = {
     offset?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
+    if (params?.type_filter) searchParams.set('type', params.type_filter);
     if (params?.category) searchParams.set('category', params.category);
     if (params?.search) searchParams.set('search', params.search);
-    if (params?.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by === 'popular' ? 'fork_count' : 'newest');
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const query = searchParams.toString();
-    return api.get<StrategyResponse[]>(`/strategies/marketplace${query ? `?${query}` : ''}`);
+    return api.get<MarketplaceResponse>(`/strategies/marketplace${query ? `?${query}` : ''}`);
   },
 
   previewPrompt: (data: Record<string, unknown>) =>
@@ -226,6 +251,30 @@ export const strategiesApi = {
       estimated_tokens: number;
       sections: Record<string, string>;
     }>('/strategies/preview-prompt', data),
+
+  /** List version history for a strategy */
+  listVersions: (strategyId: string) =>
+    api.get<StrategyVersionResponse[]>(`/strategies/${strategyId}/versions`),
+
+  /** Get a specific version snapshot */
+  getVersion: (strategyId: string, version: number) =>
+    api.get<StrategyVersionResponse>(`/strategies/${strategyId}/versions/${version}`),
+
+  /** Restore a strategy to a previous version */
+  restoreVersion: (strategyId: string, version: number) =>
+    api.post<StrategyResponse>(`/strategies/${strategyId}/versions/${version}/restore`),
+
+  /** Check subscription status for a paid strategy */
+  getSubscription: (strategyId: string) =>
+    api.get<{ strategy_id: string; subscribed: boolean; status?: string; expires_at?: string }>(
+      `/strategies/${strategyId}/subscription`
+    ),
+
+  /** Subscribe to a paid strategy */
+  subscribe: (strategyId: string) =>
+    api.post<{ strategy_id: string; subscribed: boolean; status?: string; expires_at?: string }>(
+      `/strategies/${strategyId}/subscribe`
+    ),
 };
 
 // ==================== Agents (execution instances) ====================
@@ -1062,10 +1111,13 @@ export const providersApi = {
 // ==================== Competition ====================
 
 export interface LeaderboardEntry {
+  agent_id: string;
+  agent_name: string;
   strategy_id: string;
-  name: string;
+  strategy_name: string;
+  strategy_type: string;
   status: string;
-  trading_mode: string;
+  execution_mode: string;
   ai_model: string | null;
   total_pnl: number;
   total_pnl_percent: number;
@@ -1077,8 +1129,8 @@ export interface LeaderboardEntry {
 }
 
 export interface CompetitionStats {
-  total_strategies: number;
-  active_strategies: number;
+  total_agents: number;
+  active_agents: number;
   best_performer: string | null;
   best_pnl: number;
   worst_pnl: number;
@@ -1091,6 +1143,28 @@ export interface LeaderboardResponse {
   stats: CompetitionStats;
 }
 
+export interface StrategyRankingEntry {
+  strategy_id: string;
+  strategy_name: string;
+  strategy_type: string;
+  author_name: string | null;
+  description: string;
+  symbols: string[];
+  fork_count: number;
+  agent_count: number;
+  avg_pnl: number;
+  total_pnl: number;
+  avg_win_rate: number;
+  best_pnl: number;
+  total_trades: number;
+  rank: number;
+}
+
+export interface StrategyRankingResponse {
+  rankings: StrategyRankingEntry[];
+  total: number;
+}
+
 export const competitionApi = {
   getLeaderboard: (sortBy?: string, order?: string) => {
     const params = new URLSearchParams();
@@ -1098,6 +1172,21 @@ export const competitionApi = {
     if (order) params.set('order', order);
     const qs = params.toString();
     return api.get<LeaderboardResponse>(`/competition/leaderboard${qs ? `?${qs}` : ''}`);
+  },
+
+  getStrategyRanking: (params?: {
+    sort_by?: string;
+    type_filter?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return api.get<StrategyRankingResponse>(`/competition/strategy-ranking${qs ? `?${qs}` : ''}`);
   },
 };
 

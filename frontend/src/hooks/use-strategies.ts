@@ -11,6 +11,8 @@ import useSWRMutation from 'swr/mutation';
 import { strategiesApi } from '@/lib/api';
 import type { 
   StrategyResponse, 
+  MarketplaceResponse,
+  StrategyVersionResponse,
   CreateStrategyRequest, 
   UpdateStrategyRequest 
 } from '@/lib/api';
@@ -114,7 +116,7 @@ export function useMarketplaceStrategies(params?: {
   offset?: number;
 }) {
   const key = params ? [MARKETPLACE_KEY, params] : MARKETPLACE_KEY;
-  const swr = useSWR<StrategyResponse[]>(
+  const swr = useSWR<MarketplaceResponse>(
     key,
     () => strategiesApi.marketplace(params),
     {
@@ -124,7 +126,33 @@ export function useMarketplaceStrategies(params?: {
   );
   return {
     ...swr,
-    strategies: swr.data ?? [],
+    strategies: swr.data?.items ?? [],
+    total: swr.data?.total ?? 0,
     refresh: swr.mutate,
   };
+}
+
+/**
+ * Fetch version history for a strategy
+ */
+export function useStrategyVersions(strategyId: string | null) {
+  return useSWR<StrategyVersionResponse[]>(
+    strategyId ? `/strategies/${strategyId}/versions` : null,
+    () => strategiesApi.listVersions(strategyId!),
+    {
+      revalidateOnFocus: false,
+    }
+  );
+}
+
+/**
+ * Restore strategy to a previous version
+ */
+export function useRestoreStrategyVersion(strategyId: string) {
+  return useSWRMutation<StrategyResponse, Error, string, number>(
+    `/strategies/${strategyId}`,
+    async (_, { arg: version }) => {
+      return strategiesApi.restoreVersion(strategyId, version);
+    }
+  );
 }

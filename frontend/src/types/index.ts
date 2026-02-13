@@ -1,6 +1,7 @@
 // Strategy Types (v2 - unified, pure logic template)
 export type StrategyType = "ai" | "grid" | "dca" | "rsi";
 export type StrategyVisibility = "private" | "public";
+export type PricingModel = "free" | "one_time" | "monthly";
 export type TradingMode = "aggressive" | "balanced" | "conservative";
 export type ActionType = "open_long" | "open_short" | "close_long" | "close_short" | "hold" | "wait";
 

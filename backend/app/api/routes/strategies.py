@@ -12,6 +12,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from ...core.dependencies import (
     CryptoDep,
@@ -55,10 +56,24 @@ class StrategyResponse(BaseModel):
     tags: list[str] = []
     forked_from: Optional[str] = None
     fork_count: int = 0
+    author_name: Optional[str] = None
+
+    # Pricing
+    is_paid: bool = False
+    price_monthly: Optional[float] = None
+    pricing_model: str = "free"
 
     # Timestamps
     created_at: str
     updated_at: str
+
+
+class MarketplaceResponse(BaseModel):
+    """Paginated marketplace response"""
+    items: list[StrategyResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 # ==================== Routes ====================
@@ -87,6 +102,9 @@ async def create_strategy(
         visibility=data.visibility.value,
         category=data.category,
         tags=data.tags,
+        is_paid=data.is_paid,
+        price_monthly=data.price_monthly,
+        pricing_model=data.pricing_model.value,
     )
 
     return _strategy_to_response(strategy)
@@ -116,7 +134,7 @@ async def list_strategies(
     return [_strategy_to_response(s) for s in strategies]
 
 
-@router.get("/marketplace", response_model=list[StrategyResponse])
+@router.get("/marketplace", response_model=MarketplaceResponse)
 async def browse_marketplace(
     db: DbSessionDep,
     user_id: CurrentUserDep,
@@ -134,7 +152,7 @@ async def browse_marketplace(
     Sort by fork_count (popular), newest, or updated.
     """
     repo = StrategyRepository(db)
-    strategies = await repo.get_public(
+    strategies, total = await repo.get_public(
         type_filter=type,
         category=category,
         search=search,
@@ -143,7 +161,12 @@ async def browse_marketplace(
         offset=offset,
     )
 
-    return [_strategy_to_response(s) for s in strategies]
+    return MarketplaceResponse(
+        items=[_strategy_to_response(s) for s in strategies],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{strategy_id}", response_model=StrategyResponse)
@@ -242,6 +265,116 @@ async def fork_strategy(
     return _strategy_to_response(forked)
 
 
+# ==================== Subscription Endpoints ====================
+
+
+class SubscriptionResponse(BaseModel):
+    """Subscription status response"""
+    strategy_id: str
+    subscribed: bool
+    status: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+@router.get("/{strategy_id}/subscription", response_model=SubscriptionResponse)
+async def get_subscription_status(
+    strategy_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """Check if the current user has an active subscription to a strategy."""
+    from ...db.models import StrategySubscriptionDB
+
+    query = select(StrategySubscriptionDB).where(
+        StrategySubscriptionDB.strategy_id == uuid.UUID(strategy_id),
+        StrategySubscriptionDB.user_id == uuid.UUID(user_id),
+        StrategySubscriptionDB.status == "active",
+    )
+    result = await db.execute(query)
+    sub = result.scalar_one_or_none()
+
+    return SubscriptionResponse(
+        strategy_id=strategy_id,
+        subscribed=sub is not None,
+        status=sub.status if sub else None,
+        expires_at=sub.expires_at.isoformat() if sub and sub.expires_at else None,
+    )
+
+
+@router.post("/{strategy_id}/subscribe", response_model=SubscriptionResponse)
+async def subscribe_to_strategy(
+    strategy_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Subscribe to a paid strategy.
+
+    For free strategies, this is a no-op (fork instead).
+    For paid strategies, creates a subscription record.
+    """
+    from ...db.models import StrategySubscriptionDB
+    from datetime import timedelta
+
+    repo = StrategyRepository(db)
+    strategy = await repo.get_by_id(uuid.UUID(strategy_id))
+
+    if not strategy or strategy.visibility != "public":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found or not public"
+        )
+
+    if not strategy.is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Strategy is free. Use fork instead."
+        )
+
+    # Check for existing active subscription
+    existing_query = select(StrategySubscriptionDB).where(
+        StrategySubscriptionDB.strategy_id == uuid.UUID(strategy_id),
+        StrategySubscriptionDB.user_id == uuid.UUID(user_id),
+        StrategySubscriptionDB.status == "active",
+    )
+    existing_result = await db.execute(existing_query)
+    existing = existing_result.scalar_one_or_none()
+
+    if existing:
+        return SubscriptionResponse(
+            strategy_id=strategy_id,
+            subscribed=True,
+            status=existing.status,
+            expires_at=existing.expires_at.isoformat() if existing.expires_at else None,
+        )
+
+    # Create subscription
+    from datetime import datetime, UTC
+    now = datetime.now(UTC)
+    expires_at = None
+    if strategy.pricing_model == "monthly":
+        expires_at = now + timedelta(days=30)
+
+    sub = StrategySubscriptionDB(
+        strategy_id=uuid.UUID(strategy_id),
+        user_id=uuid.UUID(user_id),
+        status="active",
+        price_paid=strategy.price_monthly or 0.0,
+        pricing_model=strategy.pricing_model,
+        started_at=now,
+        expires_at=expires_at,
+    )
+    db.add(sub)
+    await db.flush()
+
+    return SubscriptionResponse(
+        strategy_id=strategy_id,
+        subscribed=True,
+        status="active",
+        expires_at=expires_at.isoformat() if expires_at else None,
+    )
+
+
 @router.delete("/{strategy_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_strategy(
     strategy_id: str,
@@ -281,6 +414,122 @@ async def delete_strategy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Strategy not found"
         )
+
+
+# ==================== Version Management Endpoints ====================
+
+
+class StrategyVersionResponse(BaseModel):
+    """Strategy version snapshot response"""
+    id: str
+    strategy_id: str
+    version: int
+    name: str
+    description: str
+    symbols: list[str]
+    config: dict
+    change_note: str
+    created_at: str
+
+
+@router.get("/{strategy_id}/versions", response_model=list[StrategyVersionResponse])
+async def list_versions(
+    strategy_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """
+    List version history for a strategy.
+
+    Returns snapshots of previous configurations in reverse chronological order.
+    """
+    repo = StrategyRepository(db)
+    versions = await repo.get_versions(
+        uuid.UUID(strategy_id),
+        uuid.UUID(user_id),
+        limit=limit,
+        offset=offset,
+    )
+
+    return [
+        StrategyVersionResponse(
+            id=str(v.id),
+            strategy_id=str(v.strategy_id),
+            version=v.version,
+            name=v.name,
+            description=v.description or "",
+            symbols=v.symbols or [],
+            config=v.config or {},
+            change_note=v.change_note or "",
+            created_at=v.created_at.isoformat(),
+        )
+        for v in versions
+    ]
+
+
+@router.get("/{strategy_id}/versions/{version}", response_model=StrategyVersionResponse)
+async def get_version(
+    strategy_id: str,
+    version: int,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """Get a specific version snapshot."""
+    repo = StrategyRepository(db)
+    v = await repo.get_version(
+        uuid.UUID(strategy_id),
+        version,
+        uuid.UUID(user_id),
+    )
+
+    if not v:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version not found"
+        )
+
+    return StrategyVersionResponse(
+        id=str(v.id),
+        strategy_id=str(v.strategy_id),
+        version=v.version,
+        name=v.name,
+        description=v.description or "",
+        symbols=v.symbols or [],
+        config=v.config or {},
+        change_note=v.change_note or "",
+        created_at=v.created_at.isoformat(),
+    )
+
+
+@router.post("/{strategy_id}/versions/{version}/restore", response_model=StrategyResponse)
+async def restore_version(
+    strategy_id: str,
+    version: int,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Restore a strategy to a previous version.
+
+    Creates a snapshot of the current state, then applies the
+    selected version's config, symbols, and description.
+    """
+    repo = StrategyRepository(db)
+    strategy = await repo.restore_version(
+        uuid.UUID(strategy_id),
+        version,
+        uuid.UUID(user_id),
+    )
+
+    if not strategy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy or version not found"
+        )
+
+    return _strategy_to_response(strategy)
 
 
 # ==================== AI Strategy Specific Endpoints ====================
@@ -447,6 +696,14 @@ async def validate_debate_models(
 
 def _strategy_to_response(strategy) -> StrategyResponse:
     """Convert strategy DB model to response"""
+    # Try to get author name from eagerly-loaded user relationship
+    author_name = None
+    try:
+        if strategy.user:
+            author_name = strategy.user.name
+    except Exception:
+        pass
+
     return StrategyResponse(
         id=str(strategy.id),
         user_id=str(strategy.user_id),
@@ -460,6 +717,10 @@ def _strategy_to_response(strategy) -> StrategyResponse:
         tags=strategy.tags or [],
         forked_from=str(strategy.forked_from) if strategy.forked_from else None,
         fork_count=strategy.fork_count or 0,
+        author_name=author_name,
+        is_paid=strategy.is_paid or False,
+        price_monthly=strategy.price_monthly,
+        pricing_model=strategy.pricing_model or "free",
         created_at=strategy.created_at.isoformat(),
         updated_at=strategy.updated_at.isoformat(),
     )

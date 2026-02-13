@@ -837,6 +837,20 @@
       "private": "私有",
       "public": "公开"
     },
+    "pricing": {
+      "free": "免费",
+      "oneTime": "一次性",
+      "monthly": "月付",
+      "pricePerMonth": "${price}/月",
+      "setPricing": "设置定价",
+      "pricingModel": "定价模式",
+      "monthlyPrice": "月费（USD）",
+      "revenueShare": "收益分成 %",
+      "subscribed": "已订阅",
+      "subscribe": "订阅",
+      "subscribeSuccess": "策略订阅成功",
+      "subscribeError": "策略订阅失败"
+    },
     "filter": {
       "allTypes": "全部类型",
       "allStatus": "全部状态",
@@ -884,14 +898,39 @@
       "searchPlaceholder": "搜索市场策略...",
       "sortPopular": "最受欢迎",
       "sortRecent": "最近发布",
-      "forkSuccess": "策略复刻成功",
-      "forkError": "策略复刻失败"
+      "forkSuccess": "策略复刻成功！正在跳转到代理创建...",
+      "forkError": "策略复刻失败",
+      "emptyTitle": "暂无可用策略",
+      "emptyDescription": "成为第一个发布策略到市场的用户！",
+      "emptySearchTitle": "没有匹配的策略",
+      "emptySearchDescription": "请尝试调整搜索条件或筛选器",
+      "forks": "复刻",
+      "by": "作者",
+      "forkAndUse": "复刻使用",
+      "viewDetails": "查看详情",
+      "publishHint": "在策略页面将您的策略分享到市场",
+      "totalStrategies": "共 {count} 个策略",
+      "loadMore": "加载更多"
     },
     "empty": {
       "title": "还没有策略",
       "searchHint": "尝试调整搜索条件或筛选器",
       "createHint": "创建你的第一个策略",
       "noDescription": "暂无描述"
+    },
+    "versions": {
+      "title": "版本历史",
+      "subtitle": "查看和恢复之前的配置",
+      "version": "v{version}",
+      "current": "当前版本",
+      "restore": "恢复",
+      "restoreConfirm": "确定恢复策略到版本 {version}？当前配置将自动保存。",
+      "restoreSuccess": "策略已恢复到版本 {version}",
+      "restoreError": "版本恢复失败",
+      "noVersions": "暂无版本历史",
+      "noVersionsHint": "当您更新策略配置时，版本将自动创建",
+      "changeNote": "变更说明",
+      "viewConfig": "查看配置"
     },
     "error": {
       "loadFailed": "加载策略失败",

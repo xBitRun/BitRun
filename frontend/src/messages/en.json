@@ -837,6 +837,20 @@
       "private": "Private",
       "public": "Public"
     },
+    "pricing": {
+      "free": "Free",
+      "oneTime": "One-time",
+      "monthly": "Monthly",
+      "pricePerMonth": "${price}/mo",
+      "setPricing": "Set Pricing",
+      "pricingModel": "Pricing Model",
+      "monthlyPrice": "Monthly Price (USD)",
+      "revenueShare": "Revenue Share %",
+      "subscribed": "Subscribed",
+      "subscribe": "Subscribe",
+      "subscribeSuccess": "Successfully subscribed to strategy",
+      "subscribeError": "Failed to subscribe"
+    },
     "filter": {
       "allTypes": "All Types",
       "allStatus": "All Status",
@@ -884,14 +898,39 @@
       "searchPlaceholder": "Search market strategies...",
       "sortPopular": "Most Popular",
       "sortRecent": "Most Recent",
-      "forkSuccess": "Strategy forked successfully",
-      "forkError": "Failed to fork strategy"
+      "forkSuccess": "Strategy forked successfully! Redirecting to agent creation...",
+      "forkError": "Failed to fork strategy",
+      "emptyTitle": "No strategies available yet",
+      "emptyDescription": "Be the first to publish a strategy to the marketplace!",
+      "emptySearchTitle": "No matching strategies",
+      "emptySearchDescription": "Try adjusting your search or filters",
+      "forks": "Forks",
+      "by": "by",
+      "forkAndUse": "Fork & Use",
+      "viewDetails": "View Details",
+      "publishHint": "Share your strategies to the market from the Strategies page",
+      "totalStrategies": "{count} strategies available",
+      "loadMore": "Load More"
     },
     "empty": {
       "title": "No strategies yet",
       "searchHint": "Try adjusting your search or filters",
       "createHint": "Create your first strategy",
       "noDescription": "No description"
+    },
+    "versions": {
+      "title": "Version History",
+      "subtitle": "View and restore previous configurations",
+      "version": "v{version}",
+      "current": "Current",
+      "restore": "Restore",
+      "restoreConfirm": "Restore this strategy to version {version}? Current config will be auto-saved first.",
+      "restoreSuccess": "Strategy restored to version {version}",
+      "restoreError": "Failed to restore version",
+      "noVersions": "No version history yet",
+      "noVersionsHint": "Versions are created automatically when you update the strategy config",
+      "changeNote": "Change Note",
+      "viewConfig": "View Config"
     },
     "error": {
       "loadFailed": "Failed to load strategies",

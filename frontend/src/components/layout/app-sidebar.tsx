@@ -14,6 +14,7 @@ import {
   Menu,
   Cpu,
   Trophy,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,11 @@ const navItems = [
     titleKey: "agents",
     href: "/agents",
     icon: Bot,
+  },
+  {
+    titleKey: "marketplace",
+    href: "/marketplace",
+    icon: Store,
   },
   {
     titleKey: "competition",

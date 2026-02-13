@@ -101,7 +101,7 @@ export default function CompetitionPage() {
       .sort((a, b) => b.total_pnl - a.total_pnl)
       .slice(0, 15)
       .map((entry) => ({
-        name: entry.name.length > 12 ? entry.name.slice(0, 12) + '…' : entry.name,
+        name: entry.agent_name.length > 12 ? entry.agent_name.slice(0, 12) + '…' : entry.agent_name,
         pnl: entry.total_pnl,
       }));
   }, [filteredLeaderboard]);
@@ -113,12 +113,12 @@ export default function CompetitionPage() {
   const statsConfig = [
     {
       key: 'totalStrategies',
-      value: stats?.total_strategies ?? 0,
+      value: stats?.total_agents ?? 0,
       icon: BarChart3,
     },
     {
       key: 'activeStrategies',
-      value: stats?.active_strategies ?? 0,
+      value: stats?.active_agents ?? 0,
       icon: Zap,
     },
     {
@@ -359,7 +359,7 @@ export default function CompetitionPage() {
                 <tbody>
                   {filteredLeaderboard.map((entry) => (
                     <tr
-                      key={entry.strategy_id}
+                      key={entry.agent_id}
                       className="border-b border-border/30 hover:bg-muted/30 transition-colors"
                     >
                       <td className="py-3 px-2">
@@ -370,9 +370,14 @@ export default function CompetitionPage() {
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2">
                           <Bot className="w-4 h-4 text-primary shrink-0" />
-                          <span className="font-medium truncate max-w-[150px]">
-                            {entry.name}
-                          </span>
+                          <div className="min-w-0">
+                            <span className="font-medium truncate max-w-[150px] block">
+                              {entry.agent_name}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[150px] block">
+                              {entry.strategy_name}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-2 hidden md:table-cell">
@@ -412,7 +417,7 @@ export default function CompetitionPage() {
                         </span>
                       </td>
                       <td className="py-3 px-2 text-right">
-                        <Link href={`/agents/${entry.strategy_id}`}>
+                        <Link href={`/agents/${entry.agent_id}`}>
                           <Button variant="ghost" size="sm" className="text-xs">
                             {t('viewDetails')}
                           </Button>

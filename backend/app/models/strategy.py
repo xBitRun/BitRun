@@ -46,6 +46,13 @@ class StrategyVisibility(str, Enum):
     PUBLIC = "public"
 
 
+class PricingModel(str, Enum):
+    """Strategy pricing model"""
+    FREE = "free"
+    ONE_TIME = "one_time"
+    MONTHLY = "monthly"
+
+
 # =============================================================================
 # AI Strategy Config
 # =============================================================================
@@ -248,6 +255,12 @@ class Strategy(BaseModel):
     forked_from: Optional[str] = None
     fork_count: int = Field(default=0)
 
+    # Pricing
+    is_paid: bool = Field(default=False)
+    price_monthly: Optional[float] = None
+    revenue_share_percent: float = Field(default=0.0)
+    pricing_model: PricingModel = Field(default=PricingModel.FREE)
+
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -265,6 +278,11 @@ class StrategyCreate(BaseModel):
     visibility: StrategyVisibility = Field(default=StrategyVisibility.PRIVATE)
     category: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
+
+    # Optional pricing fields
+    is_paid: bool = Field(default=False)
+    price_monthly: Optional[float] = None
+    pricing_model: PricingModel = Field(default=PricingModel.FREE)
 
     @model_validator(mode="after")
     def validate_config(self):
@@ -303,6 +321,9 @@ class StrategyUpdate(BaseModel):
     visibility: Optional[StrategyVisibility] = None
     category: Optional[str] = None
     tags: Optional[list[str]] = None
+    is_paid: Optional[bool] = None
+    price_monthly: Optional[float] = None
+    pricing_model: Optional[PricingModel] = None
 
 
 class StrategyFork(BaseModel):

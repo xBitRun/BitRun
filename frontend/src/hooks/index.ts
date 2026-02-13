@@ -14,6 +14,8 @@ export {
   useDeleteStrategy,
   useForkStrategy,
   useMarketplaceStrategies,
+  useStrategyVersions,
+  useRestoreStrategyVersion,
 } from './use-strategies';
 
 // Agent hooks (execution instances)
@@ -99,8 +101,8 @@ export {
   apiResponseToConfig,
 } from './use-strategy-studio';
 
-// Competition hook
-export { useLeaderboard } from './use-competition';
+// Competition hooks
+export { useLeaderboard, useStrategyRanking } from './use-competition';
 
 // System hooks
 export { useOutboundIP } from './use-system';

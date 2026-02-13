@@ -9,10 +9,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from ..models import StrategyDB
+from ..models import StrategyDB, StrategyVersionDB
 
 
 class StrategyRepository:
@@ -33,6 +34,9 @@ class StrategyRepository:
         category: Optional[str] = None,
         tags: Optional[list[str]] = None,
         forked_from: Optional[uuid.UUID] = None,
+        is_paid: bool = False,
+        price_monthly: Optional[float] = None,
+        pricing_model: str = "free",
     ) -> StrategyDB:
         """Create a new unified strategy"""
         strategy = StrategyDB(
@@ -46,6 +50,9 @@ class StrategyRepository:
             category=category,
             tags=tags or [],
             forked_from=forked_from,
+            is_paid=is_paid,
+            price_monthly=price_monthly,
+            pricing_model=pricing_model,
         )
         self.session.add(strategy)
         await self.session.flush()
@@ -102,19 +109,35 @@ class StrategyRepository:
         sort_by: str = "fork_count",
         limit: int = 50,
         offset: int = 0,
-    ) -> list[StrategyDB]:
-        """Get public strategies for the marketplace."""
-        query = select(StrategyDB).where(StrategyDB.visibility == "public")
+    ) -> tuple[list[StrategyDB], int]:
+        """Get public strategies for the marketplace.
+
+        Returns (strategies, total_count) tuple for pagination.
+        """
+        base_filter = StrategyDB.visibility == "public"
+        filters = [base_filter]
 
         if type_filter:
-            query = query.where(StrategyDB.type == type_filter)
+            filters.append(StrategyDB.type == type_filter)
         if category:
-            query = query.where(StrategyDB.category == category)
+            filters.append(StrategyDB.category == category)
         if search:
-            query = query.where(
+            filters.append(
                 StrategyDB.name.ilike(f"%{search}%")
                 | StrategyDB.description.ilike(f"%{search}%")
             )
+
+        # Count total
+        count_query = select(func.count(StrategyDB.id)).where(*filters)
+        count_result = await self.session.execute(count_query)
+        total = count_result.scalar() or 0
+
+        # Fetch page with user relationship eagerly loaded
+        query = (
+            select(StrategyDB)
+            .where(*filters)
+            .options(selectinload(StrategyDB.user))
+        )
 
         if sort_by == "fork_count":
             query = query.order_by(StrategyDB.fork_count.desc())
@@ -126,22 +149,34 @@ class StrategyRepository:
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     async def update(
         self,
         strategy_id: uuid.UUID,
         user_id: uuid.UUID,
+        change_note: str = "",
         **kwargs,
     ) -> Optional[StrategyDB]:
-        """Update strategy fields"""
+        """Update strategy fields. Auto-snapshots config changes."""
         strategy = await self.get_by_id(strategy_id, user_id)
         if not strategy:
             return None
 
+        # Determine if we need to snapshot (config, symbols, or description changed)
+        versioned_fields = {"config", "symbols", "description", "name"}
+        needs_snapshot = any(
+            key in versioned_fields and kwargs.get(key) is not None
+            for key in kwargs
+        )
+
+        if needs_snapshot:
+            await self._create_version_snapshot(strategy, change_note)
+
         allowed_fields = {
             "name", "description", "symbols", "config",
             "visibility", "category", "tags",
+            "is_paid", "price_monthly", "pricing_model",
         }
 
         for key, value in kwargs.items():
@@ -197,3 +232,110 @@ class StrategyRepository:
         await self.session.delete(strategy)
         await self.session.flush()
         return True
+
+    # =========================================================================
+    # Version management
+    # =========================================================================
+
+    async def _create_version_snapshot(
+        self,
+        strategy: StrategyDB,
+        change_note: str = "",
+    ) -> StrategyVersionDB:
+        """Create a version snapshot of the current strategy state."""
+        # Get next version number
+        count_query = select(func.count(StrategyVersionDB.id)).where(
+            StrategyVersionDB.strategy_id == strategy.id
+        )
+        result = await self.session.execute(count_query)
+        current_count = result.scalar() or 0
+        next_version = current_count + 1
+
+        version = StrategyVersionDB(
+            strategy_id=strategy.id,
+            version=next_version,
+            name=strategy.name,
+            description=strategy.description or "",
+            symbols=strategy.symbols.copy() if strategy.symbols else [],
+            config=strategy.config.copy() if strategy.config else {},
+            change_note=change_note,
+        )
+        self.session.add(version)
+        await self.session.flush()
+        return version
+
+    async def get_versions(
+        self,
+        strategy_id: uuid.UUID,
+        user_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[StrategyVersionDB]:
+        """Get version history for a strategy."""
+        # Verify ownership
+        strategy = await self.get_by_id(strategy_id, user_id)
+        if not strategy:
+            return []
+
+        query = (
+            select(StrategyVersionDB)
+            .where(StrategyVersionDB.strategy_id == strategy_id)
+            .order_by(StrategyVersionDB.version.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_version(
+        self,
+        strategy_id: uuid.UUID,
+        version: int,
+        user_id: uuid.UUID,
+    ) -> Optional[StrategyVersionDB]:
+        """Get a specific version snapshot."""
+        strategy = await self.get_by_id(strategy_id, user_id)
+        if not strategy:
+            return None
+
+        query = select(StrategyVersionDB).where(
+            StrategyVersionDB.strategy_id == strategy_id,
+            StrategyVersionDB.version == version,
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def restore_version(
+        self,
+        strategy_id: uuid.UUID,
+        version: int,
+        user_id: uuid.UUID,
+    ) -> Optional[StrategyDB]:
+        """Restore a strategy to a previous version.
+
+        Creates a new version snapshot of current state, then applies
+        the old version's config/symbols/description.
+        """
+        strategy = await self.get_by_id(strategy_id, user_id)
+        if not strategy:
+            return None
+
+        version_snapshot = await self.get_version(strategy_id, version, user_id)
+        if not version_snapshot:
+            return None
+
+        # Snapshot current state before restoring
+        await self._create_version_snapshot(
+            strategy,
+            change_note=f"Auto-snapshot before restoring to v{version}",
+        )
+
+        # Apply old version's state
+        strategy.name = version_snapshot.name
+        strategy.description = version_snapshot.description
+        strategy.symbols = version_snapshot.symbols.copy() if version_snapshot.symbols else []
+        strategy.config = version_snapshot.config.copy() if version_snapshot.config else {}
+
+        await self.session.flush()
+        await self.session.refresh(strategy)
+        return strategy

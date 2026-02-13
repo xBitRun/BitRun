@@ -86,11 +86,12 @@ function getVisibilityColor(vis: string) {
 interface StrategyCardProps {
   strategy: StrategyResponse;
   onDelete: (id: string) => void;
+  onToggleVisibility: (id: string, current: string) => void;
   t: ReturnType<typeof useTranslations>;
   tType: ReturnType<typeof useTranslations>;
 }
 
-function StrategyCard({ strategy, onDelete, t, tType }: StrategyCardProps) {
+function StrategyCard({ strategy, onDelete, onToggleVisibility, t, tType }: StrategyCardProps) {
   const TypeIcon = getTypeIcon(strategy.type);
 
   return (
@@ -146,6 +147,21 @@ function StrategyCard({ strategy, onDelete, t, tType }: StrategyCardProps) {
                   <Zap className="w-4 h-4 mr-2" />
                   {t("actions.createAgent")}
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onToggleVisibility(strategy.id, strategy.visibility)}
+              >
+                {strategy.visibility === "public" ? (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    {t("actions.makePrivate")}
+                  </>
+                ) : (
+                  <>
+                    <GitFork className="w-4 h-4 mr-2" />
+                    {t("actions.makePublic")}
+                  </>
+                )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -219,6 +235,19 @@ export default function StrategiesPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : t("error.deleteFailed");
       toast.error(t("error.deleteFailed"), message);
+    }
+  };
+
+  const handleToggleVisibility = async (id: string, current: string) => {
+    const newVisibility = current === "public" ? "private" : "public";
+    try {
+      const { strategiesApi } = await import("@/lib/api");
+      await strategiesApi.update(id, { visibility: newVisibility as "private" | "public" });
+      refresh();
+      toast.success(t("toast.updated"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("error.updateFailed");
+      toast.error(t("error.updateFailed"), message);
     }
   };
 
@@ -307,6 +336,7 @@ export default function StrategiesPage() {
                   key={strategy.id}
                   strategy={strategy}
                   onDelete={handleDelete}
+                  onToggleVisibility={handleToggleVisibility}
                   t={t}
                   tType={tType}
                 />

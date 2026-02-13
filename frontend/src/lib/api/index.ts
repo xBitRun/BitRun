@@ -32,6 +32,8 @@ export type {
   CreateStrategyRequest,
   UpdateStrategyRequest,
   StrategyResponse,
+  MarketplaceResponse,
+  StrategyVersionResponse,
   // Agents (new)
   CreateAgentRequest,
   UpdateAgentRequest,
@@ -83,6 +85,8 @@ export type {
   LeaderboardEntry,
   CompetitionStats,
   LeaderboardResponse,
+  StrategyRankingEntry,
+  StrategyRankingResponse,
   // System
   OutboundIPResponse,
 } from './endpoints';
