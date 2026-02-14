@@ -155,16 +155,17 @@ class TestTradingFlowE2E:
                 )
                 account_id = account_resp.json()["id"]
 
-                # Step 2: Create strategy (with or without account_id)
+                # Step 2: Create strategy (pure logic template)
                 strategy_data = {
+                    "type": "ai",
                     "name": "Test BTC Strategy",
                     "description": "E2E test strategy",
-                    "prompt": "Buy BTC when RSI < 30, sell when RSI > 70. Conservative risk management.",
-                    "trading_mode": "conservative",
-                    "ai_model": "openai:gpt-4",
+                    "symbols": ["BTC"],
+                    "config": {
+                        "prompt": "Buy BTC when RSI < 30, sell when RSI > 70. Conservative risk management.",
+                        "trading_mode": "conservative",
+                    },
                 }
-                if account_id:
-                    strategy_data["account_id"] = account_id
                 
                 strategy_resp = await client.post(
                     "/api/v1/strategies",
@@ -242,11 +243,14 @@ class TestConcurrentExecution:
                     "/api/v1/strategies",
                     headers=auth_headers,
                     json={
+                        "type": "ai",
                         "name": f"Concurrent Strategy {i}",
                         "description": f"Test strategy {i}",
-                        "prompt": f"Strategy {i}: Buy BTC when conditions are met. Conservative approach.",
-                        "trading_mode": "conservative",
-                        "ai_model": "openai:gpt-4",
+                        "symbols": ["BTC"],
+                        "config": {
+                            "prompt": f"Strategy {i}: Buy BTC when conditions are met. Conservative approach.",
+                            "trading_mode": "conservative",
+                        },
                     },
                 )
                 tasks.append(task)

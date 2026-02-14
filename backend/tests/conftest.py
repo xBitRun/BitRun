@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import Base, UserDB, StrategyDB, ExchangeAccountDB
+from app.db.models import Base, UserDB, StrategyDB, ExchangeAccountDB, AgentDB
 from app.core.security import hash_password
 
 
@@ -99,20 +99,20 @@ async def test_account(db_session: AsyncSession, test_user: UserDB) -> ExchangeA
 async def test_strategy(
     db_session: AsyncSession,
     test_user: UserDB,
-    test_account: ExchangeAccountDB,
 ) -> StrategyDB:
-    """Create a test strategy."""
+    """Create a test strategy (pure logic template, no runtime bindings)."""
     strategy = StrategyDB(
         id=uuid4(),
         user_id=test_user.id,
-        account_id=test_account.id,
+        type="ai",
         name="Test Strategy",
-        prompt="Test prompt for trading",
-        status="draft",
+        description="A test AI strategy",
+        symbols=["BTC", "ETH"],
         config={
-            "execution_interval_minutes": 30,
-            "max_positions": 3,
-            "symbols": ["BTC", "ETH"],
+            "prompt": "Test prompt for trading with at least 10 chars",
+            "trading_mode": "conservative",
+            "indicators": {"rsi_period": 14},
+            "timeframes": ["15m", "1h", "4h"],
         },
         created_at=datetime.now(UTC),
     )
@@ -120,6 +120,34 @@ async def test_strategy(
     await db_session.commit()
     await db_session.refresh(strategy)
     return strategy
+
+
+@pytest_asyncio.fixture
+async def test_agent(
+    db_session: AsyncSession,
+    test_user: UserDB,
+    test_strategy: StrategyDB,
+    test_account: ExchangeAccountDB,
+) -> AgentDB:
+    """Create a test agent (execution instance of a strategy)."""
+    agent = AgentDB(
+        id=uuid4(),
+        user_id=test_user.id,
+        name="Test Agent",
+        strategy_id=test_strategy.id,
+        ai_model="deepseek:deepseek-chat",
+        execution_mode="mock",
+        mock_initial_balance=10000.0,
+        account_id=test_account.id,
+        execution_interval_minutes=30,
+        auto_execute=True,
+        status="draft",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(agent)
+    await db_session.commit()
+    await db_session.refresh(agent)
+    return agent
 
 
 @pytest.fixture

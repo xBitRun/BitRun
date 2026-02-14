@@ -213,37 +213,29 @@ class TestStrategyEndpoints:
         """Test strategy creation validation."""
         client, user_id = authenticated_client
 
-        # Missing required fields
+        # Missing required fields (type, symbols, config)
         response = await client.post(
             "/api/strategies",
             json={
                 "name": "Test",
-                # Missing prompt
+                # Missing type, symbols, config
             },
         )
         assert response.status_code == 422
 
-        # Prompt too short
+        # AI strategy with prompt too short in config
         response = await client.post(
             "/api/strategies",
             json={
+                "type": "ai",
                 "name": "Test",
-                "prompt": "Short",  # Less than 10 chars
+                "symbols": ["BTC"],
+                "config": {
+                    "prompt": "Short",  # Less than 10 chars
+                },
             },
         )
         assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_update_strategy_status_validation(self, authenticated_client):
-        """Test strategy status update validation."""
-        client, user_id = authenticated_client
-
-        # Invalid status
-        response = await client.post(
-            f"/api/strategies/{uuid4()}/status",
-            json={"status": "invalid_status"},
-        )
-        assert response.status_code == 400
 
 
 class TestAccountEndpoints:

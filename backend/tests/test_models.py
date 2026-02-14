@@ -3,9 +3,10 @@ Tests for Pydantic/dataclass models.
 
 Covers:
 - app.models.decision (ActionType, RiskControls, TradingDecision, DecisionResponse, DecisionRecord)
-- app.models.strategy (StrategyStatus, TradingMode, PromptSections, StrategyConfig, Strategy, StrategyCreate, StrategyUpdate)
+- app.models.strategy (StrategyType, TradingMode, PromptSections, AIStrategyConfig, Strategy, StrategyCreate, StrategyUpdate, StrategyFork, StrategyVisibility, PricingModel, GridConfig, DCAConfig, RSIConfig)
+- app.models.agent (AgentStatus, ExecutionMode, Agent, AgentCreate, AgentUpdate, AgentStatusUpdate, AgentPosition, AgentAccountState)
 - app.models.market_context (TechnicalIndicators, MarketContext, TIMEFRAME_LIMITS, CACHE_TTL)
-- app.models.quant_strategy (QuantStrategyType, GridConfig, DCAConfig, RSIConfig, etc.)
+- app.models.quant_strategy (backward compat: QuantStrategyType, QuantStrategyCreate, etc.)
 - app.models.debate (ConsensusMode, DebateParticipant, DebateVote, DebateResult, DebateConfig)
 """
 
@@ -24,13 +25,30 @@ from app.models.decision import (
     DECISION_JSON_SCHEMA,
 )
 from app.models.strategy import (
+    AIStrategyConfig,
+    DCAConfig,
+    GridConfig,
+    PricingModel,
     PromptSections,
+    RSIConfig,
     Strategy,
     StrategyConfig,
     StrategyCreate,
-    StrategyStatus,
+    StrategyFork,
+    StrategyType,
     StrategyUpdate,
+    StrategyVisibility,
     TradingMode,
+)
+from app.models.agent import (
+    Agent,
+    AgentAccountState,
+    AgentCreate,
+    AgentPosition,
+    AgentStatus,
+    AgentStatusUpdate,
+    AgentUpdate,
+    ExecutionMode,
 )
 from app.models.market_context import (
     CACHE_TTL,
@@ -39,15 +57,12 @@ from app.models.market_context import (
     TechnicalIndicators,
 )
 from app.models.quant_strategy import (
-    DCAConfig,
-    GridConfig,
     QuantStrategyCreate,
     QuantStrategyResponse,
     QuantStrategyStatus,
     QuantStrategyStatusUpdate,
     QuantStrategyType,
     QuantStrategyUpdate,
-    RSIConfig,
 )
 from app.models.debate import (
     ConsensusMode,
@@ -291,7 +306,7 @@ class TestDecisionRecord:
     def test_basic_creation(self):
         record = DecisionRecord(
             id="rec-1",
-            strategy_id="strat-1",
+            agent_id="agent-1",
             timestamp=datetime.now(UTC),
             system_prompt="sys",
             user_prompt="usr",
@@ -327,22 +342,37 @@ class TestDecisionJsonSchema:
         assert DECISION_JSON_SCHEMA == get_decision_json_schema("en")
 
 
-# ======================== StrategyStatus / TradingMode ========================
+# ======================== StrategyType / TradingMode / Visibility / PricingModel ========================
 
 class TestStrategyEnums:
-    def test_strategy_status_values(self):
-        assert StrategyStatus.DRAFT == "draft"
-        assert StrategyStatus.ACTIVE == "active"
-        assert StrategyStatus.PAUSED == "paused"
-        assert StrategyStatus.STOPPED == "stopped"
-        assert StrategyStatus.ERROR == "error"
-        assert len(StrategyStatus) == 5
+    def test_strategy_type_values(self):
+        assert StrategyType.AI == "ai"
+        assert StrategyType.GRID == "grid"
+        assert StrategyType.DCA == "dca"
+        assert StrategyType.RSI == "rsi"
+        assert len(StrategyType) == 4
 
     def test_trading_mode_values(self):
         assert TradingMode.AGGRESSIVE == "aggressive"
         assert TradingMode.CONSERVATIVE == "conservative"
         assert TradingMode.BALANCED == "balanced"
         assert len(TradingMode) == 3
+
+    def test_strategy_visibility_values(self):
+        assert StrategyVisibility.PRIVATE == "private"
+        assert StrategyVisibility.PUBLIC == "public"
+        assert len(StrategyVisibility) == 2
+
+    def test_pricing_model_values(self):
+        assert PricingModel.FREE == "free"
+        assert PricingModel.ONE_TIME == "one_time"
+        assert PricingModel.MONTHLY == "monthly"
+        assert len(PricingModel) == 3
+
+    def test_strategy_status_removed(self):
+        """StrategyStatus is removed - status lives on Agent now."""
+        from app.models.strategy import StrategyStatus
+        assert StrategyStatus is None
 
 
 # ======================== PromptSections ========================
@@ -360,69 +390,72 @@ class TestPromptSections:
         assert ps.role_definition == "custom role"
 
 
-# ======================== StrategyConfig ========================
+# ======================== AIStrategyConfig (aliased as StrategyConfig) ========================
 
-class TestStrategyConfig:
+class TestAIStrategyConfig:
     def test_defaults(self):
-        cfg = StrategyConfig()
+        cfg = AIStrategyConfig()
         assert cfg.language == "en"
         assert cfg.symbols == ["BTC", "ETH"]
         assert cfg.timeframes == ["15m", "1h", "4h"]
-        assert cfg.execution_interval_minutes == 30
-        assert cfg.auto_execute is True
+        assert cfg.trading_mode == TradingMode.CONSERVATIVE
         assert cfg.debate_enabled is False
         assert cfg.debate_consensus_mode == "majority_vote"
 
+    def test_strategy_config_alias(self):
+        """StrategyConfig is an alias for AIStrategyConfig."""
+        assert StrategyConfig is AIStrategyConfig
+
     def test_indicator_defaults(self):
-        cfg = StrategyConfig()
+        cfg = AIStrategyConfig()
         assert cfg.indicators["rsi_period"] == 14
         assert cfg.indicators["macd_fast"] == 12
 
-    def test_execution_interval_bounds(self):
-        with pytest.raises(ValidationError):
-            StrategyConfig(execution_interval_minutes=4)
-        with pytest.raises(ValidationError):
-            StrategyConfig(execution_interval_minutes=1441)
-
     def test_debate_min_participants_bounds(self):
         with pytest.raises(ValidationError):
-            StrategyConfig(debate_min_participants=1)
+            AIStrategyConfig(debate_min_participants=1)
         with pytest.raises(ValidationError):
-            StrategyConfig(debate_min_participants=6)
+            AIStrategyConfig(debate_min_participants=6)
+        AIStrategyConfig(debate_min_participants=2)  # lower bound ok
+        AIStrategyConfig(debate_min_participants=5)  # upper bound ok
+
+    def test_prompt_field(self):
+        cfg = AIStrategyConfig(prompt="Custom AI prompt for trading")
+        assert cfg.prompt == "Custom AI prompt for trading"
+
+    def test_risk_controls_default(self):
+        cfg = AIStrategyConfig()
+        assert cfg.risk_controls.max_leverage == 5
+        assert cfg.risk_controls.min_confidence == 60
 
 
-# ======================== Strategy ========================
+# ======================== Strategy (new unified model) ========================
 
 class TestStrategy:
     def _make(self, **overrides):
         defaults = dict(
             id="strat-1",
             user_id="user-1",
+            type=StrategyType.AI,
             name="Test Strategy",
-            prompt="This is a test prompt for the strategy trading bot",
-            account_id="acc-1",
+            symbols=["BTC", "ETH"],
+            config={"prompt": "test prompt"},
         )
         defaults.update(overrides)
         return Strategy(**defaults)
 
     def test_basic_creation(self):
         s = self._make()
-        assert s.status == StrategyStatus.DRAFT
-        assert s.trading_mode == TradingMode.CONSERVATIVE
-        assert s.total_pnl == 0.0
-        assert s.total_trades == 0
+        assert s.type == StrategyType.AI
+        assert s.visibility == StrategyVisibility.PRIVATE
+        assert s.description == ""
+        assert s.fork_count == 0
+        assert s.is_paid is False
+        assert s.pricing_model == PricingModel.FREE
 
-    def test_win_rate_zero_trades(self):
-        s = self._make()
-        assert s.win_rate == 0.0
-
-    def test_win_rate_calculation(self):
-        s = self._make(total_trades=10, winning_trades=7, losing_trades=3)
-        assert s.win_rate == 70.0
-
-    def test_win_rate_all_wins(self):
-        s = self._make(total_trades=5, winning_trades=5)
-        assert s.win_rate == 100.0
+    def test_quant_type(self):
+        s = self._make(type=StrategyType.GRID, config={"upper_price": 100})
+        assert s.type == StrategyType.GRID
 
     def test_name_max_length(self):
         with pytest.raises(ValidationError):
@@ -432,33 +465,92 @@ class TestStrategy:
         with pytest.raises(ValidationError):
             self._make(name="")
 
-    def test_prompt_min_length(self):
-        with pytest.raises(ValidationError):
-            self._make(prompt="short")
+    def test_marketplace_fields(self):
+        s = self._make(
+            visibility=StrategyVisibility.PUBLIC,
+            category="trend_following",
+            tags=["BTC", "momentum"],
+            is_paid=True,
+            price_monthly=9.99,
+            pricing_model=PricingModel.MONTHLY,
+        )
+        assert s.visibility == StrategyVisibility.PUBLIC
+        assert s.category == "trend_following"
+        assert len(s.tags) == 2
+        assert s.is_paid is True
+        assert s.price_monthly == 9.99
+
+    def test_forked_from(self):
+        s = self._make(forked_from="parent-strat-id")
+        assert s.forked_from == "parent-strat-id"
 
 
 # ======================== StrategyCreate ========================
 
 class TestStrategyCreate:
-    def test_basic(self):
-        sc = StrategyCreate(
+    def _make(self, **overrides):
+        defaults = dict(
+            type=StrategyType.AI,
             name="New Strategy",
-            prompt="A long enough prompt for testing purposes",
-            account_id="acc-1",
+            symbols=["BTC"],
+            config={"prompt": "A long enough prompt for testing purposes"},
         )
-        assert sc.trading_mode == TradingMode.CONSERVATIVE
+        defaults.update(overrides)
+        return StrategyCreate(**defaults)
+
+    def test_basic_ai_strategy(self):
+        sc = self._make()
+        assert sc.type == StrategyType.AI
         assert sc.description == ""
+        assert sc.visibility == StrategyVisibility.PRIVATE
 
-    def test_validation(self):
+    def test_name_validation(self):
         with pytest.raises(ValidationError):
-            StrategyCreate(name="", prompt="ok prompt enough", account_id="acc-1")
+            self._make(name="")
 
-    def test_prompt_min_length(self):
-        # 9 chars should fail
+    def test_symbols_required(self):
         with pytest.raises(ValidationError):
-            StrategyCreate(name="ok", prompt="a" * 9, account_id="acc-1")
+            self._make(symbols=[])
+
+    def test_ai_prompt_min_length(self):
+        with pytest.raises(ValidationError):
+            self._make(config={"prompt": "short"})
         # 10 chars should pass
-        StrategyCreate(name="ok", prompt="a" * 10, account_id="acc-1")
+        self._make(config={"prompt": "a" * 10})
+
+    def test_grid_strategy_config_validation(self):
+        sc = self._make(
+            type=StrategyType.GRID,
+            symbols=["BTC"],
+            config={"upper_price": 100, "lower_price": 50, "grid_count": 10, "total_investment": 1000},
+        )
+        assert sc.type == StrategyType.GRID
+
+    def test_grid_invalid_config(self):
+        with pytest.raises(ValidationError):
+            self._make(
+                type=StrategyType.GRID,
+                symbols=["BTC"],
+                config={"upper_price": 50, "lower_price": 100, "grid_count": 10, "total_investment": 1000},
+            )
+
+    def test_marketplace_fields(self):
+        sc = self._make(
+            visibility=StrategyVisibility.PUBLIC,
+            category="mean_reversion",
+            tags=["ETH", "grid"],
+        )
+        assert sc.visibility == StrategyVisibility.PUBLIC
+        assert sc.category == "mean_reversion"
+
+    def test_pricing_fields(self):
+        sc = self._make(
+            is_paid=True,
+            price_monthly=19.99,
+            pricing_model=PricingModel.MONTHLY,
+        )
+        assert sc.is_paid is True
+        assert sc.price_monthly == 19.99
 
 
 # ======================== StrategyUpdate ========================
@@ -467,13 +559,15 @@ class TestStrategyUpdate:
     def test_all_optional(self):
         su = StrategyUpdate()
         assert su.name is None
-        assert su.prompt is None
-        assert su.status is None
+        assert su.description is None
+        assert su.symbols is None
+        assert su.config is None
+        assert su.visibility is None
 
     def test_partial_update(self):
-        su = StrategyUpdate(name="Updated", status=StrategyStatus.ACTIVE)
+        su = StrategyUpdate(name="Updated", description="New description")
         assert su.name == "Updated"
-        assert su.status == StrategyStatus.ACTIVE
+        assert su.description == "New description"
 
     def test_name_bounds(self):
         with pytest.raises(ValidationError):
@@ -483,10 +577,353 @@ class TestStrategyUpdate:
         StrategyUpdate(name="x")          # min ok
         StrategyUpdate(name="x" * 100)    # max ok
 
-    def test_prompt_min_length(self):
+    def test_visibility_update(self):
+        su = StrategyUpdate(visibility=StrategyVisibility.PUBLIC)
+        assert su.visibility == StrategyVisibility.PUBLIC
+
+    def test_pricing_update(self):
+        su = StrategyUpdate(is_paid=True, price_monthly=5.0, pricing_model=PricingModel.MONTHLY)
+        assert su.is_paid is True
+
+
+# ======================== StrategyFork ========================
+
+class TestStrategyFork:
+    def test_default(self):
+        sf = StrategyFork()
+        assert sf.name is None
+
+    def test_name_override(self):
+        sf = StrategyFork(name="My Fork")
+        assert sf.name == "My Fork"
+
+    def test_name_bounds(self):
         with pytest.raises(ValidationError):
-            StrategyUpdate(prompt="a" * 9)
-        StrategyUpdate(prompt="a" * 10)   # boundary ok
+            StrategyFork(name="")
+        with pytest.raises(ValidationError):
+            StrategyFork(name="x" * 101)
+
+
+# ======================== AgentStatus / ExecutionMode ========================
+
+class TestAgentEnums:
+    def test_agent_status_values(self):
+        assert AgentStatus.DRAFT == "draft"
+        assert AgentStatus.ACTIVE == "active"
+        assert AgentStatus.PAUSED == "paused"
+        assert AgentStatus.STOPPED == "stopped"
+        assert AgentStatus.ERROR == "error"
+        assert AgentStatus.WARNING == "warning"
+        assert len(AgentStatus) == 6
+
+    def test_execution_mode_values(self):
+        assert ExecutionMode.LIVE == "live"
+        assert ExecutionMode.MOCK == "mock"
+        assert len(ExecutionMode) == 2
+
+
+# ======================== Agent ========================
+
+class TestAgent:
+    def _make(self, **overrides):
+        defaults = dict(
+            id="agent-1",
+            user_id="user-1",
+            name="Test Agent",
+            strategy_id="strat-1",
+        )
+        defaults.update(overrides)
+        return Agent(**defaults)
+
+    def test_basic_creation(self):
+        a = self._make()
+        assert a.status == AgentStatus.DRAFT
+        assert a.execution_mode == ExecutionMode.MOCK
+        assert a.total_pnl == 0.0
+        assert a.total_trades == 0
+        assert a.ai_model is None
+
+    def test_win_rate_zero_trades(self):
+        a = self._make()
+        assert a.win_rate == 0.0
+
+    def test_win_rate_calculation(self):
+        a = self._make(total_trades=10, winning_trades=7, losing_trades=3)
+        assert a.win_rate == 70.0
+
+    def test_win_rate_all_wins(self):
+        a = self._make(total_trades=5, winning_trades=5)
+        assert a.win_rate == 100.0
+
+    def test_name_max_length(self):
+        with pytest.raises(ValidationError):
+            self._make(name="x" * 101)
+
+    def test_name_min_length(self):
+        with pytest.raises(ValidationError):
+            self._make(name="")
+
+    def test_with_ai_model(self):
+        a = self._make(ai_model="deepseek:deepseek-chat")
+        assert a.ai_model == "deepseek:deepseek-chat"
+
+    def test_live_mode(self):
+        a = self._make(execution_mode=ExecutionMode.LIVE, account_id="acc-1")
+        assert a.execution_mode == ExecutionMode.LIVE
+        assert a.account_id == "acc-1"
+
+    def test_mock_mode_default_balance(self):
+        a = self._make(mock_initial_balance=5000.0)
+        assert a.mock_initial_balance == 5000.0
+
+    def test_performance_fields(self):
+        a = self._make(
+            total_pnl=500.0,
+            total_trades=20,
+            winning_trades=14,
+            losing_trades=6,
+            max_drawdown=150.0,
+        )
+        assert a.total_pnl == 500.0
+        assert a.max_drawdown == 150.0
+        assert a.win_rate == 70.0
+
+    def test_capital_allocation(self):
+        a = self._make(allocated_capital=5000.0)
+        assert a.allocated_capital == 5000.0
+        assert a.allocated_capital_percent is None
+
+
+# ======================== AgentCreate ========================
+
+class TestAgentCreate:
+    def _make(self, **overrides):
+        defaults = dict(
+            name="New Agent",
+            strategy_id="strat-1",
+        )
+        defaults.update(overrides)
+        return AgentCreate(**defaults)
+
+    def test_basic_mock(self):
+        ac = self._make()
+        assert ac.execution_mode == ExecutionMode.MOCK
+        assert ac.mock_initial_balance == 10000.0
+        assert ac.auto_execute is True
+        assert ac.execution_interval_minutes == 30
+
+    def test_live_mode_requires_account(self):
+        with pytest.raises(ValidationError):
+            self._make(execution_mode=ExecutionMode.LIVE)
+
+    def test_live_mode_with_account(self):
+        ac = self._make(execution_mode=ExecutionMode.LIVE, account_id="acc-1")
+        assert ac.account_id == "acc-1"
+
+    def test_mock_initial_balance_bounds(self):
+        self._make(mock_initial_balance=100)   # lower bound ok
+        with pytest.raises(ValidationError):
+            self._make(mock_initial_balance=99)  # below 100
+
+    def test_capital_allocation_mutual_exclusion(self):
+        with pytest.raises(ValidationError):
+            self._make(allocated_capital=1000, allocated_capital_percent=0.5)
+
+    def test_capital_percent_bounds(self):
+        self._make(allocated_capital_percent=0.0)  # lower bound ok
+        self._make(allocated_capital_percent=1.0)  # upper bound ok
+        with pytest.raises(ValidationError):
+            self._make(allocated_capital_percent=-0.1)
+        with pytest.raises(ValidationError):
+            self._make(allocated_capital_percent=1.1)
+
+    def test_execution_interval_bounds(self):
+        self._make(execution_interval_minutes=1)       # lower bound ok
+        self._make(execution_interval_minutes=43200)   # upper bound ok
+        with pytest.raises(ValidationError):
+            self._make(execution_interval_minutes=0)
+        with pytest.raises(ValidationError):
+            self._make(execution_interval_minutes=43201)
+
+    def test_name_bounds(self):
+        with pytest.raises(ValidationError):
+            self._make(name="")
+        with pytest.raises(ValidationError):
+            self._make(name="x" * 101)
+
+
+# ======================== AgentUpdate ========================
+
+class TestAgentUpdate:
+    def test_all_optional(self):
+        au = AgentUpdate()
+        assert au.name is None
+        assert au.ai_model is None
+        assert au.execution_mode is None
+
+    def test_partial_update(self):
+        au = AgentUpdate(name="Updated Agent", ai_model="openai:gpt-4")
+        assert au.name == "Updated Agent"
+        assert au.ai_model == "openai:gpt-4"
+
+    def test_name_bounds(self):
+        with pytest.raises(ValidationError):
+            AgentUpdate(name="")
+        with pytest.raises(ValidationError):
+            AgentUpdate(name="x" * 101)
+
+    def test_capital_allocation_mutual_exclusion(self):
+        with pytest.raises(ValidationError):
+            AgentUpdate(allocated_capital=1000, allocated_capital_percent=0.5)
+
+    def test_mock_initial_balance_bounds(self):
+        AgentUpdate(mock_initial_balance=100)  # ok
+        with pytest.raises(ValidationError):
+            AgentUpdate(mock_initial_balance=99)
+
+    def test_execution_interval_bounds(self):
+        AgentUpdate(execution_interval_minutes=1)      # ok
+        AgentUpdate(execution_interval_minutes=43200)  # ok
+        with pytest.raises(ValidationError):
+            AgentUpdate(execution_interval_minutes=0)
+        with pytest.raises(ValidationError):
+            AgentUpdate(execution_interval_minutes=43201)
+
+
+# ======================== AgentStatusUpdate ========================
+
+class TestAgentStatusUpdate:
+    def test_basic(self):
+        asu = AgentStatusUpdate(status="active")
+        assert asu.status == "active"
+        assert asu.close_positions is False
+
+    def test_with_close_positions(self):
+        asu = AgentStatusUpdate(status="stopped", close_positions=True)
+        assert asu.close_positions is True
+
+
+# ======================== AgentPosition ========================
+
+class TestAgentPosition:
+    def test_basic(self):
+        pos = AgentPosition(
+            id="pos-1",
+            agent_id="agent-1",
+            symbol="BTC",
+            side="long",
+            size=0.05,
+            size_usd=5000.0,
+            entry_price=100000.0,
+            leverage=5,
+            status="open",
+        )
+        assert pos.realized_pnl == 0.0
+        assert pos.close_price is None
+        assert pos.account_id is None
+
+    def test_closed_position(self):
+        pos = AgentPosition(
+            id="pos-1",
+            agent_id="agent-1",
+            symbol="ETH",
+            side="short",
+            size=1.0,
+            size_usd=3000.0,
+            entry_price=3000.0,
+            leverage=3,
+            status="closed",
+            realized_pnl=150.0,
+            close_price=2850.0,
+        )
+        assert pos.status == "closed"
+        assert pos.realized_pnl == 150.0
+
+
+# ======================== AgentAccountState ========================
+
+class TestAgentAccountState:
+    def test_basic(self):
+        state = AgentAccountState(
+            agent_id="agent-1",
+            equity=10000.0,
+            available_balance=8000.0,
+            total_unrealized_pnl=200.0,
+        )
+        assert state.positions == []
+        assert state.equity == 10000.0
+
+    def test_with_positions(self):
+        pos = AgentPosition(
+            id="pos-1",
+            agent_id="agent-1",
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=10000.0,
+            entry_price=100000.0,
+            leverage=10,
+            status="open",
+        )
+        state = AgentAccountState(
+            agent_id="agent-1",
+            positions=[pos],
+            equity=15000.0,
+            available_balance=5000.0,
+            total_unrealized_pnl=500.0,
+        )
+        assert len(state.positions) == 1
+        assert state.positions[0].symbol == "BTC"
+
+    def test_to_account_state(self):
+        pos = AgentPosition(
+            id="pos-1",
+            agent_id="agent-1",
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=10000.0,
+            entry_price=100000.0,
+            leverage=10,
+            status="open",
+        )
+        state = AgentAccountState(
+            agent_id="agent-1",
+            positions=[pos],
+            equity=15000.0,
+            available_balance=5000.0,
+            total_unrealized_pnl=500.0,
+        )
+        acct = state.to_account_state(current_prices={"BTC": 105000.0})
+        assert acct.equity == 15000.0
+        assert len(acct.positions) == 1
+        assert acct.positions[0].symbol == "BTC"
+        assert acct.positions[0].mark_price == 105000.0
+        # unrealized pnl: (105000 - 100000) * 0.1 = 500
+        assert acct.positions[0].unrealized_pnl == 500.0
+
+    def test_to_account_state_no_prices(self):
+        """Without current prices, mark_price falls back to entry_price."""
+        pos = AgentPosition(
+            id="pos-1",
+            agent_id="agent-1",
+            symbol="BTC",
+            side="long",
+            size=0.1,
+            size_usd=10000.0,
+            entry_price=100000.0,
+            leverage=10,
+            status="open",
+        )
+        state = AgentAccountState(
+            agent_id="agent-1",
+            positions=[pos],
+            equity=10000.0,
+            available_balance=9000.0,
+        )
+        acct = state.to_account_state()
+        assert acct.positions[0].mark_price == 100000.0
+        assert acct.positions[0].unrealized_pnl == 0.0  # no price change
 
 
 # ======================== TechnicalIndicators ========================
@@ -705,7 +1142,7 @@ class TestConstants:
             assert v > 0
 
 
-# ======================== QuantStrategyType / Status ========================
+# ======================== QuantStrategyType / Status (backward compat) ========================
 
 class TestQuantEnums:
     def test_strategy_type(self):
@@ -718,7 +1155,7 @@ class TestQuantEnums:
         assert QuantStrategyStatus.ACTIVE == "active"
 
 
-# ======================== GridConfig ========================
+# ======================== GridConfig (now in strategy.py) ========================
 
 class TestGridConfig:
     def test_valid(self):

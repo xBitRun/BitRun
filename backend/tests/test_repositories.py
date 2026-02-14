@@ -1,8 +1,8 @@
 """
 Tests for database repository layer.
 
-Covers: UserRepository, AccountRepository, StrategyRepository, DecisionRepository,
-        QuantStrategyRepository
+Covers: UserRepository, AccountRepository, StrategyRepository (unified),
+        DecisionRepository (agent-scoped), AgentRepository
 """
 
 import uuid
@@ -19,13 +19,13 @@ from app.db.models import (
     ExchangeAccountDB,
     StrategyDB,
     DecisionRecordDB,
-    QuantStrategyDB,
+    AgentDB,
 )
 from app.db.repositories.user import UserRepository
 from app.db.repositories.account import AccountRepository
 from app.db.repositories.strategy import StrategyRepository
 from app.db.repositories.decision import DecisionRepository
-from app.db.repositories.quant_strategy import QuantStrategyRepository
+from app.db.repositories.agent import AgentRepository
 
 
 # ============================================================================
@@ -591,49 +591,81 @@ class TestAccountRepository:
 
 
 # ============================================================================
-# StrategyRepository Tests
+# StrategyRepository Tests (unified model - pure logic template)
 # ============================================================================
 
 class TestStrategyRepository:
-    """Tests for StrategyRepository"""
+    """Tests for StrategyRepository (unified strategy model)"""
 
     @pytest.mark.asyncio
-    async def test_create_strategy(
+    async def test_create_ai_strategy(
         self, db_session: AsyncSession, test_user: UserDB
     ):
-        """Test creating a new strategy"""
+        """Test creating a new AI strategy"""
         repo = StrategyRepository(db_session)
         
         strategy = await repo.create(
             user_id=test_user.id,
-            name="Test Strategy",
-            prompt="Buy low, sell high",
-            description="A simple strategy",
-            trading_mode="conservative",
+            type="ai",
+            name="Test AI Strategy",
+            symbols=["BTC", "ETH"],
+            config={"prompt": "Buy low, sell high", "trading_mode": "conservative"},
+            description="A simple AI strategy",
         )
         
         assert strategy is not None
-        assert strategy.name == "Test Strategy"
-        assert strategy.prompt == "Buy low, sell high"
-        assert strategy.status == "draft"
-        assert strategy.total_pnl == 0.0
+        assert strategy.name == "Test AI Strategy"
+        assert strategy.type == "ai"
+        assert strategy.symbols == ["BTC", "ETH"]
+        assert strategy.config["prompt"] == "Buy low, sell high"
+        assert strategy.visibility == "private"
 
     @pytest.mark.asyncio
-    async def test_create_strategy_with_account(
-        self, db_session: AsyncSession, test_user: UserDB, 
-        test_account: ExchangeAccountDB
+    async def test_create_grid_strategy(
+        self, db_session: AsyncSession, test_user: UserDB
     ):
-        """Test creating strategy linked to account"""
+        """Test creating a grid strategy"""
         repo = StrategyRepository(db_session)
         
         strategy = await repo.create(
             user_id=test_user.id,
-            name="Linked Strategy",
-            prompt="Test",
-            account_id=test_account.id,
+            type="grid",
+            name="Grid BTC",
+            symbols=["BTC"],
+            config={"upper_price": 60000, "lower_price": 50000, "grid_count": 10, "total_investment": 1000},
         )
         
-        assert strategy.account_id == test_account.id
+        assert strategy.type == "grid"
+        assert strategy.symbols == ["BTC"]
+        assert strategy.config["grid_count"] == 10
+
+    @pytest.mark.asyncio
+    async def test_create_strategy_with_marketplace_fields(
+        self, db_session: AsyncSession, test_user: UserDB
+    ):
+        """Test creating strategy with marketplace/pricing fields"""
+        repo = StrategyRepository(db_session)
+        
+        strategy = await repo.create(
+            user_id=test_user.id,
+            type="ai",
+            name="Public Strategy",
+            symbols=["BTC"],
+            config={"prompt": "test"},
+            visibility="public",
+            category="trend_following",
+            tags=["BTC", "momentum"],
+            is_paid=True,
+            price_monthly=9.99,
+            pricing_model="monthly",
+        )
+        
+        assert strategy.visibility == "public"
+        assert strategy.category == "trend_following"
+        assert strategy.tags == ["BTC", "momentum"]
+        assert strategy.is_paid is True
+        assert strategy.price_monthly == 9.99
+        assert strategy.pricing_model == "monthly"
 
     @pytest.mark.asyncio
     async def test_get_by_id(
@@ -670,8 +702,14 @@ class TestStrategyRepository:
         """Test getting all strategies for user"""
         repo = StrategyRepository(db_session)
         
-        await repo.create(user_id=test_user.id, name="Strategy 1", prompt="Test")
-        await repo.create(user_id=test_user.id, name="Strategy 2", prompt="Test")
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Strategy 1",
+            symbols=["BTC"], config={"prompt": "test"},
+        )
+        await repo.create(
+            user_id=test_user.id, type="grid", name="Strategy 2",
+            symbols=["ETH"], config={"upper_price": 100, "lower_price": 50},
+        )
         await db_session.commit()
         
         strategies = await repo.get_by_user(test_user.id)
@@ -679,36 +717,25 @@ class TestStrategyRepository:
         assert len(strategies) >= 2
 
     @pytest.mark.asyncio
-    async def test_get_by_user_filter_status(
+    async def test_get_by_user_filter_type(
         self, db_session: AsyncSession, test_user: UserDB
     ):
-        """Test filtering strategies by status"""
+        """Test filtering strategies by type"""
         repo = StrategyRepository(db_session)
         
-        s1 = await repo.create(user_id=test_user.id, name="Draft", prompt="Test")
-        s2 = await repo.create(user_id=test_user.id, name="Active", prompt="Test")
-        s2.status = "active"
+        await repo.create(
+            user_id=test_user.id, type="ai", name="AI Strat",
+            symbols=["BTC"], config={"prompt": "test"},
+        )
+        await repo.create(
+            user_id=test_user.id, type="grid", name="Grid Strat",
+            symbols=["BTC"], config={},
+        )
         await db_session.commit()
         
-        drafts = await repo.get_by_user(test_user.id, status="draft")
+        ai_strategies = await repo.get_by_user(test_user.id, type_filter="ai")
         
-        assert all(s.status == "draft" for s in drafts)
-
-    @pytest.mark.asyncio
-    async def test_get_active_strategies(
-        self, db_session: AsyncSession, test_user: UserDB
-    ):
-        """Test getting all active strategies"""
-        repo = StrategyRepository(db_session)
-        
-        s1 = await repo.create(user_id=test_user.id, name="Active", prompt="Test")
-        s1.status = "active"
-        await repo.create(user_id=test_user.id, name="Draft", prompt="Test")
-        await db_session.commit()
-        
-        active = await repo.get_active_strategies()
-        
-        assert all(s.status == "active" for s in active)
+        assert all(s.type == "ai" for s in ai_strategies)
 
     @pytest.mark.asyncio
     async def test_update_strategy(
@@ -721,82 +748,82 @@ class TestStrategyRepository:
         updated = await repo.update(
             test_strategy.id, test_user.id,
             name="Updated Name",
-            prompt="New prompt"
+            description="New description",
         )
         
         assert updated is not None
         assert updated.name == "Updated Name"
-        assert updated.prompt == "New prompt"
+        assert updated.description == "New description"
 
     @pytest.mark.asyncio
-    async def test_update_status(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_update_config(
+        self, db_session: AsyncSession, test_strategy: StrategyDB,
+        test_user: UserDB
     ):
-        """Test updating strategy status"""
+        """Test updating strategy config creates version snapshot"""
         repo = StrategyRepository(db_session)
         
-        result = await repo.update_status(test_strategy.id, "active")
-        
-        assert result is True
-        
-        strategy = await repo.get_by_id(test_strategy.id)
-        assert strategy.status == "active"
-
-    @pytest.mark.asyncio
-    async def test_update_status_with_error(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
-    ):
-        """Test updating strategy status with error message"""
-        repo = StrategyRepository(db_session)
-        
-        result = await repo.update_status(
-            test_strategy.id, "error", "API connection failed"
+        updated = await repo.update(
+            test_strategy.id, test_user.id,
+            config={"prompt": "New AI prompt for trading"},
         )
         
-        assert result is True
-        
-        strategy = await repo.get_by_id(test_strategy.id)
-        assert strategy.status == "error"
-        assert strategy.error_message == "API connection failed"
+        assert updated is not None
+        assert updated.config["prompt"] == "New AI prompt for trading"
 
     @pytest.mark.asyncio
-    async def test_update_performance_win(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_update_strategy_not_found(
+        self, db_session: AsyncSession, test_user: UserDB
     ):
-        """Test updating performance after winning trade"""
+        """Test updating non-existent strategy returns None"""
         repo = StrategyRepository(db_session)
         
-        result = await repo.update_performance(
-            test_strategy.id, pnl_change=100.0, is_win=True
-        )
+        result = await repo.update(uuid.uuid4(), test_user.id, name="Test")
         
-        assert result is True
-        
-        strategy = await repo.get_by_id(test_strategy.id)
-        assert strategy.total_pnl == 100.0
-        assert strategy.total_trades == 1
-        assert strategy.winning_trades == 1
-        assert strategy.losing_trades == 0
+        assert result is None
 
     @pytest.mark.asyncio
-    async def test_update_performance_loss(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_fork_public_strategy(
+        self, db_session: AsyncSession, test_user: UserDB
     ):
-        """Test updating performance after losing trade"""
+        """Test forking a public strategy"""
         repo = StrategyRepository(db_session)
         
-        result = await repo.update_performance(
-            test_strategy.id, pnl_change=-50.0, is_win=False
+        # Create a public strategy
+        source = await repo.create(
+            user_id=test_user.id, type="ai", name="Public Strategy",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="public",
         )
+        await db_session.commit()
         
-        assert result is True
+        # Fork it to a different user
+        forker_id = uuid.uuid4()
+        forked = await repo.fork(source.id, forker_id)
         
-        strategy = await repo.get_by_id(test_strategy.id)
-        assert strategy.total_pnl == -50.0
-        assert strategy.total_trades == 1
-        assert strategy.winning_trades == 0
-        assert strategy.losing_trades == 1
-        assert strategy.max_drawdown == 50.0
+        assert forked is not None
+        assert forked.user_id == forker_id
+        assert forked.name == "Public Strategy"
+        assert forked.forked_from == source.id
+        assert forked.visibility == "private"  # forked strategies are private
+
+    @pytest.mark.asyncio
+    async def test_fork_private_strategy_fails(
+        self, db_session: AsyncSession, test_user: UserDB
+    ):
+        """Test that forking a private strategy returns None"""
+        repo = StrategyRepository(db_session)
+        
+        source = await repo.create(
+            user_id=test_user.id, type="ai", name="Private Strategy",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="private",
+        )
+        await db_session.commit()
+        
+        forked = await repo.fork(source.id, uuid.uuid4())
+        
+        assert forked is None
 
     @pytest.mark.asyncio
     async def test_delete_strategy(
@@ -806,9 +833,8 @@ class TestStrategyRepository:
         repo = StrategyRepository(db_session)
         
         strategy = await repo.create(
-            user_id=test_user.id,
-            name="To Delete",
-            prompt="Test"
+            user_id=test_user.id, type="ai", name="To Delete",
+            symbols=["BTC"], config={"prompt": "test"},
         )
         await db_session.commit()
         strategy_id = strategy.id
@@ -820,23 +846,56 @@ class TestStrategyRepository:
         deleted = await repo.get_by_id(strategy_id)
         assert deleted is None
 
+    @pytest.mark.asyncio
+    async def test_delete_strategy_not_found(
+        self, db_session: AsyncSession, test_user: UserDB
+    ):
+        """Test deleting non-existent strategy returns False"""
+        repo = StrategyRepository(db_session)
+        
+        result = await repo.delete(uuid.uuid4(), test_user.id)
+        
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_version_history(
+        self, db_session: AsyncSession, test_strategy: StrategyDB,
+        test_user: UserDB
+    ):
+        """Test that updating config creates version snapshots"""
+        repo = StrategyRepository(db_session)
+        
+        # Make a config change
+        await repo.update(
+            test_strategy.id, test_user.id,
+            config={"prompt": "Updated prompt v2"},
+            change_note="Updated trading logic",
+        )
+        await db_session.commit()
+        
+        versions = await repo.get_versions(test_strategy.id, test_user.id)
+        
+        assert len(versions) >= 1
+        # Version should contain the OLD state (snapshot before change)
+        assert versions[0].version == 1
+
 
 # ============================================================================
-# DecisionRepository Tests
+# DecisionRepository Tests (now agent-scoped)
 # ============================================================================
 
 class TestDecisionRepository:
-    """Tests for DecisionRepository"""
+    """Tests for DecisionRepository (decisions are linked to agents, not strategies)"""
 
     @pytest.mark.asyncio
     async def test_create_decision(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test creating a decision record"""
         repo = DecisionRepository(db_session)
         
         decision = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System prompt",
             user_prompt="User prompt",
             raw_response='{"decisions": []}',
@@ -850,19 +909,19 @@ class TestDecisionRepository:
         )
         
         assert decision is not None
-        assert decision.strategy_id == test_strategy.id
+        assert decision.agent_id == test_agent.id
         assert decision.overall_confidence == 75
         assert len(decision.decisions) == 1
 
     @pytest.mark.asyncio
     async def test_create_debate_decision(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test creating a debate decision record"""
         repo = DecisionRepository(db_session)
         
         decision = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -879,13 +938,13 @@ class TestDecisionRepository:
 
     @pytest.mark.asyncio
     async def test_get_by_id(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test getting decision by ID"""
         repo = DecisionRepository(db_session)
         
         created = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -898,35 +957,34 @@ class TestDecisionRepository:
         assert decision.id == created.id
 
     @pytest.mark.asyncio
-    async def test_get_by_strategy(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_get_by_agent(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
-        """Test getting decisions for a strategy"""
+        """Test getting decisions for an agent"""
         repo = DecisionRepository(db_session)
         
-        # Create multiple decisions
         for i in range(3):
             await repo.create(
-                strategy_id=test_strategy.id,
+                agent_id=test_agent.id,
                 system_prompt=f"System {i}",
                 user_prompt=f"User {i}",
                 raw_response="{}",
             )
         await db_session.commit()
         
-        decisions = await repo.get_by_strategy(test_strategy.id)
+        decisions = await repo.get_by_agent(test_agent.id)
         
         assert len(decisions) >= 3
 
     @pytest.mark.asyncio
-    async def test_get_by_strategy_executed_only(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_get_by_agent_executed_only(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test filtering for executed decisions only"""
         repo = DecisionRepository(db_session)
         
         d1 = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -934,29 +992,29 @@ class TestDecisionRepository:
         d1.executed = True
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System 2",
             user_prompt="User 2",
             raw_response="{}",
         )
         await db_session.commit()
         
-        executed = await repo.get_by_strategy(
-            test_strategy.id, execution_filter="executed"
+        executed = await repo.get_by_agent(
+            test_agent.id, execution_filter="executed"
         )
         
         assert all(d.executed for d in executed)
 
     @pytest.mark.asyncio
     async def test_get_recent(
-        self, db_session: AsyncSession, test_strategy: StrategyDB,
+        self, db_session: AsyncSession, test_agent: AgentDB,
         test_user: UserDB
     ):
-        """Test getting recent decisions across strategies"""
+        """Test getting recent decisions across user's agents"""
         repo = DecisionRepository(db_session)
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -969,13 +1027,13 @@ class TestDecisionRepository:
 
     @pytest.mark.asyncio
     async def test_mark_executed(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test marking decision as executed"""
         repo = DecisionRepository(db_session)
         
         decision = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -993,14 +1051,13 @@ class TestDecisionRepository:
 
     @pytest.mark.asyncio
     async def test_get_stats(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
-        """Test getting decision statistics"""
+        """Test getting decision statistics for an agent"""
         repo = DecisionRepository(db_session)
         
-        # Create decisions with varying properties
         d1 = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -1010,7 +1067,7 @@ class TestDecisionRepository:
         d1.executed = True
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System 2",
             user_prompt="User 2",
             raw_response="{}",
@@ -1019,7 +1076,7 @@ class TestDecisionRepository:
         )
         await db_session.commit()
         
-        stats = await repo.get_stats(test_strategy.id)
+        stats = await repo.get_stats(test_agent.id)
         
         assert stats["total_decisions"] >= 2
         assert stats["executed_decisions"] >= 1
@@ -1028,15 +1085,14 @@ class TestDecisionRepository:
 
     @pytest.mark.asyncio
     async def test_delete_old_records(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test deleting old decision records"""
         repo = DecisionRepository(db_session)
         
-        # Create more records than keep_count
         for i in range(5):
             await repo.create(
-                strategy_id=test_strategy.id,
+                agent_id=test_agent.id,
                 system_prompt=f"System {i}",
                 user_prompt=f"User {i}",
                 raw_response="{}",
@@ -1044,95 +1100,93 @@ class TestDecisionRepository:
         await db_session.commit()
         
         deleted_count = await repo.delete_old_records(
-            test_strategy.id, keep_count=2
+            test_agent.id, keep_count=2
         )
         
         # Should delete 3 records (5 - 2 = 3)
         assert deleted_count == 3
         
-        remaining = await repo.get_by_strategy(test_strategy.id)
+        remaining = await repo.get_by_agent(test_agent.id)
         assert len(remaining) == 2
 
     @pytest.mark.asyncio
-    async def test_delete_old_records_empty_strategy(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_delete_old_records_empty_agent(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
-        """Test deleting old records when strategy has no decisions"""
+        """Test deleting old records when agent has no decisions"""
         repo = DecisionRepository(db_session)
         
         deleted_count = await repo.delete_old_records(
-            test_strategy.id, keep_count=10
+            test_agent.id, keep_count=10
         )
         
         assert deleted_count == 0
 
     @pytest.mark.asyncio
-    async def test_count_by_strategy(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_count_by_agent(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
-        """Test counting decisions for a strategy"""
+        """Test counting decisions for an agent"""
         repo = DecisionRepository(db_session)
         
         for i in range(3):
             await repo.create(
-                strategy_id=test_strategy.id,
+                agent_id=test_agent.id,
                 system_prompt=f"System {i}",
                 user_prompt=f"User {i}",
                 raw_response="{}",
             )
         await db_session.commit()
         
-        count = await repo.count_by_strategy(test_strategy.id)
+        count = await repo.count_by_agent(test_agent.id)
         
         assert count >= 3
 
     @pytest.mark.asyncio
-    async def test_get_by_strategy_skipped_only(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_get_by_agent_skipped_only(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test filtering for skipped (non-executed) decisions only"""
         repo = DecisionRepository(db_session)
         
-        # Create executed decision
         d1 = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
         )
         d1.executed = True
         
-        # Create non-executed decision
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System 2",
             user_prompt="User 2",
             raw_response="{}",
         )
         await db_session.commit()
         
-        skipped = await repo.get_by_strategy(
-            test_strategy.id, execution_filter="skipped"
+        skipped = await repo.get_by_agent(
+            test_agent.id, execution_filter="skipped"
         )
         
         assert all(not d.executed for d in skipped)
 
     @pytest.mark.asyncio
-    async def test_get_by_strategy_action_filter(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_get_by_agent_action_filter(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test filtering decisions by action type"""
         repo = DecisionRepository(db_session)
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
             decisions=[{"action": "long", "symbol": "BTC"}],
         )
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System 2",
             user_prompt="User 2",
             raw_response="{}",
@@ -1140,22 +1194,21 @@ class TestDecisionRepository:
         )
         await db_session.commit()
         
-        long_decisions = await repo.get_by_strategy(
-            test_strategy.id, action_filter="long"
+        long_decisions = await repo.get_by_agent(
+            test_agent.id, action_filter="long"
         )
         
-        # Should only include decisions with "long" action
         assert len(long_decisions) >= 1
 
     @pytest.mark.asyncio
-    async def test_get_by_strategy_invalid_action_filter(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+    async def test_get_by_agent_invalid_action_filter(
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
-        """Test that invalid action filter returns empty results (SQL injection protection)"""
+        """Test that invalid action filter returns empty results"""
         repo = DecisionRepository(db_session)
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -1163,23 +1216,22 @@ class TestDecisionRepository:
         )
         await db_session.commit()
         
-        # Invalid action should return empty results
-        results = await repo.get_by_strategy(
-            test_strategy.id, action_filter="invalid_action; DROP TABLE"
+        results = await repo.get_by_agent(
+            test_agent.id, action_filter="invalid_action; DROP TABLE"
         )
         
         assert len(results) == 0
 
     @pytest.mark.asyncio
     async def test_get_by_id_with_user_id(
-        self, db_session: AsyncSession, test_strategy: StrategyDB,
+        self, db_session: AsyncSession, test_agent: AgentDB,
         test_user: UserDB
     ):
         """Test getting decision by ID with user ID verification"""
         repo = DecisionRepository(db_session)
         
         decision = await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -1207,13 +1259,13 @@ class TestDecisionRepository:
 
     @pytest.mark.asyncio
     async def test_get_stats_action_counts(
-        self, db_session: AsyncSession, test_strategy: StrategyDB
+        self, db_session: AsyncSession, test_agent: AgentDB
     ):
         """Test get_stats correctly counts actions"""
         repo = DecisionRepository(db_session)
         
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System",
             user_prompt="User",
             raw_response="{}",
@@ -1223,7 +1275,7 @@ class TestDecisionRepository:
             ],
         )
         await repo.create(
-            strategy_id=test_strategy.id,
+            agent_id=test_agent.id,
             system_prompt="System 2",
             user_prompt="User 2",
             raw_response="{}",
@@ -1231,216 +1283,420 @@ class TestDecisionRepository:
         )
         await db_session.commit()
         
-        stats = await repo.get_stats(test_strategy.id)
+        stats = await repo.get_stats(test_agent.id)
         
         assert "action_counts" in stats
         assert stats["action_counts"].get("long", 0) >= 2
         assert stats["action_counts"].get("hold", 0) >= 1
 
-
-# ============================================================================
-# QuantStrategyRepository Tests
-# ============================================================================
-
-class TestQuantStrategyRepository:
-    """Tests for QuantStrategyRepository"""
-
     @pytest.mark.asyncio
-    async def test_create_quant_strategy(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        strategy = await repo.create(
-            user_id=test_user.id,
-            name="Grid BTC",
-            strategy_type="grid",
-            symbol="BTC",
-            config={"upper_price": 60000, "lower_price": 50000, "grid_count": 10},
-            description="Test grid strategy",
+    async def test_backward_compat_aliases(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test that deprecated aliases still work"""
+        repo = DecisionRepository(db_session)
+        
+        await repo.create(
+            agent_id=test_agent.id,
+            system_prompt="System",
+            user_prompt="User",
+            raw_response="{}",
         )
-        assert strategy is not None
-        assert strategy.name == "Grid BTC"
-        assert strategy.strategy_type == "grid"
-        assert strategy.symbol == "BTC"
-        assert strategy.status == "draft"
+        await db_session.commit()
+        
+        # get_by_strategy is a deprecated alias for get_by_agent
+        decisions = await repo.get_by_strategy(test_agent.id)
+        assert len(decisions) >= 1
+        
+        # count_by_strategy is a deprecated alias for count_by_agent
+        count = await repo.count_by_strategy(test_agent.id)
+        assert count >= 1
+
+
+# ============================================================================
+# AgentRepository Tests
+# ============================================================================
+
+class TestAgentRepository:
+    """Tests for AgentRepository (execution instances)"""
 
     @pytest.mark.asyncio
-    async def test_create_with_capital(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        strategy = await repo.create(
+    async def test_create_agent(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test creating a new agent"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
             user_id=test_user.id,
-            name="DCA ETH",
-            strategy_type="dca",
-            symbol="ETH",
-            config={"order_amount": 100},
+            name="My Agent",
+            strategy_id=test_strategy.id,
+            ai_model="deepseek:deepseek-chat",
+            execution_mode="mock",
+            mock_initial_balance=10000.0,
+        )
+        
+        assert agent is not None
+        assert agent.name == "My Agent"
+        assert agent.strategy_id == test_strategy.id
+        assert agent.ai_model == "deepseek:deepseek-chat"
+        assert agent.execution_mode == "mock"
+        assert agent.status == "draft"
+        assert agent.total_pnl == 0.0
+
+    @pytest.mark.asyncio
+    async def test_create_live_agent(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test creating a live mode agent"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
+            user_id=test_user.id,
+            name="Live Agent",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            ai_model="openai:gpt-4",
             allocated_capital=5000.0,
         )
-        assert strategy.allocated_capital == 5000.0
-        assert strategy.allocated_capital_percent is None
+        
+        assert agent.execution_mode == "live"
+        assert agent.account_id == test_account.id
+        assert agent.allocated_capital == 5000.0
 
     @pytest.mark.asyncio
-    async def test_get_by_id(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        created = await repo.create(
-            user_id=test_user.id, name="RSI SOL",
-            strategy_type="rsi", symbol="SOL", config={},
-        )
-        result = await repo.get_by_id(created.id)
-        assert result is not None
-        assert result.id == created.id
+    async def test_get_by_id(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test getting agent by ID"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.get_by_id(test_agent.id)
+        
+        assert agent is not None
+        assert agent.id == test_agent.id
 
     @pytest.mark.asyncio
-    async def test_get_by_id_with_user(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        created = await repo.create(
-            user_id=test_user.id, name="RSI BTC",
-            strategy_type="rsi", symbol="BTC", config={},
-        )
-        # Correct user
-        result = await repo.get_by_id(created.id, user_id=test_user.id)
-        assert result is not None
-        # Wrong user
-        result = await repo.get_by_id(created.id, user_id=uuid.uuid4())
-        assert result is None
+    async def test_get_by_id_with_user_filter(
+        self, db_session: AsyncSession, test_agent: AgentDB, test_user: UserDB
+    ):
+        """Test getting agent with user filter"""
+        repo = AgentRepository(db_session)
+        
+        # Should find with correct user
+        agent = await repo.get_by_id(test_agent.id, user_id=test_user.id)
+        assert agent is not None
+        
+        # Should not find with different user
+        agent = await repo.get_by_id(test_agent.id, user_id=uuid.uuid4())
+        assert agent is None
 
     @pytest.mark.asyncio
     async def test_get_by_id_not_found(self, db_session: AsyncSession):
-        repo = QuantStrategyRepository(db_session)
-        result = await repo.get_by_id(uuid.uuid4())
-        assert result is None
+        """Test getting non-existent agent returns None"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.get_by_id(uuid.uuid4())
+        
+        assert agent is None
 
     @pytest.mark.asyncio
-    async def test_get_by_user(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        for i in range(3):
-            await repo.create(
-                user_id=test_user.id, name=f"Strat {i}",
-                strategy_type="grid", symbol="BTC", config={},
-            )
-        results = await repo.get_by_user(test_user.id)
-        assert len(results) >= 3
-
-    @pytest.mark.asyncio
-    async def test_get_by_user_filter_status(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
+    async def test_get_by_user(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test getting all agents for a user"""
+        repo = AgentRepository(db_session)
+        
         await repo.create(
-            user_id=test_user.id, name="Active Grid",
-            strategy_type="grid", symbol="BTC", config={},
+            user_id=test_user.id, name="Agent 1",
+            strategy_id=test_strategy.id, execution_mode="mock",
         )
-        results = await repo.get_by_user(test_user.id, status="draft")
-        assert all(s.status == "draft" for s in results)
-
-    @pytest.mark.asyncio
-    async def test_get_by_user_filter_type(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
         await repo.create(
-            user_id=test_user.id, name="DCA Filter",
-            strategy_type="dca", symbol="ETH", config={},
+            user_id=test_user.id, name="Agent 2",
+            strategy_id=test_strategy.id, execution_mode="mock",
         )
-        results = await repo.get_by_user(test_user.id, strategy_type="dca")
-        assert all(s.strategy_type == "dca" for s in results)
+        await db_session.commit()
+        
+        agents = await repo.get_by_user(test_user.id)
+        
+        assert len(agents) >= 2
 
     @pytest.mark.asyncio
-    async def test_get_active_strategies(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Active Strat",
-            strategy_type="grid", symbol="BTC", config={},
+    async def test_get_by_user_filter_status(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test filtering agents by status"""
+        repo = AgentRepository(db_session)
+        
+        a1 = await repo.create(
+            user_id=test_user.id, name="Draft Agent",
+            strategy_id=test_strategy.id,
         )
-        await repo.update_status(s.id, "active")
-        actives = await repo.get_active_strategies()
-        assert any(a.id == s.id for a in actives)
+        a2 = await repo.create(
+            user_id=test_user.id, name="Active Agent",
+            strategy_id=test_strategy.id,
+        )
+        await repo.update_status(a2.id, "active")
+        await db_session.commit()
+        
+        drafts = await repo.get_by_user(test_user.id, status="draft")
+        
+        assert all(a.status == "draft" for a in drafts)
 
     @pytest.mark.asyncio
-    async def test_update(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Update Me",
-            strategy_type="grid", symbol="BTC", config={},
+    async def test_get_by_user_filter_execution_mode(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test filtering agents by execution mode"""
+        repo = AgentRepository(db_session)
+        
+        await repo.create(
+            user_id=test_user.id, name="Mock Agent",
+            strategy_id=test_strategy.id, execution_mode="mock",
         )
-        updated = await repo.update(s.id, test_user.id, name="Updated Name")
+        await db_session.commit()
+        
+        mock_agents = await repo.get_by_user(test_user.id, execution_mode="mock")
+        
+        assert all(a.execution_mode == "mock" for a in mock_agents)
+
+    @pytest.mark.asyncio
+    async def test_get_active_agents(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test getting all active agents"""
+        repo = AgentRepository(db_session)
+        
+        a = await repo.create(
+            user_id=test_user.id, name="Active Agent",
+            strategy_id=test_strategy.id,
+        )
+        await repo.update_status(a.id, "active")
+        await db_session.commit()
+        
+        active = await repo.get_active_agents()
+        
+        assert any(ag.id == a.id for ag in active)
+        assert all(ag.status == "active" for ag in active)
+
+    @pytest.mark.asyncio
+    async def test_update_agent(
+        self, db_session: AsyncSession, test_agent: AgentDB, test_user: UserDB
+    ):
+        """Test updating agent fields"""
+        repo = AgentRepository(db_session)
+        
+        updated = await repo.update(
+            test_agent.id, test_user.id,
+            name="Updated Agent Name",
+            ai_model="openai:gpt-4",
+        )
+        
         assert updated is not None
-        assert updated.name == "Updated Name"
+        assert updated.name == "Updated Agent Name"
+        assert updated.ai_model == "openai:gpt-4"
 
     @pytest.mark.asyncio
-    async def test_update_not_found(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
+    async def test_update_agent_not_found(
+        self, db_session: AsyncSession, test_user: UserDB
+    ):
+        """Test updating non-existent agent returns None"""
+        repo = AgentRepository(db_session)
+        
         result = await repo.update(uuid.uuid4(), test_user.id, name="X")
+        
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_update_status(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Status Test",
-            strategy_type="dca", symbol="ETH", config={},
-        )
-        result = await repo.update_status(s.id, "active")
+    async def test_update_status(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test updating agent status"""
+        repo = AgentRepository(db_session)
+        
+        result = await repo.update_status(test_agent.id, "active")
+        
         assert result is True
+        
+        agent = await repo.get_by_id(test_agent.id)
+        assert agent.status == "active"
 
     @pytest.mark.asyncio
-    async def test_update_status_with_error(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Error Test",
-            strategy_type="rsi", symbol="SOL", config={},
+    async def test_update_status_with_error(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test updating agent status with error message"""
+        repo = AgentRepository(db_session)
+        
+        result = await repo.update_status(
+            test_agent.id, "error", error_message="API failed"
         )
-        result = await repo.update_status(s.id, "error", error_message="API failed")
+        
         assert result is True
+        
+        agent = await repo.get_by_id(test_agent.id)
+        assert agent.status == "error"
+        assert agent.error_message == "API failed"
 
     @pytest.mark.asyncio
-    async def test_update_runtime_state(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Runtime Test",
-            strategy_type="grid", symbol="BTC", config={},
+    async def test_update_performance_win(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test updating agent performance after winning trade"""
+        repo = AgentRepository(db_session)
+        
+        result = await repo.update_performance(
+            test_agent.id, pnl_change=100.0, is_win=True
         )
-        result = await repo.update_runtime_state(s.id, {"filled_grids": [1, 2]})
+        
         assert result is True
+        
+        agent = await repo.get_by_id(test_agent.id)
+        assert agent.total_pnl == 100.0
+        assert agent.total_trades == 1
+        assert agent.winning_trades == 1
+        assert agent.losing_trades == 0
 
     @pytest.mark.asyncio
-    async def test_update_performance(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Perf Test",
-            strategy_type="grid", symbol="BTC", config={},
+    async def test_update_performance_loss(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test updating agent performance after losing trade"""
+        repo = AgentRepository(db_session)
+        
+        result = await repo.update_performance(
+            test_agent.id, pnl_change=-50.0, is_win=False
         )
-        result = await repo.update_performance(s.id, pnl_change=100.0, is_win=True)
+        
         assert result is True
-        refreshed = await repo.get_by_id(s.id)
-        assert refreshed.total_pnl == 100.0
-        assert refreshed.winning_trades == 1
+        
+        agent = await repo.get_by_id(test_agent.id)
+        assert agent.total_pnl == -50.0
+        assert agent.total_trades == 1
+        assert agent.winning_trades == 0
+        assert agent.losing_trades == 1
+        assert agent.max_drawdown == 50.0
 
     @pytest.mark.asyncio
-    async def test_update_performance_loss(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Loss Test",
-            strategy_type="dca", symbol="ETH", config={},
-        )
-        result = await repo.update_performance(s.id, pnl_change=-50.0, is_win=False)
-        assert result is True
-        refreshed = await repo.get_by_id(s.id)
-        assert refreshed.losing_trades == 1
-        assert refreshed.max_drawdown == 50.0
-
-    @pytest.mark.asyncio
-    async def test_update_performance_not_found(self, db_session: AsyncSession):
-        repo = QuantStrategyRepository(db_session)
+    async def test_update_performance_not_found(
+        self, db_session: AsyncSession
+    ):
+        """Test updating performance for non-existent agent returns False"""
+        repo = AgentRepository(db_session)
+        
         result = await repo.update_performance(uuid.uuid4(), 10.0, True)
+        
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_delete(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
-        s = await repo.create(
-            user_id=test_user.id, name="Delete Me",
-            strategy_type="grid", symbol="BTC", config={},
+    async def test_update_runtime_state(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test updating quant agent runtime state"""
+        repo = AgentRepository(db_session)
+        
+        result = await repo.update_runtime_state(
+            test_agent.id, {"filled_grids": [1, 2, 3]}
         )
-        result = await repo.delete(s.id, test_user.id)
+        
         assert result is True
-        assert await repo.get_by_id(s.id) is None
+        
+        agent = await repo.get_by_id(test_agent.id)
+        assert agent.runtime_state == {"filled_grids": [1, 2, 3]}
 
     @pytest.mark.asyncio
-    async def test_delete_not_found(self, db_session: AsyncSession, test_user: UserDB):
-        repo = QuantStrategyRepository(db_session)
+    async def test_delete_agent(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test deleting agent"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
+            user_id=test_user.id, name="To Delete",
+            strategy_id=test_strategy.id,
+        )
+        await db_session.commit()
+        agent_id = agent.id
+        
+        result = await repo.delete(agent_id, test_user.id)
+        
+        assert result is True
+        
+        deleted = await repo.get_by_id(agent_id)
+        assert deleted is None
+
+    @pytest.mark.asyncio
+    async def test_delete_agent_not_found(
+        self, db_session: AsyncSession, test_user: UserDB
+    ):
+        """Test deleting non-existent agent returns False"""
+        repo = AgentRepository(db_session)
+        
         result = await repo.delete(uuid.uuid4(), test_user.id)
+        
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_win_rate_property(
+        self, db_session: AsyncSession, test_agent: AgentDB
+    ):
+        """Test win rate calculated property on AgentDB"""
+        repo = AgentRepository(db_session)
+        
+        # Multiple wins and losses
+        await repo.update_performance(test_agent.id, 100.0, True)
+        await repo.update_performance(test_agent.id, 50.0, True)
+        await repo.update_performance(test_agent.id, -30.0, False)
+        
+        agent = await repo.get_by_id(test_agent.id)
+        # 2 wins / 3 trades = 66.67%
+        assert abs(agent.win_rate - 66.67) < 0.1
+
+    @pytest.mark.asyncio
+    async def test_get_effective_capital_fixed(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test effective capital calculation (fixed amount)"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
+            user_id=test_user.id, name="Fixed Capital",
+            strategy_id=test_strategy.id,
+            allocated_capital=5000.0,
+        )
+        
+        result = agent.get_effective_capital(account_equity=20000.0)
+        assert result == 5000.0
+
+    @pytest.mark.asyncio
+    async def test_get_effective_capital_percent(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test effective capital calculation (percentage)"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
+            user_id=test_user.id, name="Percent Capital",
+            strategy_id=test_strategy.id,
+            allocated_capital_percent=0.25,
+        )
+        
+        result = agent.get_effective_capital(account_equity=20000.0)
+        assert result == 5000.0
+
+    @pytest.mark.asyncio
+    async def test_get_effective_capital_none(
+        self, db_session: AsyncSession, test_user: UserDB, test_strategy: StrategyDB
+    ):
+        """Test effective capital returns None when not configured"""
+        repo = AgentRepository(db_session)
+        
+        agent = await repo.create(
+            user_id=test_user.id, name="No Capital",
+            strategy_id=test_strategy.id,
+        )
+        
+        result = agent.get_effective_capital(account_equity=20000.0)
+        assert result is None

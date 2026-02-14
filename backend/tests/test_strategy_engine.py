@@ -44,6 +44,31 @@ class TestStrategyEngine:
         return strategy
 
     @pytest.fixture
+    def mock_agent(self, mock_strategy):
+        """Create a mock agent database model."""
+        agent = MagicMock()
+        agent.id = uuid4()
+        agent.user_id = uuid4()
+        agent.strategy_id = mock_strategy.id
+        agent.strategy = mock_strategy
+        agent.ai_model = "deepseek:deepseek-chat"
+        agent.execution_mode = "mock"
+        agent.mock_initial_balance = 10000.0
+        agent.status = "active"
+        agent.account_id = uuid4()
+        agent.allocated_capital = None
+        agent.allocated_capital_percent = None
+        agent.total_pnl = 0.0
+        agent.total_trades = 0
+        agent.winning_trades = 0
+        agent.losing_trades = 0
+        agent.max_drawdown = 0.0
+        agent.execution_interval_minutes = 30
+        agent.auto_execute = True
+        agent.get_effective_capital = MagicMock(return_value=None)
+        return agent
+
+    @pytest.fixture
     def mock_trader(self):
         """Create a mock trader."""
         trader = AsyncMock()
@@ -78,10 +103,10 @@ class TestStrategyEngine:
         return client
 
     @pytest_asyncio.fixture
-    async def strategy_engine(self, mock_strategy, mock_trader, mock_ai_client):
+    async def strategy_engine(self, mock_agent, mock_trader, mock_ai_client):
         """Create a strategy engine for testing."""
         return StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -115,13 +140,13 @@ class TestStrategyEngine:
         mock_trader.get_account_state.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_run_cycle_ai_error(self, mock_strategy, mock_trader):
+    async def test_run_cycle_ai_error(self, mock_agent, mock_trader):
         """Test strategy cycle with AI error."""
         mock_ai_client = AsyncMock()
         mock_ai_client.generate = AsyncMock(side_effect=Exception("AI service unavailable"))
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -135,7 +160,7 @@ class TestStrategyEngine:
         assert "AI service unavailable" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_run_cycle_parse_error(self, mock_strategy, mock_trader):
+    async def test_run_cycle_parse_error(self, mock_agent, mock_trader):
         """Test strategy cycle with invalid AI response."""
         mock_ai_client = AsyncMock()
         ai_response = MagicMock()
@@ -144,7 +169,7 @@ class TestStrategyEngine:
         mock_ai_client.generate = AsyncMock(return_value=ai_response)
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -159,11 +184,11 @@ class TestStrategyEngine:
 
     @pytest.mark.asyncio
     async def test_auto_execution_open_long(
-        self, mock_strategy, mock_trader, mock_ai_client, sample_decision_response
+        self, mock_agent, mock_trader, mock_ai_client, sample_decision_response
     ):
         """Test auto execution of open_long decision."""
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -178,7 +203,7 @@ class TestStrategyEngine:
         mock_trader.open_long.assert_called()
 
     @pytest.mark.asyncio
-    async def test_risk_limit_check(self, mock_strategy, mock_trader, mock_ai_client):
+    async def test_risk_limit_check(self, mock_agent, mock_strategy, mock_trader, mock_ai_client):
         """Test that risk limits are checked before execution."""
         # Set up trader with high margin usage
         mock_trader.get_account_state = AsyncMock(return_value=AccountState(
@@ -233,7 +258,7 @@ class TestStrategyEngine:
         }
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -242,11 +267,17 @@ class TestStrategyEngine:
 
         result = await engine.run_cycle()
 
-        # Should fail due to risk limits
-        assert "risk" in result.get("error", "").lower() or result["success"] is False
+        # Cycle succeeds, but the open position is blocked (max positions reached)
+        assert result["success"] is True
+        executed = result.get("executed", [])
+        assert len(executed) >= 1
+        btc_exec = next((e for e in executed if e["symbol"] == "BTC"), None)
+        assert btc_exec is not None
+        assert btc_exec["executed"] is False
+        assert "max positions" in btc_exec.get("reason", "").lower()
 
     @pytest.mark.asyncio
-    async def test_hold_decision_no_execution(self, mock_strategy, mock_trader):
+    async def test_hold_decision_no_execution(self, mock_agent, mock_trader):
         """Test that hold decisions don't trigger trades."""
         hold_response = {
             "chain_of_thought": "Market uncertain",
@@ -272,7 +303,7 @@ class TestStrategyEngine:
         mock_ai_client.generate = AsyncMock(return_value=ai_response)
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -289,7 +320,7 @@ class TestStrategyEngine:
 
 
     @pytest.mark.asyncio
-    async def test_risk_limit_zero_equity_blocks_cycle(self, mock_strategy, mock_trader, mock_ai_client):
+    async def test_risk_limit_zero_equity_blocks_cycle(self, mock_agent, mock_trader, mock_ai_client):
         """Zero equity triggers risk limit and blocks the entire cycle."""
         mock_trader.get_account_state = AsyncMock(return_value=AccountState(
             equity=0.0,
@@ -300,7 +331,7 @@ class TestStrategyEngine:
         ))
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -316,18 +347,27 @@ class TestStrategyEngine:
         mock_ai_client.generate.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_capital_exceeded_error_returns_failure(self, mock_strategy, mock_trader, mock_ai_client):
+    async def test_capital_exceeded_error_returns_failure(self, mock_agent, mock_trader, mock_ai_client):
         """CapitalExceededError during position claim returns order failure."""
-        from app.services.position_service import PositionService, CapitalExceededError
+        from app.services.agent_position_service import CapitalExceededError
         from app.traders.base import OrderResult
 
-        mock_ps = AsyncMock(spec=PositionService)
+        # Build a mock position service with proper get_agent_account_state
+        agent_state_mock = MagicMock()
+        agent_state_mock.to_account_state.return_value = AccountState(
+            equity=10000.0, available_balance=8000.0,
+            total_margin_used=2000.0, unrealized_pnl=0.0, positions=[],
+        )
+        agent_state_mock.positions = []
+
+        mock_ps = AsyncMock()
+        mock_ps.get_agent_account_state = AsyncMock(return_value=agent_state_mock)
         mock_ps.claim_position_with_capital_check = AsyncMock(
             side_effect=CapitalExceededError("Exceeds allocated capital limit")
         )
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -348,17 +388,26 @@ class TestStrategyEngine:
         assert "capital" in btc_exec.get("reason", "").lower() or "capital" in str(btc_exec.get("order_result", "")).lower()
 
     @pytest.mark.asyncio
-    async def test_position_conflict_error_returns_failure(self, mock_strategy, mock_trader, mock_ai_client):
+    async def test_position_conflict_error_returns_failure(self, mock_agent, mock_trader, mock_ai_client):
         """PositionConflictError during position claim returns order failure."""
-        from app.services.position_service import PositionService, PositionConflictError
+        from app.services.agent_position_service import PositionConflictError
 
-        mock_ps = AsyncMock(spec=PositionService)
+        # Build a mock position service with proper get_agent_account_state
+        agent_state_mock = MagicMock()
+        agent_state_mock.to_account_state.return_value = AccountState(
+            equity=10000.0, available_balance=8000.0,
+            total_margin_used=2000.0, unrealized_pnl=0.0, positions=[],
+        )
+        agent_state_mock.positions = []
+
+        mock_ps = AsyncMock()
+        mock_ps.get_agent_account_state = AsyncMock(return_value=agent_state_mock)
         mock_ps.claim_position_with_capital_check = AsyncMock(
             side_effect=PositionConflictError("BTC", uuid4())
         )
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -380,14 +429,22 @@ class TestStrategyEngine:
         assert "conflict" in order_error.lower() or "occupied" in order_error.lower()
 
     @pytest.mark.asyncio
-    async def test_order_exception_releases_claim(self, mock_strategy, mock_trader, mock_ai_client):
+    async def test_order_exception_releases_claim(self, mock_agent, mock_trader, mock_ai_client):
         """When order placement raises exception, the claim is released."""
-        from app.services.position_service import PositionService
+
+        # Build a mock position service with proper get_agent_account_state
+        agent_state_mock = MagicMock()
+        agent_state_mock.to_account_state.return_value = AccountState(
+            equity=10000.0, available_balance=8000.0,
+            total_margin_used=2000.0, unrealized_pnl=0.0, positions=[],
+        )
+        agent_state_mock.positions = []
 
         mock_claim = MagicMock()
         mock_claim.id = uuid4()
 
-        mock_ps = AsyncMock(spec=PositionService)
+        mock_ps = AsyncMock()
+        mock_ps.get_agent_account_state = AsyncMock(return_value=agent_state_mock)
         mock_ps.claim_position_with_capital_check = AsyncMock(return_value=mock_claim)
         mock_ps.release_claim = AsyncMock()
 
@@ -396,7 +453,7 @@ class TestStrategyEngine:
         mock_trader.get_position = AsyncMock(return_value=None)
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -412,13 +469,13 @@ class TestStrategyEngine:
         mock_ps.release_claim.assert_called_once_with(mock_claim.id)
 
     @pytest.mark.asyncio
-    async def test_unexpected_exception_in_cycle(self, mock_strategy, mock_trader):
+    async def test_unexpected_exception_in_cycle(self, mock_agent, mock_trader):
         """Non-DecisionParseError exception in run_cycle is caught."""
         mock_ai_client = AsyncMock()
         mock_ai_client.generate = AsyncMock(side_effect=RuntimeError("Unexpected internal error"))
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -446,7 +503,7 @@ class TestStrategyEnginePromptBuilding:
         strategy.trading_mode = "aggressive"
         strategy.config = {
             "symbols": ["BTC", "ETH"],
-            "custom_prompt": "Always consider volume",
+            "trading_mode": "aggressive",
             "risk_controls": {}
         }
         strategy.status = "active"
@@ -454,8 +511,33 @@ class TestStrategyEnginePromptBuilding:
         strategy.get_effective_capital = MagicMock(return_value=None)
         return strategy
 
+    @pytest.fixture
+    def mock_agent(self, mock_strategy):
+        """Create a mock agent database model."""
+        agent = MagicMock()
+        agent.id = uuid4()
+        agent.user_id = uuid4()
+        agent.strategy_id = mock_strategy.id
+        agent.strategy = mock_strategy
+        agent.ai_model = "deepseek:deepseek-chat"
+        agent.execution_mode = "mock"
+        agent.mock_initial_balance = 10000.0
+        agent.status = "active"
+        agent.account_id = uuid4()
+        agent.allocated_capital = None
+        agent.allocated_capital_percent = None
+        agent.total_pnl = 0.0
+        agent.total_trades = 0
+        agent.winning_trades = 0
+        agent.losing_trades = 0
+        agent.max_drawdown = 0.0
+        agent.execution_interval_minutes = 30
+        agent.auto_execute = True
+        agent.get_effective_capital = MagicMock(return_value=None)
+        return agent
+
     @pytest.mark.asyncio
-    async def test_prompt_includes_custom_prompt(self, mock_strategy):
+    async def test_prompt_includes_custom_prompt(self, mock_agent):
         """Test that custom prompts are included."""
         mock_trader = AsyncMock()
         mock_trader.get_account_state = AsyncMock(return_value=AccountState(
@@ -493,7 +575,7 @@ class TestStrategyEnginePromptBuilding:
         mock_ai_client.generate = capture_generate
 
         engine = StrategyEngine(
-            strategy=mock_strategy,
+            agent=mock_agent,
             trader=mock_trader,
             ai_client=mock_ai_client,
             db_session=None,
@@ -504,5 +586,5 @@ class TestStrategyEnginePromptBuilding:
         await engine.run_cycle()
 
         assert captured_prompt is not None
-        # Check that custom prompt or trading mode is reflected
-        assert "aggressive" in captured_prompt["system"].lower() or "volume" in captured_prompt["system"].lower()
+        # Check that trading mode is reflected in the system prompt
+        assert "aggressive" in captured_prompt["system"].lower()

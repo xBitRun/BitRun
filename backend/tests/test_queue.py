@@ -407,7 +407,7 @@ class TestExecuteStrategyCycle:
 
     @pytest.mark.asyncio
     async def test_strategy_no_account(self):
-        """Test handling strategy without account"""
+        """Test handling strategy without account (no agent bound)"""
         ctx = {"redis": AsyncMock()}
         strategy_id = str(uuid4())
         
@@ -416,6 +416,12 @@ class TestExecuteStrategyCycle:
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock()
             mock_session.commit = AsyncMock()
+
+            # Mock session.execute for the agent query → no active agent found
+            mock_agent_result = MagicMock()
+            mock_agent_result.scalar_one_or_none.return_value = None
+            mock_session.execute = AsyncMock(return_value=mock_agent_result)
+
             MockSession.return_value = mock_session
             
             with patch("app.workers.tasks.StrategyRepository") as MockRepo:
