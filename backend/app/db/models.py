@@ -796,3 +796,13 @@ class DecisionRecordDB(Base):
 
     def __repr__(self) -> str:
         return f"<DecisionRecord {self.id} at {self.timestamp}>"
+
+
+# =============================================================================
+# Backward compatibility aliases (deprecated)
+# =============================================================================
+
+# QuantStrategyDB was removed during Strategy-Agent decoupling.
+# Quant strategy runtime state now lives on AgentDB.
+# This alias keeps legacy imports working during migration.
+QuantStrategyDB = AgentDB

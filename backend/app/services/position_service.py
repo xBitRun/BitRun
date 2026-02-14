@@ -1,20 +1,21 @@
 """
 Position Service – Strategy-level position isolation.
 
+DEPRECATED: This module is superseded by agent_position_service.py.
+Kept for backward compatibility with quant_engine.py and legacy routes.
+The new architecture uses Agent-level position isolation via AgentPositionDB.
+
 Provides:
 - Symbol exclusivity enforcement (one strategy per symbol per account)
 - Position ownership registration (claim-then-execute pattern)
 - Position accumulation for strategies that add to same-symbol positions (Grid/DCA)
 - Capital allocation validation (atomic with claim to prevent TOCTOU races)
 - Position reconciliation helpers
-
-This service is the central coordination point that prevents
-multiple strategies on the same account from interfering with
-each other's positions.
 """
 
 import logging
 import uuid
+import warnings
 from datetime import datetime, timedelta, UTC
 from typing import Literal, Optional, Union
 
@@ -24,12 +25,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.models import (
     ExchangeAccountDB,
-    QuantStrategyDB,
+    QuantStrategyDB,          # backward compat alias → AgentDB
     StrategyDB,
-    StrategyPositionDB,
+    AgentPositionDB as StrategyPositionDB,  # backward compat: positions are now agent-scoped
 )
 from ..services.redis_service import RedisService
 from ..traders.base import AccountState, Position
+
+warnings.warn(
+    "position_service.py is deprecated. Use agent_position_service.py instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 logger = logging.getLogger(__name__)
 

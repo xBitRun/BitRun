@@ -344,80 +344,51 @@ async def delete_account(
     user_uuid = uuid.UUID(user_id)
 
     from sqlalchemy import select, and_
-    from ...db.models import StrategyDB, QuantStrategyDB
-    from ...db.repositories.strategy import StrategyRepository
-    from ...db.repositories.quant_strategy import QuantStrategyRepository
-    from ...services.position_service import PositionService
+    from ...db.models import AgentDB
+    from ...db.repositories.agent import AgentRepository
+    from ...services.agent_position_service import AgentPositionService
 
     account_repo = AccountRepository(db)
-    ps = PositionService(db=db)
+    pos_svc = AgentPositionService(db=db)
 
-    # ── 1. Stop all bound AI strategies ──
-    ai_repo = StrategyRepository(db)
-    bound_ai_query = select(StrategyDB).where(
+    # ── 1. Stop all agents bound to this account ──
+    agent_repo = AgentRepository(db)
+    bound_agents_query = select(AgentDB).where(
         and_(
-            StrategyDB.account_id == account_uuid,
-            StrategyDB.user_id == user_uuid,
-            StrategyDB.status.in_(["active", "paused", "warning"]),
+            AgentDB.account_id == account_uuid,
+            AgentDB.user_id == user_uuid,
+            AgentDB.status.in_(["active", "paused", "warning"]),
         )
     )
-    ai_result = await db.execute(bound_ai_query)
-    bound_ai = list(ai_result.scalars().all())
+    agents_result = await db.execute(bound_agents_query)
+    bound_agents = list(agents_result.scalars().all())
 
-    for strategy in bound_ai:
+    for agent in bound_agents:
         logger.info(
-            f"Account delete: stopping AI strategy {strategy.id} "
-            f"(status={strategy.status})"
+            f"Account delete: stopping agent {agent.id} "
+            f"(status={agent.status})"
         )
         try:
             from ...workers.queue import TaskQueueService
             queue = TaskQueueService()
-            await queue.stop_strategy(str(strategy.id))
+            await queue.stop_strategy(str(agent.id))
         except Exception as e:
-            logger.warning(f"Failed to stop AI worker for {strategy.id}: {e}")
+            logger.warning(f"Failed to stop worker for agent {agent.id}: {e}")
 
-        await _close_strategy_positions(
-            db=db, ps=ps, account_repo=account_repo,
-            strategy_id=strategy.id,
-            account_id=account_uuid, user_id=user_uuid,
-        )
-        await ai_repo.update_status(strategy.id, "stopped", "Account deleted")
+        # Close all open positions for this agent
+        open_positions = await pos_svc.get_agent_positions(agent.id, status_filter="open")
+        for pos in open_positions:
+            try:
+                await pos_svc.close_position_record(pos.id, close_price=0.0, realized_pnl=0.0)
+            except Exception as e:
+                logger.warning(f"Failed to close position {pos.id}: {e}")
 
-    # ── 2. Stop all bound quant strategies ──
-    quant_repo = QuantStrategyRepository(db)
-    bound_quant_query = select(QuantStrategyDB).where(
-        and_(
-            QuantStrategyDB.account_id == account_uuid,
-            QuantStrategyDB.user_id == user_uuid,
-            QuantStrategyDB.status.in_(["active", "paused", "warning"]),
-        )
-    )
-    quant_result = await db.execute(bound_quant_query)
-    bound_quant = list(quant_result.scalars().all())
+        await agent_repo.update_status(agent.id, "stopped", "Account deleted")
 
-    for strategy in bound_quant:
-        logger.info(
-            f"Account delete: stopping quant strategy {strategy.id} "
-            f"(status={strategy.status})"
-        )
-        try:
-            from ...workers.quant_worker import get_quant_worker_manager
-            worker_manager = await get_quant_worker_manager()
-            await worker_manager.stop_strategy(str(strategy.id))
-        except Exception as e:
-            logger.warning(f"Failed to stop quant worker for {strategy.id}: {e}")
-
-        await _close_strategy_positions(
-            db=db, ps=ps, account_repo=account_repo,
-            strategy_id=strategy.id,
-            account_id=account_uuid, user_id=user_uuid,
-        )
-        await quant_repo.update_status(strategy.id, "stopped", "Account deleted")
-
-    # ── 3. Commit strategy status changes before deleting account ──
+    # ── 2. Commit agent status changes before deleting account ──
     await db.flush()
 
-    # ── 4. Delete the account ──
+    # ── 3. Delete the account ──
     repo = AccountRepository(db)
     deleted = await repo.delete(account_uuid, user_uuid)
 
