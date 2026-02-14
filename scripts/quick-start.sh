@@ -128,27 +128,8 @@ check_prerequisites() {
 # ==================== Development Mode ====================
 
 start_development() {
-    log_info "Starting in development mode..."
-
-    # Check for dev compose file
-    if [ -f "docker-compose.dev.yml" ]; then
-        $DOCKER_COMPOSE -f docker-compose.yml -f docker-compose.dev.yml up -d
-    else
-        $DOCKER_COMPOSE -f docker-compose.yml up -d
-    fi
-
-    log_success "Development environment started!"
-    echo ""
-    echo "Services:"
-    echo "  Frontend: http://localhost:3000 (with hot reload)"
-    echo "  Backend:  http://localhost:8000"
-    echo "  API Docs: http://localhost:8000/docs"
-    echo ""
-    echo "Database:"
-    echo "  PostgreSQL: localhost:5432"
-    echo "  Redis:      localhost:6379"
-    echo ""
-    log_info "Run '$DOCKER_COMPOSE logs -f' to view logs"
+    log_info "Delegating to start-dev.sh for local development..."
+    exec "$SCRIPT_DIR/start-dev.sh"
 }
 
 # ==================== Production Mode ====================
@@ -183,8 +164,8 @@ start_default() {
         cp frontend/.env.local.example frontend/.env.local
     fi
 
-    # Start with default compose file
-    $DOCKER_COMPOSE up -d
+    # Start all services including app containers
+    $DOCKER_COMPOSE --profile app up -d
 
     # Wait for services
     log_info "Waiting for services to start..."
@@ -192,7 +173,7 @@ start_default() {
 
     # Run migrations
     log_info "Running database migrations..."
-    $DOCKER_COMPOSE exec -T backend alembic upgrade head 2>/dev/null || true
+    $DOCKER_COMPOSE --profile app exec -T backend alembic upgrade head 2>/dev/null || true
 
     log_success "BITRUN is ready!"
     echo ""
@@ -210,9 +191,9 @@ start_default() {
     echo "  Register a new account at http://localhost:3000/register"
     echo ""
     echo "Useful commands:"
-    echo "  View logs:    $DOCKER_COMPOSE logs -f"
-    echo "  Stop:         $DOCKER_COMPOSE down"
-    echo "  Restart:      $DOCKER_COMPOSE restart"
+    echo "  View logs:    $DOCKER_COMPOSE --profile app logs -f"
+    echo "  Stop:         $DOCKER_COMPOSE --profile app down"
+    echo "  Restart:      $DOCKER_COMPOSE --profile app restart"
     echo ""
     log_info "Configure your AI API keys in backend/.env to start trading!"
 }
@@ -225,7 +206,7 @@ stop_services() {
     if [ -f "docker-compose.prod.yml" ] && [ -f ".env.production" ]; then
         $DOCKER_COMPOSE -f docker-compose.prod.yml --env-file .env.production down
     else
-        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE --profile app down
     fi
 
     log_success "BITRUN stopped."

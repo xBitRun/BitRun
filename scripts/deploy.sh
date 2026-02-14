@@ -121,8 +121,8 @@ FRONTEND_PORT=3000
 # ==================== URLs ====================
 # Update these for your domain
 CORS_ORIGINS=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_WS_URL=ws://localhost:8000/api/ws
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/api/v1/ws
 
 # ==================== AI API Keys ====================
 # Add your API keys for the AI providers you want to use

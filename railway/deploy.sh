@@ -190,8 +190,8 @@ deploy_backend() {
     fi
 
     BACKEND_URL="https://$BACKEND_DOMAIN"
-    API_URL="$BACKEND_URL/api"
-    WS_URL="wss://$BACKEND_DOMAIN/api/ws"
+    API_URL="$BACKEND_URL/api/v1"
+    WS_URL="wss://$BACKEND_DOMAIN/api/v1/ws"
 
     log_info "后端 API: $API_URL"
     log_info "WebSocket: $WS_URL"
