@@ -7,7 +7,7 @@
 
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
-import { agentsApi } from '@/lib/api';
+import { agentsApi, ApiError } from '@/lib/api';
 import type {
   AgentResponse,
   AgentPositionResponse,
@@ -23,12 +23,22 @@ const agentPositionsKey = (id: string) => `/agents/${id}/positions`;
 
 /**
  * Fetch all agents.
+ * Treats 404 as empty list (graceful degradation when backend route is unavailable).
  */
 export function useAgents(params?: { status_filter?: AgentStatus; strategy_type?: StrategyType }) {
   const key = params ? [AGENTS_KEY, params] : AGENTS_KEY;
   const swr = useSWR<AgentResponse[]>(
     key,
-    () => agentsApi.list(params),
+    async () => {
+      try {
+        return await agentsApi.list(params);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          return [];
+        }
+        throw err;
+      }
+    },
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,

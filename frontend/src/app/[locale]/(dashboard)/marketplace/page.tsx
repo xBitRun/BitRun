@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import {
   ListPageSkeleton,
   ListPageError,
   ListPageEmpty,
+  ListPageFilterEmpty,
 } from "@/components/list-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -203,17 +204,12 @@ export default function MarketplacePage() {
   const [forkingId, setForkingId] = useState<string | null>(null);
 
   // Debounce search
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchQuery(value);
-      // Simple debounce using setTimeout
-      const timer = setTimeout(() => {
-        setDebouncedSearch(value);
-      }, 300);
-      return () => clearTimeout(timer);
-    },
-    []
-  );
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const { strategies, total, error, isLoading, refresh } =
     useMarketplaceStrategies({
@@ -231,12 +227,12 @@ export default function MarketplacePage() {
     try {
       const forked = await forkTrigger(strategyId);
       toast.success(t("marketplace.forkSuccess"));
+      refresh(); // revalidate marketplace data to update fork counts
       // Redirect to agent creation wizard with the forked strategy pre-selected
       router.push(`/agents/new?strategyId=${forked.id}`);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : t("marketplace.forkError");
-      toast.error(t("marketplace.forkError"), message);
+      const description = err instanceof Error ? err.message : undefined;
+      toast.error(t("marketplace.forkError"), description);
     } finally {
       setForkingId(null);
     }
@@ -269,7 +265,7 @@ export default function MarketplacePage() {
           <Input
             placeholder={t("marketplace.searchPlaceholder")}
             value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-muted/50 pl-9"
           />
         </div>
@@ -328,19 +324,11 @@ export default function MarketplacePage() {
 
       {/* Empty search state */}
       {hasNoStrategies && isSearching && (
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="p-4 rounded-full bg-muted/50 mb-4">
-              <Search className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">
-              {t("marketplace.emptySearchTitle")}
-            </h3>
-            <p className="text-muted-foreground text-center mb-4">
-              {t("marketplace.emptySearchDescription")}
-            </p>
-          </CardContent>
-        </Card>
+        <ListPageFilterEmpty
+          icon={Search}
+          title={t("marketplace.emptySearchTitle")}
+          description={t("marketplace.emptySearchDescription")}
+        />
       )}
 
       {/* Strategy Cards Grid */}

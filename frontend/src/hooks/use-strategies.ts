@@ -8,7 +8,7 @@
 
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
-import { strategiesApi } from '@/lib/api';
+import { strategiesApi, ApiError } from '@/lib/api';
 import type { 
   StrategyResponse, 
   MarketplaceResponse,
@@ -105,7 +105,8 @@ export function useForkStrategy() {
 }
 
 /**
- * Browse marketplace strategies (public)
+ * Browse marketplace strategies (public).
+ * Treats 404 as empty list (graceful degradation when backend route is unavailable).
  */
 export function useMarketplaceStrategies(params?: {
   type_filter?: StrategyType;
@@ -118,7 +119,16 @@ export function useMarketplaceStrategies(params?: {
   const key = params ? [MARKETPLACE_KEY, params] : MARKETPLACE_KEY;
   const swr = useSWR<MarketplaceResponse>(
     key,
-    () => strategiesApi.marketplace(params),
+    async () => {
+      try {
+        return await strategiesApi.marketplace(params);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          return { items: [], total: 0, limit: params?.limit ?? 50, offset: params?.offset ?? 0 };
+        }
+        throw err;
+      }
+    },
     {
       revalidateOnFocus: false,
       dedupingInterval: 10000,

@@ -48,13 +48,13 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "strategies": "Strategies",
+    "strategies": "My Strategies",
     "agents": "Agents",
-    "marketplace": "Strategy Market",
-    "accounts": "Account Management",
-    "models": "Model Management",
-    "competition": "Strategy Market",
-    "backtest": "Backtest History",
+    "marketplace": "Marketplace",
+    "accounts": "Accounts",
+    "models": "Models",
+    "competition": "Arena",
+    "backtest": "Backtest",
     "settings": "Settings",
     "collapse": "Collapse"
   },
@@ -86,7 +86,7 @@
     "stats": {
       "totalEquity": "Total Equity",
       "dailyPL": "Daily P/L",
-      "activeStrategies": "Active Strategies",
+      "activeStrategies": "Active Agents",
       "openPositions": "Open Positions",
       "executing": "executing",
       "inProfit": "in profit"
@@ -95,7 +95,7 @@
       "title": "Recent AI Decisions",
       "viewAll": "View All",
       "time": "Time",
-      "strategy": "Strategy",
+      "strategy": "Agent",
       "action": "Action",
       "confidence": "Confidence",
       "status": "Status",
@@ -116,7 +116,7 @@
     "chart": {
       "title": "Market Overview",
       "crypto": "Crypto",
-      "forex": "Forex",
+      "indices": "Indices",
       "metals": "Metals"
     },
     "activity": {
@@ -148,7 +148,7 @@
   },
   "agents": {
     "title": "Agents",
-    "subtitle": "Execution agents - bind strategies to accounts and AI models",
+    "subtitle": "Bind strategies to accounts and AI models for automated trading",
     "createAgent": "Create Agent",
     "searchPlaceholder": "Search agents...",
     "filter": {
@@ -223,12 +223,12 @@
       "viewDetails": "View Details"
     },
     "info": {
-      "title": "Execution Agents",
+      "title": "Trading Agents",
       "description": "Agents bind strategies to AI models and exchange accounts. Each agent runs independently with isolated positions."
     },
     "empty": {
       "title": "No agents yet",
-      "description": "Create your first execution agent by selecting a strategy",
+      "description": "Create your first trading agent by selecting a strategy",
       "feature1Title": "Strategy Binding",
       "feature1Desc": "Choose any strategy",
       "feature2Title": "Auto Execute",
@@ -252,12 +252,12 @@
       "createFailed": "Failed to create agent"
     },
     "error": {
-      "loadFailed": "Failed to load agent strategies"
+      "loadFailed": "Failed to load agents"
     },
     "retry": "Retry",
     "create": {
-      "title": "Create Agent Strategy",
-      "description": "Configure an AI agent-driven trading strategy",
+      "title": "Create Trading Agent",
+      "description": "Configure a new trading agent",
       "name": "Agent Name",
       "namePlaceholder": "e.g., My BTC Strategy",
       "descriptionLabel": "Description",
@@ -287,7 +287,7 @@
     "confirmDelete": "Are you sure you want to delete this agent?",
     "wizard": {
       "title": "Create Agent",
-      "subtitle": "Set up a new execution agent step by step",
+      "subtitle": "Set up a new trading agent step by step",
       "back": "Back",
       "next": "Next",
       "steps": {
@@ -359,8 +359,8 @@
       }
     },
     "edit": {
-      "title": "Edit Strategy",
-      "description": "Update your trading strategy configuration."
+      "title": "Edit Agent",
+      "description": "Update your trading agent configuration."
     },
     "newPage": {
       "backToAgents": "Back to Agents",
@@ -412,7 +412,7 @@
   },
   "backtest": {
     "title": "Backtest",
-    "subtitle": "Test your strategies against historical data",
+    "subtitle": "Test your strategies with historical data",
     "newBacktest": "New Backtest",
     "runBacktest": "Run Backtest",
     "running": "Running...",
@@ -557,7 +557,7 @@
     }
   },
   "accounts": {
-    "title": "Exchange Accounts",
+    "title": "Accounts",
     "subtitle": "Manage your connected exchange accounts securely",
     "addAccount": "Add Account",
     "confirmDelete": "Are you sure you want to remove this account?",
@@ -820,8 +820,8 @@
     "empty": "No content"
   },
   "strategies": {
-    "title": "Strategies",
-    "subtitle": "Trading strategy templates - create and share your trading logic",
+    "title": "My Strategies",
+    "subtitle": "Create and manage your trading strategies",
     "createStrategy": "Create Strategy",
     "searchPlaceholder": "Search strategies...",
     "confirmDelete": "Are you sure you want to delete this strategy?",
@@ -1383,7 +1383,7 @@
       "title": "Create Your AI Agent",
       "description": "Configure your first trading agent",
       "agentName": "Agent Name",
-      "agentNamePlaceholder": "e.g., My First Strategy",
+      "agentNamePlaceholder": "e.g., My First Agent",
       "tradingPairs": "Trading Pairs",
       "tradingMode": "Trading Style",
       "modes": {
@@ -1525,7 +1525,7 @@
       },
       "agent": {
         "title": "Launch Agent",
-        "desc": "Start an execution agent (live or mock)"
+        "desc": "Start a trading agent (live or mock)"
       },
       "account": {
         "title": "Connect Account",
@@ -1534,7 +1534,7 @@
     }
   },
   "models": {
-    "title": "Model Management",
+    "title": "Models",
     "subtitle": "Configure and manage AI providers",
     "addProvider": "Add Provider",
     "confirmDelete": "Are you sure you want to delete this provider?",
@@ -2110,13 +2110,13 @@
     "customized": "Parameters have been customized"
   },
   "competition": {
-    "title": "AI Competition",
-    "subtitle": "Compare AI strategy performance in real-time",
+    "title": "Arena",
+    "subtitle": "Compare AI agent performance in real-time",
     "leaderboard": "Leaderboard",
     "refresh": "Refresh",
     "stats": {
-      "totalStrategies": "Total Strategies",
-      "activeStrategies": "Active Strategies",
+      "totalStrategies": "Total Agents",
+      "activeStrategies": "Active Agents",
       "bestPerformer": "Best Performer",
       "avgWinRate": "Avg Win Rate",
       "totalTrades": "Total Trades",
@@ -2125,7 +2125,7 @@
     },
     "table": {
       "rank": "#",
-      "name": "Strategy",
+      "name": "Agent",
       "status": "Status",
       "model": "AI Model",
       "totalPnl": "Total P/L",
@@ -2142,9 +2142,9 @@
       "max_drawdown": "Max Drawdown"
     },
     "empty": {
-      "title": "No strategies yet",
-      "description": "Create AI agent strategies to see them compete here",
-      "createFirst": "Create Strategy"
+      "title": "No agents yet",
+      "description": "Create trading agents to see them compete here",
+      "createFirst": "Create Agent"
     },
     "viewDetails": "View Details",
     "filter": {

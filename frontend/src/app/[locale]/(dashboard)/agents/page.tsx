@@ -23,6 +23,7 @@ import {
   ListPageSkeleton,
   ListPageError,
   ListPageEmpty,
+  ListPageFilterEmpty,
 } from "@/components/list-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -431,9 +432,9 @@ export default function AgentsPage() {
       {/* Error */}
       {error && (
         <ListPageError
-          message={error.message || t("toast.updateFailed")}
+          message={error.message || t("error.loadFailed")}
           onRetry={() => refresh()}
-          retryLabel={t("actions.restart")}
+          retryLabel={t("retry")}
         />
       )}
 
@@ -478,17 +479,11 @@ export default function AgentsPage() {
               </Link>
             </div>
           ) : (
-            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="p-4 rounded-full bg-muted/50 mb-4">
-                  <Bot className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{t("empty.title")}</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  {t("empty.searchHint")}
-                </p>
-              </CardContent>
-            </Card>
+            <ListPageFilterEmpty
+              icon={Bot}
+              title={t("empty.title")}
+              description={t("empty.searchHint")}
+            />
           )}
         </>
       )}

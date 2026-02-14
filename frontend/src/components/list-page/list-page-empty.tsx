@@ -13,9 +13,9 @@ interface ListPageEmptyProps {
   /** Description text. */
   description: string;
   /** Primary CTA button label. */
-  actionLabel: string;
+  actionLabel?: string;
   /** Primary CTA href. */
-  actionHref: string;
+  actionHref?: string;
   /** Optional icon for the action button (e.g. Plus). */
   actionIcon?: LucideIcon;
 }
@@ -31,6 +31,8 @@ export function ListPageEmpty({
   actionHref,
   actionIcon: ActionIcon,
 }: ListPageEmptyProps) {
+  const hasAction = actionLabel && actionHref;
+
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50">
       <CardContent className="flex flex-col items-center justify-center py-16">
@@ -38,15 +40,17 @@ export function ListPageEmpty({
           <Icon className="w-12 h-12 text-primary" />
         </div>
         <h3 className="text-xl font-semibold mb-2">{title}</h3>
-        <p className="text-muted-foreground text-center mb-8 max-w-md">
+        <p className={`text-muted-foreground text-center max-w-md ${hasAction ? "mb-8" : "mb-0"}`}>
           {description}
         </p>
-        <Link href={actionHref}>
-          <Button size="lg" className="glow-primary">
-            {ActionIcon && <ActionIcon className="w-4 h-4 mr-2" />}
-            {actionLabel}
-          </Button>
-        </Link>
+        {hasAction && (
+          <Link href={actionHref}>
+            <Button size="lg" className="glow-primary">
+              {ActionIcon && <ActionIcon className="w-4 h-4 mr-2" />}
+              {actionLabel}
+            </Button>
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

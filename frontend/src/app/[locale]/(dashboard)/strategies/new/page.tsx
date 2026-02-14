@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter, Link } from "@/i18n/navigation";
 import {
   ArrowLeft,
   Grid3X3,
@@ -11,12 +11,12 @@ import {
   Bot,
   Check,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,7 +26,15 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import type { StrategyType } from "@/types";
+import { StrategyStudioTabs, StrategyPresetSelector } from "@/components/strategy-studio";
+import {
+  useStrategyStudio,
+  useUserModels,
+  groupModelsByProvider,
+  getProviderDisplayName,
+} from "@/hooks";
+import type { StrategyType, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
+import { getStrategyPreset, DEFAULT_PROMPT_SECTIONS } from "@/types";
 
 const STRATEGY_TYPES: {
   type: StrategyType;
@@ -41,22 +49,20 @@ const STRATEGY_TYPES: {
 
 export default function CreateStrategyPage() {
   const t = useTranslations("quantStrategies");
+  const tStudio = useTranslations("agents");
   const router = useRouter();
   const toast = useToast();
 
-  const [step, setStep] = useState(0); // 0: type, 1: basic info, 2: params
+  const [step, setStep] = useState(0); // 0: type, 1: basic info / AI studio, 2: params (quant only)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
+  // Form state (shared)
   const [selectedType, setSelectedType] = useState<StrategyType | null>(null);
+
+  // Quant-only form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [symbol, setSymbol] = useState("BTC");
-
-  // AI-specific state
-  const [aiSymbols, setAiSymbols] = useState("BTC, ETH");
-  const [aiTradingMode, setAiTradingMode] = useState<string>("balanced");
-  const [aiPrompt, setAiPrompt] = useState("");
 
   // Grid params
   const [gridUpperPrice, setGridUpperPrice] = useState("50000");
@@ -80,15 +86,65 @@ export default function CreateStrategyPage() {
   const [rsiTimeframe, setRsiTimeframe] = useState("1h");
   const [rsiLeverage, setRsiLeverage] = useState("1");
 
+  // ============ AI Strategy Studio ============
+  const { models } = useUserModels();
+  const groupedModels = groupModelsByProvider(models);
+
+  // Strategy preset state
+  const [selectedRiskProfile, setSelectedRiskProfile] = useState<RiskProfile | null>(null);
+  const [selectedTimeHorizon, setSelectedTimeHorizon] = useState<TimeHorizon | null>(null);
+  const [isCustomPreset, setIsCustomPreset] = useState(true);
+
+  // Strategy Studio hook
+  const {
+    config: studioConfig,
+    setConfig: setStudioConfig,
+    activeTab,
+    setActiveTab,
+    applyPreset,
+    promptPreview,
+    isPreviewLoading,
+    refreshPreview,
+    toApiFormat,
+  } = useStrategyStudio({
+    autoPreview: true,
+  });
+
+  // Handle preset selection
+  const handlePresetSelect = (profile: RiskProfile, horizon: TimeHorizon) => {
+    setSelectedRiskProfile(profile);
+    setSelectedTimeHorizon(horizon);
+    setIsCustomPreset(false);
+    applyPreset(profile, horizon);
+  };
+
+  const handleCustomPreset = () => {
+    setIsCustomPreset(true);
+  };
+
+  // Wrap setConfig to auto-switch to custom mode when config changes
+  const handleStudioConfigChange = useCallback((newConfig: StrategyStudioConfig) => {
+    if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
+      const preset = getStrategyPreset(selectedRiskProfile, selectedTimeHorizon);
+      if (preset) {
+        const indicatorsChanged = JSON.stringify(newConfig.indicators) !== JSON.stringify(preset.values.indicators);
+        const riskControlsChanged = JSON.stringify(newConfig.riskControls) !== JSON.stringify(preset.values.riskControls);
+        const promptSectionsChanged = JSON.stringify(newConfig.promptSections) !== JSON.stringify(DEFAULT_PROMPT_SECTIONS);
+        const advancedPromptChanged = newConfig.promptMode === "advanced" && newConfig.advancedPrompt.trim() !== "";
+
+        if (indicatorsChanged || riskControlsChanged || promptSectionsChanged || advancedPromptChanged) {
+          setIsCustomPreset(true);
+        }
+      }
+    }
+    setStudioConfig(newConfig);
+  }, [isCustomPreset, selectedRiskProfile, selectedTimeHorizon, setStudioConfig]);
+
   const isAiType = selectedType === "ai";
 
-  const buildConfig = (): Record<string, unknown> => {
+  // ============ Quant Config Builder ============
+  const buildQuantConfig = (): Record<string, unknown> => {
     switch (selectedType) {
-      case "ai":
-        return {
-          trading_mode: aiTradingMode,
-          custom_prompt: aiPrompt || undefined,
-        };
       case "grid":
         return {
           upper_price: parseFloat(gridUpperPrice),
@@ -119,19 +175,45 @@ export default function CreateStrategyPage() {
     }
   };
 
-  const getSymbols = (): string[] => {
-    if (isAiType) {
-      return aiSymbols
-        .split(",")
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean);
+  // ============ Submit Handlers ============
+  const handleAiSubmit = async () => {
+    if (!studioConfig.name.trim()) return;
+    if (studioConfig.symbols.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const { strategiesApi } = await import("@/lib/api");
+      const apiData = toApiFormat();
+
+      // Build config with preset info
+      const configObj = apiData.config as Record<string, unknown>;
+      configObj.preset = isCustomPreset
+        ? "custom"
+        : `${selectedRiskProfile}_${selectedTimeHorizon}`;
+      configObj.prompt = apiData.prompt as string;
+      configObj.trading_mode = apiData.trading_mode as string;
+
+      const strategy = await strategiesApi.create({
+        type: "ai",
+        name: apiData.name as string,
+        description: apiData.description as string,
+        symbols: (configObj.symbols as string[]) || studioConfig.symbols,
+        config: configObj,
+      });
+
+      toast.success(t("toast.createSuccess"));
+      router.push(`/agents/new?strategyId=${strategy.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("toast.createFailed");
+      toast.error(t("toast.createFailed"), message);
+    } finally {
+      setIsSubmitting(false);
     }
-    return [symbol.toUpperCase()];
   };
 
-  const handleSubmit = async () => {
+  const handleQuantSubmit = async () => {
     if (!selectedType || !name) return;
-    const symbols = getSymbols();
+    const symbols = [symbol.toUpperCase()];
     if (symbols.length === 0) return;
 
     setIsSubmitting(true);
@@ -142,10 +224,9 @@ export default function CreateStrategyPage() {
         name,
         description,
         symbols,
-        config: buildConfig(),
+        config: buildQuantConfig(),
       });
       toast.success(t("toast.createSuccess"));
-      // Redirect to the agent wizard with this strategy pre-selected
       router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : t("toast.createFailed");
@@ -155,26 +236,45 @@ export default function CreateStrategyPage() {
     }
   };
 
-  const canProceedStep1 = () => {
+  const canProceedQuantStep1 = () => {
     if (!name) return false;
-    if (isAiType) {
-      const symbols = getSymbols();
-      return symbols.length > 0;
-    }
     return !!symbol;
   };
 
+  const isAiFormValid = studioConfig.name.trim() !== "" && studioConfig.symbols.length > 0;
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className={cn("space-y-6 mx-auto", isAiType && step === 1 ? "max-w-5xl" : "max-w-3xl")}>
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/strategies")}>
+        <Button variant="ghost" size="icon" onClick={() => {
+          if (step > 0) {
+            setStep(step - 1);
+          } else {
+            router.push("/strategies");
+          }
+        }}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gradient">{t("create.title")}</h1>
           <p className="text-muted-foreground">{t("create.description")}</p>
         </div>
+        {/* AI submit button in header when on step 1 */}
+        {isAiType && step === 1 && (
+          <Button
+            onClick={handleAiSubmit}
+            disabled={isSubmitting || !isAiFormValid}
+            className="min-w-[140px]"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4 mr-2" />
+            )}
+            {t("create.submit")}
+          </Button>
+        )}
       </div>
 
       {/* Step 0: Select Strategy Type */}
@@ -221,8 +321,130 @@ export default function CreateStrategyPage() {
         </div>
       )}
 
-      {/* Step 1: Basic Info */}
-      {step === 1 && (
+      {/* Step 1 for AI: Full Strategy Studio */}
+      {step === 1 && isAiType && (
+        <div className="space-y-6">
+          {/* Basic Info + AI Model Card */}
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Strategy Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="ai-name" className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-primary" />
+                    {t("create.name")}
+                  </Label>
+                  <Input
+                    id="ai-name"
+                    placeholder={t("create.namePlaceholder")}
+                    value={studioConfig.name}
+                    onChange={(e) => setStudioConfig({ ...studioConfig, name: e.target.value })}
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="ai-description">{t("create.descriptionLabel")}</Label>
+                  <Input
+                    id="ai-description"
+                    placeholder={t("create.descriptionPlaceholder")}
+                    value={studioConfig.description}
+                    onChange={(e) => setStudioConfig({ ...studioConfig, description: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Strategy Preset Selector */}
+              <StrategyPresetSelector
+                riskProfile={selectedRiskProfile}
+                timeHorizon={selectedTimeHorizon}
+                isCustom={isCustomPreset}
+                onSelect={handlePresetSelect}
+                onCustom={handleCustomPreset}
+              />
+
+              {/* AI Model */}
+              <div className="space-y-2">
+                <Label htmlFor="ai_model">{tStudio("create.aiModel")}</Label>
+                <Select
+                  value={studioConfig.aiModel || ""}
+                  onValueChange={(v) => setStudioConfig({ ...studioConfig, aiModel: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={tStudio("create.aiModelPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(groupedModels).length > 0 ? (
+                      Object.entries(groupedModels).map(([provider, providerModels]) => (
+                        <div key={provider}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                            {getProviderDisplayName(provider)}
+                          </div>
+                          {providerModels.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        {tStudio("create.noModels")}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {models.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    <Link href="/models" className="text-primary hover:underline">
+                      {tStudio("create.addModelLink")}
+                    </Link>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Strategy Studio Tabs */}
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardContent className="pt-6">
+              <StrategyStudioTabs
+                config={studioConfig}
+                onConfigChange={handleStudioConfigChange}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                promptPreview={promptPreview}
+                isPreviewLoading={isPreviewLoading}
+                onRefreshPreview={refreshPreview}
+                riskProfile={isCustomPreset ? null : selectedRiskProfile}
+                timeHorizon={isCustomPreset ? null : selectedTimeHorizon}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Bottom Action Buttons */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep(0)}>
+              {t("create.back")}
+            </Button>
+            <Button
+              onClick={handleAiSubmit}
+              disabled={isSubmitting || !isAiFormValid}
+              className="glow-primary min-w-[140px]"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4 mr-2" />
+              )}
+              {t("create.submit")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 1 for Quant: Basic Info */}
+      {step === 1 && !isAiType && (
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -246,54 +468,15 @@ export default function CreateStrategyPage() {
                   placeholder={t("create.descriptionPlaceholder")}
                 />
               </div>
-
-              {isAiType ? (
-                <>
-                  {/* AI: multi-symbol input */}
-                  <div className="space-y-2">
-                    <Label>{t("create.symbols")}</Label>
-                    <Input
-                      value={aiSymbols}
-                      onChange={(e) => setAiSymbols(e.target.value)}
-                      placeholder={t("create.symbolsPlaceholder")}
-                    />
-                  </div>
-                  {/* AI: trading mode */}
-                  <div className="space-y-2">
-                    <Label>{t("create.tradingMode")}</Label>
-                    <Select value={aiTradingMode} onValueChange={setAiTradingMode}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="conservative">Conservative</SelectItem>
-                        <SelectItem value="balanced">Balanced</SelectItem>
-                        <SelectItem value="aggressive">Aggressive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {/* AI: prompt */}
-                  <div className="space-y-2">
-                    <Label>{t("create.prompt")}</Label>
-                    <Textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder={t("create.promptPlaceholder")}
-                      rows={5}
-                    />
-                  </div>
-                </>
-              ) : (
-                /* Quant: single symbol */
-                <div className="space-y-2">
-                  <Label>{t("create.symbol")}</Label>
-                  <Input
-                    value={symbol}
-                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                    placeholder={t("create.symbolPlaceholder")}
-                  />
-                </div>
-              )}
+              {/* Quant: single symbol */}
+              <div className="space-y-2">
+                <Label>{t("create.symbol")}</Label>
+                <Input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  placeholder={t("create.symbolPlaceholder")}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -302,20 +485,10 @@ export default function CreateStrategyPage() {
               {t("create.back")}
             </Button>
             <Button
-              onClick={() => {
-                if (isAiType) {
-                  // AI strategies skip params step, submit directly
-                  handleSubmit();
-                } else {
-                  setStep(2);
-                }
-              }}
-              disabled={!canProceedStep1() || (isAiType && isSubmitting)}
+              onClick={() => setStep(2)}
+              disabled={!canProceedQuantStep1()}
             >
-              {isAiType && isSubmitting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : null}
-              {isAiType ? t("create.submit") : t("create.next")}
+              {t("create.next")}
             </Button>
           </div>
         </div>
@@ -507,7 +680,7 @@ export default function CreateStrategyPage() {
               {t("create.back")}
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={handleQuantSubmit}
               disabled={isSubmitting}
               className="glow-primary"
             >
