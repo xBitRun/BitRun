@@ -134,19 +134,19 @@ export async function encryptForTransport(plaintext: string): Promise<string> {
  * Encrypt multiple fields in an object.
  * Only encrypts the specified field names; other fields pass through.
  */
-export async function encryptFields<T extends Record<string, unknown>>(
+export async function encryptFields<T extends object>(
   data: T,
   fieldNames: string[]
 ): Promise<T> {
   const enabled = await isTransportEncryptionEnabled();
   if (!enabled) return data;
 
-  const result = { ...data };
+  const result = { ...data } as Record<string, unknown>;
   for (const field of fieldNames) {
     const value = result[field];
     if (typeof value === 'string' && value.length > 0) {
-      (result as Record<string, unknown>)[field] = await encryptForTransport(value);
+      result[field] = await encryptForTransport(value);
     }
   }
-  return result;
+  return result as T;
 }

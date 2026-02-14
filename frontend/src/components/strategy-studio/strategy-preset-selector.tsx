@@ -19,7 +19,7 @@ import type {
   TimeHorizon,
   StrategyPreset,
 } from "@/types";
-import { getStrategyPreset } from "@/types";
+import { getStrategyPreset, DEFAULT_RISK_CONTROLS } from "@/types";
 
 interface StrategyPresetSelectorProps {
   riskProfile: RiskProfile | null;
@@ -238,7 +238,9 @@ export function StrategyPresetSelector({
       </button>
 
       {/* Preset Summary */}
-      {currentPreset && !isCustom && (
+      {currentPreset && !isCustom && (() => {
+        const rc = { ...DEFAULT_RISK_CONTROLS, ...currentPreset.values.riskControls };
+        return (
         <Card className="bg-muted/30 border-border/50">
           <CardContent className="py-3 px-4">
             <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -249,25 +251,25 @@ export function StrategyPresetSelector({
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("summary.leverage")}</p>
                 <p className="text-xs font-semibold font-mono">
-                  {currentPreset.values.riskControls.maxLeverage}x
+                  {rc.maxLeverage}x
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("summary.positionSize")}</p>
                 <p className="text-xs font-semibold font-mono">
-                  {(currentPreset.values.riskControls.maxPositionRatio * 100).toFixed(0)}%
+                  {(rc.maxPositionRatio * 100).toFixed(0)}%
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("summary.exposure")}</p>
                 <p className="text-xs font-semibold font-mono">
-                  {(currentPreset.values.riskControls.maxTotalExposure * 100).toFixed(0)}%
+                  {(rc.maxTotalExposure * 100).toFixed(0)}%
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("summary.confidence")}</p>
                 <p className="text-xs font-semibold font-mono">
-                  {currentPreset.values.riskControls.minConfidence}%
+                  {rc.minConfidence}%
                 </p>
               </div>
               <div>
@@ -285,7 +287,8 @@ export function StrategyPresetSelector({
             </div>
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -84,7 +84,7 @@ function parseSteps(content: string): ThoughtStep[] {
 
   // Split by numbered steps, markdown headers, or double newlines
   const lines = content
-    .split(/(?:\n\s*\n|\n(?=\d+[\.\)]\s)|(?=^#{1,3}\s)/m)
+    .split(new RegExp("(?:\\n\\s*\\n|\\n(?=\\d+[.)]\\s)|(?=^#{1,3}\\s))", "m"))
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 

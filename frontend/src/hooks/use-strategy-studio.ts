@@ -16,6 +16,7 @@ import {
   RiskProfile,
   TimeHorizon,
   getStrategyPreset,
+  DEFAULT_RISK_CONTROLS,
 } from "@/types";
 import { api } from "@/lib/api";
 
@@ -279,7 +280,7 @@ export function useStrategyStudio(
         timeframes: values.timeframes,
         executionIntervalMinutes: values.executionIntervalMinutes,
         indicators: values.indicators,
-        riskControls: values.riskControls,
+        riskControls: { ...DEFAULT_RISK_CONTROLS, ...values.riskControls },
       }));
     },
     []
