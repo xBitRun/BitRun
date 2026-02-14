@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column("size_usd", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("entry_price", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("leverage", sa.Integer, nullable=False, server_default="1"),
-        sa.Column("status", sa.String(10), nullable=False, server_default="'pending'"),
+        sa.Column("status", sa.String(10), nullable=False, server_default=sa.text("'pending'")),
         sa.Column("realized_pnl", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("close_price", sa.Float, nullable=True),
         sa.Column("opened_at", sa.DateTime(timezone=True), nullable=False,
@@ -113,14 +113,14 @@ def upgrade() -> None:
     # Add type column (will be populated in data migration)
     op.add_column("strategies", sa.Column("type", sa.String(20), nullable=True))
     # Add symbols as JSON (will be populated from config.symbols or quant symbol)
-    op.add_column("strategies", sa.Column("symbols", postgresql.JSON, server_default="'[]'"))
+    op.add_column("strategies", sa.Column("symbols", postgresql.JSON, server_default=sa.text("'[]'::json")))
     # Add marketplace fields
     op.add_column("strategies", sa.Column(
-        "visibility", sa.String(20), server_default="'private'", nullable=False
+        "visibility", sa.String(20), server_default=sa.text("'private'"), nullable=False
     ))
     op.add_column("strategies", sa.Column("category", sa.String(50), nullable=True))
     op.add_column("strategies", sa.Column(
-        "tags", postgresql.JSON, server_default="'[]'"
+        "tags", postgresql.JSON, server_default=sa.text("'[]'::json")
     ))
     op.add_column("strategies", sa.Column(
         "forked_from", postgresql.UUID(as_uuid=True),
@@ -146,21 +146,23 @@ def upgrade() -> None:
 
     # 4b. Move symbols from config->symbols to top-level symbols column
     # The config JSON has a "symbols" key with a list like ["BTC", "ETH"]
+    # Cast to json since the symbols column is JSON (not JSONB)
     conn.execute(sa.text("""
         UPDATE strategies
-        SET symbols = COALESCE(config->'symbols', '["BTC", "ETH"]'::jsonb)
+        SET symbols = COALESCE((config::jsonb)->'symbols', '["BTC", "ETH"]'::jsonb)::json
         WHERE type = 'ai'
     """))
 
     # 4c. Merge prompt and trading_mode into config for AI strategies
     # Move the top-level prompt into config.prompt
+    # Cast result back to json since config column is JSON type
     conn.execute(sa.text("""
         UPDATE strategies
         SET config = jsonb_set(
             COALESCE(config::jsonb, '{}'::jsonb),
             '{prompt}',
             to_jsonb(COALESCE(prompt, ''))
-        )
+        )::json
         WHERE type = 'ai' AND prompt IS NOT NULL
     """))
     # Move trading_mode into config
@@ -170,7 +172,7 @@ def upgrade() -> None:
             COALESCE(config::jsonb, '{}'::jsonb),
             '{trading_mode}',
             to_jsonb(COALESCE(trading_mode, 'conservative'))
-        )
+        )::json
         WHERE type = 'ai'
     """))
 
@@ -210,6 +212,7 @@ def upgrade() -> None:
     # Step 5: Data migration - Quant strategies
     # =========================================================================
     # 5a. Insert quant strategies into unified strategies table
+    # Cast jsonb results to json to match column types
     conn.execute(sa.text("""
         INSERT INTO strategies (
             id, user_id, type, name, description,
@@ -219,9 +222,9 @@ def upgrade() -> None:
         )
         SELECT
             id, user_id, strategy_type, name, description,
-            jsonb_build_array(symbol),
-            config::jsonb,
-            'private', '[]'::jsonb, 0,
+            jsonb_build_array(symbol)::json,
+            config,
+            'private', '[]'::json, 0,
             created_at, updated_at
         FROM quant_strategies
     """))

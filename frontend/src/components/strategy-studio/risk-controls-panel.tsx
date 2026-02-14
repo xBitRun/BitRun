@@ -17,6 +17,7 @@ import {
   RiskProfile,
   TimeHorizon,
   getStrategyPreset,
+  DEFAULT_RISK_CONTROLS,
 } from "@/types";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -62,10 +63,14 @@ export function RiskControlsPanel({
   timeHorizon,
 }: RiskControlsPanelProps) {
   const t = useTranslations("strategyStudio");
-  const riskAssessment = calculateRiskLevel(value);
+
+  // Merge with defaults to fill any fields missing from the database
+  const config: RiskControlsConfig = { ...DEFAULT_RISK_CONTROLS, ...value };
+
+  const riskAssessment = calculateRiskLevel(config);
 
   const update = (key: keyof RiskControlsConfig, newValue: number) => {
-    onChange({ ...value, [key]: newValue });
+    onChange({ ...config, [key]: newValue });
   };
 
   // Get recommended values – prefer preset-based when available, fallback to tradingMode
@@ -74,7 +79,7 @@ export function RiskControlsPanel({
     if (riskProfile && timeHorizon) {
       const preset = getStrategyPreset(riskProfile, timeHorizon);
       if (preset) {
-        const rc = preset.values.riskControls;
+        const rc = { ...DEFAULT_RISK_CONTROLS, ...preset.values.riskControls };
         const map: Record<string, string> = {
           maxLeverage: `${rc.maxLeverage}x`,
           maxPositionRatio: `${(rc.maxPositionRatio * 100).toFixed(0)}%`,
@@ -116,8 +121,8 @@ export function RiskControlsPanel({
     if (riskProfile && timeHorizon) {
       const preset = getStrategyPreset(riskProfile, timeHorizon);
       if (!preset) return null;
-      const rc = preset.values.riskControls;
-      const { maxLeverage, maxPositionRatio, maxTotalExposure, minConfidence } = value;
+      const rc = { ...DEFAULT_RISK_CONTROLS, ...preset.values.riskControls };
+      const { maxLeverage, maxPositionRatio, maxTotalExposure, minConfidence } = config;
 
       // Tolerance: flag when actual deviates > 50% from preset value (relative)
       const deviates = (actual: number, expected: number) => {
@@ -163,7 +168,7 @@ export function RiskControlsPanel({
     }
 
     // --- Legacy tradingMode-based check (custom mode / no preset) ---
-    const { maxLeverage, maxPositionRatio, maxTotalExposure, minConfidence } = value;
+    const { maxLeverage, maxPositionRatio, maxTotalExposure, minConfidence } = config;
     if (tradingMode === "conservative") {
       if (maxLeverage > 8 || maxPositionRatio > 0.2 || maxTotalExposure > 0.7 || minConfidence < 65) {
         return t("riskControls.modeMismatchConservative");
@@ -259,7 +264,7 @@ export function RiskControlsPanel({
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={value.maxLeverage}
+                  value={config.maxLeverage}
                   onChange={(e) =>
                     update("maxLeverage", parseInt(e.target.value) || 1)
                   }
@@ -271,7 +276,7 @@ export function RiskControlsPanel({
               </div>
             </div>
             <Slider
-              value={[value.maxLeverage]}
+              value={[config.maxLeverage]}
               onValueChange={([v]) => update("maxLeverage", v)}
               min={1}
               max={50}
@@ -301,11 +306,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium">
-                {(value.maxPositionRatio * 100).toFixed(0)}%
+                {(config.maxPositionRatio * 100).toFixed(0)}%
               </span>
             </div>
             <Slider
-              value={[value.maxPositionRatio * 100]}
+              value={[config.maxPositionRatio * 100]}
               onValueChange={([v]) => update("maxPositionRatio", v / 100)}
               min={1}
               max={50}
@@ -336,11 +341,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium">
-                {(value.maxTotalExposure * 100).toFixed(0)}%
+                {(config.maxTotalExposure * 100).toFixed(0)}%
               </span>
             </div>
             <Slider
-              value={[value.maxTotalExposure * 100]}
+              value={[config.maxTotalExposure * 100]}
               onValueChange={([v]) => update("maxTotalExposure", v / 100)}
               min={10}
               max={100}
@@ -371,11 +376,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium">
-                1:{value.minRiskRewardRatio.toFixed(1)}
+                1:{config.minRiskRewardRatio.toFixed(1)}
               </span>
             </div>
             <Slider
-              value={[value.minRiskRewardRatio * 10]}
+              value={[config.minRiskRewardRatio * 10]}
               onValueChange={([v]) => update("minRiskRewardRatio", v / 10)}
               min={10}
               max={50}
@@ -402,11 +407,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium text-destructive">
-                {(value.maxDrawdownPercent * 100).toFixed(0)}%
+                {(config.maxDrawdownPercent * 100).toFixed(0)}%
               </span>
             </div>
             <Slider
-              value={[value.maxDrawdownPercent * 100]}
+              value={[config.maxDrawdownPercent * 100]}
               onValueChange={([v]) => update("maxDrawdownPercent", v / 100)}
               min={5}
               max={50}
@@ -432,10 +437,10 @@ export function RiskControlsPanel({
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <span className="text-sm font-medium">{value.minConfidence}%</span>
+              <span className="text-sm font-medium">{config.minConfidence}%</span>
             </div>
             <Slider
-              value={[value.minConfidence]}
+              value={[config.minConfidence]}
               onValueChange={([v]) => update("minConfidence", v)}
               min={30}
               max={95}
@@ -466,11 +471,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium">
-                {value.defaultSlAtrMultiplier.toFixed(1)}x ATR
+                {config.defaultSlAtrMultiplier.toFixed(1)}x ATR
               </span>
             </div>
             <Slider
-              value={[value.defaultSlAtrMultiplier * 10]}
+              value={[config.defaultSlAtrMultiplier * 10]}
               onValueChange={([v]) => update("defaultSlAtrMultiplier", v / 10)}
               min={5}
               max={50}
@@ -497,11 +502,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium">
-                {value.defaultTpAtrMultiplier.toFixed(1)}x ATR
+                {config.defaultTpAtrMultiplier.toFixed(1)}x ATR
               </span>
             </div>
             <Slider
-              value={[value.defaultTpAtrMultiplier * 10]}
+              value={[config.defaultTpAtrMultiplier * 10]}
               onValueChange={([v]) => update("defaultTpAtrMultiplier", v / 10)}
               min={10}
               max={100}
@@ -528,11 +533,11 @@ export function RiskControlsPanel({
                 </Tooltip>
               </div>
               <span className="text-sm font-medium text-destructive">
-                {(value.maxSlPercent * 100).toFixed(0)}%
+                {(config.maxSlPercent * 100).toFixed(0)}%
               </span>
             </div>
             <Slider
-              value={[value.maxSlPercent * 100]}
+              value={[config.maxSlPercent * 100]}
               onValueChange={([v]) => update("maxSlPercent", v / 100)}
               min={1}
               max={30}

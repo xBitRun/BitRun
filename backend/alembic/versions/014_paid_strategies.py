@@ -31,7 +31,7 @@ def upgrade() -> None:
         "revenue_share_percent", sa.Float, server_default="0.0", nullable=False
     ))
     op.add_column("strategies", sa.Column(
-        "pricing_model", sa.String(20), server_default="'free'", nullable=False
+        "pricing_model", sa.String(20), server_default=sa.text("'free'"), nullable=False
     ))
 
     # Create subscriptions table
@@ -46,10 +46,10 @@ def upgrade() -> None:
                   sa.ForeignKey("users.id", ondelete="CASCADE"),
                   nullable=False),
         sa.Column("status", sa.String(20), nullable=False,
-                  server_default="'active'"),
+                  server_default=sa.text("'active'")),
         sa.Column("price_paid", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("pricing_model", sa.String(20), nullable=False,
-                  server_default="'free'"),
+                  server_default=sa.text("'free'")),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.func.now()),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
