@@ -119,7 +119,9 @@ async def get_dashboard_stats(
 
     # Fetch user's strategies
     strategies = await strategy_repo.get_by_user(uuid.UUID(user_id))
-    active_strategies = [s for s in strategies if s.status == "active"]
+    # StrategyDB doesn't have status; status is on AgentDB.
+    # Count strategies that have at least one active agent.
+    active_strategies = [s for s in strategies if any(a.status == "active" for a in s.agents)]
 
     # Initialize aggregated values
     total_equity = 0.0
@@ -359,11 +361,15 @@ async def get_activity_feed(
     decisions = await decision_repo.get_recent(uuid.UUID(user_id), limit=limit + offset + 10)
 
     # Get user's strategies for names
+    # DecisionRecordDB has agent_id (not strategy_id), so we build agent_id -> strategy_name mapping
     strategies = await strategy_repo.get_by_user(uuid.UUID(user_id))
-    strategy_names = {str(s.id): s.name for s in strategies}
+    agent_strategy_names: dict[str, str] = {}
+    for s in strategies:
+        for a in s.agents:
+            agent_strategy_names[str(a.id)] = s.name
 
     for decision in decisions:
-        strategy_name = strategy_names.get(str(decision.strategy_id), "Unknown Strategy")
+        strategy_name = agent_strategy_names.get(str(decision.agent_id), "Unknown Strategy")
 
         # Determine title based on decisions
         main_action = "Analysis"
@@ -394,7 +400,7 @@ async def get_activity_feed(
             title=f"{main_action}: {strategy_name}",
             description=f"{desc_prefix} {symbol_str} with {decision.overall_confidence}% confidence",
             data={
-                "strategy_id": str(decision.strategy_id),
+                "agent_id": str(decision.agent_id),
                 "confidence": decision.overall_confidence,
                 "executed": decision.executed,
                 "decisions_count": len(decision.decisions),

@@ -375,6 +375,9 @@ class QuantWorkerManager:
 
                 if not strategy.account_id:
                     logger.error(f"Quant strategy {strategy_id} has no account")
+                    # Auto-fix: set status to error to prevent repeated startup attempts
+                    await repo.update_status(uuid.UUID(strategy_id), "error", "No associated account")
+                    await session.commit()
                     await self._release_ownership(strategy_id)
                     return False
 
@@ -383,6 +386,9 @@ class QuantWorkerManager:
                 account = await account_repo.get_by_id(strategy.account_id)
                 if not account:
                     logger.error(f"Account not found for quant strategy {strategy_id}")
+                    # Auto-fix: set status to error to prevent repeated startup attempts
+                    await repo.update_status(uuid.UUID(strategy_id), "error", "Associated account not found")
+                    await session.commit()
                     await self._release_ownership(strategy_id)
                     return False
 

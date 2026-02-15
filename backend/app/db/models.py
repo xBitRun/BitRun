@@ -524,6 +524,15 @@ class AgentDB(Base):
             return 0.0
         return (self.winning_trades / self.total_trades) * 100
 
+    @property
+    def strategy_type(self) -> Optional[str]:
+        """Get strategy type from related strategy.
+
+        Provides backward compatibility for legacy QuantStrategyDB code
+        that expected a strategy_type field directly on this model.
+        """
+        return self.strategy.type if self.strategy else None
+
     def get_effective_capital(self, account_equity: float) -> Optional[float]:
         """Calculate effective allocated capital based on mode.
 
