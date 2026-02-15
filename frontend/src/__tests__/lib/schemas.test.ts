@@ -89,10 +89,13 @@ describe("StrategySchema", () => {
   it("validates valid strategy", () => {
     const data = {
       id: "550e8400-e29b-41d4-a716-446655440000",
+      user_id: "550e8400-e29b-41d4-a716-446655440001",
+      type: "ai",
       name: "My Strategy",
-      status: "active",
-      trading_mode: "ai",
+      symbols: ["BTC"],
+      config: { leverage: 5 },
       created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
     };
 
     const result = StrategySchema.safeParse(data);
@@ -102,31 +105,36 @@ describe("StrategySchema", () => {
   it("validates strategy with optional fields", () => {
     const data = {
       id: "550e8400-e29b-41d4-a716-446655440000",
+      user_id: "550e8400-e29b-41d4-a716-446655440001",
+      type: "ai",
       name: "My Strategy",
-      status: "active",
-      trading_mode: "ai",
-      prompt: "Buy low sell high",
       description: "A simple strategy",
-      account_id: "550e8400-e29b-41d4-a716-446655440001",
+      symbols: ["BTC", "ETH"],
       config: { leverage: 5 },
+      visibility: "public",
+      category: "momentum",
+      tags: ["crypto", "ai"],
+      forked_from: null,
+      fork_count: 3,
       created_at: "2024-01-01T00:00:00Z",
       updated_at: "2024-01-02T00:00:00Z",
-      last_run_at: "2024-01-02T12:00:00Z",
-      next_run_at: null,
     };
 
     const result = StrategySchema.safeParse(data);
     expect(result.success).toBe(true);
   });
 
-  it("validates strategy with null account_id", () => {
+  it("validates strategy with null category", () => {
     const data = {
       id: "550e8400-e29b-41d4-a716-446655440000",
+      user_id: "550e8400-e29b-41d4-a716-446655440001",
+      type: "grid",
       name: "My Strategy",
-      status: "active",
-      trading_mode: "ai",
-      account_id: null,
+      symbols: ["BTC"],
+      config: {},
+      category: null,
       created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
     };
 
     const result = StrategySchema.safeParse(data);
@@ -137,7 +145,7 @@ describe("StrategySchema", () => {
     const data = {
       id: "550e8400-e29b-41d4-a716-446655440000",
       name: "My Strategy",
-      // Missing status, trading_mode, created_at
+      // Missing user_id, type, symbols, config, created_at, updated_at
     };
 
     const result = StrategySchema.safeParse(data);
@@ -155,17 +163,23 @@ describe("StrategyListSchema", () => {
     const data = [
       {
         id: "550e8400-e29b-41d4-a716-446655440000",
+        user_id: "550e8400-e29b-41d4-a716-446655440001",
+        type: "ai",
         name: "Strategy 1",
-        status: "active",
-        trading_mode: "ai",
+        symbols: ["BTC"],
+        config: {},
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       },
       {
-        id: "550e8400-e29b-41d4-a716-446655440001",
+        id: "550e8400-e29b-41d4-a716-446655440002",
+        user_id: "550e8400-e29b-41d4-a716-446655440001",
+        type: "grid",
         name: "Strategy 2",
-        status: "paused",
-        trading_mode: "quant",
+        symbols: ["ETH"],
+        config: {},
         created_at: "2024-01-02T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       },
     ];
 
@@ -177,17 +191,23 @@ describe("StrategyListSchema", () => {
     const data = [
       {
         id: "550e8400-e29b-41d4-a716-446655440000",
+        user_id: "550e8400-e29b-41d4-a716-446655440001",
+        type: "ai",
         name: "Strategy 1",
-        status: "active",
-        trading_mode: "ai",
+        symbols: ["BTC"],
+        config: {},
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       },
       {
         id: "invalid-uuid",
+        user_id: "550e8400-e29b-41d4-a716-446655440001",
+        type: "grid",
         name: "Strategy 2",
-        status: "paused",
-        trading_mode: "quant",
+        symbols: ["ETH"],
+        config: {},
         created_at: "2024-01-02T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       },
     ];
 

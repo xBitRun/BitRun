@@ -12,7 +12,7 @@ import {
   usePerformanceStats,
   useActivityFeed,
 } from "@/hooks/use-dashboard";
-import { dashboardApi, accountsApi, strategiesApi } from "@/lib/api";
+import { dashboardApi, accountsApi, agentsApi } from "@/lib/api";
 
 // Mock the API module
 jest.mock("@/lib/api", () => ({
@@ -24,14 +24,14 @@ jest.mock("@/lib/api", () => ({
     list: jest.fn(),
     getBalance: jest.fn(),
   },
-  strategiesApi: {
+  agentsApi: {
     list: jest.fn(),
   },
 }));
 
 const mockedDashboardApi = dashboardApi as jest.Mocked<typeof dashboardApi>;
 const mockedAccountsApi = accountsApi as jest.Mocked<typeof accountsApi>;
-const mockedStrategiesApi = strategiesApi as jest.Mocked<typeof strategiesApi>;
+const mockedAgentsApi = agentsApi as jest.Mocked<typeof agentsApi>;
 
 // SWR provider that clears cache between tests
 const createWrapper = () => {
@@ -80,10 +80,10 @@ const mockBalance = {
   ],
 };
 
-const mockStrategies = [
-  { id: "s-1", name: "Strategy 1", description: "", prompt: "", trading_mode: "conservative" as const, status: "active" as const, config: {}, total_pnl: 500, total_trades: 20, winning_trades: 12, losing_trades: 8, win_rate: 60, max_drawdown: 0.05, created_at: "2024-01-01", updated_at: "2024-01-01" },
-  { id: "s-2", name: "Strategy 2", description: "", prompt: "", trading_mode: "aggressive" as const, status: "paused" as const, config: {}, total_pnl: -100, total_trades: 10, winning_trades: 4, losing_trades: 6, win_rate: 40, max_drawdown: 0.1, created_at: "2024-01-02", updated_at: "2024-01-02" },
-  { id: "s-3", name: "Strategy 3", description: "", prompt: "", trading_mode: "conservative" as const, status: "active" as const, config: {}, total_pnl: 300, total_trades: 15, winning_trades: 10, losing_trades: 5, win_rate: 66, max_drawdown: 0.03, created_at: "2024-01-03", updated_at: "2024-01-03" },
+const mockAgents = [
+  { id: "s-1", name: "Agent 1", strategy_id: "strat-1", execution_mode: "live" as const, execution_interval_minutes: 30, auto_execute: true, status: "active" as const, total_pnl: 500, total_trades: 20, winning_trades: 12, losing_trades: 8, win_rate: 60, max_drawdown: 0.05, created_at: "2024-01-01", updated_at: "2024-01-01" },
+  { id: "s-2", name: "Agent 2", strategy_id: "strat-2", execution_mode: "mock" as const, execution_interval_minutes: 60, auto_execute: true, status: "paused" as const, total_pnl: -100, total_trades: 10, winning_trades: 4, losing_trades: 6, win_rate: 40, max_drawdown: 0.1, created_at: "2024-01-02", updated_at: "2024-01-02" },
+  { id: "s-3", name: "Agent 3", strategy_id: "strat-3", execution_mode: "live" as const, execution_interval_minutes: 15, auto_execute: true, status: "active" as const, total_pnl: 300, total_trades: 15, winning_trades: 10, losing_trades: 5, win_rate: 66, max_drawdown: 0.03, created_at: "2024-01-03", updated_at: "2024-01-03" },
 ];
 
 const mockActivityFeed = {
@@ -178,7 +178,7 @@ describe("useDashboardStats", () => {
   it("should fallback to client-side aggregation when backend fails", async () => {
     mockedDashboardApi.getFullStats.mockRejectedValue(new Error("Server error"));
     mockedAccountsApi.list.mockResolvedValue(mockAccounts as never);
-    mockedStrategiesApi.list.mockResolvedValue(mockStrategies as never);
+    mockedAgentsApi.list.mockResolvedValue(mockAgents as never);
     mockedAccountsApi.getBalance.mockResolvedValue(mockBalance as never);
 
     const { result } = renderHook(() => useDashboardStats(), {
@@ -188,7 +188,7 @@ describe("useDashboardStats", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(mockedAccountsApi.list).toHaveBeenCalled();
-    expect(mockedStrategiesApi.list).toHaveBeenCalled();
+    expect(mockedAgentsApi.list).toHaveBeenCalled();
     // Only connected accounts get balance fetched
     expect(mockedAccountsApi.getBalance).toHaveBeenCalledWith("acc-1");
     expect(result.current.data?.totalAccounts).toBe(2);
@@ -203,7 +203,7 @@ describe("useDashboardStats", () => {
   it("should handle zero equity in fallback for pnl percent", async () => {
     mockedDashboardApi.getFullStats.mockRejectedValue(new Error("fail"));
     mockedAccountsApi.list.mockResolvedValue([]);
-    mockedStrategiesApi.list.mockResolvedValue([]);
+    mockedAgentsApi.list.mockResolvedValue([]);
 
     const { result } = renderHook(() => useDashboardStats(), {
       wrapper: createWrapper(),
@@ -289,8 +289,8 @@ describe("usePerformanceStats", () => {
     jest.clearAllMocks();
   });
 
-  it("should aggregate performance from all strategies", async () => {
-    mockedStrategiesApi.list.mockResolvedValue(mockStrategies as never);
+  it("should aggregate performance from all agents", async () => {
+    mockedAgentsApi.list.mockResolvedValue(mockAgents as never);
 
     const { result } = renderHook(() => usePerformanceStats(), {
       wrapper: createWrapper(),
@@ -306,7 +306,7 @@ describe("usePerformanceStats", () => {
   });
 
   it("should calculate win rate correctly", async () => {
-    mockedStrategiesApi.list.mockResolvedValue(mockStrategies as never);
+    mockedAgentsApi.list.mockResolvedValue(mockAgents as never);
 
     const { result } = renderHook(() => usePerformanceStats(), {
       wrapper: createWrapper(),
@@ -319,7 +319,7 @@ describe("usePerformanceStats", () => {
   });
 
   it("should return zero win rate when no trades", async () => {
-    mockedStrategiesApi.list.mockResolvedValue([]);
+    mockedAgentsApi.list.mockResolvedValue([]);
 
     const { result } = renderHook(() => usePerformanceStats(), {
       wrapper: createWrapper(),

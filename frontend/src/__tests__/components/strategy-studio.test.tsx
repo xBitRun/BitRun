@@ -13,7 +13,10 @@ import React from "react";
 
 // Mock @/types
 jest.mock("@/types", () => ({
+  ...jest.requireActual("@/types"),
   POPULAR_SYMBOLS: ["BTC", "ETH", "SOL", "BNB", "XRP"],
+  FOREX_SYMBOLS: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD"],
+  METALS_SYMBOLS: ["XAU/USD", "XAG/USD"],
   TIMEFRAME_OPTIONS: [
     { value: "1m", label: "1 minute" },
     { value: "5m", label: "5 minutes" },
@@ -159,6 +162,9 @@ describe("RiskControlsPanel", () => {
     minRiskRewardRatio: 2.0,
     maxDrawdownPercent: 0.15,
     minConfidence: 65,
+    defaultSlAtrMultiplier: 1.5,
+    defaultTpAtrMultiplier: 3,
+    maxSlPercent: 0.1,
   };
 
   const defaultProps = {
@@ -196,7 +202,9 @@ describe("RiskControlsPanel", () => {
   it("should display position ratio percentage", () => {
     render(<RiskControlsPanel {...defaultProps} />);
 
-    expect(screen.getByText("10%")).toBeInTheDocument();
+    // Multiple 10% values may appear (maxPositionRatio=0.1 and maxSlPercent=0.1)
+    const percentTexts = screen.getAllByText("10%");
+    expect(percentTexts.length).toBeGreaterThanOrEqual(1);
   });
 
   it("should show high risk warning for aggressive settings", () => {
@@ -207,6 +215,9 @@ describe("RiskControlsPanel", () => {
       minRiskRewardRatio: 1.0,
       maxDrawdownPercent: 0.4,
       minConfidence: 40,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel {...defaultProps} value={highRiskConfig} />
@@ -346,6 +357,9 @@ describe("RiskControlsPanel", () => {
       minRiskRewardRatio: 2.5,
       maxDrawdownPercent: 0.05,
       minConfidence: 80,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel {...defaultProps} value={lowRiskConfig} />
@@ -362,6 +376,9 @@ describe("RiskControlsPanel", () => {
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.1,
       minConfidence: 65,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel {...defaultProps} value={mediumRiskConfig} />

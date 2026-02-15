@@ -13,11 +13,11 @@ import {
   useDeleteQuantStrategy,
   useUpdateQuantStrategyStatus,
 } from "@/hooks/use-quant-strategies";
-import { quantStrategiesApi } from "@/lib/api";
+import { agentsApi } from "@/lib/api";
 
-// Mock the API module
+// Mock the API module - hooks delegate to agentsApi internally
 jest.mock("@/lib/api", () => ({
-  quantStrategiesApi: {
+  agentsApi: {
     list: jest.fn(),
     get: jest.fn(),
     create: jest.fn(),
@@ -27,9 +27,7 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-const mockedQuantStrategiesApi = quantStrategiesApi as jest.Mocked<
-  typeof quantStrategiesApi
->;
+const mockedAgentsApi = agentsApi as jest.Mocked<typeof agentsApi>;
 
 // SWR provider that clears cache between tests
 const createWrapper = () => {
@@ -93,7 +91,7 @@ describe("useQuantStrategies", () => {
   });
 
   it("should fetch quant strategies list", async () => {
-    mockedQuantStrategiesApi.list.mockResolvedValue(mockQuantStrategies);
+    mockedAgentsApi.list.mockResolvedValue(mockQuantStrategies as never);
 
     const { result } = renderHook(() => useQuantStrategies(), {
       wrapper: createWrapper(),
@@ -101,13 +99,13 @@ describe("useQuantStrategies", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
-    expect(mockedQuantStrategiesApi.list).toHaveBeenCalled();
+    expect(mockedAgentsApi.list).toHaveBeenCalled();
     expect(result.current.strategies).toEqual(mockQuantStrategies);
     expect(result.current.strategies.length).toBe(2);
   });
 
   it("should handle fetch error", async () => {
-    mockedQuantStrategiesApi.list.mockRejectedValue(new Error("Network error"));
+    mockedAgentsApi.list.mockRejectedValue(new Error("Network error"));
 
     const { result } = renderHook(() => useQuantStrategies(), {
       wrapper: createWrapper(),
@@ -119,7 +117,7 @@ describe("useQuantStrategies", () => {
   });
 
   it("should return loading state initially", () => {
-    mockedQuantStrategiesApi.list.mockReturnValue(new Promise(() => {}));
+    mockedAgentsApi.list.mockReturnValue(new Promise(() => {}) as never);
 
     const { result } = renderHook(() => useQuantStrategies(), {
       wrapper: createWrapper(),
@@ -136,7 +134,7 @@ describe("useQuantStrategy", () => {
   });
 
   it("should fetch single quant strategy", async () => {
-    mockedQuantStrategiesApi.get.mockResolvedValue(mockQuantStrategies[0]);
+    mockedAgentsApi.get.mockResolvedValue(mockQuantStrategies[0] as never);
 
     const { result } = renderHook(() => useQuantStrategy("qs-1"), {
       wrapper: createWrapper(),
@@ -144,7 +142,7 @@ describe("useQuantStrategy", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
-    expect(mockedQuantStrategiesApi.get).toHaveBeenCalledWith("qs-1");
+    expect(mockedAgentsApi.get).toHaveBeenCalledWith("qs-1");
     expect(result.current.data).toEqual(mockQuantStrategies[0]);
   });
 
@@ -155,7 +153,7 @@ describe("useQuantStrategy", () => {
 
     await new Promise((r) => setTimeout(r, 100));
 
-    expect(mockedQuantStrategiesApi.get).not.toHaveBeenCalled();
+    expect(mockedAgentsApi.get).not.toHaveBeenCalled();
     expect(result.current.data).toBeUndefined();
   });
 });
@@ -165,30 +163,7 @@ describe("useCreateQuantStrategy", () => {
     jest.clearAllMocks();
   });
 
-  it("should create quant strategy", async () => {
-    const newStrategy = { ...mockQuantStrategies[0], id: "qs-new" };
-    mockedQuantStrategiesApi.create.mockResolvedValue(newStrategy);
-
-    const { result } = renderHook(() => useCreateQuantStrategy(), {
-      wrapper: createWrapper(),
-    });
-
-    const response = await result.current.trigger({
-      name: "New Grid",
-      strategy_type: "grid",
-      symbol: "BTC/USDT",
-      config: { grid_levels: 5 },
-    });
-
-    expect(mockedQuantStrategiesApi.create).toHaveBeenCalled();
-    expect(response).toEqual(newStrategy);
-  });
-
-  it("should handle creation error", async () => {
-    mockedQuantStrategiesApi.create.mockRejectedValue(
-      new Error("Creation failed")
-    );
-
+  it("should throw deprecation error on trigger", async () => {
     const { result } = renderHook(() => useCreateQuantStrategy(), {
       wrapper: createWrapper(),
     });
@@ -200,7 +175,7 @@ describe("useCreateQuantStrategy", () => {
         symbol: "BTC/USDT",
         config: { grid_levels: 5 },
       })
-    ).rejects.toThrow("Creation failed");
+    ).rejects.toThrow("deprecated");
   });
 });
 
@@ -211,7 +186,7 @@ describe("useUpdateQuantStrategy", () => {
 
   it("should update quant strategy", async () => {
     const updated = { ...mockQuantStrategies[0], name: "Updated Grid" };
-    mockedQuantStrategiesApi.update.mockResolvedValue(updated);
+    mockedAgentsApi.update.mockResolvedValue(updated as never);
 
     const { result } = renderHook(() => useUpdateQuantStrategy("qs-1"), {
       wrapper: createWrapper(),
@@ -219,13 +194,13 @@ describe("useUpdateQuantStrategy", () => {
 
     await result.current.trigger({ name: "Updated Grid" });
 
-    expect(mockedQuantStrategiesApi.update).toHaveBeenCalledWith("qs-1", {
+    expect(mockedAgentsApi.update).toHaveBeenCalledWith("qs-1", {
       name: "Updated Grid",
     });
   });
 
   it("should handle update error", async () => {
-    mockedQuantStrategiesApi.update.mockRejectedValue(
+    mockedAgentsApi.update.mockRejectedValue(
       new Error("Update failed")
     );
 
@@ -245,7 +220,7 @@ describe("useDeleteQuantStrategy", () => {
   });
 
   it("should delete quant strategy", async () => {
-    mockedQuantStrategiesApi.delete.mockResolvedValue(undefined);
+    mockedAgentsApi.delete.mockResolvedValue(undefined as never);
 
     const { result } = renderHook(() => useDeleteQuantStrategy("qs-1"), {
       wrapper: createWrapper(),
@@ -253,11 +228,11 @@ describe("useDeleteQuantStrategy", () => {
 
     await result.current.trigger();
 
-    expect(mockedQuantStrategiesApi.delete).toHaveBeenCalledWith("qs-1");
+    expect(mockedAgentsApi.delete).toHaveBeenCalledWith("qs-1");
   });
 
   it("should handle deletion error", async () => {
-    mockedQuantStrategiesApi.delete.mockRejectedValue(
+    mockedAgentsApi.delete.mockRejectedValue(
       new Error("Strategy is active")
     );
 
@@ -278,7 +253,7 @@ describe("useUpdateQuantStrategyStatus", () => {
 
   it("should update status to active", async () => {
     const activated = { ...mockQuantStrategies[1], status: "active" };
-    mockedQuantStrategiesApi.updateStatus.mockResolvedValue(activated);
+    mockedAgentsApi.updateStatus.mockResolvedValue(activated as never);
 
     const { result } = renderHook(
       () => useUpdateQuantStrategyStatus("qs-2"),
@@ -287,7 +262,7 @@ describe("useUpdateQuantStrategyStatus", () => {
 
     const response = await result.current.trigger("active");
 
-    expect(mockedQuantStrategiesApi.updateStatus).toHaveBeenCalledWith(
+    expect(mockedAgentsApi.updateStatus).toHaveBeenCalledWith(
       "qs-2",
       "active"
     );
@@ -295,7 +270,7 @@ describe("useUpdateQuantStrategyStatus", () => {
   });
 
   it("should handle status update error", async () => {
-    mockedQuantStrategiesApi.updateStatus.mockRejectedValue(
+    mockedAgentsApi.updateStatus.mockRejectedValue(
       new Error("Cannot activate - no account linked")
     );
 

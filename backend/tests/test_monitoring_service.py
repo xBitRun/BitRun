@@ -576,3 +576,238 @@ class TestSentrySuccessPaths:
 
         result = sync_func()
         assert result == "hello"
+
+
+class TestSentryEnabled:
+    """Tests for Sentry functions when SDK is available."""
+
+    def test_init_sentry_success(self):
+        """Test successful Sentry initialization."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_sdk.init = MagicMock()
+        mock_sdk.set_tag = MagicMock()
+
+        mock_settings = MagicMock()
+        mock_settings.sentry_dsn = "https://key@sentry.io/1"
+        mock_settings.environment = "test"
+        mock_settings.app_version = "1.0.0"
+        mock_settings.app_name = "bitrun"
+        mock_settings.sentry_traces_sample_rate = 0.1
+        mock_settings.sentry_profiles_sample_rate = 0.1
+
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            with patch("app.monitoring.sentry.get_settings", return_value=mock_settings):
+                # Also need to mock the integration classes
+                with patch.dict("sys.modules", {
+                    "sentry_sdk": mock_sdk,
+                    "sentry_sdk.integrations.asyncio": MagicMock(),
+                    "sentry_sdk.integrations.fastapi": MagicMock(),
+                    "sentry_sdk.integrations.logging": MagicMock(),
+                    "sentry_sdk.integrations.sqlalchemy": MagicMock(),
+                    "sentry_sdk.integrations.redis": MagicMock(),
+                }):
+                    result = sentry_mod.init_sentry()
+
+            assert result is True
+            mock_sdk.init.assert_called_once()
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_init_sentry_exception(self):
+        """Test Sentry initialization failure."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_sdk.init = MagicMock(side_effect=RuntimeError("init failed"))
+
+        mock_settings = MagicMock()
+        mock_settings.sentry_dsn = "https://key@sentry.io/1"
+
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            with patch("app.monitoring.sentry.get_settings", return_value=mock_settings):
+                result = sentry_mod.init_sentry()
+
+            assert result is False
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_capture_exception_enabled(self):
+        """Test capture_exception when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_scope = MagicMock()
+        mock_sdk.push_scope.return_value.__enter__ = MagicMock(return_value=mock_scope)
+        mock_sdk.push_scope.return_value.__exit__ = MagicMock(return_value=False)
+        mock_sdk.capture_exception.return_value = "event-123"
+
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            result = sentry_mod.capture_exception(
+                ValueError("test"),
+                tags={"key": "val"},
+                extra={"data": "info"},
+                user={"id": "u1"},
+            )
+
+            assert result == "event-123"
+            mock_scope.set_tag.assert_called()
+            mock_scope.set_extra.assert_called()
+            mock_scope.set_user.assert_called_with({"id": "u1"})
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_capture_message_enabled(self):
+        """Test capture_message when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_scope = MagicMock()
+        mock_sdk.push_scope.return_value.__enter__ = MagicMock(return_value=mock_scope)
+        mock_sdk.push_scope.return_value.__exit__ = MagicMock(return_value=False)
+        mock_sdk.capture_message.return_value = "msg-456"
+
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            result = sentry_mod.capture_message(
+                "test message", level="warning",
+                tags={"component": "test"},
+                extra={"detail": "more"},
+            )
+
+            assert result == "msg-456"
+            mock_scope.set_tag.assert_called()
+            mock_scope.set_extra.assert_called()
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_set_user_enabled(self):
+        """Test set_user when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            sentry_mod.set_user("u1", email="a@b.com", name="Test")
+
+            mock_sdk.set_user.assert_called_once_with({
+                "id": "u1", "email": "a@b.com", "username": "Test",
+            })
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_clear_user_enabled(self):
+        """Test clear_user when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            sentry_mod.clear_user()
+
+            mock_sdk.set_user.assert_called_once_with(None)
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_add_breadcrumb_enabled(self):
+        """Test add_breadcrumb when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            sentry_mod.add_breadcrumb("test crumb", category="http", data={"url": "/api"})
+
+            mock_sdk.add_breadcrumb.assert_called_once()
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_start_transaction_enabled(self):
+        """Test start_transaction when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_tx = MagicMock()
+        mock_sdk.start_transaction.return_value = mock_tx
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            result = sentry_mod.start_transaction("test_op", op="task", description="desc")
+
+            assert result == mock_tx
+            mock_sdk.start_transaction.assert_called_once()
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk
+
+    def test_start_span_enabled(self):
+        """Test start_span when Sentry is available."""
+        import app.monitoring.sentry as sentry_mod
+
+        mock_sdk = MagicMock()
+        mock_span = MagicMock()
+        mock_sdk.start_span.return_value = mock_span
+        original_available = sentry_mod.SENTRY_AVAILABLE
+        original_sdk = sentry_mod.sentry_sdk
+
+        try:
+            sentry_mod.SENTRY_AVAILABLE = True
+            sentry_mod.sentry_sdk = mock_sdk
+
+            result = sentry_mod.start_span(op="db.query", description="SELECT")
+
+            assert result == mock_span
+            mock_sdk.start_span.assert_called_once()
+        finally:
+            sentry_mod.SENTRY_AVAILABLE = original_available
+            sentry_mod.sentry_sdk = original_sdk

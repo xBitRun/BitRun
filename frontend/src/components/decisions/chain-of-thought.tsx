@@ -71,7 +71,7 @@ const CONCLUSION_PATTERNS = [
   /结论|决策|建议|总结|综上|因此/,
 ];
 
-function classifyStep(text: string): ThoughtStep['type'] {
+export function classifyStep(text: string): ThoughtStep['type'] {
   if (CONCLUSION_PATTERNS.some((p) => p.test(text))) return 'conclusion';
   if (WARNING_PATTERNS.some((p) => p.test(text))) return 'warning';
   if (BULLISH_PATTERNS.some((p) => p.test(text))) return 'bullish';
@@ -79,7 +79,7 @@ function classifyStep(text: string): ThoughtStep['type'] {
   return 'neutral';
 }
 
-function parseSteps(content: string): ThoughtStep[] {
+export function parseSteps(content: string): ThoughtStep[] {
   if (!content) return [];
 
   // Split by numbered steps, markdown headers, or double newlines
@@ -133,13 +133,13 @@ const stepConfig = {
 };
 
 // Highlight key signals in text
-function highlightSignals(text: string): string {
+export function highlightSignals(text: string): string {
   // Highlight signal keywords
   let highlighted = text;
   const signalPatterns: Array<[RegExp, string]> = [
     [/\b(RSI|MACD|EMA|ATR|SMA|BB)\b/gi, '**$1**'],
     [/\b(\d+\.?\d*%)/g, '`$1`'],
-    [/\$([\d,]+\.?\d*)/g, '`$$1`'],
+    [/\$([\d,]+\.?\d*)/g, '`$$$1`'],
   ];
 
   for (const [pattern, replacement] of signalPatterns) {

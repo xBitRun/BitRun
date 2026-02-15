@@ -19,8 +19,10 @@ jest.mock("@/lib/api", () => ({
   decisionsApi: {
     listRecent: jest.fn(),
     listByStrategy: jest.fn(),
+    listByAgent: jest.fn(),
     get: jest.fn(),
     getStats: jest.fn(),
+    getStatsByAgent: jest.fn(),
   },
 }));
 
@@ -272,8 +274,8 @@ describe("useLatestDecision", () => {
     jest.clearAllMocks();
   });
 
-  it("should return the latest decision for a strategy", async () => {
-    mockedDecisionsApi.listByStrategy.mockResolvedValue({
+  it("should return the latest decision for an agent", async () => {
+    mockedDecisionsApi.listByAgent.mockResolvedValue({
       items: [mockDecision],
       total: 1,
       limit: 1,
@@ -286,7 +288,7 @@ describe("useLatestDecision", () => {
 
     await waitFor(() => expect(result.current).not.toBeNull());
 
-    expect(mockedDecisionsApi.listByStrategy).toHaveBeenCalledWith(
+    expect(mockedDecisionsApi.listByAgent).toHaveBeenCalledWith(
       "strategy-1",
       1,
       0,
@@ -297,7 +299,7 @@ describe("useLatestDecision", () => {
   });
 
   it("should return null when no decisions", async () => {
-    mockedDecisionsApi.listByStrategy.mockResolvedValue({
+    mockedDecisionsApi.listByAgent.mockResolvedValue({
       items: [],
       total: 0,
       limit: 1,
@@ -310,7 +312,7 @@ describe("useLatestDecision", () => {
 
     // Initially null, remains null after empty response
     await waitFor(() =>
-      expect(mockedDecisionsApi.listByStrategy).toHaveBeenCalled()
+      expect(mockedDecisionsApi.listByAgent).toHaveBeenCalled()
     );
 
     expect(result.current).toBeNull();
@@ -323,7 +325,7 @@ describe("useLatestDecision", () => {
 
     await new Promise((r) => setTimeout(r, 100));
 
-    expect(mockedDecisionsApi.listByStrategy).not.toHaveBeenCalled();
+    expect(mockedDecisionsApi.listByAgent).not.toHaveBeenCalled();
     expect(result.current).toBeNull();
   });
 });

@@ -1700,3 +1700,347 @@ class TestAgentRepository:
         
         result = agent.get_effective_capital(account_equity=20000.0)
         assert result is None
+
+
+# ============================================================================
+# StrategyRepository Extended Tests – Marketplace & Versioning
+# ============================================================================
+
+class TestStrategyRepositoryMarketplace:
+    """Tests for get_public, fork (extended), and version management."""
+
+    @pytest_asyncio.fixture
+    async def repo(self, db_session: AsyncSession) -> StrategyRepository:
+        return StrategyRepository(db_session)
+
+    @pytest.mark.asyncio
+    async def test_get_public_basic(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test fetching public strategies"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Public 1",
+            symbols=["BTC"], config={"prompt": "test"}, visibility="public",
+        )
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Private 1",
+            symbols=["BTC"], config={"prompt": "test"}, visibility="private",
+        )
+        await db_session.commit()
+
+        strategies, total = await repo.get_public()
+        assert total >= 1
+        assert all(s.visibility == "public" for s in strategies)
+
+    @pytest.mark.asyncio
+    async def test_get_public_type_filter(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test filtering public strategies by type"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="AI Pub",
+            symbols=["BTC"], config={"prompt": "test"}, visibility="public",
+        )
+        await repo.create(
+            user_id=test_user.id, type="grid", name="Grid Pub",
+            symbols=["BTC"], config={}, visibility="public",
+        )
+        await db_session.commit()
+
+        strategies, total = await repo.get_public(type_filter="ai")
+        assert all(s.type == "ai" for s in strategies)
+
+    @pytest.mark.asyncio
+    async def test_get_public_category_filter(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test filtering by category"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Trend",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="public", category="trend",
+        )
+        await db_session.commit()
+
+        strategies, total = await repo.get_public(category="trend")
+        assert all(s.category == "trend" for s in strategies)
+
+    @pytest.mark.asyncio
+    async def test_get_public_search(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test search by name and description"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="MomentumX Strategy",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="public", description="Uses RSI and MACD",
+        )
+        await db_session.commit()
+
+        # Search by name
+        strategies, total = await repo.get_public(search="MomentumX")
+        assert total >= 1
+
+        # Search by description
+        strategies2, total2 = await repo.get_public(search="MACD")
+        assert total2 >= 1
+
+    @pytest.mark.asyncio
+    async def test_get_public_sort_newest(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test sorting by newest"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Old",
+            symbols=["BTC"], config={"prompt": "test"}, visibility="public",
+        )
+        await repo.create(
+            user_id=test_user.id, type="ai", name="New",
+            symbols=["ETH"], config={"prompt": "test"}, visibility="public",
+        )
+        await db_session.commit()
+
+        strategies, total = await repo.get_public(sort_by="newest")
+        assert total >= 2
+
+    @pytest.mark.asyncio
+    async def test_get_public_sort_updated(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test sorting by updated_at (fallback)"""
+        await repo.create(
+            user_id=test_user.id, type="ai", name="Pub",
+            symbols=["BTC"], config={"prompt": "test"}, visibility="public",
+        )
+        await db_session.commit()
+
+        strategies, total = await repo.get_public(sort_by="updated_at")
+        assert total >= 1
+
+    @pytest.mark.asyncio
+    async def test_get_public_pagination(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Test pagination of public strategies"""
+        for i in range(5):
+            await repo.create(
+                user_id=test_user.id, type="ai", name=f"Pub {i}",
+                symbols=["BTC"], config={"prompt": "test"}, visibility="public",
+            )
+        await db_session.commit()
+
+        page1, total = await repo.get_public(limit=2, offset=0)
+        page2, _ = await repo.get_public(limit=2, offset=2)
+        assert len(page1) == 2
+        assert len(page2) == 2
+        assert total >= 5
+
+    @pytest.mark.asyncio
+    async def test_fork_increments_fork_count(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Forking increments source fork_count"""
+        source = await repo.create(
+            user_id=test_user.id, type="ai", name="Forkable",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="public",
+        )
+        await db_session.commit()
+        original_count = source.fork_count or 0
+
+        forked = await repo.fork(source.id, uuid.uuid4())
+        assert forked is not None
+
+        await db_session.refresh(source)
+        assert source.fork_count == original_count + 1
+
+    @pytest.mark.asyncio
+    async def test_fork_with_name_override(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Forking with custom name"""
+        source = await repo.create(
+            user_id=test_user.id, type="ai", name="Original",
+            symbols=["BTC"], config={"prompt": "test"},
+            visibility="public",
+        )
+        await db_session.commit()
+
+        forked = await repo.fork(source.id, uuid.uuid4(), name_override="My Copy")
+        assert forked.name == "My Copy"
+
+    @pytest.mark.asyncio
+    async def test_fork_nonexistent_returns_none(
+        self, repo: StrategyRepository,
+    ):
+        """Forking a non-existent strategy returns None"""
+        result = await repo.fork(uuid.uuid4(), uuid.uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_fork_copies_tags_and_category(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Forked strategy copies tags, category, symbols, config"""
+        source = await repo.create(
+            user_id=test_user.id, type="ai", name="Tagged",
+            symbols=["BTC", "ETH"], config={"prompt": "test"},
+            visibility="public", category="trend",
+            tags=["fast", "momentum"],
+        )
+        await db_session.commit()
+
+        forked = await repo.fork(source.id, uuid.uuid4())
+        assert forked.symbols == ["BTC", "ETH"]
+        assert forked.category == "trend"
+        assert forked.tags == ["fast", "momentum"]
+        assert forked.forked_from == source.id
+
+    @pytest.mark.asyncio
+    async def test_version_snapshot_on_config_change(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Changing config creates a version snapshot of old state"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="V1",
+            symbols=["BTC"], config={"prompt": "Original"},
+        )
+        await db_session.commit()
+
+        # Update config -> should snapshot
+        await repo.update(
+            strategy.id, test_user.id,
+            config={"prompt": "Updated"},
+            change_note="Changed prompt",
+        )
+        await db_session.commit()
+
+        versions = await repo.get_versions(strategy.id, test_user.id)
+        assert len(versions) >= 1
+        assert versions[0].config["prompt"] == "Original"  # old state
+        assert versions[0].change_note == "Changed prompt"
+
+    @pytest.mark.asyncio
+    async def test_get_versions_wrong_user(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Getting versions with wrong user returns empty list"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="Test",
+            symbols=["BTC"], config={"prompt": "test"},
+        )
+        await db_session.commit()
+
+        versions = await repo.get_versions(strategy.id, uuid.uuid4())
+        assert versions == []
+
+    @pytest.mark.asyncio
+    async def test_get_specific_version(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Get a specific version by number"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="V1",
+            symbols=["BTC"], config={"prompt": "v1"},
+        )
+        await db_session.commit()
+
+        await repo.update(strategy.id, test_user.id, config={"prompt": "v2"})
+        await db_session.commit()
+
+        version = await repo.get_version(strategy.id, 1, test_user.id)
+        assert version is not None
+        assert version.version == 1
+
+    @pytest.mark.asyncio
+    async def test_get_version_not_found(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Non-existent version returns None"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="V1",
+            symbols=["BTC"], config={"prompt": "v1"},
+        )
+        await db_session.commit()
+
+        version = await repo.get_version(strategy.id, 999, test_user.id)
+        assert version is None
+
+    @pytest.mark.asyncio
+    async def test_get_version_wrong_user(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Getting version with wrong user returns None"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="V1",
+            symbols=["BTC"], config={"prompt": "v1"},
+        )
+        await repo.update(strategy.id, test_user.id, config={"prompt": "v2"})
+        await db_session.commit()
+
+        version = await repo.get_version(strategy.id, 1, uuid.uuid4())
+        assert version is None
+
+    @pytest.mark.asyncio
+    async def test_restore_version(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Restoring a version reverts to old state and creates snapshot"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="Original",
+            symbols=["BTC"], config={"prompt": "v1"},
+        )
+        await db_session.commit()
+
+        await repo.update(
+            strategy.id, test_user.id, config={"prompt": "v2"},
+        )
+        await db_session.commit()
+
+        # Restore to v1
+        restored = await repo.restore_version(strategy.id, 1, test_user.id)
+        assert restored is not None
+        assert restored.config["prompt"] == "v1"
+
+        # Should have created additional snapshot
+        versions = await repo.get_versions(strategy.id, test_user.id)
+        assert len(versions) >= 2
+
+    @pytest.mark.asyncio
+    async def test_restore_version_not_found_strategy(
+        self, repo: StrategyRepository, test_user: UserDB,
+    ):
+        """Restoring on non-existent strategy returns None"""
+        result = await repo.restore_version(uuid.uuid4(), 1, test_user.id)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_restore_version_not_found_version(
+        self, repo: StrategyRepository, db_session: AsyncSession,
+        test_user: UserDB,
+    ):
+        """Restoring non-existent version returns None"""
+        strategy = await repo.create(
+            user_id=test_user.id, type="ai", name="Test",
+            symbols=["BTC"], config={"prompt": "test"},
+        )
+        await db_session.commit()
+
+        result = await repo.restore_version(strategy.id, 999, test_user.id)
+        assert result is None

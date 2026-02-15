@@ -75,6 +75,9 @@ const defaultConfig: RiskControlsConfig = {
   minConfidence: 60,
   minRiskRewardRatio: 2.0,
   maxDrawdownPercent: 0.2,
+  defaultSlAtrMultiplier: 1.5,
+  defaultTpAtrMultiplier: 3,
+  maxSlPercent: 0.1,
 };
 
 describe("RiskControlsPanel", () => {
@@ -143,6 +146,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 90,
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.1,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -164,6 +170,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 30,
       minRiskRewardRatio: 1.0,
       maxDrawdownPercent: 0.5,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -200,6 +209,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 50, // Too low
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -221,6 +233,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 80, // Too high
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -242,6 +257,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 65,
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -263,6 +281,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 65,
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -286,6 +307,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 75,
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel
@@ -312,6 +336,9 @@ describe("RiskControlsPanel", () => {
       minConfidence: 75,
       minRiskRewardRatio: 2.0,
       maxDrawdownPercent: 0.2,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3,
+      maxSlPercent: 0.1,
     };
     render(
       <RiskControlsPanel

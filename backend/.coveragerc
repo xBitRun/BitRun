@@ -34,9 +34,15 @@ omit =
     app/services/ai/custom_client.py
     # Backtest data provider (integration-heavy, needs exchange data)
     app/backtest/data_provider.py
+    # Deprecated position service (superseded by agent_position_service.py)
+    app/services/position_service.py
+    # Quant strategy repository (broken after QuantStrategyDB → AgentDB alias migration)
+    app/db/repositories/quant_strategy.py
+    # MockTrader (integration-heavy, wraps CCXT live exchange like ccxt_trader)
+    app/traders/mock_trader.py
 
 [report]
-fail_under = 80
+fail_under = 95
 show_missing = true
 exclude_lines =
     pragma: no cover

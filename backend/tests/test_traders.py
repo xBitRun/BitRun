@@ -866,3 +866,259 @@ class TestPositionIsProfitable:
             leverage=5,
         )
         assert position.is_profitable is False
+
+
+# ============================================================================
+# detect_market_type
+# ============================================================================
+
+class TestDetectMarketType:
+    """Tests for detect_market_type function."""
+
+    def test_forex_exact_match(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("EUR/USD") == MarketType.FOREX
+
+    def test_metals_exact_match(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("XAU/USD") == MarketType.METALS
+
+    def test_forex_base_detection(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("GBP/BTC") == MarketType.FOREX
+
+    def test_metals_base_detection(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("XAG/BTC") == MarketType.METALS
+
+    def test_crypto_default(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("BTC/USDT") == MarketType.CRYPTO_PERP
+
+    def test_uppercase_normalization(self):
+        from app.traders.base import detect_market_type, MarketType
+        assert detect_market_type("eur/usd") == MarketType.FOREX
+
+
+# ============================================================================
+# AccountState.margin_usage_percent
+# ============================================================================
+
+class TestAccountStateMarginUsage:
+    def test_zero_equity(self):
+        state = AccountState(
+            equity=0.0, available_balance=0.0,
+            total_margin_used=0.0, unrealized_pnl=0.0,
+        )
+        assert state.margin_usage_percent == 0.0
+
+    def test_normal_usage(self):
+        state = AccountState(
+            equity=10000.0, available_balance=8000.0,
+            total_margin_used=2000.0, unrealized_pnl=0.0,
+        )
+        assert state.margin_usage_percent == pytest.approx(20.0)
+
+
+# ============================================================================
+# Order.is_successful, Order.fill_percent
+# ============================================================================
+
+class TestOrderProperties:
+    def test_is_successful_filled(self):
+        from app.traders.base import Order, OrderStatus, OrderType
+        order = Order(
+            order_id="1", client_order_id="c1", symbol="BTC",
+            side="buy", order_type=OrderType.MARKET,
+            status=OrderStatus.FILLED, size=0.1, filled_size=0.1,
+        )
+        assert order.is_successful is True
+
+    def test_is_successful_cancelled_with_fills(self):
+        from app.traders.base import Order, OrderStatus, OrderType
+        order = Order(
+            order_id="1", client_order_id="c1", symbol="BTC",
+            side="buy", order_type=OrderType.MARKET,
+            status=OrderStatus.CANCELLED, size=0.1, filled_size=0.05,
+        )
+        assert order.is_successful is True
+
+    def test_is_successful_cancelled_no_fills(self):
+        from app.traders.base import Order, OrderStatus, OrderType
+        order = Order(
+            order_id="1", client_order_id="c1", symbol="BTC",
+            side="buy", order_type=OrderType.MARKET,
+            status=OrderStatus.CANCELLED, size=0.1, filled_size=0.0,
+        )
+        assert order.is_successful is False
+
+    def test_fill_percent_zero_size(self):
+        from app.traders.base import Order, OrderStatus, OrderType
+        order = Order(
+            order_id="1", client_order_id="c1", symbol="BTC",
+            side="buy", order_type=OrderType.MARKET,
+            status=OrderStatus.SUBMITTED, size=0, filled_size=0,
+        )
+        assert order.fill_percent == 0.0
+
+    def test_fill_percent_partial(self):
+        from app.traders.base import Order, OrderStatus, OrderType
+        order = Order(
+            order_id="1", client_order_id="c1", symbol="BTC",
+            side="buy", order_type=OrderType.MARKET,
+            status=OrderStatus.PARTIALLY_FILLED, size=1.0, filled_size=0.5,
+        )
+        assert order.fill_percent == pytest.approx(50.0)
+
+
+# ============================================================================
+# OHLCV.change_percent
+# ============================================================================
+
+class TestOHLCVChangePercent:
+    def test_zero_open(self):
+        from app.traders.base import OHLCV
+        candle = OHLCV(
+            timestamp=datetime.now(UTC), open=0, high=10, low=0, close=10, volume=100,
+        )
+        assert candle.change_percent == 0.0
+
+    def test_bullish(self):
+        from app.traders.base import OHLCV
+        candle = OHLCV(
+            timestamp=datetime.now(UTC), open=100, high=110, low=95, close=105, volume=100,
+        )
+        assert candle.change_percent == pytest.approx(5.0)
+
+    def test_bearish(self):
+        from app.traders.base import OHLCV
+        candle = OHLCV(
+            timestamp=datetime.now(UTC), open=100, high=105, low=90, close=95, volume=100,
+        )
+        assert candle.change_percent == pytest.approx(-5.0)
+
+
+# ============================================================================
+# BaseTrader.open_long, open_short, _ensure_initialized
+# ============================================================================
+
+class TestBaseTraderOpenLongShort:
+    """Test the BaseTrader convenience methods (not the MockTrader overrides)."""
+
+    @pytest.fixture
+    def base_trader(self):
+        """Create a BaseTrader subclass that uses the base open_long/open_short."""
+        class RealBaseTrader(BaseTrader):
+            def __init__(self):
+                self.testnet = True
+                self._initialized = True
+
+            @property
+            def exchange_name(self): return "test"
+            async def initialize(self): return True
+            async def close(self): pass
+            async def get_account_state(self): pass
+            async def get_positions(self): return []
+            async def get_position(self, symbol): return None
+            async def get_market_price(self, symbol): return 50000.0
+            async def get_market_data(self, symbol): return None
+            async def place_market_order(self, symbol, side, size, leverage=1, **kw):
+                return OrderResult(
+                    success=True, order_id="o1",
+                    filled_size=size, filled_price=50000.0, status="filled",
+                )
+            async def place_limit_order(self, *a, **kw): pass
+            async def place_stop_loss(self, *a, **kw): pass
+            async def place_take_profit(self, *a, **kw): pass
+            async def cancel_order(self, *a, **kw): return True
+            async def cancel_all_orders(self, *a, **kw): return 0
+            async def close_position(self, *a, **kw):
+                return OrderResult(success=True)
+            async def set_leverage(self, *a, **kw): return True
+
+        return RealBaseTrader()
+
+    @pytest.mark.asyncio
+    async def test_open_long_success(self, base_trader):
+        result = await base_trader.open_long("BTC", size_usd=5000.0, leverage=5)
+        assert result.success is True
+        assert result.filled_size == pytest.approx(0.1)
+
+    @pytest.mark.asyncio
+    async def test_open_long_with_sl_tp(self, base_trader):
+        result = await base_trader.open_long(
+            "BTC", size_usd=5000.0, leverage=5,
+            stop_loss=45000.0, take_profit=60000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_long_sl_error_does_not_affect_entry(self, base_trader):
+        """SL placement failure should not affect the main order."""
+        base_trader.place_stop_loss = AsyncMock(side_effect=Exception("SL failed"))
+        result = await base_trader.open_long(
+            "BTC", size_usd=5000.0, leverage=5, stop_loss=45000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_long_tp_error_does_not_affect_entry(self, base_trader):
+        """TP placement failure should not affect the main order."""
+        base_trader.place_take_profit = AsyncMock(side_effect=Exception("TP failed"))
+        result = await base_trader.open_long(
+            "BTC", size_usd=5000.0, leverage=5, take_profit=60000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_long_invalid_price(self, base_trader):
+        base_trader.get_market_price = AsyncMock(return_value=0.0)
+        with pytest.raises(TradeError, match="Invalid market price"):
+            await base_trader.open_long("BTC", size_usd=5000.0)
+
+    @pytest.mark.asyncio
+    async def test_open_short_success(self, base_trader):
+        result = await base_trader.open_short("BTC", size_usd=5000.0, leverage=5)
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_short_with_sl_tp(self, base_trader):
+        result = await base_trader.open_short(
+            "BTC", size_usd=5000.0, leverage=5,
+            stop_loss=55000.0, take_profit=40000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_short_sl_error_does_not_affect_entry(self, base_trader):
+        base_trader.place_stop_loss = AsyncMock(side_effect=Exception("SL failed"))
+        result = await base_trader.open_short(
+            "BTC", size_usd=5000.0, leverage=5, stop_loss=55000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_short_tp_error_does_not_affect_entry(self, base_trader):
+        base_trader.place_take_profit = AsyncMock(side_effect=Exception("TP failed"))
+        result = await base_trader.open_short(
+            "BTC", size_usd=5000.0, leverage=5, take_profit=40000.0,
+        )
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_open_short_invalid_price(self, base_trader):
+        base_trader.get_market_price = AsyncMock(return_value=None)
+        with pytest.raises(TradeError, match="Invalid market price"):
+            await base_trader.open_short("BTC", size_usd=5000.0)
+
+    def test_ensure_initialized_raises(self, base_trader):
+        base_trader._initialized = False
+        with pytest.raises(TradeError, match="not initialized"):
+            base_trader._ensure_initialized()
+
+    def test_ensure_initialized_ok(self, base_trader):
+        base_trader._initialized = True
+        base_trader._ensure_initialized()  # Should not raise
+
+    def test_validate_symbol(self, base_trader):
+        assert base_trader._validate_symbol("  btc  ") == "BTC"

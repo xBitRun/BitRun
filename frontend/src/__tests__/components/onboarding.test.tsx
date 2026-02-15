@@ -4,7 +4,7 @@
  * - InlineOnboardingWizard
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -30,6 +30,7 @@ jest.mock("next/link", () => ({
 const mockAccounts: unknown[] = [];
 const mockStrategies: unknown[] = [];
 const mockModels: unknown[] = [];
+const mockAgents: unknown[] = [];
 
 jest.mock("@/hooks", () => ({
   useAccounts: () => ({
@@ -42,6 +43,13 @@ jest.mock("@/hooks", () => ({
   }),
   useModels: () => ({
     models: mockModels,
+    isLoading: false,
+  }),
+}));
+
+jest.mock("@/hooks/use-agents", () => ({
+  useAgents: () => ({
+    agents: mockAgents,
     isLoading: false,
   }),
 }));
@@ -71,6 +79,9 @@ jest.mock("@/lib/api", () => ({
   },
   strategiesApi: {
     create: jest.fn().mockResolvedValue({ id: "test-strategy-id" }),
+  },
+  agentsApi: {
+    create: jest.fn().mockResolvedValue({ id: "test-agent-id" }),
   },
   authApi: {},
 }));
@@ -107,33 +118,39 @@ describe("FloatingSetupGuide", () => {
     mockAccounts.length = 0;
     mockStrategies.length = 0;
     mockModels.length = 0;
+    mockAgents.length = 0;
   });
 
-  it("should render guide when not dismissed and steps incomplete", () => {
+  it("should render guide when not dismissed and steps incomplete", async () => {
     render(<FloatingSetupGuide />);
 
-    expect(screen.getByText("title")).toBeInTheDocument();
+    // Component starts with isDismissed=true, useEffect sets it to false
+    await waitFor(() => expect(screen.getByText("title")).toBeInTheDocument());
     expect(screen.getByText("subtitle")).toBeInTheDocument();
   });
 
-  it("should render step items", () => {
+  it("should render step items", async () => {
     render(<FloatingSetupGuide />);
 
-    expect(screen.getByText("steps.account.title")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("steps.models.title")).toBeInTheDocument());
+    expect(screen.getByText("steps.strategy.title")).toBeInTheDocument();
     expect(screen.getByText("steps.agent.title")).toBeInTheDocument();
-    expect(screen.getByText("steps.models.title")).toBeInTheDocument();
+    expect(screen.getByText("steps.account.title")).toBeInTheDocument();
   });
 
-  it("should show progress indicator", () => {
+  it("should show progress indicator", async () => {
     render(<FloatingSetupGuide />);
 
-    expect(screen.getByText("0/3")).toBeInTheDocument();
-    expect(screen.getByText("0%")).toBeInTheDocument();
+    // 4 steps total now (models, strategy, agent, account)
+    await waitFor(() => expect(screen.getByText("0/4")).toBeInTheDocument());
   });
 
   it("should dismiss when X button is clicked", async () => {
     const user = userEvent.setup();
     render(<FloatingSetupGuide />);
+
+    // Wait for the component to render after useEffect
+    await waitFor(() => expect(screen.getByText("title")).toBeInTheDocument());
 
     // Find dismiss button - it's a small icon button with the X svg
     const buttons = screen.getAllByRole("button");
@@ -153,19 +170,21 @@ describe("FloatingSetupGuide", () => {
     );
   });
 
-  it("should not render when all required steps are complete", () => {
-    // Add items to make all 3 steps complete (account, models, agent)
-    mockAccounts.push({ id: "1" });
+  it("should not render when all required steps are complete", async () => {
+    // Required steps: models, strategy, agent. Account is optional.
     mockModels.push({ id: "1" });
     mockStrategies.push({ id: "1" });
+    mockAgents.push({ id: "1" });
 
     const { container } = render(<FloatingSetupGuide />);
 
-    // Should return null (empty container)
-    expect(container.innerHTML).toBe("");
+    // Wait for useEffect to run, then it should still be null since all required complete
+    await waitFor(() => {
+      expect(container.innerHTML).toBe("");
+    });
   });
 
-  it("should not render when dismissed from localStorage", () => {
+  it("should not render when dismissed from localStorage", async () => {
     localStorageMock.getItem.mockReturnValue("true");
 
     const { container } = render(<FloatingSetupGuide />);
@@ -177,12 +196,13 @@ describe("FloatingSetupGuide", () => {
 // ==================== InlineOnboardingWizard ====================
 
 describe("InlineOnboardingWizard", () => {
-  const { accountsApi, strategiesApi } = require("@/lib/api");
+  const { accountsApi, strategiesApi, agentsApi: mockedAgentsApi } = require("@/lib/api");
 
   beforeEach(() => {
     jest.clearAllMocks();
     accountsApi.create.mockResolvedValue({ id: "test-account-id" });
     strategiesApi.create.mockResolvedValue({ id: "test-strategy-id" });
+    mockedAgentsApi.create.mockResolvedValue({ id: "test-agent-id" });
   });
 
   describe("Step Indicator", () => {
@@ -837,6 +857,7 @@ describe("InlineOnboardingWizard", () => {
 
       expect(accountsApi.create).toHaveBeenCalled();
       expect(strategiesApi.create).toHaveBeenCalled();
+      expect(mockedAgentsApi.create).toHaveBeenCalled();
       expect(onComplete).toHaveBeenCalled();
     });
   });

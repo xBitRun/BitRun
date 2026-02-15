@@ -11,10 +11,12 @@ import {
   useCreateStrategy,
   useUpdateStrategy,
   useDeleteStrategy,
-  useUpdateStrategyStatus,
-  useActiveStrategiesCount,
+  useForkStrategy,
+  useMarketplaceStrategies,
+  useStrategyVersions,
+  useRestoreStrategyVersion,
 } from "@/hooks/use-strategies";
-import { strategiesApi } from "@/lib/api";
+import { strategiesApi, ApiError } from "@/lib/api";
 
 // Mock the API module
 jest.mock("@/lib/api", () => ({
@@ -24,11 +26,23 @@ jest.mock("@/lib/api", () => ({
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    updateStatus: jest.fn(),
+    fork: jest.fn(),
+    marketplace: jest.fn(),
+    listVersions: jest.fn(),
+    getVersion: jest.fn(),
+    restoreVersion: jest.fn(),
+  },
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.status = status;
+    }
   },
 }));
 
 const mockedStrategiesApi = strategiesApi as jest.Mocked<typeof strategiesApi>;
+const MockedApiError = ApiError as jest.MockedClass<typeof ApiError>;
 
 // SWR provider that clears cache between tests
 const createWrapper = () => {
@@ -353,103 +367,234 @@ describe("useDeleteStrategy", () => {
   });
 });
 
-describe("useUpdateStrategyStatus", () => {
+describe("useForkStrategy", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should update status to active", async () => {
-    const activatedStrategy = { ...mockStrategies[1], status: "active" };
-    mockedStrategiesApi.updateStatus.mockResolvedValue(activatedStrategy);
+  it("should fork strategy", async () => {
+    const forkedStrategy = { ...mockStrategies[0], id: "forked-strategy", forked_from: "strategy-1" };
+    mockedStrategiesApi.fork.mockResolvedValue(forkedStrategy);
 
-    const { result } = renderHook(() => useUpdateStrategyStatus("strategy-2"), {
+    const { result } = renderHook(() => useForkStrategy(), {
       wrapper: createWrapper(),
     });
 
-    const response = await result.current.trigger("active");
+    const response = await result.current.trigger("strategy-1");
 
-    expect(mockedStrategiesApi.updateStatus).toHaveBeenCalledWith(
-      "strategy-2",
-      "active"
-    );
-    expect(response?.status).toBe("active");
+    expect(mockedStrategiesApi.fork).toHaveBeenCalledWith("strategy-1");
+    expect(response).toEqual(forkedStrategy);
+    expect(response.forked_from).toBe("strategy-1");
   });
 
-  it("should update status to paused", async () => {
-    const pausedStrategy = { ...mockStrategies[0], status: "paused" };
-    mockedStrategiesApi.updateStatus.mockResolvedValue(pausedStrategy);
+  it("should handle fork error", async () => {
+    mockedStrategiesApi.fork.mockRejectedValue(new Error("Fork failed"));
 
-    const { result } = renderHook(() => useUpdateStrategyStatus("strategy-1"), {
+    const { result } = renderHook(() => useForkStrategy(), {
       wrapper: createWrapper(),
     });
 
-    const response = await result.current.trigger("paused");
-
-    expect(mockedStrategiesApi.updateStatus).toHaveBeenCalledWith(
-      "strategy-1",
-      "paused"
-    );
-    expect(response?.status).toBe("paused");
-  });
-
-  it("should handle status update error", async () => {
-    mockedStrategiesApi.updateStatus.mockRejectedValue(
-      new Error("Cannot activate - no account linked")
-    );
-
-    const { result } = renderHook(() => useUpdateStrategyStatus("strategy-2"), {
-      wrapper: createWrapper(),
-    });
-
-    await expect(result.current.trigger("active")).rejects.toThrow(
-      "Cannot activate - no account linked"
+    await expect(result.current.trigger("strategy-1")).rejects.toThrow(
+      "Fork failed"
     );
   });
 });
 
-describe("useActiveStrategiesCount", () => {
+describe("useMarketplaceStrategies", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should return count of active strategies", async () => {
-    mockedStrategiesApi.list.mockResolvedValue(mockStrategies);
+  const mockMarketplaceResponse = {
+    items: mockStrategies,
+    total: 100,
+    limit: 50,
+    offset: 0,
+  };
 
-    const { result } = renderHook(() => useActiveStrategiesCount(), {
+  it("should fetch marketplace strategies", async () => {
+    mockedStrategiesApi.marketplace.mockResolvedValue(mockMarketplaceResponse);
+
+    const { result } = renderHook(() => useMarketplaceStrategies(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current).toBe(2));
+    await waitFor(() => expect(result.current.strategies).toBeDefined());
 
-    // mockStrategies has 2 active strategies
-    expect(result.current).toBe(2);
+    expect(mockedStrategiesApi.marketplace).toHaveBeenCalledWith(undefined);
+    expect(result.current.strategies).toEqual(mockStrategies);
+    expect(result.current.total).toBe(100);
   });
 
-  it("should return 0 when no active strategies", async () => {
-    const allDraftStrategies = mockStrategies.map((s) => ({
-      ...s,
-      status: "draft" as const,
-    }));
-    mockedStrategiesApi.list.mockResolvedValue(allDraftStrategies);
+  it("should pass filter params to API", async () => {
+    mockedStrategiesApi.marketplace.mockResolvedValue(mockMarketplaceResponse);
 
-    const { result } = renderHook(() => useActiveStrategiesCount(), {
+    const params = {
+      type_filter: "momentum" as const,
+      category: "trend",
+      search: "btc",
+      sort_by: "popular" as const,
+      limit: 10,
+      offset: 20,
+    };
+
+    const { result } = renderHook(() => useMarketplaceStrategies(params), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current).toBe(0));
+    await waitFor(() => expect(result.current.strategies).toBeDefined());
 
-    expect(result.current).toBe(0);
+    expect(mockedStrategiesApi.marketplace).toHaveBeenCalledWith(params);
   });
 
-  it("should return 0 when no strategies", async () => {
-    mockedStrategiesApi.list.mockResolvedValue([]);
+  it("should treat 404 as empty list (graceful degradation)", async () => {
+    const apiError = new MockedApiError("Not found", 404);
+    mockedStrategiesApi.marketplace.mockRejectedValue(apiError);
 
-    const { result } = renderHook(() => useActiveStrategiesCount(), {
+    const { result } = renderHook(() => useMarketplaceStrategies(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current).toBe(0));
+    await waitFor(() => expect(result.current.strategies).toBeDefined());
 
-    expect(result.current).toBe(0);
+    expect(result.current.strategies).toEqual([]);
+    expect(result.current.total).toBe(0);
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("should throw non-404 errors", async () => {
+    const apiError = new MockedApiError("Server error", 500);
+    mockedStrategiesApi.marketplace.mockRejectedValue(apiError);
+
+    const { result } = renderHook(() => useMarketplaceStrategies(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.error).toBeDefined());
+
+    expect(result.current.error).toBeTruthy();
+  });
+
+  it("should expose refresh method", async () => {
+    mockedStrategiesApi.marketplace.mockResolvedValue(mockMarketplaceResponse);
+
+    const { result } = renderHook(() => useMarketplaceStrategies(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.strategies).toBeDefined());
+
+    expect(result.current.refresh).toBeInstanceOf(Function);
   });
 });
+
+describe("useStrategyVersions", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const mockVersions = [
+    {
+      id: "version-1",
+      strategy_id: "strategy-1",
+      version: 1,
+      name: "Initial version",
+      description: "First version",
+      symbols: ["BTC"],
+      config: {},
+      change_note: "Initial",
+      created_at: "2024-01-01T00:00:00Z",
+    },
+    {
+      id: "version-2",
+      strategy_id: "strategy-1",
+      version: 2,
+      name: "Updated version",
+      description: "Second version",
+      symbols: ["BTC", "ETH"],
+      config: {},
+      change_note: "Added ETH",
+      created_at: "2024-01-02T00:00:00Z",
+    },
+  ];
+
+  it("should fetch version history", async () => {
+    mockedStrategiesApi.listVersions.mockResolvedValue(mockVersions);
+
+    const { result } = renderHook(() => useStrategyVersions("strategy-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data).toBeDefined());
+
+    expect(mockedStrategiesApi.listVersions).toHaveBeenCalledWith("strategy-1");
+    expect(result.current.data).toEqual(mockVersions);
+    expect(result.current.data?.length).toBe(2);
+  });
+
+  it("should not fetch when strategyId is null", async () => {
+    const { result } = renderHook(() => useStrategyVersions(null), {
+      wrapper: createWrapper(),
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(mockedStrategiesApi.listVersions).not.toHaveBeenCalled();
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it("should handle fetch error", async () => {
+    mockedStrategiesApi.listVersions.mockRejectedValue(new Error("Fetch failed"));
+
+    const { result } = renderHook(() => useStrategyVersions("strategy-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.error).toBeDefined());
+
+    expect(result.current.error).toBeTruthy();
+  });
+});
+
+describe("useRestoreStrategyVersion", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should restore strategy to previous version", async () => {
+    const restoredStrategy = { ...mockStrategies[0], name: "Restored version" };
+    mockedStrategiesApi.restoreVersion.mockResolvedValue(restoredStrategy);
+
+    const { result } = renderHook(() => useRestoreStrategyVersion("strategy-1"), {
+      wrapper: createWrapper(),
+    });
+
+    const response = await result.current.trigger(1);
+
+    expect(mockedStrategiesApi.restoreVersion).toHaveBeenCalledWith("strategy-1", 1);
+    expect(response).toEqual(restoredStrategy);
+  });
+
+  it("should handle restore error", async () => {
+    mockedStrategiesApi.restoreVersion.mockRejectedValue(new Error("Restore failed"));
+
+    const { result } = renderHook(() => useRestoreStrategyVersion("strategy-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(result.current.trigger(1)).rejects.toThrow("Restore failed");
+  });
+
+  it("should pass correct version number", async () => {
+    mockedStrategiesApi.restoreVersion.mockResolvedValue(mockStrategies[0]);
+
+    const { result } = renderHook(() => useRestoreStrategyVersion("strategy-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.trigger(5);
+
+    expect(mockedStrategiesApi.restoreVersion).toHaveBeenCalledWith("strategy-1", 5);
+  });
+});
+

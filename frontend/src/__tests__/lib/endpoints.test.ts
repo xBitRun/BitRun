@@ -15,6 +15,9 @@ import {
   healthApi,
   modelsApi,
   providersApi,
+  agentsApi,
+  competitionApi,
+  systemApi,
 } from "@/lib/api/endpoints";
 
 jest.mock("@/lib/api/client", () => ({
@@ -234,36 +237,6 @@ describe("strategiesApi", () => {
     expect(mockedApi.delete).toHaveBeenCalledWith("/strategies/s1");
   });
 
-  it("activate should POST status=active", async () => {
-    mockedApi.post.mockResolvedValue({ id: "s1", status: "active" });
-    await strategiesApi.activate("s1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/s1/status", { status: "active" });
-  });
-
-  it("pause should POST status=paused", async () => {
-    mockedApi.post.mockResolvedValue({ id: "s1", status: "paused" });
-    await strategiesApi.pause("s1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/s1/status", { status: "paused" });
-  });
-
-  it("stop should POST status=stopped", async () => {
-    mockedApi.post.mockResolvedValue({ id: "s1", status: "stopped" });
-    await strategiesApi.stop("s1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/s1/status", { status: "stopped" });
-  });
-
-  it("stop should POST status=stopped with close_positions", async () => {
-    mockedApi.post.mockResolvedValue({ id: "s1", status: "stopped" });
-    await strategiesApi.stop("s1", true);
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/s1/status", { status: "stopped", close_positions: true });
-  });
-
-  it("updateStatus should POST with status and optional close_positions", async () => {
-    mockedApi.post.mockResolvedValue({ id: "s1", status: "paused" });
-    await strategiesApi.updateStatus("s1", "paused", true);
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/s1/status", { status: "paused", close_positions: true });
-  });
-
   it("previewPrompt should POST /strategies/preview-prompt", async () => {
     const data = { prompt: "test" };
     mockedApi.post.mockResolvedValue({ system_prompt: "", estimated_tokens: 0, sections: {} });
@@ -275,58 +248,53 @@ describe("strategiesApi", () => {
 // ==================== Quant Strategies ====================
 
 describe("quantStrategiesApi", () => {
-  it("list should GET /quant-strategies (no params)", async () => {
+  it("list should delegate to agentsApi (GET /agents)", async () => {
     mockedApi.get.mockResolvedValue([]);
     await quantStrategiesApi.list();
-    expect(mockedApi.get).toHaveBeenCalledWith("/quant-strategies");
+    expect(mockedApi.get).toHaveBeenCalledWith(expect.stringContaining("/agents"));
   });
 
-  it("list should append query params when provided", async () => {
+  it("list should pass query params through to agents endpoint", async () => {
     mockedApi.get.mockResolvedValue([]);
     await quantStrategiesApi.list({ status_filter: "active", strategy_type: "grid" });
-    expect(mockedApi.get).toHaveBeenCalledWith(
-      expect.stringContaining("/quant-strategies?")
-    );
     const url = mockedApi.get.mock.calls[0][0];
+    expect(url).toContain("/agents");
     expect(url).toContain("status_filter=active");
     expect(url).toContain("strategy_type=grid");
   });
 
-  it("get should GET /quant-strategies/:id", async () => {
+  it("get should delegate to agentsApi (GET /agents/:id)", async () => {
     mockedApi.get.mockResolvedValue({ id: "q1" });
     await quantStrategiesApi.get("q1");
-    expect(mockedApi.get).toHaveBeenCalledWith("/quant-strategies/q1");
+    expect(mockedApi.get).toHaveBeenCalledWith("/agents/q1");
   });
 
-  it("delete should DELETE /quant-strategies/:id", async () => {
+  it("delete should delegate to agentsApi (DELETE /agents/:id)", async () => {
     mockedApi.delete.mockResolvedValue(undefined);
     await quantStrategiesApi.delete("q1");
-    expect(mockedApi.delete).toHaveBeenCalledWith("/quant-strategies/q1");
+    expect(mockedApi.delete).toHaveBeenCalledWith("/agents/q1");
   });
 
-  it("create should POST /quant-strategies", async () => {
-    const data = {
+  it("create should throw deprecation error", async () => {
+    expect(() => quantStrategiesApi.create({
       name: "Grid Strategy",
       strategy_type: "grid",
       symbol: "BTC",
       config: { upper_price: 50000, lower_price: 40000 },
-    };
-    mockedApi.post.mockResolvedValue({ id: "q1" });
-    await quantStrategiesApi.create(data);
-    expect(mockedApi.post).toHaveBeenCalledWith("/quant-strategies", data);
+    })).toThrow("deprecated");
   });
 
-  it("update should PATCH /quant-strategies/:id", async () => {
+  it("update should delegate to agentsApi (PATCH /agents/:id)", async () => {
     const data = { name: "Updated Grid" };
     mockedApi.patch.mockResolvedValue({ id: "q1", name: "Updated Grid" });
     await quantStrategiesApi.update("q1", data);
-    expect(mockedApi.patch).toHaveBeenCalledWith("/quant-strategies/q1", data);
+    expect(mockedApi.patch).toHaveBeenCalledWith("/agents/q1", data);
   });
 
-  it("updateStatus should POST /quant-strategies/:id/status", async () => {
+  it("updateStatus should delegate to agentsApi (POST /agents/:id/status)", async () => {
     mockedApi.post.mockResolvedValue({ id: "q1", status: "active" });
     await quantStrategiesApi.updateStatus("q1", "active", true);
-    expect(mockedApi.post).toHaveBeenCalledWith("/quant-strategies/q1/status", {
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/q1/status", {
       status: "active",
       close_positions: true,
     });
@@ -336,10 +304,10 @@ describe("quantStrategiesApi", () => {
 // ==================== Workers ====================
 
 describe("workersApi", () => {
-  it("triggerExecution should POST /workers/:id/trigger", async () => {
+  it("triggerExecution should delegate to agentsApi (POST /agents/:id/trigger)", async () => {
     mockedApi.post.mockResolvedValue({ message: "ok", success: true });
     await workersApi.triggerExecution("s1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/workers/s1/trigger");
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/s1/trigger");
   });
 });
 
@@ -711,5 +679,149 @@ describe("providersApi", () => {
     mockedApi.post.mockResolvedValue({ success: true, message: "ok" });
     await providersApi.test("p1");
     expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", { api_key: undefined });
+  });
+});
+
+// ==================== Agents ====================
+
+describe("agentsApi", () => {
+  it("list should GET /agents with optional params", async () => {
+    mockedApi.get.mockResolvedValue([]);
+    await agentsApi.list();
+    expect(mockedApi.get).toHaveBeenCalledWith("/agents");
+  });
+
+  it("list should pass filter params", async () => {
+    mockedApi.get.mockResolvedValue([]);
+    await agentsApi.list({ status_filter: "active", strategy_type: "momentum" });
+    expect(mockedApi.get).toHaveBeenCalledWith("/agents?status_filter=active&strategy_type=momentum");
+  });
+
+  it("get should GET /agents/:id", async () => {
+    mockedApi.get.mockResolvedValue({ id: "a1" });
+    await agentsApi.get("a1");
+    expect(mockedApi.get).toHaveBeenCalledWith("/agents/a1");
+  });
+
+  it("create should POST /agents", async () => {
+    const data = {
+      name: "Test Agent",
+      strategy_id: "s1",
+      execution_mode: "live" as const,
+    };
+    mockedApi.post.mockResolvedValue({ id: "a1" });
+    await agentsApi.create(data);
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents", data);
+  });
+
+  it("update should PATCH /agents/:id", async () => {
+    mockedApi.patch.mockResolvedValue({ id: "a1" });
+    await agentsApi.update("a1", { name: "Updated" });
+    expect(mockedApi.patch).toHaveBeenCalledWith("/agents/a1", { name: "Updated" });
+  });
+
+  it("delete should DELETE /agents/:id", async () => {
+    mockedApi.delete.mockResolvedValue(undefined);
+    await agentsApi.delete("a1");
+    expect(mockedApi.delete).toHaveBeenCalledWith("/agents/a1");
+  });
+
+  it("updateStatus should POST /agents/:id/status", async () => {
+    mockedApi.post.mockResolvedValue({ id: "a1", status: "paused" });
+    await agentsApi.updateStatus("a1", "paused", true);
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", {
+      status: "paused",
+      close_positions: true,
+    });
+  });
+
+  it("activate should POST /agents/:id/status with active", async () => {
+    mockedApi.post.mockResolvedValue({ id: "a1", status: "active" });
+    await agentsApi.activate("a1");
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", { status: "active" });
+  });
+
+  it("pause should POST /agents/:id/status with paused", async () => {
+    mockedApi.post.mockResolvedValue({ id: "a1", status: "paused" });
+    await agentsApi.pause("a1");
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", { status: "paused" });
+  });
+
+  it("stop should POST /agents/:id/status with stopped", async () => {
+    mockedApi.post.mockResolvedValue({ id: "a1", status: "stopped" });
+    await agentsApi.stop("a1", true);
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", {
+      status: "stopped",
+      close_positions: true,
+    });
+  });
+
+  it("getPositions should GET /agents/:id/positions", async () => {
+    mockedApi.get.mockResolvedValue([]);
+    await agentsApi.getPositions("a1");
+    expect(mockedApi.get).toHaveBeenCalledWith("/agents/a1/positions");
+  });
+
+  it("trigger should POST /agents/:id/trigger", async () => {
+    mockedApi.post.mockResolvedValue({ message: "ok", success: true });
+    await agentsApi.trigger("a1");
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/trigger");
+  });
+});
+
+// ==================== Competition ====================
+
+describe("competitionApi", () => {
+  it("getLeaderboard should GET /competition/leaderboard", async () => {
+    mockedApi.get.mockResolvedValue({ leaderboard: [], stats: null });
+    await competitionApi.getLeaderboard();
+    expect(mockedApi.get).toHaveBeenCalledWith("/competition/leaderboard");
+  });
+
+  it("getLeaderboard should pass sort params", async () => {
+    mockedApi.get.mockResolvedValue({ leaderboard: [], stats: null });
+    await competitionApi.getLeaderboard("total_pnl", "desc");
+    expect(mockedApi.get).toHaveBeenCalledWith("/competition/leaderboard?sort_by=total_pnl&order=desc");
+  });
+
+  it("getStrategyRanking should GET /competition/strategy-ranking", async () => {
+    mockedApi.get.mockResolvedValue({ rankings: [], total: 0 });
+    await competitionApi.getStrategyRanking();
+    expect(mockedApi.get).toHaveBeenCalledWith("/competition/strategy-ranking");
+  });
+
+  it("getStrategyRanking should pass filter params", async () => {
+    mockedApi.get.mockResolvedValue({ rankings: [], total: 0 });
+    await competitionApi.getStrategyRanking({
+      sort_by: "avg_pnl",
+      type_filter: "momentum",
+      limit: 10,
+      offset: 20,
+    });
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      "/competition/strategy-ranking?sort_by=avg_pnl&type_filter=momentum&limit=10&offset=20"
+    );
+  });
+});
+
+// ==================== System ====================
+
+describe("systemApi", () => {
+  it("getOutboundIP should GET /system/outbound-ip", async () => {
+    mockedApi.get.mockResolvedValue({ ip: "1.2.3.4", source: "aws", cached: false });
+    await systemApi.getOutboundIP();
+    expect(mockedApi.get).toHaveBeenCalledWith("/system/outbound-ip");
+  });
+
+  it("getOutboundIP should return cached response", async () => {
+    mockedApi.get.mockResolvedValue({ ip: "1.2.3.4", source: "cache", cached: true });
+    const result = await systemApi.getOutboundIP();
+    expect(result.cached).toBe(true);
+  });
+
+  it("getOutboundIP should handle null IP", async () => {
+    mockedApi.get.mockResolvedValue({ ip: null, source: "error", cached: false });
+    const result = await systemApi.getOutboundIP();
+    expect(result.ip).toBeNull();
   });
 });
