@@ -48,7 +48,12 @@ export function ServerIPBadge({
 
   if (isLoading) {
     return (
-      <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
+      <div
+        className={cn(
+          "flex items-center gap-1.5 text-xs text-muted-foreground",
+          className,
+        )}
+      >
         <Loader2 className="w-3 h-3 animate-spin" />
         <span>{t("loading")}</span>
       </div>
@@ -57,7 +62,12 @@ export function ServerIPBadge({
 
   if (error || !ip) {
     return (
-      <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
+      <div
+        className={cn(
+          "flex items-center gap-1.5 text-xs text-muted-foreground",
+          className,
+        )}
+      >
         <Globe className="w-3 h-3" />
         <span>{t("unavailable")}</span>
       </div>
@@ -74,7 +84,7 @@ export function ServerIPBadge({
               onClick={handleCopy}
               className={cn(
                 "inline-flex items-center gap-1.5 group",
-                className
+                className,
               )}
             >
               <Badge
@@ -99,15 +109,15 @@ export function ServerIPBadge({
     );
   }
 
-  // Full variant — inline row, visually aligned with NoteBox siblings
+  // Full variant — highlighted IP badge for whitelist setup
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-muted/50 border border-border/50",
-        className
+        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/20",
+        className,
       )}
     >
-      <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 min-w-0 text-xs text-primary font-medium">
         <Globe className="w-3.5 h-3.5 shrink-0" />
         <span className="truncate">{t("title")}</span>
       </div>
@@ -117,7 +127,7 @@ export function ServerIPBadge({
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 font-mono text-xs text-foreground/80 hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 font-mono text-xs bg-background/80 text-foreground px-2.5 py-1 rounded-md border border-border/50 hover:border-primary/30 hover:bg-background transition-colors shrink-0"
             >
               {ip}
               {copied ? (

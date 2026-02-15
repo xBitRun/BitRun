@@ -619,13 +619,6 @@
       "transportDisabledDesc": "API keys are protected by TLS during transmission and encrypted at rest on the server",
       "testnet": "Testnet",
       "mainnet": "Mainnet",
-      "tips": "Tips",
-      "tipTestnet": "Start with Testnet",
-      "tipTestnetDesc": "Use testnet mode to familiarize yourself with the platform without risking real funds.",
-      "tipSubaccount": "Use Sub-accounts",
-      "tipSubaccountDesc": "For CEX, create a sub-account with limited permissions for better security.",
-      "tipWhitelist": "IP Whitelist",
-      "tipWhitelistDesc": "Enable IP whitelist on your exchange for additional protection.",
       "hyperliquidInfo": "Hyperliquid is a decentralized perpetual exchange. You can import your wallet using a private key or seed phrase.",
       "cexInfo": "Generate API credentials from your exchange settings. Make sure to enable trading permissions but disable withdrawal.",
       "success": "Account added successfully",
@@ -645,7 +638,8 @@
       "copied": "Copied!"
     },
     "guide": {
-      "title": "API Setup Guide",
+      "titleCex": "API Setup Guide",
+      "titleDex": "Wallet Setup Guide",
       "showGuide": "View Guide",
       "hideGuide": "Hide Guide",
       "registerLink": "Register Account",
@@ -653,17 +647,28 @@
       "stepsTitle": "Steps to Get API Key",
       "permissionsTitle": "Required Permissions",
       "notesTitle": "Important Notes",
+      "securityTitle": "Security Settings",
+      "tipTestnet": "Start with testnet mode to practice first",
+      "tipSubaccountDesc": "Create a restricted subaccount for enhanced security.",
+      "tipPassphrase": "Passphrase is the third credential, keep it safe",
+      "tipSecret": "Secret Key is shown only once, save it immediately!",
+      "securityPracticesTitle": "Security Best Practices",
+      "encryptionNote": "Your credentials are encrypted with AES-256-GCM in the database for maximum security.",
+      "importMethodsTitle": "Import Methods",
+      "fundingTitle": "Funding Guide",
+      "ipWhitelistNote": "Strongly recommended to bind server IP whitelist for better API security.",
       "binance": {
         "step1": "Log in to Binance website",
         "step2": "Go to \"API Management\" (Avatar → API Management)",
         "step3": "Click \"Create API\", select \"System Generated\"",
         "step4": "Complete security verification (Email + Phone / 2FA)",
-        "step5": "Save your API Key and Secret Key (Secret is shown only once)",
+        "step5": "Save your API Key and Secret Key",
         "perm1": "Enable \"Spot & Margin Trading\" or \"Futures Trading\"",
         "perm2": "Enable \"Read Info\"",
-        "perm3": "Recommended: Bind IP whitelist",
         "contractNote": "Make sure USDT-M Futures trading is enabled and you have funds in the Futures account.",
-        "ipWhitelist": "Strongly recommended to bind server IP whitelist in Binance API settings for better security."
+        "tipTestnet": "Start with testnet mode to practice first",
+        "tipSystem": "Select \"System Generated\" for best security",
+        "tipSecret": "Secret Key is shown only once, save it immediately!"
       },
       "bybit": {
         "step1": "Log in to Bybit website",
@@ -673,8 +678,8 @@
         "step5": "Save your API Key and Secret Key",
         "perm1": "Contract Trading: Read & Write",
         "perm2": "Assets: Read Only",
-        "perm3": "Recommended: Bind IP whitelist",
-        "proxyNote": "Bybit API may require a proxy to access in certain regions."
+        "tipProxy": "May require a proxy in certain regions",
+        "tipSecret": "Secret Key is shown only once, save it immediately!"
       },
       "okx": {
         "step1": "Log in to OKX website",
@@ -685,9 +690,9 @@
         "step6": "Save your API Key, Secret Key, and Passphrase",
         "perm1": "Trading permission: Enabled",
         "perm2": "Read permission: Enabled",
-        "perm3": "Recommended: Bind IP whitelist",
-        "passphraseNote": "The Passphrase acts as a third credential. Keep it safe. You'll need to enter it when adding your account.",
-        "proxyNote": "OKX API may require a proxy to access in certain regions."
+        "tipPassphrase": "Passphrase is required when adding your account",
+        "tipProxy": "May require a proxy in certain regions",
+        "tipSave": "Save all three credentials: API Key, Secret Key, and Passphrase!"
       },
       "bitget": {
         "step1": "Log in to Bitget website",

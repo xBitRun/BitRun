@@ -65,10 +65,14 @@ function AuthPageContent() {
       case "AUTH_INVALID_CREDENTIALS":
         // Show remaining attempts if available
         return err.remaining_attempts !== undefined
-          ? t("errors.AUTH_INVALID_CREDENTIALS", { remaining: err.remaining_attempts })
+          ? t("errors.AUTH_INVALID_CREDENTIALS", {
+              remaining: err.remaining_attempts,
+            })
           : t("errors.AUTH_INVALID_CREDENTIALS_GENERIC");
       case "AUTH_ACCOUNT_LOCKED":
-        return t("errors.AUTH_ACCOUNT_LOCKED", { minutes: err.remaining_minutes || 15 });
+        return t("errors.AUTH_ACCOUNT_LOCKED", {
+          minutes: err.remaining_minutes || 15,
+        });
       case "AUTH_RATE_LIMITED":
         return t("errors.AUTH_RATE_LIMITED");
       case "AUTH_EMAIL_EXISTS":
@@ -175,7 +179,7 @@ function AuthPageContent() {
             value={formData.name}
             onChange={handleInputChange}
             disabled={isLoading}
-            autoComplete="name"
+            autoComplete="off"
             className="h-11 bg-white/3 border-white/10 text-white placeholder:text-white/40 rounded-lg focus:border-white/20 focus:ring-0"
           />
         )}
@@ -187,7 +191,7 @@ function AuthPageContent() {
           value={formData.email}
           onChange={handleInputChange}
           disabled={isLoading}
-          autoComplete="email"
+          autoComplete="off"
           className="h-11 bg-white/3 border-white/10 text-white placeholder:text-white/40 rounded-lg focus:border-white/20 focus:ring-0"
         />
 
@@ -199,7 +203,7 @@ function AuthPageContent() {
             value={formData.password}
             onChange={handleInputChange}
             disabled={isLoading}
-            autoComplete={isLogin ? "current-password" : "new-password"}
+            autoComplete="off"
             className="h-11 bg-white/3 border-white/10 text-white placeholder:text-white/40 rounded-lg focus:border-white/20 focus:ring-0 pr-11"
           />
           <button
@@ -208,7 +212,11 @@ function AuthPageContent() {
             className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
             tabIndex={-1}
           >
-            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
           </button>
         </div>
 
@@ -221,7 +229,7 @@ function AuthPageContent() {
             value={formData.confirmPassword}
             onChange={handleInputChange}
             disabled={isLoading}
-            autoComplete="new-password"
+            autoComplete="off"
             className="h-11 bg-white/3 border-white/10 text-white placeholder:text-white/40 rounded-lg focus:border-white/20 focus:ring-0"
           />
         )}
@@ -259,9 +267,14 @@ function AuthPageContent() {
       {/* Terms */}
       <p className="text-center text-xs text-white/30">
         {t("termsPrefix")}{" "}
-        <Link href="/terms" className="underline hover:text-white/50">{t("termsOfService")}</Link>
-        {" "}{t("and")}{" "}
-        <Link href="/privacy" className="underline hover:text-white/50">{t("privacyPolicy")}</Link>.
+        <Link href="/terms" className="underline hover:text-white/50">
+          {t("termsOfService")}
+        </Link>{" "}
+        {t("and")}{" "}
+        <Link href="/privacy" className="underline hover:text-white/50">
+          {t("privacyPolicy")}
+        </Link>
+        .
       </p>
     </div>
   );

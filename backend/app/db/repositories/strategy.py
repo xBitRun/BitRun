@@ -95,6 +95,9 @@ class StrategyRepository:
         if visibility:
             query = query.where(StrategyDB.visibility == visibility)
 
+        # Eager load agents to avoid lazy loading in async context
+        query = query.options(selectinload(StrategyDB.agents))
+
         query = query.order_by(StrategyDB.updated_at.desc())
         query = query.limit(limit).offset(offset)
 

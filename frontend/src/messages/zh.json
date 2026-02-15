@@ -619,13 +619,6 @@
       "transportDisabledDesc": "API 密钥通过 TLS 加密传输，并在服务器端加密存储",
       "testnet": "测试网",
       "mainnet": "主网",
-      "tips": "提示",
-      "tipTestnet": "从测试网开始",
-      "tipTestnetDesc": "使用测试网模式熟悉平台，无需真实资金。",
-      "tipSubaccount": "使用子账户",
-      "tipSubaccountDesc": "对于 CEX，创建权限受限的子账户以提高安全性。",
-      "tipWhitelist": "IP 白名单",
-      "tipWhitelistDesc": "在交易所启用 IP 白名单以获得额外保护。",
       "hyperliquidInfo": "Hyperliquid 是去中心化永续合约交易所。您可以使用私钥或助记词导入钱包。",
       "cexInfo": "从您的交易所设置中生成 API 凭证。确保启用交易权限但禁用提现。",
       "success": "账户添加成功",
@@ -645,7 +638,8 @@
       "copied": "已复制！"
     },
     "guide": {
-      "title": "API 获取教程",
+      "titleCex": "API 获取教程",
+      "titleDex": "钱包设置指南",
       "showGuide": "查看教程",
       "hideGuide": "收起教程",
       "registerLink": "注册账户",
@@ -653,17 +647,28 @@
       "stepsTitle": "获取 API Key 步骤",
       "permissionsTitle": "权限配置（必须）",
       "notesTitle": "注意事项",
+      "securityTitle": "安全设置",
+      "tipTestnet": "建议先使用测试网模式熟悉流程",
+      "tipSubaccountDesc": "创建权限受限的子账户以提高安全性。",
+      "tipPassphrase": "Passphrase 是第三个密钥，请妥善保管",
+      "tipSecret": "Secret Key 仅显示一次，请立即保存！",
+      "securityPracticesTitle": "安全最佳实践",
+      "encryptionNote": "您的凭证在数据库中使用 AES-256-GCM 加密存储，确保数据安全。",
+      "importMethodsTitle": "导入方式",
+      "fundingTitle": "资金充值",
+      "ipWhitelistNote": "强烈建议绑定服务器 IP 白名单，以提高 API 安全性。",
       "binance": {
         "step1": "登录 Binance 官网",
         "step2": "进入「API 管理」（头像 → API Management）",
         "step3": "点击「创建 API」，选择「系统生成」",
         "step4": "完成安全验证（邮箱 + 手机 / 2FA）",
-        "step5": "记录 API Key 和 Secret Key（Secret 仅显示一次）",
+        "step5": "记录 API Key 和 Secret Key",
         "perm1": "启用「现货和杠杆交易」或「合约交易」",
         "perm2": "启用「读取信息」",
-        "perm3": "建议绑定 IP 白名单",
         "contractNote": "确保已开通 USDT-M 合约交易，并在合约账户中预存资金。",
-        "ipWhitelist": "强烈建议在 Binance API 设置中绑定服务器 IP 白名单，以提高安全性。"
+        "tipTestnet": "建议先使用测试网模式熟悉流程",
+        "tipSystem": "选择「系统生成」最安全便捷",
+        "tipSecret": "Secret Key 仅显示一次，请立即保存！"
       },
       "bybit": {
         "step1": "登录 Bybit 官网",
@@ -673,8 +678,8 @@
         "step5": "记录 API Key 和 Secret Key",
         "perm1": "合约交易：读写",
         "perm2": "资产：只读",
-        "perm3": "建议绑定 IP 白名单",
-        "proxyNote": "Bybit API 在中国大陆可能需要代理才能访问。"
+        "tipProxy": "中国大陆可能需要代理才能访问",
+        "tipSecret": "Secret Key 仅显示一次，请立即保存！"
       },
       "okx": {
         "step1": "登录 OKX 官网",
@@ -685,9 +690,9 @@
         "step6": "记录 API Key、Secret Key 和 Passphrase",
         "perm1": "交易权限：启用",
         "perm2": "读取权限：启用",
-        "perm3": "建议绑定 IP 白名单",
-        "passphraseNote": "Passphrase 相当于第三个密钥，请妥善保管。添加账户时需要填入 Passphrase 字段。",
-        "proxyNote": "OKX API 在中国大陆可能需要代理才能访问。"
+        "tipPassphrase": "Passphrase 是第三个密钥，添加账户时必填",
+        "tipProxy": "中国大陆可能需要代理才能访问",
+        "tipSave": "请同时保存 API Key、Secret Key 和 Passphrase！"
       },
       "bitget": {
         "step1": "登录 Bitget 官网",

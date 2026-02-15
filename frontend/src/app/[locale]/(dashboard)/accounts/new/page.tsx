@@ -1,20 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import {
-  Eye,
-  EyeOff,
-  AlertCircle,
-  ShieldCheck,
-  ShieldAlert,
-  Wallet,
-  Lightbulb,
-  ChevronDown,
-  ChevronUp,
-  Lock,
-} from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ShieldCheck, Wallet } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -34,15 +23,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
-import { FormPageHeader, CollapsibleCard } from "@/components/layout";
+import { FormPageHeader } from "@/components/layout";
 import { useCreateAccount } from "@/hooks";
 import type { CreateAccountRequest } from "@/lib/api";
 import { accountsApi } from "@/lib/api";
 import type { ExchangeType } from "@/types";
 import { ExchangeGuide } from "@/components/accounts/exchange-guide";
-import { ServerIPBadge } from "@/components/accounts/server-ip-badge";
-import { encryptFields, isTransportEncryptionEnabled } from "@/lib/crypto";
-import { Badge } from "@/components/ui/badge";
+import { encryptFields } from "@/lib/crypto";
 
 const exchangeOptions = [
   { value: "hyperliquid", label: "Hyperliquid (DEX)", icon: "🔷" },
@@ -64,8 +51,6 @@ export default function NewAccountPage() {
   const [showSecret, setShowSecret] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showTips, setShowTips] = useState(false);
-  const [showSecurity, setShowSecurity] = useState(false);
   const [newAccount, setNewAccount] = useState({
     name: "",
     exchange: "hyperliquid" as ExchangeType,
@@ -78,18 +63,10 @@ export default function NewAccountPage() {
   const [hlImportType, setHlImportType] = useState<"privateKey" | "mnemonic">(
     "privateKey",
   );
-  const [transportEncrypted, setTransportEncrypted] = useState<boolean | null>(
-    null,
-  );
 
   const [submitPhase, setSubmitPhase] = useState<
     "idle" | "creating" | "testing"
   >("idle");
-
-  // Check transport encryption availability on mount
-  useEffect(() => {
-    isTransportEncryptionEnabled().then(setTransportEncrypted);
-  }, []);
 
   const handleCreateAccount = async () => {
     setIsSubmitting(true);
@@ -201,6 +178,7 @@ export default function NewAccountPage() {
               <Label htmlFor="name" className="flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-primary" />
                 {t("dialog.accountName")}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
@@ -259,58 +237,13 @@ export default function NewAccountPage() {
       {/* Credentials Card - Core Section */}
       <Card className="border-primary/20">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-                {tNew("credentials")}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                {tNew("credentialsDesc")}
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowTips(!showTips)}
-              className="text-muted-foreground"
-            >
-              <Lightbulb className="w-4 h-4 mr-1" />
-              {tNew("tips")}
-              {showTips ? (
-                <ChevronUp className="w-4 h-4 ml-1" />
-              ) : (
-                <ChevronDown className="w-4 h-4 ml-1" />
-              )}
-            </Button>
-          </div>
-
-          {/* Collapsible Tips */}
-          {showTips && (
-            <div className="mt-4 p-4 rounded-lg bg-muted/50 text-sm space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="font-medium mb-1">{tNew("tipTestnet")}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {tNew("tipTestnetDesc")}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">{tNew("tipSubaccount")}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {tNew("tipSubaccountDesc")}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">{tNew("tipWhitelist")}</p>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    {tNew("tipWhitelistDesc")}
-                  </p>
-                  <ServerIPBadge variant="compact" />
-                </div>
-              </div>
-            </div>
-          )}
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+            {tNew("credentials")}
+          </CardTitle>
+          <CardDescription className="mt-1">
+            {tNew("credentialsDesc")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Exchange Info Banner */}
@@ -376,7 +309,10 @@ export default function NewAccountPage() {
             {newAccount.exchange === "hyperliquid" &&
               hlImportType === "privateKey" && (
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="apiKey">{t("dialog.privateKey")}</Label>
+                  <Label htmlFor="apiKey" className="flex items-center gap-1">
+                    {t("dialog.privateKey")}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="apiKey"
@@ -409,7 +345,10 @@ export default function NewAccountPage() {
             {newAccount.exchange === "hyperliquid" &&
               hlImportType === "mnemonic" && (
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="mnemonic">{t("dialog.mnemonic")}</Label>
+                  <Label htmlFor="mnemonic" className="flex items-center gap-1">
+                    {t("dialog.mnemonic")}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="mnemonic"
@@ -448,7 +387,10 @@ export default function NewAccountPage() {
             {newAccount.exchange !== "hyperliquid" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="apiKey">{t("dialog.apiKey")}</Label>
+                  <Label htmlFor="apiKey" className="flex items-center gap-1">
+                    {t("dialog.apiKey")}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="apiKey"
                     type="text"
@@ -462,7 +404,13 @@ export default function NewAccountPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="apiSecret">{t("dialog.apiSecret")}</Label>
+                  <Label
+                    htmlFor="apiSecret"
+                    className="flex items-center gap-1"
+                  >
+                    {t("dialog.apiSecret")}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="apiSecret"
@@ -535,86 +483,6 @@ export default function NewAccountPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Security Notice - Collapsible */}
-      <CollapsibleCard
-        open={showSecurity}
-        onOpenChange={setShowSecurity}
-        title={tNew("securityTitle")}
-        description={tNew("securitySubtitle")}
-        icon={<ShieldCheck className="w-4 h-4 text-primary" />}
-      >
-        <div className="space-y-3">
-          {/* Storage encryption - always enabled */}
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-            <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-primary">
-                {tNew("encryptionTitle")}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t("dialog.encryptionNote")}
-              </p>
-            </div>
-          </div>
-
-          {/* Transport encryption - dynamic status */}
-          {transportEncrypted !== null && (
-            <div
-              className={`flex items-start gap-3 p-4 rounded-lg border ${
-                transportEncrypted
-                  ? "bg-emerald-500/5 border-emerald-500/20"
-                  : "bg-amber-500/5 border-amber-500/20"
-              }`}
-            >
-              {transportEncrypted ? (
-                <Lock className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              ) : (
-                <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-              )}
-              <div>
-                <p
-                  className={`text-sm font-medium ${
-                    transportEncrypted ? "text-emerald-500" : "text-amber-500"
-                  }`}
-                >
-                  {transportEncrypted
-                    ? tNew("transportEnabled")
-                    : tNew("transportDisabled")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {transportEncrypted
-                    ? tNew("transportEnabledDesc")
-                    : tNew("transportDisabledDesc")}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </CollapsibleCard>
-
-      {/* Transport Encryption Badge */}
-      {transportEncrypted !== null && (
-        <div className="flex justify-end">
-          <Badge
-            variant="outline"
-            className={`text-xs gap-1.5 ${
-              transportEncrypted
-                ? "border-emerald-500/30 text-emerald-500"
-                : "border-amber-500/30 text-amber-500"
-            }`}
-          >
-            {transportEncrypted ? (
-              <Lock className="w-3 h-3" />
-            ) : (
-              <ShieldAlert className="w-3 h-3" />
-            )}
-            {transportEncrypted
-              ? tNew("transportEnabled")
-              : tNew("transportDisabled")}
-          </Badge>
-        </div>
-      )}
     </div>
   );
 }

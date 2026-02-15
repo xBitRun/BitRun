@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Info,
   CheckCircle2,
+  Lightbulb,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,13 +61,48 @@ interface ExchangeGuideProps {
   className?: string;
 }
 
-function StepItem({ index, text }: { index: number; text: string }) {
+// Helper to determine if exchange is DEX
+function isDEX(exchange: ExchangeType): boolean {
+  return exchange === "hyperliquid";
+}
+
+function StepItem({
+  index,
+  text,
+  tip,
+  tipVariant = "info",
+}: {
+  index: number;
+  text: string;
+  tip?: string;
+  tipVariant?: "info" | "warning";
+}) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold shrink-0 mt-0.5">
-        {index}
+    <div className="space-y-1">
+      <div className="flex items-start gap-3">
+        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold shrink-0 mt-0.5">
+          {index}
+        </div>
+        <p className="text-sm text-foreground/80">{text}</p>
       </div>
-      <p className="text-sm text-foreground/80">{text}</p>
+      {tip && (
+        <div className="ml-9 text-xs flex items-start gap-1.5">
+          {tipVariant === "warning" ? (
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+          ) : (
+            <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-500" />
+          )}
+          <span
+            className={
+              tipVariant === "warning"
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
+            }
+          >
+            {tip}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -83,9 +119,11 @@ function PermissionItem({ text }: { text: string }) {
 function NoteBox({
   children,
   variant = "info",
+  className,
 }: {
   children: React.ReactNode;
   variant?: "info" | "warning";
+  className?: string;
 }) {
   return (
     <div
@@ -93,7 +131,8 @@ function NoteBox({
         "flex items-start gap-2 p-3 rounded-lg text-sm",
         variant === "warning"
           ? "bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300"
-          : "bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300"
+          : "bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300",
+        className,
       )}
     >
       {variant === "warning" ? (
@@ -102,6 +141,29 @@ function NoteBox({
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
       )}
       <div>{children}</div>
+    </div>
+  );
+}
+
+// Security section with IP whitelist for CEX
+function SecuritySection({ t }: { t: ReturnType<typeof useTranslations> }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-semibold flex items-center gap-1.5">
+        <Shield className="w-4 h-4 text-amber-500" />
+        {t("securityTitle")}
+      </h4>
+      <div className="pl-1 space-y-2">
+        <div className="text-xs text-muted-foreground flex items-start gap-1.5">
+          <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-500" />
+          <span>{t("tipSubaccountDesc")}</span>
+        </div>
+        <div className="text-xs text-muted-foreground flex items-start gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+          <span>{t("ipWhitelistNote")}</span>
+        </div>
+        <ServerIPBadge variant="full" />
+      </div>
     </div>
   );
 }
@@ -115,34 +177,45 @@ function BinanceGuide({ t }: { t: ReturnType<typeof useTranslations> }) {
           <BookOpen className="w-4 h-4 text-primary" />
           {t("stepsTitle")}
         </h4>
-        <div className="space-y-2">
-          <StepItem index={1} text={t("binance.step1")} />
+        <div className="space-y-2.5">
+          <StepItem
+            index={1}
+            text={t("binance.step1")}
+            tip={t("binance.tipTestnet")}
+          />
           <StepItem index={2} text={t("binance.step2")} />
-          <StepItem index={3} text={t("binance.step3")} />
+          <StepItem
+            index={3}
+            text={t("binance.step3")}
+            tip={t("binance.tipSystem")}
+          />
           <StepItem index={4} text={t("binance.step4")} />
-          <StepItem index={5} text={t("binance.step5")} />
+          <StepItem
+            index={5}
+            text={t("binance.step5")}
+            tip={t("binance.tipSecret")}
+            tipVariant="warning"
+          />
         </div>
       </div>
 
       {/* Permissions */}
       <div className="space-y-1.5">
         <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-          <Shield className="w-4 h-4 text-primary" />
+          <Shield className="w-4 h-4 text-emerald-500" />
           {t("permissionsTitle")}
         </h4>
         <div className="space-y-1.5 pl-1">
           <PermissionItem text={t("binance.perm1")} />
           <PermissionItem text={t("binance.perm2")} />
-          <PermissionItem text={t("binance.perm3")} />
         </div>
+        <NoteBox variant="info" className="mt-2">
+          {t("binance.contractNote")}
+        </NoteBox>
       </div>
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <NoteBox variant="info">{t("binance.contractNote")}</NoteBox>
-        <NoteBox variant="warning">{t("binance.ipWhitelist")}</NoteBox>
-        <ServerIPBadge variant="full" />
-      </div>
+      {/* Security */}
+      <SecuritySection t={t} />
     </div>
   );
 }
@@ -156,33 +229,39 @@ function BybitGuide({ t }: { t: ReturnType<typeof useTranslations> }) {
           <BookOpen className="w-4 h-4 text-primary" />
           {t("stepsTitle")}
         </h4>
-        <div className="space-y-2">
-          <StepItem index={1} text={t("bybit.step1")} />
+        <div className="space-y-2.5">
+          <StepItem index={1} text={t("bybit.step1")} tip={t("tipTestnet")} />
           <StepItem index={2} text={t("bybit.step2")} />
-          <StepItem index={3} text={t("bybit.step3")} />
+          <StepItem
+            index={3}
+            text={t("bybit.step3")}
+            tip={t("bybit.tipProxy")}
+            tipVariant="warning"
+          />
           <StepItem index={4} text={t("bybit.step4")} />
-          <StepItem index={5} text={t("bybit.step5")} />
+          <StepItem
+            index={5}
+            text={t("bybit.step5")}
+            tip={t("bybit.tipSecret")}
+            tipVariant="warning"
+          />
         </div>
       </div>
 
       {/* Permissions */}
       <div className="space-y-1.5">
         <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-          <Shield className="w-4 h-4 text-primary" />
+          <Shield className="w-4 h-4 text-emerald-500" />
           {t("permissionsTitle")}
         </h4>
         <div className="space-y-1.5 pl-1">
           <PermissionItem text={t("bybit.perm1")} />
           <PermissionItem text={t("bybit.perm2")} />
-          <PermissionItem text={t("bybit.perm3")} />
         </div>
       </div>
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <NoteBox variant="warning">{t("bybit.proxyNote")}</NoteBox>
-        <ServerIPBadge variant="full" />
-      </div>
+      {/* Security */}
+      <SecuritySection t={t} />
     </div>
   );
 }
@@ -196,53 +275,61 @@ function OkxGuide({ t }: { t: ReturnType<typeof useTranslations> }) {
           <BookOpen className="w-4 h-4 text-primary" />
           {t("stepsTitle")}
         </h4>
-        <div className="space-y-2">
-          <StepItem index={1} text={t("okx.step1")} />
+        <div className="space-y-2.5">
+          <StepItem index={1} text={t("okx.step1")} tip={t("tipTestnet")} />
           <StepItem index={2} text={t("okx.step2")} />
           <StepItem index={3} text={t("okx.step3")} />
-          <StepItem index={4} text={t("okx.step4")} />
-          <StepItem index={5} text={t("okx.step5")} />
-          <StepItem index={6} text={t("okx.step6")} />
+          <StepItem
+            index={4}
+            text={t("okx.step4")}
+            tip={t("okx.tipPassphrase")}
+          />
+          <StepItem
+            index={5}
+            text={t("okx.step5")}
+            tip={t("okx.tipProxy")}
+            tipVariant="warning"
+          />
+          <StepItem
+            index={6}
+            text={t("okx.step6")}
+            tip={t("okx.tipSave")}
+            tipVariant="warning"
+          />
         </div>
       </div>
 
       {/* Permissions */}
       <div className="space-y-1.5">
         <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-          <Shield className="w-4 h-4 text-primary" />
+          <Shield className="w-4 h-4 text-emerald-500" />
           {t("permissionsTitle")}
         </h4>
         <div className="space-y-1.5 pl-1">
           <PermissionItem text={t("okx.perm1")} />
           <PermissionItem text={t("okx.perm2")} />
-          <PermissionItem text={t("okx.perm3")} />
         </div>
       </div>
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <NoteBox variant="info">{t("okx.passphraseNote")}</NoteBox>
-        <NoteBox variant="warning">{t("okx.proxyNote")}</NoteBox>
-        <ServerIPBadge variant="full" />
-      </div>
+      {/* Security */}
+      <SecuritySection t={t} />
     </div>
   );
 }
 
-function HyperliquidGuide({
-  t,
-}: {
-  t: ReturnType<typeof useTranslations>;
-}) {
+function HyperliquidGuide({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <div className="space-y-4">
       {/* Overview */}
       <NoteBox variant="info">{t("hyperliquid.title")}</NoteBox>
 
-      {/* Private Key Guide */}
+      {/* Import Methods */}
       <div className="space-y-2">
-        <h4 className="text-sm font-semibold">{t("stepsTitle")}</h4>
-        <div className="space-y-3 pl-1">
+        <h4 className="text-sm font-semibold flex items-center gap-1.5">
+          <BookOpen className="w-4 h-4 text-primary" />
+          {t("importMethodsTitle")}
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
             <Badge variant="outline" className="mb-1.5 text-xs">
               Private Key
@@ -262,10 +349,31 @@ function HyperliquidGuide({
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Security Best Practices */}
       <div className="space-y-2">
-        <NoteBox variant="warning">{t("hyperliquid.securityNote")}</NoteBox>
-        <NoteBox variant="info">{t("hyperliquid.fundingNote")}</NoteBox>
+        <h4 className="text-sm font-semibold flex items-center gap-1.5">
+          <Shield className="w-4 h-4 text-amber-500" />
+          {t("securityPracticesTitle")}
+        </h4>
+        <div className="pl-1 space-y-2">
+          <div className="text-xs text-muted-foreground flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+            <span>{t("hyperliquid.securityNote")}</span>
+          </div>
+          <div className="text-xs text-muted-foreground flex items-start gap-1.5">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-500" />
+            <span>{t("encryptionNote")}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Funding Guide */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold">{t("fundingTitle")}</h4>
+        <div className="text-xs text-muted-foreground flex items-start gap-1.5">
+          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-500" />
+          <span>{t("hyperliquid.fundingNote")}</span>
+        </div>
       </div>
     </div>
   );
@@ -288,35 +396,44 @@ function GenericCexGuide({
           <BookOpen className="w-4 h-4 text-primary" />
           {t("stepsTitle")}
         </h4>
-        <div className="space-y-2">
-          <StepItem index={1} text={t(`${exchangeKey}.step1`)} />
+        <div className="space-y-2.5">
+          <StepItem
+            index={1}
+            text={t(`${exchangeKey}.step1`)}
+            tip={t("tipTestnet")}
+          />
           <StepItem index={2} text={t(`${exchangeKey}.step2`)} />
-          <StepItem index={3} text={t(`${exchangeKey}.step3`)} />
-          <StepItem index={4} text={t(`${exchangeKey}.step4`)} />
+          <StepItem
+            index={3}
+            text={t(`${exchangeKey}.step3`)}
+            tip={hasPassphrase ? t("tipPassphrase") : undefined}
+          />
+          <StepItem
+            index={4}
+            text={t(`${exchangeKey}.step4`)}
+            tip={t("tipSecret")}
+            tipVariant="warning"
+          />
         </div>
       </div>
 
       {/* Permissions */}
       <div className="space-y-1.5">
         <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-          <Shield className="w-4 h-4 text-primary" />
+          <Shield className="w-4 h-4 text-emerald-500" />
           {t("permissionsTitle")}
         </h4>
         <div className="space-y-1.5 pl-1">
           <PermissionItem text={t(`${exchangeKey}.perm1`)} />
           <PermissionItem text={t(`${exchangeKey}.perm2`)} />
-          <PermissionItem text={t(`${exchangeKey}.perm3`)} />
         </div>
+        <NoteBox variant="info" className="mt-2">
+          {t(`${exchangeKey}.note`)}
+        </NoteBox>
       </div>
 
-      {/* Notes */}
-      <div className="space-y-2">
-        {hasPassphrase && (
-          <NoteBox variant="info">{t(`${exchangeKey}.passphraseNote`)}</NoteBox>
-        )}
-        <NoteBox variant="warning">{t(`${exchangeKey}.note`)}</NoteBox>
-        <ServerIPBadge variant="full" />
-      </div>
+      {/* Security */}
+      <SecuritySection t={t} />
     </div>
   );
 }
@@ -326,6 +443,8 @@ export function ExchangeGuide({ exchange, className }: ExchangeGuideProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const links = EXCHANGE_LINKS[exchange];
+  const isDex = isDEX(exchange);
+  const title = isDex ? t("titleDex") : t("titleCex");
 
   const guideContent: Record<ExchangeType, React.ReactNode> = {
     binance: <BinanceGuide t={t} />,
@@ -341,7 +460,7 @@ export function ExchangeGuide({ exchange, className }: ExchangeGuideProps) {
     <Card
       className={cn(
         "border-primary/20 bg-primary/2 overflow-hidden transition-all",
-        className
+        className,
       )}
     >
       {/* Header - always visible */}
@@ -352,7 +471,7 @@ export function ExchangeGuide({ exchange, className }: ExchangeGuideProps) {
       >
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold">{t("title")}</span>
+          <span className="text-sm font-semibold">{title}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
