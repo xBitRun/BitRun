@@ -533,6 +533,17 @@ class AgentDB(Base):
         """
         return self.strategy.type if self.strategy else None
 
+    @property
+    def symbol(self) -> Optional[str]:
+        """Get primary symbol from related strategy.
+
+        Provides backward compatibility for legacy QuantStrategyDB code.
+        For quant strategies, returns the first (typically only) symbol.
+        """
+        if self.strategy and self.strategy.symbols:
+            return self.strategy.symbols[0]
+        return None
+
     def get_effective_capital(self, account_equity: float) -> Optional[float]:
         """Calculate effective allocated capital based on mode.
 

@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..models import QuantStrategyDB
 
@@ -53,7 +54,11 @@ class QuantStrategyRepository:
         user_id: Optional[uuid.UUID] = None,
     ) -> Optional[QuantStrategyDB]:
         """Get quant strategy by ID."""
-        query = select(QuantStrategyDB).where(QuantStrategyDB.id == strategy_id)
+        query = (
+            select(QuantStrategyDB)
+            .options(selectinload(QuantStrategyDB.strategy))
+            .where(QuantStrategyDB.id == strategy_id)
+        )
         if user_id:
             query = query.where(QuantStrategyDB.user_id == user_id)
 
@@ -83,8 +88,10 @@ class QuantStrategyRepository:
 
     async def get_active_strategies(self) -> list[QuantStrategyDB]:
         """Get all active quant strategies (for worker scheduling)"""
-        query = select(QuantStrategyDB).where(
-            QuantStrategyDB.status == "active"
+        query = (
+            select(QuantStrategyDB)
+            .options(selectinload(QuantStrategyDB.strategy))
+            .where(QuantStrategyDB.status == "active")
         )
         result = await self.session.execute(query)
         return list(result.scalars().all())

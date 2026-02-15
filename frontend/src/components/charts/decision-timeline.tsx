@@ -49,7 +49,7 @@ function getActionColor(action: string) {
 
 function formatTimeAgo(
   timestamp: string,
-  t: (key: string, values?: Record<string, unknown>) => string,
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): string {
   const date = new Date(timestamp);
   const now = new Date();
