@@ -544,6 +544,15 @@ class AgentDB(Base):
             return self.strategy.symbols[0]
         return None
 
+    @property
+    def config(self) -> dict:
+        """Get config from related strategy.
+
+        Provides backward compatibility for legacy QuantStrategyDB code
+        that expected a config field directly on this model.
+        """
+        return self.strategy.config if self.strategy else {}
+
     def get_effective_capital(self, account_equity: float) -> Optional[float]:
         """Calculate effective allocated capital based on mode.
 

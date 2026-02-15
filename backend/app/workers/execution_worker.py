@@ -123,7 +123,7 @@ class ExecutionWorker:
 
                 if self._error_count >= self._max_errors:
                     logger.error(f"Too many errors, pausing strategy {self.strategy_id}")
-                    await self._update_strategy_status("error", str(e))
+                    await self._update_agent_status("error", str(e))
                     break
 
                 # Wait before retry
@@ -190,7 +190,7 @@ class ExecutionWorker:
             )
 
 
-    async def _update_strategy_status(self, status: str, error: Optional[str] = None) -> None:
+    async def _update_agent_status(self, status: str, error: Optional[str] = None) -> None:
         """Update agent status in database"""
         async with AsyncSessionLocal() as session:
             from ..db.repositories.agent import AgentRepository
@@ -340,23 +340,10 @@ class WorkerManager:
                 trader = None
                 if agent and agent.execution_mode == "mock":
                     # Mock mode: create MockTrader
-                    from ..traders.mock_trader import MockTrader
-
-                    symbols = strategy.symbols or ["BTC"]
-                    mock_balance = agent.mock_initial_balance or 10000.0
-                    trader = MockTrader(
-                        initial_balance=mock_balance,
-                        symbols=symbols,
-                    )
-                    try:
-                        await trader.initialize()
-                        # Restore state from persisted positions (survives restarts)
-                        from .tasks import _restore_mock_trader_state
-                        await _restore_mock_trader_state(
-                            session, agent.id, mock_balance, trader,
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to initialize MockTrader for strategy {strategy_id}: {e}")
+                    from .tasks import create_mock_trader
+                    trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                    if error:
+                        logger.error(error)
                         return False
                 else:
                     # Live mode: require account
@@ -462,16 +449,22 @@ class WorkerManager:
         del self._workers[strategy_id]
         return True
 
-    async def trigger_manual_execution(self, strategy_id: str, user_id: str | None = None) -> dict:
+    async def trigger_manual_execution(
+        self,
+        strategy_id: str,
+        user_id: str | None = None,
+        agent_id: str | None = None,
+    ) -> dict:
         """
         Manually trigger a strategy execution (Run Now).
-        
+
         Supports both distributed and legacy modes.
-        
+
         Args:
             strategy_id: Strategy UUID
             user_id: Optional user UUID for ownership verification
-            
+            agent_id: Optional agent UUID (for routing)
+
         Returns:
             Dict with execution result:
               - distributed: {"job_id": str}
@@ -518,20 +511,10 @@ class WorkerManager:
 
                 if agent and agent.execution_mode == "mock":
                     # Mock mode: use MockTrader
-                    from ..traders.mock_trader import MockTrader
-
-                    symbols = strategy.symbols or ["BTC"]
-                    mock_balance = agent.mock_initial_balance or 10000.0
-                    trader = MockTrader(
-                        initial_balance=mock_balance,
-                        symbols=symbols,
-                    )
-                    await trader.initialize()
-                    # Restore state from persisted positions (survives restarts)
-                    from .tasks import _restore_mock_trader_state
-                    await _restore_mock_trader_state(
-                        session, agent.id, mock_balance, trader,
-                    )
+                    from .tasks import create_mock_trader
+                    trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                    if error:
+                        return {"success": False, "error": error}
                 else:
                     # Live mode: use exchange credentials
                     account_id = agent.account_id if agent else strategy.account_id
@@ -640,8 +623,24 @@ class WorkerManager:
                     logger.warning(f"Agent {agent.id} has no strategy, skipping")
                     continue
 
+                # Handle Mock mode - no account needed
+                if agent.execution_mode == "mock":
+                    # Start the worker without credentials (will use MockTrader)
+                    success = await self.start_strategy(
+                        str(strategy.id),
+                        credentials=None,
+                        account=None,
+                    )
+                    if success:
+                        logger.info(f"Auto-started worker for mock agent {agent.id}, strategy {strategy.id}")
+                    else:
+                        logger.error(f"Failed to auto-start worker for mock agent {agent.id}")
+                    await asyncio.sleep(1)
+                    continue
+
+                # Live mode - requires account
                 if not agent.account_id:
-                    logger.warning(f"Agent {agent.id} has no account, skipping")
+                    logger.warning(f"Agent {agent.id} is live mode but has no account, skipping")
                     continue
 
                 # Get the account (should be loaded via relationship)

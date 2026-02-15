@@ -98,6 +98,69 @@ async def _restore_mock_trader_state(
         )
 
 
+async def create_mock_trader(
+    agent,
+    session,
+    symbols: Optional[list[str]] = None,
+) -> tuple[Optional[Any], Optional[str]]:
+    """
+    Create and initialize a MockTrader for an agent.
+
+    This is a shared utility function used by:
+    - ExecutionWorker (AI strategies)
+    - QuantWorker (grid/dca/rsi strategies)
+    - API routes (manual trigger)
+
+    Args:
+        agent: AgentDB instance with execution_mode="mock"
+        session: AsyncSession for state restoration
+        symbols: Optional list of symbols. If not provided, uses agent.symbol or ["BTC"]
+
+    Returns:
+        Tuple of (trader, error_message). If successful, error_message is None.
+    """
+    from ..traders.mock_trader import MockTrader
+
+    # Determine symbols
+    if symbols is None:
+        # For quant strategies, agent.symbol is a single string
+        # For AI strategies, agent.strategy.symbols is a list
+        if hasattr(agent, 'symbol') and agent.symbol:
+            symbols = [agent.symbol]
+        elif hasattr(agent, 'strategy') and agent.strategy and hasattr(agent.strategy, 'symbols'):
+            symbols = agent.strategy.symbols or ["BTC"]
+        else:
+            symbols = ["BTC"]
+
+    mock_balance = agent.mock_initial_balance or 10000.0
+
+    try:
+        trader = MockTrader(
+            initial_balance=mock_balance,
+            symbols=symbols,
+        )
+        await trader.initialize()
+
+        # Restore state from persisted positions
+        await _restore_mock_trader_state(
+            session,
+            agent.id,
+            mock_balance,
+            trader,
+        )
+
+        logger.info(
+            f"MockTrader created for agent {agent.id}: "
+            f"balance=${mock_balance:,.0f}, symbols={symbols}"
+        )
+        return trader, None
+
+    except Exception as e:
+        error_msg = f"Failed to create MockTrader for agent {agent.id}: {e}"
+        logger.exception(error_msg)
+        return None, error_msg
+
+
 # ==================== Task Definitions ====================
 
 async def execute_strategy_cycle(
@@ -194,24 +257,10 @@ async def execute_strategy_cycle(
 
             # ── Determine execution mode and create trader ──
             if agent and agent.execution_mode == "mock":
-                # Mock mode: use MockTrader with real-time public prices
-                from ..traders.mock_trader import MockTrader
-
-                symbols = strategy.symbols or ["BTC"]
-                mock_balance = agent.mock_initial_balance or 10000.0
-                trader = MockTrader(
-                    initial_balance=mock_balance,
-                    symbols=symbols,
-                )
-                try:
-                    await trader.initialize()
-                    # Restore state from persisted positions (survives restarts)
-                    await _restore_mock_trader_state(
-                        session, agent.id, mock_balance, trader,
-                    )
-                except Exception as e:
-                    result["error"] = f"Failed to initialize MockTrader: {e}"
-                    logger.error(result["error"])
+                # Mock mode: use MockTrader
+                trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                if error:
+                    result["error"] = error
                     return result
 
             else:
@@ -346,7 +395,7 @@ async def execute_strategy_cycle(
                         await session.commit()
                         logger.error(f"Agent {agent.id} paused due to repeated errors")
         except Exception as update_error:
-            logger.error(f"Failed to update agent status: {update_error}")
+            logger.exception("Failed to update agent status after strategy execution error")
     
     finally:
         # Clean up trader connection
@@ -502,7 +551,7 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                         logger.info(f"Scheduled job for agent {agent.id}, strategy {strategy_id}")
                     except Exception as e:
                         errors += 1
-                        logger.error(f"Failed to schedule job for strategy {strategy_id}: {e}")
+                        logger.exception(f"Failed to schedule job for strategy {strategy_id}")
                 else:
                     skipped += 1
                     logger.debug(f"Job already exists for strategy {strategy_id}")
@@ -601,7 +650,7 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
                     total_summary["stale_cleaned"] += stale
 
                 except Exception as e:
-                    logger.error(f"Reconciliation error for account {account_id}: {e}")
+                    logger.exception(f"Reconciliation error for account {account_id}")
                 finally:
                     if trader:
                         try:

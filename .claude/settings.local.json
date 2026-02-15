@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm test:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__read_text_file",
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   }
 }

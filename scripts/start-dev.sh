@@ -144,8 +144,12 @@ tail_logs() {
     done
     echo ""
 
-    # Use tail -f with multiple files
-    tail -f "${LOG_FILES[@]}"
+    # Use tail -f with multiple files (with grc for color if available)
+    if command -v grc &> /dev/null; then
+        grc tail -f "${LOG_FILES[@]}"
+    else
+        tail -f "${LOG_FILES[@]}"
+    fi
 }
 
 # ==================== Start ====================

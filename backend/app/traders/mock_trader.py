@@ -18,6 +18,7 @@ from typing import Dict, List, Literal, Optional
 
 import ccxt.async_support as ccxt
 
+from ..core.config import get_ccxt_proxy_config
 from .base import (
     AccountState,
     BaseTrader,
@@ -48,7 +49,7 @@ class MockTrader(BaseTrader):
         self,
         initial_balance: float = 10000.0,
         symbols: Optional[List[str]] = None,
-        exchange_id: str = "binance",
+        exchange_id: str = "hyperliquid",  # more stable than binance
         maker_fee: float = 0.0002,
         taker_fee: float = 0.0005,
         default_slippage: float = 0.001,
@@ -57,7 +58,7 @@ class MockTrader(BaseTrader):
         Args:
             initial_balance: Starting virtual balance in USD.
             symbols: List of symbols to track (e.g. ["BTC", "ETH"]).
-            exchange_id: CCXT exchange for public data (default: binance).
+            exchange_id: CCXT exchange for public data (default: hyperliquid).
             maker_fee: Simulated maker fee rate.
             taker_fee: Simulated taker fee rate.
             default_slippage: Default slippage for market orders.
@@ -89,13 +90,14 @@ class MockTrader(BaseTrader):
             exchange_class = getattr(ccxt, self._exchange_id, None)
             if exchange_class is None:
                 logger.warning(
-                    f"Unknown exchange '{self._exchange_id}', falling back to binance"
+                    f"Unknown exchange '{self._exchange_id}', falling back to hyperliquid"
                 )
-                exchange_class = ccxt.binance
+                exchange_class = ccxt.hyperliquid
 
             self._ccxt = exchange_class({
                 "enableRateLimit": True,
                 "options": {"defaultType": "swap"},  # perpetual futures
+                **get_ccxt_proxy_config(),  # proxy support for geo-restricted exchanges
             })
 
             # Warm up prices

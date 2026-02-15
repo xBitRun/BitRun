@@ -7,6 +7,7 @@ Handles CRUD, status control, worker management, and position queries.
 
 import logging
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
@@ -409,21 +410,24 @@ async def update_agent_status(
     # For now, use existing worker managers based on strategy type
     try:
         if agent.strategy and agent.strategy.type == "ai":
+            # AI strategy: ExecutionWorker expects StrategyDB.id
             from ...workers.execution_worker import get_worker_manager
             worker_manager = await get_worker_manager()
-            strategy_id = str(agent.strategy_id)
+            strategy_id = str(agent.strategy_id)  # StrategyDB.id
             if new == "active":
                 await worker_manager.start_strategy(strategy_id)
             elif new in ("paused", "stopped"):
                 await worker_manager.stop_strategy(strategy_id)
         else:
+            # Quant strategy: QuantWorkerManager expects AgentDB.id
+            # (because QuantStrategyDB = AgentDB)
             from ...workers.quant_worker import get_quant_worker_manager
             worker_manager = await get_quant_worker_manager()
-            strategy_id = str(agent.strategy_id)
+            agent_id_str = str(agent.id)  # AgentDB.id
             if new == "active":
-                await worker_manager.start_strategy(strategy_id)
+                await worker_manager.start_strategy(agent_id_str)
             elif new in ("paused", "stopped"):
-                await worker_manager.stop_strategy(strategy_id)
+                await worker_manager.stop_strategy(agent_id_str)
     except Exception as e:
         logger.error(f"Error syncing worker for agent {agent_id}: {e}")
 
@@ -527,16 +531,55 @@ async def get_agent_positions(
 @router.post("/{agent_id}/trigger")
 async def trigger_agent_execution(
     agent_id: str,
+    db: DbSessionDep,
     user_id: CurrentUserDep,
 ):
     """
     Manually trigger an agent execution cycle (Run Now).
     """
-    # TODO: Use unified worker manager
-    from ...workers.execution_worker import get_worker_manager
-    worker_manager = await get_worker_manager()
+    # Get agent and verify ownership
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(
+        uuid.UUID(agent_id),
+        uuid.UUID(user_id),
+        include_strategy=True,
+    )
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
 
-    result = await worker_manager.trigger_manual_execution(agent_id, user_id=user_id)
+    # Check if agent is active
+    if agent.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot trigger execution for agent in '{agent.status}' status. Agent must be active."
+        )
+
+    # Route to appropriate worker based on strategy type
+    strategy_type = agent.strategy.type if agent.strategy else None
+
+    if strategy_type == "ai":
+        # AI strategy: use ExecutionWorker
+        from ...workers.execution_worker import get_worker_manager
+        worker_manager = await get_worker_manager()
+        result = await worker_manager.trigger_manual_execution(
+            str(agent.strategy_id),
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+    else:
+        # Quant strategy (grid/dca/rsi): use QuantWorker
+        from ...workers.quant_worker import get_quant_worker_manager
+        worker_manager = await get_quant_worker_manager()
+
+        # Trigger a single cycle execution
+        result = await _trigger_quant_cycle(
+            worker_manager,
+            agent,
+            db,
+        )
 
     if not result.get("success"):
         raise HTTPException(
@@ -550,6 +593,106 @@ async def trigger_agent_execution(
         "decision_id": result.get("decision_id"),
         "success": True,
     }
+
+
+async def _trigger_quant_cycle(
+    worker_manager,
+    agent,
+    db,
+) -> dict:
+    """Trigger a single execution cycle for a quant strategy."""
+    from ...services.quant_engine import create_engine
+    from ...services.position_service import PositionService
+    from ...services.redis_service import get_redis_service
+    from ...traders.mock_trader import MockTrader
+    from ...traders.ccxt_trader import create_trader_from_account
+    from ...db.repositories.account import AccountRepository
+
+    # QuantEngine expects agent_id (not strategy_id)
+    # because QuantStrategyDB = AgentDB
+    agent_id_str = str(agent.id)
+
+    try:
+        # Create trader based on execution mode
+        trader = None
+        if agent.execution_mode == "mock":
+            from ...workers.tasks import create_mock_trader
+            symbols = [agent.symbol] if agent.symbol else ["BTC"]
+            trader, error = await create_mock_trader(agent, db, symbols=symbols)
+            if error:
+                return {"success": False, "error": error}
+        else:
+            # Live mode
+            if not agent.account_id:
+                return {"success": False, "error": "No account configured for live trading"}
+
+            account_repo = AccountRepository(db)
+            account = await account_repo.get_by_id(agent.account_id)
+            if not account:
+                return {"success": False, "error": "Account not found"}
+
+            credentials = await account_repo.get_decrypted_credentials(
+                agent.account_id, agent.user_id,
+            )
+            if not credentials:
+                return {"success": False, "error": "Failed to decrypt credentials"}
+
+            trader = create_trader_from_account(account, credentials)
+            await trader.initialize()
+
+        # Create position service
+        try:
+            redis_service = await get_redis_service()
+        except Exception:
+            redis_service = None
+        position_service = PositionService(db=db, redis=redis_service)
+
+        # Create engine and run one cycle
+        strategy_type = agent.strategy_type
+        if not strategy_type or strategy_type not in ("grid", "dca", "rsi"):
+            return {"success": False, "error": f"Unsupported strategy type: {strategy_type}"}
+
+        engine = create_engine(
+            strategy_type=strategy_type,
+            strategy_id=agent_id_str,  # Note: create_engine expects agent_id here
+            trader=trader,
+            symbol=agent.symbol,
+            config=agent.config or {},
+            runtime_state=agent.runtime_state or {},
+            account_id=str(agent.account_id) if agent.account_id else None,
+            position_service=position_service,
+            strategy=agent,
+        )
+
+        result = await engine.run_cycle()
+
+        # Update runtime state if changed
+        if result.get("updated_state"):
+            agent_repo = AgentRepository(db)
+            await agent_repo.update(
+                agent.id,
+                agent.user_id,
+                runtime_state=result["updated_state"],
+                last_run_at=datetime.now(UTC),
+                next_run_at=datetime.now(UTC) + timedelta(minutes=agent.execution_interval_minutes),
+            )
+            await db.commit()
+
+        # Close trader connection
+        if trader:
+            try:
+                await trader.close()
+            except Exception:
+                pass
+
+        return {
+            "success": True,
+            "message": result.get("message", "Cycle completed"),
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to trigger quant cycle for agent {agent_id_str}")
+        return {"success": False, "error": str(e)}
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)

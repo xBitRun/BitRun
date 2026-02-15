@@ -37,7 +37,7 @@ class QuantEngineBase(ABC):
 
     def __init__(
         self,
-        strategy_id: str,
+        agent_id: str,
         trader: BaseTrader,
         symbol: str,
         config: dict,
@@ -46,7 +46,8 @@ class QuantEngineBase(ABC):
         position_service: Optional[PositionService] = None,
         strategy: Optional[object] = None,
     ):
-        self.strategy_id = strategy_id
+        # Note: agent_id is AgentDB.id (QuantStrategyDB is alias for AgentDB)
+        self.agent_id = agent_id
         self.trader = trader
         self.symbol = symbol
         self.config = config
@@ -92,7 +93,7 @@ class QuantEngineBase(ABC):
                         account_state = await self.trader.get_account_state()
                         self._cached_account_equity = account_state.equity
                     claim = await ps.claim_position_with_capital_check(
-                        strategy_id=uuid.UUID(self.strategy_id),
+                        strategy_id=uuid.UUID(self.agent_id),
                         strategy_type="quant",
                         account_id=uuid.UUID(self.account_id),
                         symbol=self.symbol,
@@ -105,7 +106,7 @@ class QuantEngineBase(ABC):
                 else:
                     # Fallback: no capital check (backward compatible)
                     claim = await ps.claim_position(
-                        strategy_id=uuid.UUID(self.strategy_id),
+                        strategy_id=uuid.UUID(self.agent_id),
                         strategy_type="quant",
                         account_id=uuid.UUID(self.account_id),
                         symbol=self.symbol,
@@ -118,7 +119,7 @@ class QuantEngineBase(ABC):
                 is_existing_position = claim.status == "open"
             except CapitalExceededError as e:
                 logger.warning(
-                    f"Quant {self.strategy_id}: capital exceeded for "
+                    f"Quant {self.agent_id}: capital exceeded for "
                     f"{self.symbol}: {e}"
                 )
                 return OrderResult(
@@ -127,7 +128,7 @@ class QuantEngineBase(ABC):
                 )
             except PositionConflictError as e:
                 logger.warning(
-                    f"Quant {self.strategy_id}: symbol conflict for "
+                    f"Quant {self.agent_id}: symbol conflict for "
                     f"{self.symbol}: {e}"
                 )
                 return OrderResult(
@@ -155,7 +156,7 @@ class QuantEngineBase(ABC):
                     pos = await self.trader.get_position(self.symbol)
                     if pos and pos.size > 0:
                         logger.warning(
-                            f"Quant {self.strategy_id}: exception during order "
+                            f"Quant {self.agent_id}: exception during order "
                             f"for {self.symbol} but exchange shows position. "
                             "Confirming claim."
                         )
@@ -168,13 +169,13 @@ class QuantEngineBase(ABC):
                             )
                         except Exception:
                             logger.critical(
-                                f"Quant {self.strategy_id}: failed to confirm "
+                                f"Quant {self.agent_id}: failed to confirm "
                                 f"claim {claim.id} for {self.symbol}."
                             )
                         should_release = False
                 except Exception as inner_exc:
                     logger.warning(
-                        f"Quant {self.strategy_id}: failed to check position "
+                        f"Quant {self.agent_id}: failed to check position "
                         f"for {self.symbol} after order exception: {inner_exc}"
                     )
                 if should_release:
@@ -209,7 +210,7 @@ class QuantEngineBase(ABC):
                         )
                 except Exception as confirm_err:
                     logger.critical(
-                        f"Quant {self.strategy_id}: position DB update FAILED "
+                        f"Quant {self.agent_id}: position DB update FAILED "
                         f"after successful order for {self.symbol} "
                         f"(claim {claim.id}): {confirm_err}. "
                         "Leaving for reconciliation."
@@ -232,7 +233,7 @@ class QuantEngineBase(ABC):
 
         if ps:
             pos_record = await ps.get_strategy_position_for_symbol(
-                uuid.UUID(self.strategy_id), self.symbol
+                uuid.UUID(self.agent_id), self.symbol
             )
 
         result = await self.trader.close_position(symbol=self.symbol)
@@ -365,7 +366,7 @@ class GridEngine(QuantEngineBase):
                             trades_executed += 1
                             self.runtime_state["total_invested"] += size_usd
                             logger.info(
-                                f"Grid {self.strategy_id}: BUY at grid level {level} "
+                                f"Grid {self.agent_id}: BUY at grid level {level} "
                                 f"(current: {current_price}, "
                                 f"filled@{open_result.filled_price or current_price:.2f}, "
                                 f"size: ${size_usd:.2f})"
@@ -385,7 +386,7 @@ class GridEngine(QuantEngineBase):
                             pnl_change += profit
                             self.runtime_state["total_returned"] += size_usd + profit
                             logger.info(
-                                f"Grid {self.strategy_id}: SELL at grid level {level} "
+                                f"Grid {self.agent_id}: SELL at grid level {level} "
                                 f"(current: {current_price}, profit: ${profit:.2f})"
                             )
                     except TradeError as e:
@@ -406,7 +407,7 @@ class GridEngine(QuantEngineBase):
             }
 
         except Exception as e:
-            logger.error(f"Grid engine error for {self.strategy_id}: {e}")
+            logger.error(f"Grid engine error for {self.agent_id}: {e}")
             return {
                 "success": False,
                 "trades_executed": 0,
@@ -472,7 +473,7 @@ class DCAEngine(QuantEngineBase):
                         pnl_change = sell_value - total_invested
                         trades_executed += 1
                         logger.info(
-                            f"DCA {self.strategy_id}: TAKE PROFIT at {current_price:.2f} "
+                            f"DCA {self.agent_id}: TAKE PROFIT at {current_price:.2f} "
                             f"(avg_cost: {avg_cost:.2f}, pnl: ${pnl_change:.2f}, "
                             f"+{current_pnl_pct:.1f}%)"
                         )
@@ -557,7 +558,7 @@ class DCAEngine(QuantEngineBase):
                 self.runtime_state["last_order_time"] = datetime.now(UTC).isoformat()
 
                 logger.info(
-                    f"DCA {self.strategy_id}: BUY ${order_amount} at {current_price:.2f} "
+                    f"DCA {self.agent_id}: BUY ${order_amount} at {current_price:.2f} "
                     f"(avg_cost: {new_avg_cost:.2f}, total: ${new_total_invested:.2f})"
                 )
 
@@ -575,7 +576,7 @@ class DCAEngine(QuantEngineBase):
             }
 
         except Exception as e:
-            logger.error(f"DCA engine error for {self.strategy_id}: {e}")
+            logger.error(f"DCA engine error for {self.agent_id}: {e}")
             return {
                 "success": False,
                 "trades_executed": 0,
@@ -647,7 +648,7 @@ class RSIEngine(QuantEngineBase):
                 actual_has_position = actual_pos is not None and actual_pos.size > 0
                 if has_position and not actual_has_position:
                     logger.warning(
-                        f"RSI {self.strategy_id}: state says has_position=True but "
+                        f"RSI {self.agent_id}: state says has_position=True but "
                         f"exchange has no position for {self.symbol}. Resetting."
                     )
                     self.runtime_state["has_position"] = False
@@ -656,7 +657,7 @@ class RSIEngine(QuantEngineBase):
                     has_position = False
                 elif not has_position and actual_has_position:
                     logger.warning(
-                        f"RSI {self.strategy_id}: state says has_position=False but "
+                        f"RSI {self.agent_id}: state says has_position=False but "
                         f"exchange shows position for {self.symbol}. Syncing."
                     )
                     self.runtime_state["has_position"] = True
@@ -684,7 +685,7 @@ class RSIEngine(QuantEngineBase):
                         self.runtime_state["last_signal"] = "buy"
 
                         logger.info(
-                            f"RSI {self.strategy_id}: BUY signal (RSI={rsi_value:.1f} <= {oversold}) "
+                            f"RSI {self.agent_id}: BUY signal (RSI={rsi_value:.1f} <= {oversold}) "
                             f"at {current_price:.2f} (filled@{actual_entry:.2f}), size=${order_amount}"
                         )
                 except TradeError as e:
@@ -711,7 +712,7 @@ class RSIEngine(QuantEngineBase):
                         self.runtime_state["last_signal"] = "sell"
 
                         logger.info(
-                            f"RSI {self.strategy_id}: SELL signal (RSI={rsi_value:.1f} >= {overbought}) "
+                            f"RSI {self.agent_id}: SELL signal (RSI={rsi_value:.1f} >= {overbought}) "
                             f"at {current_price:.2f}, P/L=${pnl_change:.2f}"
                         )
                 except TradeError as e:
@@ -729,7 +730,7 @@ class RSIEngine(QuantEngineBase):
             }
 
         except Exception as e:
-            logger.error(f"RSI engine error for {self.strategy_id}: {e}")
+            logger.error(f"RSI engine error for {self.agent_id}: {e}")
             return {
                 "success": False,
                 "trades_executed": 0,
@@ -783,7 +784,7 @@ class RSIEngine(QuantEngineBase):
 
 def create_engine(
     strategy_type: str,
-    strategy_id: str,
+    agent_id: str,
     trader: BaseTrader,
     symbol: str,
     config: dict,
@@ -792,7 +793,13 @@ def create_engine(
     position_service: Optional[PositionService] = None,
     strategy: Optional[object] = None,
 ) -> QuantEngineBase:
-    """Factory function to create the appropriate engine for a strategy type."""
+    """Factory function to create the appropriate engine for a strategy type.
+
+    Args:
+        strategy_type: Type of strategy (grid, dca, rsi)
+        agent_id: AgentDB.id (not StrategyDB.id)
+        ...
+    """
     engines = {
         "grid": GridEngine,
         "dca": DCAEngine,
@@ -804,7 +811,7 @@ def create_engine(
         raise ValueError(f"Unknown strategy type: {strategy_type}")
 
     return engine_class(
-        strategy_id=strategy_id,
+        agent_id=agent_id,
         trader=trader,
         symbol=symbol,
         config=config,
