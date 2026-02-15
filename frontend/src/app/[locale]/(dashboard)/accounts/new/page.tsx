@@ -15,7 +15,13 @@ import {
   ChevronUp,
   Lock,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +45,13 @@ import { encryptFields, isTransportEncryptionEnabled } from "@/lib/crypto";
 import { Badge } from "@/components/ui/badge";
 
 const exchangeOptions = [
-  { value: "hyperliquid", label: "Hyperliquid (DEX)", icon: "🔷", description: "Decentralized perpetual exchange" },
-  { value: "binance", label: "Binance", icon: "🟡", description: "World's largest crypto exchange" },
-  { value: "bybit", label: "Bybit", icon: "🟠", description: "Popular derivatives exchange" },
-  { value: "okx", label: "OKX", icon: "⬛", description: "Global crypto exchange" },
-  { value: "bitget", label: "Bitget", icon: "🔵", description: "Leading crypto derivatives exchange" },
-  { value: "kucoin", label: "KuCoin", icon: "🟢", description: "Global cryptocurrency exchange" },
-  { value: "gate", label: "Gate.io", icon: "🔴", description: "Multi-asset crypto exchange" },
+  { value: "hyperliquid", label: "Hyperliquid (DEX)", icon: "🔷" },
+  { value: "binance", label: "Binance", icon: "🟡" },
+  { value: "bybit", label: "Bybit", icon: "🟠" },
+  { value: "okx", label: "OKX", icon: "⬛" },
+  { value: "bitget", label: "Bitget", icon: "🔵" },
+  { value: "kucoin", label: "KuCoin", icon: "🟢" },
+  { value: "gate", label: "Gate.io", icon: "🔴" },
 ];
 
 export default function NewAccountPage() {
@@ -69,10 +75,16 @@ export default function NewAccountPage() {
     passphrase: "",
     mnemonic: "",
   });
-  const [hlImportType, setHlImportType] = useState<"privateKey" | "mnemonic">("privateKey");
-  const [transportEncrypted, setTransportEncrypted] = useState<boolean | null>(null);
+  const [hlImportType, setHlImportType] = useState<"privateKey" | "mnemonic">(
+    "privateKey",
+  );
+  const [transportEncrypted, setTransportEncrypted] = useState<boolean | null>(
+    null,
+  );
 
-  const [submitPhase, setSubmitPhase] = useState<"idle" | "creating" | "testing">("idle");
+  const [submitPhase, setSubmitPhase] = useState<
+    "idle" | "creating" | "testing"
+  >("idle");
 
   // Check transport encryption availability on mount
   useEffect(() => {
@@ -85,7 +97,9 @@ export default function NewAccountPage() {
     setSubmitPhase("creating");
 
     try {
-      const needsPassphrase = ["okx", "bitget", "kucoin"].includes(newAccount.exchange);
+      const needsPassphrase = ["okx", "bitget", "kucoin"].includes(
+        newAccount.exchange,
+      );
       let request: CreateAccountRequest = {
         name: newAccount.name,
         exchange: newAccount.exchange,
@@ -97,12 +111,20 @@ export default function NewAccountPage() {
           : {
               api_key: newAccount.apiKey,
               api_secret: newAccount.apiSecret,
-              ...(needsPassphrase && newAccount.passphrase ? { passphrase: newAccount.passphrase } : {}),
+              ...(needsPassphrase && newAccount.passphrase
+                ? { passphrase: newAccount.passphrase }
+                : {}),
             }),
       };
 
       // Encrypt sensitive fields if transport encryption is enabled
-      const sensitiveFields = ["api_key", "api_secret", "private_key", "mnemonic", "passphrase"];
+      const sensitiveFields = [
+        "api_key",
+        "api_secret",
+        "private_key",
+        "mnemonic",
+        "passphrase",
+      ];
       request = await encryptFields(request, sensitiveFields);
 
       const account = await createAccount(request);
@@ -133,16 +155,19 @@ export default function NewAccountPage() {
       ? hlImportType === "mnemonic"
         ? newAccount.mnemonic
         : newAccount.apiKey
-      : newAccount.apiKey && newAccount.apiSecret)
+      : newAccount.apiKey && newAccount.apiSecret),
   );
 
-  const selectedExchange = exchangeOptions.find((e) => e.value === newAccount.exchange);
+  const selectedExchange = exchangeOptions.find(
+    (e) => e.value === newAccount.exchange,
+  );
 
-  const submitLabel = submitPhase === "testing"
-    ? tNew("testingConnection")
-    : submitPhase === "creating"
-      ? tNew("creating")
-      : t("dialog.addAccount");
+  const submitLabel =
+    submitPhase === "testing"
+      ? tNew("testingConnection")
+      : submitPhase === "creating"
+        ? tNew("creating")
+        : t("dialog.addAccount");
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -181,7 +206,9 @@ export default function NewAccountPage() {
                 id="name"
                 placeholder={t("dialog.accountNamePlaceholder")}
                 value={newAccount.name}
-                onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
+                onChange={(e) =>
+                  setNewAccount({ ...newAccount, name: e.target.value })
+                }
               />
             </div>
 
@@ -219,7 +246,9 @@ export default function NewAccountPage() {
                 </span>
                 <Switch
                   checked={newAccount.isTestnet}
-                  onCheckedChange={(v) => setNewAccount({ ...newAccount, isTestnet: v })}
+                  onCheckedChange={(v) =>
+                    setNewAccount({ ...newAccount, isTestnet: v })
+                  }
                 />
               </div>
             </div>
@@ -248,7 +277,11 @@ export default function NewAccountPage() {
             >
               <Lightbulb className="w-4 h-4 mr-1" />
               {tNew("tips")}
-              {showTips ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+              {showTips ? (
+                <ChevronUp className="w-4 h-4 ml-1" />
+              ) : (
+                <ChevronDown className="w-4 h-4 ml-1" />
+              )}
             </Button>
           </div>
 
@@ -287,7 +320,7 @@ export default function NewAccountPage() {
               <div>
                 <p className="font-medium">{selectedExchange.label}</p>
                 <p className="text-xs text-muted-foreground">
-                    {newAccount.exchange === "hyperliquid"
+                  {newAccount.exchange === "hyperliquid"
                     ? tNew("hyperliquidInfo")
                     : tNew("cexInfo")}
                 </p>
@@ -312,7 +345,9 @@ export default function NewAccountPage() {
                       : "border-border/50 hover:border-border"
                   }`}
                 >
-                  <p className="font-medium text-sm">{t("dialog.privateKey")}</p>
+                  <p className="font-medium text-sm">
+                    {t("dialog.privateKey")}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {tNew("privateKeyDesc")}
                   </p>
@@ -338,57 +373,76 @@ export default function NewAccountPage() {
           {/* Credential Input Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Hyperliquid: Private Key */}
-            {newAccount.exchange === "hyperliquid" && hlImportType === "privateKey" && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="apiKey">{t("dialog.privateKey")}</Label>
-                <div className="relative">
-                  <Input
-                    id="apiKey"
-                    type={showSecret ? "text" : "password"}
-                    placeholder="0x..."
-                    value={newAccount.apiKey}
-                    onChange={(e) => setNewAccount({ ...newAccount, apiKey: e.target.value })}
-                    className="pr-10 font-mono"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => setShowSecret(!showSecret)}
-                  >
-                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
+            {newAccount.exchange === "hyperliquid" &&
+              hlImportType === "privateKey" && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="apiKey">{t("dialog.privateKey")}</Label>
+                  <div className="relative">
+                    <Input
+                      id="apiKey"
+                      type={showSecret ? "text" : "password"}
+                      placeholder="0x..."
+                      value={newAccount.apiKey}
+                      onChange={(e) =>
+                        setNewAccount({ ...newAccount, apiKey: e.target.value })
+                      }
+                      className="pr-10 font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setShowSecret(!showSecret)}
+                    >
+                      {showSecret ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Hyperliquid: Mnemonic */}
-            {newAccount.exchange === "hyperliquid" && hlImportType === "mnemonic" && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="mnemonic">{t("dialog.mnemonic")}</Label>
-                <div className="relative">
-                  <Input
-                    id="mnemonic"
-                    type={showSecret ? "text" : "password"}
-                    placeholder={t("dialog.mnemonicPlaceholder")}
-                    value={newAccount.mnemonic}
-                    onChange={(e) => setNewAccount({ ...newAccount, mnemonic: e.target.value })}
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => setShowSecret(!showSecret)}
-                  >
-                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
+            {newAccount.exchange === "hyperliquid" &&
+              hlImportType === "mnemonic" && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="mnemonic">{t("dialog.mnemonic")}</Label>
+                  <div className="relative">
+                    <Input
+                      id="mnemonic"
+                      type={showSecret ? "text" : "password"}
+                      placeholder={t("dialog.mnemonicPlaceholder")}
+                      value={newAccount.mnemonic}
+                      onChange={(e) =>
+                        setNewAccount({
+                          ...newAccount,
+                          mnemonic: e.target.value,
+                        })
+                      }
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setShowSecret(!showSecret)}
+                    >
+                      {showSecret ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("dialog.mnemonicHint")}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">{t("dialog.mnemonicHint")}</p>
-              </div>
-            )}
+              )}
 
             {/* CEX: API Key & Secret */}
             {newAccount.exchange !== "hyperliquid" && (
@@ -400,7 +454,9 @@ export default function NewAccountPage() {
                     type="text"
                     placeholder={t("dialog.enterApiKey")}
                     value={newAccount.apiKey}
-                    onChange={(e) => setNewAccount({ ...newAccount, apiKey: e.target.value })}
+                    onChange={(e) =>
+                      setNewAccount({ ...newAccount, apiKey: e.target.value })
+                    }
                     className="font-mono"
                   />
                 </div>
@@ -414,7 +470,10 @@ export default function NewAccountPage() {
                       placeholder={t("dialog.enterApiSecret")}
                       value={newAccount.apiSecret}
                       onChange={(e) =>
-                        setNewAccount({ ...newAccount, apiSecret: e.target.value })
+                        setNewAccount({
+                          ...newAccount,
+                          apiSecret: e.target.value,
+                        })
                       }
                       className="pr-10 font-mono"
                     />
@@ -425,7 +484,11 @@ export default function NewAccountPage() {
                       className="absolute right-0 top-0 h-full"
                       onClick={() => setShowSecret(!showSecret)}
                     >
-                      {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showSecret ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -441,7 +504,10 @@ export default function NewAccountPage() {
                         placeholder={t("dialog.enterPassphrase")}
                         value={newAccount.passphrase}
                         onChange={(e) =>
-                          setNewAccount({ ...newAccount, passphrase: e.target.value })
+                          setNewAccount({
+                            ...newAccount,
+                            passphrase: e.target.value,
+                          })
                         }
                         className="pr-10 font-mono"
                       />
@@ -452,10 +518,16 @@ export default function NewAccountPage() {
                         className="absolute right-0 top-0 h-full"
                         onClick={() => setShowSecret(!showSecret)}
                       >
-                        {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showSecret ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">{t("dialog.passphraseHint")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("dialog.passphraseHint")}
+                    </p>
                   </div>
                 )}
               </>
@@ -480,26 +552,32 @@ export default function NewAccountPage() {
               <p className="text-sm font-medium text-primary">
                 {tNew("encryptionTitle")}
               </p>
-              <p className="text-sm text-muted-foreground">{t("dialog.encryptionNote")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("dialog.encryptionNote")}
+              </p>
             </div>
           </div>
 
           {/* Transport encryption - dynamic status */}
           {transportEncrypted !== null && (
-            <div className={`flex items-start gap-3 p-4 rounded-lg border ${
-              transportEncrypted
-                ? "bg-emerald-500/5 border-emerald-500/20"
-                : "bg-amber-500/5 border-amber-500/20"
-            }`}>
+            <div
+              className={`flex items-start gap-3 p-4 rounded-lg border ${
+                transportEncrypted
+                  ? "bg-emerald-500/5 border-emerald-500/20"
+                  : "bg-amber-500/5 border-amber-500/20"
+              }`}
+            >
               {transportEncrypted ? (
                 <Lock className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
               ) : (
                 <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               )}
               <div>
-                <p className={`text-sm font-medium ${
-                  transportEncrypted ? "text-emerald-500" : "text-amber-500"
-                }`}>
+                <p
+                  className={`text-sm font-medium ${
+                    transportEncrypted ? "text-emerald-500" : "text-amber-500"
+                  }`}
+                >
                   {transportEncrypted
                     ? tNew("transportEnabled")
                     : tNew("transportDisabled")}

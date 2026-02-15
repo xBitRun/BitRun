@@ -569,6 +569,15 @@
       "title": "Exchange Account Connection",
       "description": "Connect Hyperliquid, Binance, Bybit, OKX, Bitget, KuCoin, Gate.io and more. Credentials are encrypted; use testnet to try without real funds."
     },
+    "exchangeDescriptions": {
+      "hyperliquid": "Decentralized perpetual exchange",
+      "binance": "World's largest crypto exchange",
+      "bybit": "Popular derivatives exchange",
+      "okx": "Global crypto exchange",
+      "bitget": "Leading crypto derivatives exchange",
+      "kucoin": "Global cryptocurrency exchange",
+      "gate": "Multi-asset crypto exchange"
+    },
     "dialog": {
       "title": "Add Exchange Account",
       "description": "Your API credentials are encrypted before storage",
@@ -765,6 +774,10 @@
     "title": "AI Decisions",
     "subtitle": "View AI reasoning and decision history",
     "searchPlaceholder": "Search decisions...",
+    "emptyTitle": "No Decisions Yet",
+    "emptyDescription": "AI decisions will appear here once your strategies start running.",
+    "retry": "Retry",
+    "refresh": "Refresh",
     "filter": {
       "allDecisions": "All Decisions",
       "executed": "Executed",
@@ -803,6 +816,22 @@
       "noRecords": "No execution records"
     }
   },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "charts": {
+    "decisionTimeline": {
+      "noDecisions": "No decisions yet",
+      "executed": "Executed",
+      "skipped": "Skipped",
+      "moreDecisions": "+{count} more decisions",
+      "executionRate": "Execution Rate",
+      "actionDistribution": "Action Distribution"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -812,7 +841,8 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "retry": "Retry"
+    "retry": "Retry",
+    "refresh": "Refresh"
   },
   "editor": {
     "source": "Source",

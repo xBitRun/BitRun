@@ -16,7 +16,13 @@ import {
   Globe,
   ShieldCheck,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,11 +35,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { FormPageHeader, CollapsibleCard } from "@/components/layout";
-import {
-  usePresetProviders,
-  useApiFormats,
-  getProviderIcon,
-} from "@/hooks";
+import { usePresetProviders, useApiFormats, getProviderIcon } from "@/hooks";
 import { providersApi } from "@/lib/api";
 
 export default function NewProviderPage() {
@@ -86,7 +88,7 @@ export default function NewProviderPage() {
 
   const handleCreateProvider = async () => {
     if (!formData.name.trim() || !formData.api_key.trim()) {
-      setSubmitError(t("dialog.requiredFields") || "Please fill in all required fields");
+      setSubmitError(t("dialog.requiredFields"));
       return;
     }
 
@@ -103,13 +105,14 @@ export default function NewProviderPage() {
         base_url: formData.base_url || undefined,
         api_format: formData.api_format,
       });
-      toast.success(t("dialog.success") || "Provider added successfully");
-      await mutate('provider-configs');
+      toast.success(t("dialog.success"));
+      await mutate("provider-configs");
       router.push("/models");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add provider";
+      const message =
+        err instanceof Error ? err.message : "Failed to add provider";
       setSubmitError(message);
-      toast.error(t("dialog.error") || "Failed to add provider", message);
+      toast.error(t("dialog.error"), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -162,23 +165,27 @@ export default function NewProviderPage() {
                 <Settings className="w-4 h-4" />
                 {t("dialog.customConfig")}
               </button>
-              {presets.filter((p) => p.id !== "custom").map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handlePresetChange(preset.id)}
-                  className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 ${
-                    selectedPreset === preset.id
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border/50 hover:border-border text-muted-foreground"
-                  }`}
-                >
-                  <span>{getProviderIcon(preset.id)}</span>
-                  {preset.name}
-                </button>
-              ))}
+              {presets
+                .filter((p) => p.id !== "custom")
+                .map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handlePresetChange(preset.id)}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 ${
+                      selectedPreset === preset.id
+                        ? "border-primary/50 bg-primary/10 text-foreground"
+                        : "border-border/50 hover:border-border text-muted-foreground"
+                    }`}
+                  >
+                    <span>{getProviderIcon(preset.id)}</span>
+                    {preset.name}
+                  </button>
+                ))}
             </div>
-            <p className="text-xs text-muted-foreground">{t("dialog.presetHint")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("dialog.presetHint")}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -190,10 +197,10 @@ export default function NewProviderPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="w-5 h-5 text-primary" />
-                {t("newPage.configuration") || "Provider Configuration"}
+                {t("newPage.configuration")}
               </CardTitle>
               <CardDescription className="mt-1">
-                {t("newPage.configurationDesc") || "Configure the provider details and API credentials"}
+                {t("newPage.configurationDesc")}
               </CardDescription>
             </div>
             <Button
@@ -203,8 +210,12 @@ export default function NewProviderPage() {
               className="text-muted-foreground"
             >
               <Lightbulb className="w-4 h-4 mr-1" />
-              {t("newPage.tips") || "Tips"}
-              {showTips ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+              {t("newPage.tips")}
+              {showTips ? (
+                <ChevronUp className="w-4 h-4 ml-1" />
+              ) : (
+                <ChevronDown className="w-4 h-4 ml-1" />
+              )}
             </Button>
           </div>
 
@@ -213,21 +224,21 @@ export default function NewProviderPage() {
             <div className="mt-4 p-4 rounded-lg bg-muted/50 text-sm space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="font-medium mb-1">{t("newPage.tipApiKey") || "API Key Security"}</p>
+                  <p className="font-medium mb-1">{t("newPage.tipApiKey")}</p>
                   <p className="text-muted-foreground text-xs">
-                    {t("newPage.tipApiKeyDesc") || "Your API key is encrypted and stored securely. Never share your API key with others."}
+                    {t("newPage.tipApiKeyDesc")}
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium mb-1">{t("newPage.tipFormat") || "API Format"}</p>
+                  <p className="font-medium mb-1">{t("newPage.tipFormat")}</p>
                   <p className="text-muted-foreground text-xs">
-                    {t("newPage.tipFormatDesc") || "Most providers use OpenAI-compatible format. Check your provider's documentation if unsure."}
+                    {t("newPage.tipFormatDesc")}
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium mb-1">{t("newPage.tipTest") || "Test Connection"}</p>
+                  <p className="font-medium mb-1">{t("newPage.tipTest")}</p>
                   <p className="text-muted-foreground text-xs">
-                    {t("newPage.tipTestDesc") || "After adding a provider, use the test connection feature to verify your configuration."}
+                    {t("newPage.tipTestDesc")}
                   </p>
                 </div>
               </div>
@@ -238,11 +249,13 @@ export default function NewProviderPage() {
           {/* Selected Provider Info Banner */}
           {selectedPresetInfo && (
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <span className="text-2xl">{getProviderIcon(selectedPresetInfo.id)}</span>
+              <span className="text-2xl">
+                {getProviderIcon(selectedPresetInfo.id)}
+              </span>
               <div>
                 <p className="font-medium">{selectedPresetInfo.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {selectedPresetInfo.base_url || t("newPage.officialEndpoint") || "Using official API endpoint"}
+                  {selectedPresetInfo.base_url || t("newPage.officialEndpoint")}
                 </p>
               </div>
             </div>
@@ -256,7 +269,9 @@ export default function NewProviderPage() {
                 id="name"
                 placeholder={t("dialog.namePlaceholder")}
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
@@ -265,7 +280,9 @@ export default function NewProviderPage() {
                 id="note"
                 placeholder={t("dialog.notePlaceholder")}
                 value={formData.note}
-                onChange={(e) => setFormData((prev) => ({ ...prev, note: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, note: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -279,7 +296,9 @@ export default function NewProviderPage() {
                 type={showApiKey ? "text" : "password"}
                 placeholder={t("dialog.apiKeyPlaceholder")}
                 value={formData.api_key}
-                onChange={(e) => setFormData((prev) => ({ ...prev, api_key: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, api_key: e.target.value }))
+                }
                 className="pr-10 font-mono"
               />
               <Button
@@ -289,7 +308,11 @@ export default function NewProviderPage() {
                 className="absolute right-0 top-0 h-full"
                 onClick={() => setShowApiKey(!showApiKey)}
               >
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showApiKey ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -300,7 +323,9 @@ export default function NewProviderPage() {
               <Label htmlFor="api_format">{t("dialog.apiFormat")}</Label>
               <Select
                 value={formData.api_format}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, api_format: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, api_format: value }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -314,15 +339,21 @@ export default function NewProviderPage() {
                     ))
                   ) : (
                     <>
-                      <SelectItem value="openai">OpenAI Chat Completions</SelectItem>
-                      <SelectItem value="anthropic">Anthropic Messages</SelectItem>
+                      <SelectItem value="openai">
+                        OpenAI Chat Completions
+                      </SelectItem>
+                      <SelectItem value="anthropic">
+                        Anthropic Messages
+                      </SelectItem>
                       <SelectItem value="gemini">Google Gemini</SelectItem>
                       <SelectItem value="custom">Custom</SelectItem>
                     </>
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">{t("dialog.apiFormatHint")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("dialog.apiFormatHint")}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="website_url">{t("dialog.websiteUrl")}</Label>
@@ -330,7 +361,12 @@ export default function NewProviderPage() {
                 id="website_url"
                 placeholder="https://example.com"
                 value={formData.website_url}
-                onChange={(e) => setFormData((prev) => ({ ...prev, website_url: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    website_url: e.target.value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -341,8 +377,8 @@ export default function NewProviderPage() {
       <CollapsibleCard
         open={showAdvanced}
         onOpenChange={setShowAdvanced}
-        title={t("newPage.advancedSettings") || "Advanced Settings"}
-        description={t("newPage.advancedSettingsDesc") || "Custom endpoint configuration for self-hosted or proxy services"}
+        title={t("newPage.advancedSettings")}
+        description={t("newPage.advancedSettingsDesc")}
         icon={<Globe className="w-4 h-4 text-primary" />}
       >
         <div className="grid grid-cols-1 gap-4">
@@ -352,10 +388,14 @@ export default function NewProviderPage() {
               id="base_url"
               placeholder="https://api.example.com/v1"
               value={formData.base_url}
-              onChange={(e) => setFormData((prev) => ({ ...prev, base_url: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, base_url: e.target.value }))
+              }
               className="font-mono"
             />
-            <p className="text-xs text-muted-foreground">{t("dialog.baseUrlHint")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("dialog.baseUrlHint")}
+            </p>
           </div>
 
           {/* Security Note */}
@@ -363,10 +403,10 @@ export default function NewProviderPage() {
             <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-primary">
-                {t("newPage.securityTitle") || "Secure Storage"}
+                {t("newPage.securityTitle")}
               </p>
               <p className="text-sm text-muted-foreground">
-                {t("newPage.securityDesc") || "All API keys are encrypted using AES-256 before storage. Your credentials are never logged or exposed."}
+                {t("newPage.securityDesc")}
               </p>
             </div>
           </div>

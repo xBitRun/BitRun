@@ -172,8 +172,11 @@ class QuantEngineBase(ABC):
                                 f"claim {claim.id} for {self.symbol}."
                             )
                         should_release = False
-                except Exception:
-                    pass
+                except Exception as inner_exc:
+                    logger.warning(
+                        f"Quant {self.strategy_id}: failed to check position "
+                        f"for {self.symbol} after order exception: {inner_exc}"
+                    )
                 if should_release:
                     await ps.release_claim(claim.id)
             # For existing positions, do NOT release on exception –

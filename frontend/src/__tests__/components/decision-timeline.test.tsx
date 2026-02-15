@@ -10,6 +10,25 @@ import {
   DecisionStatsBar,
 } from "@/components/charts/decision-timeline";
 
+// Mock next-intl
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string, values?: Record<string, unknown>) => {
+    const translations: Record<string, string> = {
+      noDecisions: "No decisions yet",
+      executed: "Executed",
+      skipped: "Skipped",
+      moreDecisions: `+${values?.count || 0} more decisions`,
+      executionRate: "Execution Rate",
+      actionDistribution: "Action Distribution",
+      justNow: "just now",
+      minutesAgo: `${values?.count || 0}m ago`,
+      hoursAgo: `${values?.count || 0}h ago`,
+      daysAgo: `${values?.count || 0}d ago`,
+    };
+    return translations[key] || key;
+  },
+}));
+
 // Mock lucide-react icons
 jest.mock("lucide-react", () => ({
   Brain: ({ className }: { className?: string }) => (
@@ -39,7 +58,7 @@ const createDecision = (
   action: string,
   timestamp: string,
   confidence = 75,
-  executed = true
+  executed = true,
 ) => ({
   id,
   timestamp,
@@ -60,7 +79,7 @@ describe("DecisionTimeline", () => {
 
     it("applies custom className to empty state", () => {
       const { container } = render(
-        <DecisionTimeline decisions={[]} className="custom-class" />
+        <DecisionTimeline decisions={[]} className="custom-class" />,
       );
 
       const wrapper = container.firstChild as HTMLElement;
@@ -145,7 +164,7 @@ describe("DecisionTimeline", () => {
       const { container } = render(<DecisionTimeline decisions={decisions} />);
 
       const confidenceBar = container.querySelector(
-        '[style="width: 75%;"]'
+        '[style="width: 75%;"]',
       ) as HTMLElement;
       expect(confidenceBar).toBeInTheDocument();
       expect(confidenceBar.className).toContain("bg-[var(--profit)]");
@@ -158,7 +177,7 @@ describe("DecisionTimeline", () => {
       const { container } = render(<DecisionTimeline decisions={decisions} />);
 
       const confidenceBar = container.querySelector(
-        '[style="width: 55%;"]'
+        '[style="width: 55%;"]',
       ) as HTMLElement;
       expect(confidenceBar).toBeInTheDocument();
       expect(confidenceBar.className).toContain("bg-[var(--warning)]");
@@ -171,7 +190,7 @@ describe("DecisionTimeline", () => {
       const { container } = render(<DecisionTimeline decisions={decisions} />);
 
       const confidenceBar = container.querySelector(
-        '[style="width: 40%;"]'
+        '[style="width: 40%;"]',
       ) as HTMLElement;
       expect(confidenceBar).toBeInTheDocument();
       expect(confidenceBar.className).toContain("bg-muted-foreground");
@@ -200,7 +219,9 @@ describe("DecisionTimeline", () => {
 
   describe("formatTimeAgo", () => {
     it('displays "just now" for very recent timestamps', () => {
-      const decisions = [createDecision("1", "open_long", new Date().toISOString())];
+      const decisions = [
+        createDecision("1", "open_long", new Date().toISOString()),
+      ];
       render(<DecisionTimeline decisions={decisions} />);
 
       expect(screen.getByText("just now")).toBeInTheDocument();
@@ -224,7 +245,7 @@ describe("DecisionTimeline", () => {
 
     it("displays days ago for timestamps within a week", () => {
       const timestamp = new Date(
-        Date.now() - 2 * 24 * 60 * 60 * 1000
+        Date.now() - 2 * 24 * 60 * 60 * 1000,
       ).toISOString();
       const decisions = [createDecision("1", "open_long", timestamp)];
       render(<DecisionTimeline decisions={decisions} />);
@@ -234,7 +255,9 @@ describe("DecisionTimeline", () => {
 
     it("displays formatted date for older timestamps", () => {
       const oldDate = new Date("2024-01-15T10:00:00Z");
-      const decisions = [createDecision("1", "open_long", oldDate.toISOString())];
+      const decisions = [
+        createDecision("1", "open_long", oldDate.toISOString()),
+      ];
       render(<DecisionTimeline decisions={decisions} />);
 
       // Should show month and day (e.g., "Jan 15")
@@ -246,7 +269,7 @@ describe("DecisionTimeline", () => {
   describe("maxItems", () => {
     it("limits displayed decisions to maxItems", () => {
       const decisions = Array.from({ length: 15 }, (_, i) =>
-        createDecision(`${i}`, "open_long", new Date().toISOString())
+        createDecision(`${i}`, "open_long", new Date().toISOString()),
       );
       render(<DecisionTimeline decisions={decisions} maxItems={5} />);
 
@@ -255,7 +278,7 @@ describe("DecisionTimeline", () => {
 
     it("shows more indicator when decisions exceed maxItems", () => {
       const decisions = Array.from({ length: 15 }, (_, i) =>
-        createDecision(`${i}`, "open_long", new Date().toISOString())
+        createDecision(`${i}`, "open_long", new Date().toISOString()),
       );
       render(<DecisionTimeline decisions={decisions} maxItems={10} />);
 
@@ -264,7 +287,7 @@ describe("DecisionTimeline", () => {
 
     it("does not show more indicator when decisions equal maxItems", () => {
       const decisions = Array.from({ length: 10 }, (_, i) =>
-        createDecision(`${i}`, "open_long", new Date().toISOString())
+        createDecision(`${i}`, "open_long", new Date().toISOString()),
       );
       render(<DecisionTimeline decisions={decisions} maxItems={10} />);
 
@@ -321,7 +344,11 @@ describe("DecisionStatsBar", () => {
   describe("Execution Rate", () => {
     it("calculates and displays correct execution rate", () => {
       render(
-        <DecisionStatsBar total={20} executed={15} actions={{ open_long: 20 }} />
+        <DecisionStatsBar
+          total={20}
+          executed={15}
+          actions={{ open_long: 20 }}
+        />,
       );
 
       expect(screen.getByText("75.0%")).toBeInTheDocument();
@@ -336,7 +363,7 @@ describe("DecisionStatsBar", () => {
 
     it("displays 100% execution rate when all executed", () => {
       render(
-        <DecisionStatsBar total={10} executed={10} actions={{ hold: 10 }} />
+        <DecisionStatsBar total={10} executed={10} actions={{ hold: 10 }} />,
       );
 
       expect(screen.getByText("100.0%")).toBeInTheDocument();
@@ -350,7 +377,7 @@ describe("DecisionStatsBar", () => {
           total={100}
           executed={80}
           actions={{ open_long: 40, open_short: 30, hold: 30 }}
-        />
+        />,
       );
 
       expect(screen.getByText("Action Distribution")).toBeInTheDocument();
@@ -365,7 +392,7 @@ describe("DecisionStatsBar", () => {
           total={100}
           executed={80}
           actions={{ open_long: 40, open_short: 30, close_long: 30 }}
-        />
+        />,
       );
 
       expect(screen.getByText(/open long: 40/i)).toBeInTheDocument();
@@ -379,7 +406,7 @@ describe("DecisionStatsBar", () => {
           total={100}
           executed={80}
           actions={{ open_long: 100, open_short: 0 }}
-        />
+        />,
       );
 
       // Should only have one bar segment for open_long
@@ -393,7 +420,7 @@ describe("DecisionStatsBar", () => {
           total={100}
           executed={50}
           actions={{ open_long: 25, open_short: 25, close_long: 25, hold: 25 }}
-        />
+        />,
       );
 
       // Check legend dots have correct colors
@@ -401,14 +428,14 @@ describe("DecisionStatsBar", () => {
       const dotClasses = Array.from(dots).map((d) => d.className);
 
       expect(dotClasses.some((c) => c.includes("bg-[var(--profit)]"))).toBe(
-        true
+        true,
       );
       expect(dotClasses.some((c) => c.includes("bg-[var(--loss)]"))).toBe(true);
       expect(dotClasses.some((c) => c.includes("bg-muted-foreground"))).toBe(
-        true
+        true,
       );
       expect(dotClasses.some((c) => c.includes("bg-[var(--warning)]"))).toBe(
-        true
+        true,
       );
     });
 
@@ -428,7 +455,7 @@ describe("DecisionStatsBar", () => {
           executed={5}
           actions={{}}
           className="custom-stats-class"
-        />
+        />,
       );
 
       const wrapper = container.firstChild as HTMLElement;

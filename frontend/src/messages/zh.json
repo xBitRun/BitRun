@@ -569,6 +569,15 @@
       "title": "交易所账户连接",
       "description": "连接 Hyperliquid、Binance、Bybit、OKX、Bitget、KuCoin、Gate.io 等交易所，凭证加密存储，可使用测试网免实盘试运行。"
     },
+    "exchangeDescriptions": {
+      "hyperliquid": "去中心化永续合约交易所",
+      "binance": "全球最大的加密货币交易所",
+      "bybit": "热门衍生品交易所",
+      "okx": "全球加密货币交易所",
+      "bitget": "领先的加密货币衍生品交易所",
+      "kucoin": "全球加密货币交易所",
+      "gate": "多资产加密货币交易所"
+    },
     "dialog": {
       "title": "添加交易所账户",
       "description": "您的 API 凭证在存储前会被加密",
@@ -765,6 +774,10 @@
     "title": "AI 决策",
     "subtitle": "查看 AI 推理和决策历史",
     "searchPlaceholder": "搜索决策...",
+    "emptyTitle": "暂无决策",
+    "emptyDescription": "AI 决策将在策略开始运行后显示在这里。",
+    "retry": "重试",
+    "refresh": "刷新",
     "filter": {
       "allDecisions": "全部决策",
       "executed": "已执行",
@@ -803,6 +816,22 @@
       "noRecords": "无执行记录"
     }
   },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{count} 分钟前",
+    "hoursAgo": "{count} 小时前",
+    "daysAgo": "{count} 天前"
+  },
+  "charts": {
+    "decisionTimeline": {
+      "noDecisions": "暂无决策",
+      "executed": "已执行",
+      "skipped": "已跳过",
+      "moreDecisions": "+{count} 条更多决策",
+      "executionRate": "执行率",
+      "actionDistribution": "操作分布"
+    }
+  },
   "common": {
     "loading": "加载中...",
     "error": "错误",
@@ -812,7 +841,8 @@
     "save": "保存",
     "delete": "删除",
     "edit": "编辑",
-    "retry": "重试"
+    "retry": "重试",
+    "refresh": "刷新"
   },
   "editor": {
     "source": "源码",

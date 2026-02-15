@@ -18,6 +18,25 @@ import {
   DecisionStatsBar,
 } from "@/components/charts/decision-timeline";
 
+// Mock next-intl
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => {
+    const translations: Record<string, string> = {
+      noDecisions: "No decisions yet",
+      executed: "Executed",
+      skipped: "Skipped",
+      moreDecisions: "+5 more decisions",
+      executionRate: "Execution Rate",
+      actionDistribution: "Action Distribution",
+      justNow: "just now",
+      minutesAgo: "5m ago",
+      hoursAgo: "1h ago",
+      daysAgo: "1d ago",
+    };
+    return translations[key] || key;
+  },
+}));
+
 // ==================== PerformanceChart ====================
 
 describe("PerformanceChart", () => {
@@ -159,7 +178,7 @@ describe("DecisionStatsBar", () => {
         total={10}
         executed={8}
         actions={{ open_long: 5, open_short: 3, hold: 2 }}
-      />
+      />,
     );
 
     expect(screen.getByText("Execution Rate")).toBeInTheDocument();
@@ -172,7 +191,7 @@ describe("DecisionStatsBar", () => {
         total={10}
         executed={8}
         actions={{ open_long: 5, open_short: 3, hold: 2 }}
-      />
+      />,
     );
 
     expect(screen.getByText("Action Distribution")).toBeInTheDocument();

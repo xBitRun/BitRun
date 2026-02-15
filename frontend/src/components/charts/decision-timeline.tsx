@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Brain, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface Decision {
   id: string;
@@ -46,7 +47,10 @@ function getActionColor(action: string) {
   }
 }
 
-function formatTimeAgo(timestamp: string): string {
+function formatTimeAgo(
+  timestamp: string,
+  t: (key: string, values?: Record<string, unknown>) => string,
+): string {
   const date = new Date(timestamp);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -54,10 +58,10 @@ function formatTimeAgo(timestamp: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t("justNow");
+  if (diffMins < 60) return t("minutesAgo", { count: diffMins });
+  if (diffHours < 24) return t("hoursAgo", { count: diffHours });
+  if (diffDays < 7) return t("daysAgo", { count: diffDays });
 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
@@ -67,13 +71,23 @@ export function DecisionTimeline({
   maxItems = 10,
   className,
 }: DecisionTimelineProps) {
+  const tTime = useTranslations("time");
+  const tCharts = useTranslations("charts.decisionTimeline");
+
   const displayedDecisions = decisions.slice(0, maxItems);
 
   if (displayedDecisions.length === 0) {
     return (
-      <div className={cn("flex flex-col items-center justify-center py-8", className)}>
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center py-8",
+          className,
+        )}
+      >
         <Brain className="w-8 h-8 text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">No decisions yet</p>
+        <p className="text-sm text-muted-foreground">
+          {tCharts("noDecisions")}
+        </p>
       </div>
     );
   }
@@ -86,12 +100,15 @@ export function DecisionTimeline({
       {/* Timeline items */}
       <div className="space-y-4">
         {displayedDecisions.map((decision) => (
-          <div key={decision.id} className="relative flex items-start gap-4 pl-2">
+          <div
+            key={decision.id}
+            className="relative flex items-start gap-4 pl-2"
+          >
             {/* Timeline dot */}
             <div
               className={cn(
                 "relative z-10 flex items-center justify-center w-5 h-5 rounded-full border-2",
-                getActionColor(decision.action)
+                getActionColor(decision.action),
               )}
             >
               {getActionIcon(decision.action)}
@@ -109,7 +126,7 @@ export function DecisionTimeline({
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
-                  {formatTimeAgo(decision.timestamp)}
+                  {formatTimeAgo(decision.timestamp, tTime)}
                 </span>
               </div>
 
@@ -117,7 +134,7 @@ export function DecisionTimeline({
                 <div className="flex items-center gap-1">
                   <div
                     className={cn(
-                      "w-12 h-1.5 rounded-full bg-muted overflow-hidden"
+                      "w-12 h-1.5 rounded-full bg-muted overflow-hidden",
                     )}
                   >
                     <div
@@ -126,8 +143,8 @@ export function DecisionTimeline({
                         decision.confidence >= 70
                           ? "bg-[var(--profit)]"
                           : decision.confidence >= 50
-                          ? "bg-[var(--warning)]"
-                          : "bg-muted-foreground"
+                            ? "bg-[var(--warning)]"
+                            : "bg-muted-foreground",
                       )}
                       style={{ width: `${decision.confidence}%` }}
                     />
@@ -138,9 +155,13 @@ export function DecisionTimeline({
                 </div>
 
                 {decision.executed ? (
-                  <span className="text-xs text-[var(--profit)]">Executed</span>
+                  <span className="text-xs text-[var(--profit)]">
+                    {tCharts("executed")}
+                  </span>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Skipped</span>
+                  <span className="text-xs text-muted-foreground">
+                    {tCharts("skipped")}
+                  </span>
                 )}
               </div>
             </div>
@@ -154,7 +175,9 @@ export function DecisionTimeline({
           <div className="w-5 flex justify-center">
             <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
           </div>
-          <span>+{decisions.length - maxItems} more decisions</span>
+          <span>
+            {tCharts("moreDecisions", { count: decisions.length - maxItems })}
+          </span>
         </div>
       )}
     </div>
@@ -177,6 +200,7 @@ export function DecisionStatsBar({
   actions,
   className,
 }: DecisionStatsBarProps) {
+  const tCharts = useTranslations("charts.decisionTimeline");
   const executionRate = total > 0 ? (executed / total) * 100 : 0;
 
   return (
@@ -184,7 +208,9 @@ export function DecisionStatsBar({
       {/* Execution rate */}
       <div>
         <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-muted-foreground">Execution Rate</span>
+          <span className="text-muted-foreground">
+            {tCharts("executionRate")}
+          </span>
           <span className="font-mono">{executionRate.toFixed(1)}%</span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -197,7 +223,9 @@ export function DecisionStatsBar({
 
       {/* Action distribution */}
       <div>
-        <div className="text-sm text-muted-foreground mb-2">Action Distribution</div>
+        <div className="text-sm text-muted-foreground mb-2">
+          {tCharts("actionDistribution")}
+        </div>
         <div className="flex gap-1 h-4 rounded overflow-hidden">
           {Object.entries(actions).map(([action, count]) => {
             const percentage = total > 0 ? (count / total) * 100 : 0;
@@ -207,10 +235,10 @@ export function DecisionStatsBar({
               action === "open_long"
                 ? "bg-[var(--profit)]"
                 : action === "open_short"
-                ? "bg-[var(--loss)]"
-                : action.includes("close")
-                ? "bg-muted-foreground"
-                : "bg-[var(--warning)]";
+                  ? "bg-[var(--loss)]"
+                  : action.includes("close")
+                    ? "bg-muted-foreground"
+                    : "bg-[var(--warning)]";
 
             return (
               <div
@@ -231,10 +259,10 @@ export function DecisionStatsBar({
                   action === "open_long"
                     ? "bg-[var(--profit)]"
                     : action === "open_short"
-                    ? "bg-[var(--loss)]"
-                    : action.includes("close")
-                    ? "bg-muted-foreground"
-                    : "bg-[var(--warning)]"
+                      ? "bg-[var(--loss)]"
+                      : action.includes("close")
+                        ? "bg-muted-foreground"
+                        : "bg-[var(--warning)]",
                 )}
               />
               <span className="text-muted-foreground capitalize">
