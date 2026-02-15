@@ -3,10 +3,12 @@
 # BITRUN Development Environment Startup Script
 # Usage:
 #   ./scripts/start-dev.sh                  Start all services
+#   ./scripts/start-dev.sh --logs           Start services and tail logs
 #   ./scripts/start-dev.sh --no-backend     Skip backend
 #   ./scripts/start-dev.sh --no-frontend    Skip frontend
 #   ./scripts/start-dev.sh --stop           Stop all services
 #   ./scripts/start-dev.sh --restart        Restart all services
+#   ./scripts/start-dev.sh --tail           Tail logs (services must be running)
 
 set -e
 
@@ -113,6 +115,37 @@ stop_services() {
     fi
 
     echo -e "\n${GREEN}All services stopped.${NC}"
+}
+
+# ==================== Tail Logs ====================
+
+tail_logs() {
+    local LOG_FILES=()
+
+    # Check which log files exist
+    if [ -f /tmp/bitrun-backend.log ]; then
+        LOG_FILES+=("/tmp/bitrun-backend.log")
+    fi
+    if [ -f /tmp/bitrun-frontend.log ]; then
+        LOG_FILES+=("/tmp/bitrun-frontend.log")
+    fi
+
+    if [ ${#LOG_FILES[@]} -eq 0 ]; then
+        echo -e "${RED}No log files found. Start services first: ./scripts/start-dev.sh${NC}"
+        exit 1
+    fi
+
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}    Following logs (Ctrl+C to exit)    ${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${YELLOW}Files:${NC}"
+    for f in "${LOG_FILES[@]}"; do
+        echo -e "  - $f"
+    done
+    echo ""
+
+    # Use tail -f with multiple files
+    tail -f "${LOG_FILES[@]}"
 }
 
 # ==================== Start ====================
@@ -254,6 +287,7 @@ start_services() {
         echo -e "  - Frontend:   http://localhost:3000"
     fi
     echo -e "\nTo stop: ./scripts/start-dev.sh --stop"
+    echo -e "To view logs: ./scripts/start-dev.sh --tail"
 }
 
 # ==================== Main ====================
@@ -267,6 +301,9 @@ case "${1:-}" in
         echo ""
         start_services "${@:2}"
         ;;
+    --tail|--logs)
+        tail_logs
+        ;;
     --help|-h)
         echo "BITRUN Development Environment"
         echo ""
@@ -276,6 +313,7 @@ case "${1:-}" in
         echo "  (default)       Start all services"
         echo "  --stop          Stop all services"
         echo "  --restart       Restart all services"
+        echo "  --tail          Tail logs (services must be running)"
         echo "  --help          Show this help"
         echo ""
         echo "Options:"
