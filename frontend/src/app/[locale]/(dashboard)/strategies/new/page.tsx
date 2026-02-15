@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import {
   ArrowLeft,
@@ -13,7 +13,13 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,30 +32,55 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import { StrategyStudioTabs, StrategyPresetSelector } from "@/components/strategy-studio";
+import {
+  StrategyStudioTabs,
+  StrategyPresetSelector,
+} from "@/components/strategy-studio";
 import {
   useStrategyStudio,
   useUserModels,
   groupModelsByProvider,
   getProviderDisplayName,
 } from "@/hooks";
-import type { StrategyType, RiskProfile, TimeHorizon, StrategyStudioConfig } from "@/types";
-import { getStrategyPreset, DEFAULT_PROMPT_SECTIONS } from "@/types";
+import type {
+  StrategyType,
+  RiskProfile,
+  TimeHorizon,
+  StrategyStudioConfig,
+} from "@/types";
+import { getStrategyPreset, getDefaultPromptSections } from "@/types";
 
 const STRATEGY_TYPES: {
   type: StrategyType;
   icon: typeof Grid3X3;
   color: string;
 }[] = [
-  { type: "ai", icon: Bot, color: "text-purple-500 bg-purple-500/10 border-purple-500/30" },
-  { type: "grid", icon: Grid3X3, color: "text-blue-500 bg-blue-500/10 border-blue-500/30" },
-  { type: "dca", icon: ArrowDownUp, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" },
-  { type: "rsi", icon: Activity, color: "text-violet-500 bg-violet-500/10 border-violet-500/30" },
+  {
+    type: "ai",
+    icon: Bot,
+    color: "text-purple-500 bg-purple-500/10 border-purple-500/30",
+  },
+  {
+    type: "grid",
+    icon: Grid3X3,
+    color: "text-blue-500 bg-blue-500/10 border-blue-500/30",
+  },
+  {
+    type: "dca",
+    icon: ArrowDownUp,
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
+  },
+  {
+    type: "rsi",
+    icon: Activity,
+    color: "text-violet-500 bg-violet-500/10 border-violet-500/30",
+  },
 ];
 
 export default function CreateStrategyPage() {
   const t = useTranslations("quantStrategies");
   const tStudio = useTranslations("agents");
+  const locale = useLocale();
   const router = useRouter();
   const toast = useToast();
 
@@ -91,8 +122,10 @@ export default function CreateStrategyPage() {
   const groupedModels = groupModelsByProvider(models);
 
   // Strategy preset state
-  const [selectedRiskProfile, setSelectedRiskProfile] = useState<RiskProfile | null>(null);
-  const [selectedTimeHorizon, setSelectedTimeHorizon] = useState<TimeHorizon | null>(null);
+  const [selectedRiskProfile, setSelectedRiskProfile] =
+    useState<RiskProfile | null>(null);
+  const [selectedTimeHorizon, setSelectedTimeHorizon] =
+    useState<TimeHorizon | null>(null);
   const [isCustomPreset, setIsCustomPreset] = useState(true);
 
   // Strategy Studio hook
@@ -108,6 +141,7 @@ export default function CreateStrategyPage() {
     toApiFormat,
   } = useStrategyStudio({
     autoPreview: true,
+    locale,
   });
 
   // Handle preset selection
@@ -123,22 +157,48 @@ export default function CreateStrategyPage() {
   };
 
   // Wrap setConfig to auto-switch to custom mode when config changes
-  const handleStudioConfigChange = useCallback((newConfig: StrategyStudioConfig) => {
-    if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
-      const preset = getStrategyPreset(selectedRiskProfile, selectedTimeHorizon);
-      if (preset) {
-        const indicatorsChanged = JSON.stringify(newConfig.indicators) !== JSON.stringify(preset.values.indicators);
-        const riskControlsChanged = JSON.stringify(newConfig.riskControls) !== JSON.stringify(preset.values.riskControls);
-        const promptSectionsChanged = JSON.stringify(newConfig.promptSections) !== JSON.stringify(DEFAULT_PROMPT_SECTIONS);
-        const advancedPromptChanged = newConfig.promptMode === "advanced" && newConfig.advancedPrompt.trim() !== "";
+  const handleStudioConfigChange = useCallback(
+    (newConfig: StrategyStudioConfig) => {
+      if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
+        const preset = getStrategyPreset(
+          selectedRiskProfile,
+          selectedTimeHorizon,
+        );
+        if (preset) {
+          const defaultPromptSections = getDefaultPromptSections(locale);
+          const indicatorsChanged =
+            JSON.stringify(newConfig.indicators) !==
+            JSON.stringify(preset.values.indicators);
+          const riskControlsChanged =
+            JSON.stringify(newConfig.riskControls) !==
+            JSON.stringify(preset.values.riskControls);
+          const promptSectionsChanged =
+            JSON.stringify(newConfig.promptSections) !==
+            JSON.stringify(defaultPromptSections);
+          const advancedPromptChanged =
+            newConfig.promptMode === "advanced" &&
+            newConfig.advancedPrompt.trim() !== "";
 
-        if (indicatorsChanged || riskControlsChanged || promptSectionsChanged || advancedPromptChanged) {
-          setIsCustomPreset(true);
+          if (
+            indicatorsChanged ||
+            riskControlsChanged ||
+            promptSectionsChanged ||
+            advancedPromptChanged
+          ) {
+            setIsCustomPreset(true);
+          }
         }
       }
-    }
-    setStudioConfig(newConfig);
-  }, [isCustomPreset, selectedRiskProfile, selectedTimeHorizon, setStudioConfig]);
+      setStudioConfig(newConfig);
+    },
+    [
+      isCustomPreset,
+      selectedRiskProfile,
+      selectedTimeHorizon,
+      setStudioConfig,
+      locale,
+    ],
+  );
 
   const isAiType = selectedType === "ai";
 
@@ -204,7 +264,8 @@ export default function CreateStrategyPage() {
       toast.success(t("toast.createSuccess"));
       router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.createFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.createFailed");
       toast.error(t("toast.createFailed"), message);
     } finally {
       setIsSubmitting(false);
@@ -229,7 +290,8 @@ export default function CreateStrategyPage() {
       toast.success(t("toast.createSuccess"));
       router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.createFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.createFailed");
       toast.error(t("toast.createFailed"), message);
     } finally {
       setIsSubmitting(false);
@@ -241,23 +303,35 @@ export default function CreateStrategyPage() {
     return !!symbol;
   };
 
-  const isAiFormValid = studioConfig.name.trim() !== "" && studioConfig.symbols.length > 0;
+  const isAiFormValid =
+    studioConfig.name.trim() !== "" && studioConfig.symbols.length > 0;
 
   return (
-    <div className={cn("space-y-6 mx-auto", isAiType && step === 1 ? "max-w-5xl" : "max-w-3xl")}>
+    <div
+      className={cn(
+        "space-y-6 mx-auto",
+        isAiType && step === 1 ? "max-w-5xl" : "max-w-3xl",
+      )}
+    >
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => {
-          if (step > 0) {
-            setStep(step - 1);
-          } else {
-            router.push("/strategies");
-          }
-        }}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            if (step > 0) {
+              setStep(step - 1);
+            } else {
+              router.push("/strategies");
+            }
+          }}
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gradient">{t("create.title")}</h1>
+          <h1 className="text-2xl font-bold text-gradient">
+            {t("create.title")}
+          </h1>
           <p className="text-muted-foreground">{t("create.description")}</p>
         </div>
         {/* AI submit button in header when on step 1 */}
@@ -289,7 +363,7 @@ export default function CreateStrategyPage() {
                   "cursor-pointer transition-all hover:scale-[1.02]",
                   selectedType === type
                     ? "border-primary ring-2 ring-primary/20"
-                    : "border-border/50 hover:border-primary/30"
+                    : "border-border/50 hover:border-primary/30",
                 )}
                 onClick={() => setSelectedType(type)}
               >
@@ -297,7 +371,9 @@ export default function CreateStrategyPage() {
                   <div className={cn("p-4 rounded-xl mb-4 border", color)}>
                     <Icon className="w-8 h-8" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">{t(`types.${type}`)}</h3>
+                  <h3 className="font-semibold text-lg mb-2">
+                    {t(`types.${type}`)}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     {t(`typeDescriptions.${type}`)}
                   </p>
@@ -311,10 +387,7 @@ export default function CreateStrategyPage() {
             ))}
           </div>
           <div className="flex justify-end">
-            <Button
-              onClick={() => setStep(1)}
-              disabled={!selectedType}
-            >
+            <Button onClick={() => setStep(1)} disabled={!selectedType}>
               {t("create.next")}
             </Button>
           </div>
@@ -333,23 +406,33 @@ export default function CreateStrategyPage() {
                   <Label htmlFor="ai-name" className="flex items-center gap-2">
                     <Bot className="w-4 h-4 text-primary" />
                     {t("create.name")}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="ai-name"
                     placeholder={t("create.namePlaceholder")}
                     value={studioConfig.name}
-                    onChange={(e) => setStudioConfig({ ...studioConfig, name: e.target.value })}
+                    onChange={(e) =>
+                      setStudioConfig({ ...studioConfig, name: e.target.value })
+                    }
                   />
                 </div>
 
                 {/* Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="ai-description">{t("create.descriptionLabel")}</Label>
+                  <Label htmlFor="ai-description">
+                    {t("create.descriptionLabel")}
+                  </Label>
                   <Input
                     id="ai-description"
                     placeholder={t("create.descriptionPlaceholder")}
                     value={studioConfig.description}
-                    onChange={(e) => setStudioConfig({ ...studioConfig, description: e.target.value })}
+                    onChange={(e) =>
+                      setStudioConfig({
+                        ...studioConfig,
+                        description: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -368,25 +451,31 @@ export default function CreateStrategyPage() {
                 <Label htmlFor="ai_model">{tStudio("create.aiModel")}</Label>
                 <Select
                   value={studioConfig.aiModel || ""}
-                  onValueChange={(v) => setStudioConfig({ ...studioConfig, aiModel: v })}
+                  onValueChange={(v) =>
+                    setStudioConfig({ ...studioConfig, aiModel: v })
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={tStudio("create.aiModelPlaceholder")} />
+                    <SelectValue
+                      placeholder={tStudio("create.aiModelPlaceholder")}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.keys(groupedModels).length > 0 ? (
-                      Object.entries(groupedModels).map(([provider, providerModels]) => (
-                        <div key={provider}>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                            {getProviderDisplayName(provider)}
+                      Object.entries(groupedModels).map(
+                        ([provider, providerModels]) => (
+                          <div key={provider}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                              {getProviderDisplayName(provider)}
+                            </div>
+                            {providerModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
                           </div>
-                          {providerModels.map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              {model.name}
-                            </SelectItem>
-                          ))}
-                        </div>
-                      ))
+                        ),
+                      )
                     ) : (
                       <div className="px-2 py-1.5 text-sm text-muted-foreground">
                         {tStudio("create.noModels")}
@@ -396,7 +485,10 @@ export default function CreateStrategyPage() {
                 </Select>
                 {models.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    <Link href="/models" className="text-primary hover:underline">
+                    <Link
+                      href="/models"
+                      className="text-primary hover:underline"
+                    >
                       {tStudio("create.addModelLink")}
                     </Link>
                   </p>
@@ -453,7 +545,10 @@ export default function CreateStrategyPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>{t("create.name")}</Label>
+                <Label className="flex items-center gap-1">
+                  {t("create.name")}
+                  <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -470,7 +565,10 @@ export default function CreateStrategyPage() {
               </div>
               {/* Quant: single symbol */}
               <div className="space-y-2">
-                <Label>{t("create.symbol")}</Label>
+                <Label className="flex items-center gap-1">
+                  {t("create.symbol")}
+                  <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
@@ -584,7 +682,9 @@ export default function CreateStrategyPage() {
                       <Input
                         type="number"
                         value={dcaTakeProfitPercent}
-                        onChange={(e) => setDcaTakeProfitPercent(e.target.value)}
+                        onChange={(e) =>
+                          setDcaTakeProfitPercent(e.target.value)
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -647,7 +747,10 @@ export default function CreateStrategyPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>{t("rsi.timeframe")}</Label>
-                      <Select value={rsiTimeframe} onValueChange={setRsiTimeframe}>
+                      <Select
+                        value={rsiTimeframe}
+                        onValueChange={setRsiTimeframe}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>

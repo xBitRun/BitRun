@@ -264,7 +264,10 @@ export default function NewProviderPage() {
           {/* Basic Info Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{t("dialog.providerName")} *</Label>
+              <Label htmlFor="name" className="flex items-center gap-1">
+                {t("dialog.providerName")}
+                <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="name"
                 placeholder={t("dialog.namePlaceholder")}
@@ -289,7 +292,10 @@ export default function NewProviderPage() {
 
           {/* API Key - Full Width */}
           <div className="space-y-2">
-            <Label htmlFor="api_key">{t("dialog.apiKey")} *</Label>
+            <Label htmlFor="api_key" className="flex items-center gap-1">
+              {t("dialog.apiKey")}
+              <span className="text-destructive">*</span>
+            </Label>
             <div className="relative">
               <Input
                 id="api_key"

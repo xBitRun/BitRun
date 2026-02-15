@@ -220,8 +220,11 @@ async def execute_strategy_cycle(
                 if not account_id:
                     result["error"] = f"Strategy {strategy_id} has no account configured"
                     logger.error(result["error"])
-                    await strategy_repo.update_status(strategy.id, "error", result["error"])
-                    await session.commit()
+                    if agent:
+                        from ..db.repositories.agent import AgentRepository
+                        agent_repo = AgentRepository(session)
+                        await agent_repo.update_status(agent.id, "error", result["error"])
+                        await session.commit()
                     return result
 
                 account = await account_repo.get_by_id(account_id)
@@ -246,8 +249,11 @@ async def execute_strategy_cycle(
                     error_msg = str(e) if isinstance(e, ValueError) else e.message
                     result["error"] = f"Failed to initialize trader: {error_msg}"
                     logger.error(result["error"])
-                    await strategy_repo.update_status(strategy.id, "error", error_msg)
-                    await session.commit()
+                    if agent:
+                        from ..db.repositories.agent import AgentRepository
+                        agent_repo = AgentRepository(session)
+                        await agent_repo.update_status(agent.id, "error", error_msg)
+                        await session.commit()
                     return result
             
             # Create agent position service
@@ -310,26 +316,37 @@ async def execute_strategy_cycle(
     except Exception as e:
         result["error"] = str(e)
         logger.exception(f"Error executing strategy {strategy_id}: {e}")
-        
-        # Update strategy status on repeated failures
+
+        # Update agent status on repeated failures
         try:
             async with AsyncSessionLocal() as session:
-                strategy_repo = StrategyRepository(session)
-                strategy = await strategy_repo.get_by_id(uuid.UUID(strategy_id))
-                if strategy:
+                from sqlalchemy import select
+                from ..db.models import AgentDB
+                from ..db.repositories.agent import AgentRepository
+
+                # Find active agent for this strategy
+                stmt = select(AgentDB).where(
+                    AgentDB.strategy_id == uuid.UUID(strategy_id),
+                    AgentDB.status == "active",
+                )
+                db_result = await session.execute(stmt)
+                agent = db_result.scalar_one_or_none()
+
+                if agent:
                     # Check error count from job retries
                     job_try = ctx.get("job_try", 1)
                     settings = get_settings()
                     if job_try >= settings.worker_max_consecutive_errors:
-                        await strategy_repo.update_status(
-                            strategy.id, 
-                            "error", 
+                        agent_repo = AgentRepository(session)
+                        await agent_repo.update_status(
+                            agent.id,
+                            "error",
                             f"Too many errors: {str(e)}"
                         )
                         await session.commit()
-                        logger.error(f"Strategy {strategy_id} paused due to repeated errors")
+                        logger.error(f"Agent {agent.id} paused due to repeated errors")
         except Exception as update_error:
-            logger.error(f"Failed to update strategy status: {update_error}")
+            logger.error(f"Failed to update agent status: {update_error}")
     
     finally:
         # Clean up trader connection
@@ -440,28 +457,41 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
     
     try:
         async with AsyncSessionLocal() as session:
-            strategy_repo = StrategyRepository(session)
-            strategies = await strategy_repo.get_active_strategies()
-            
-            for strategy in strategies:
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+            from ..db.models import AgentDB
+
+            # Query active agents with their strategies
+            stmt = (
+                select(AgentDB)
+                .where(AgentDB.status == "active")
+                .options(selectinload(AgentDB.strategy))
+            )
+            db_result = await session.execute(stmt)
+            agents = db_result.scalars().all()
+
+            for agent in agents:
+                strategy = agent.strategy
+                if not strategy:
+                    continue
+
                 strategy_id = str(strategy.id)
                 job_id = f"strategy:{strategy_id}"
-                
+
                 # Check if job already exists
                 job = Job(job_id, redis)
                 job_info = await job.info()
-                
+
                 if job_info is None:
                     # No job exists, schedule one
                     try:
-                        config = strategy.config or {}
-                        interval_minutes = config.get("execution_interval_minutes", 30)
-                        
+                        interval_minutes = agent.execution_interval_minutes or 30
+
                         # Calculate delay based on next_run_at if set
                         delay = timedelta(seconds=0)
-                        if strategy.next_run_at and strategy.next_run_at > datetime.now(UTC):
-                            delay = strategy.next_run_at - datetime.now(UTC)
-                        
+                        if agent.next_run_at and agent.next_run_at > datetime.now(UTC):
+                            delay = agent.next_run_at - datetime.now(UTC)
+
                         await redis.enqueue_job(
                             "execute_strategy_cycle",
                             strategy_id,
@@ -469,7 +499,7 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                             _job_id=job_id,
                         )
                         started += 1
-                        logger.info(f"Scheduled job for strategy {strategy_id}")
+                        logger.info(f"Scheduled job for agent {agent.id}, strategy {strategy_id}")
                     except Exception as e:
                         errors += 1
                         logger.error(f"Failed to schedule job for strategy {strategy_id}: {e}")

@@ -3,10 +3,22 @@ export type StrategyType = "ai" | "grid" | "dca" | "rsi";
 export type StrategyVisibility = "private" | "public";
 export type PricingModel = "free" | "one_time" | "monthly";
 export type TradingMode = "aggressive" | "balanced" | "conservative";
-export type ActionType = "open_long" | "open_short" | "close_long" | "close_short" | "hold" | "wait";
+export type ActionType =
+  | "open_long"
+  | "open_short"
+  | "close_long"
+  | "close_short"
+  | "hold"
+  | "wait";
 
 // Agent status (runtime status lives on Agent, not Strategy)
-export type AgentStatus = "draft" | "active" | "paused" | "stopped" | "error" | "warning";
+export type AgentStatus =
+  | "draft"
+  | "active"
+  | "paused"
+  | "stopped"
+  | "error"
+  | "warning";
 export type ExecutionMode = "live" | "mock";
 
 // Backward compat alias
@@ -122,7 +134,13 @@ export interface AgentPosition {
 }
 
 // AI Model Types
-export type AIProvider = "deepseek" | "qwen" | "zhipu" | "minimax" | "kimi" | "custom";
+export type AIProvider =
+  | "deepseek"
+  | "qwen"
+  | "zhipu"
+  | "minimax"
+  | "kimi"
+  | "custom";
 
 export interface AIModelInfo {
   id: string; // Full ID (provider:model_id)
@@ -172,7 +190,14 @@ export interface DecisionRecord {
 }
 
 // Account Types
-export type ExchangeType = "hyperliquid" | "binance" | "bybit" | "okx" | "bitget" | "kucoin" | "gate";
+export type ExchangeType =
+  | "hyperliquid"
+  | "binance"
+  | "bybit"
+  | "okx"
+  | "bitget"
+  | "kucoin"
+  | "gate";
 
 export interface ExchangeAccount {
   id: string;
@@ -218,7 +243,13 @@ export interface DashboardStats {
 
 export type Timeframe = "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d";
 
-export type StudioTab = "coins" | "indicators" | "risk" | "prompt" | "debate" | "preview";
+export type StudioTab =
+  | "coins"
+  | "indicators"
+  | "risk"
+  | "prompt"
+  | "debate"
+  | "preview";
 
 // Indicator Settings
 export interface IndicatorSettings {
@@ -315,16 +346,54 @@ export const DEFAULT_RISK_CONTROLS: RiskControlsConfig = {
   minConfidence: 60,
   defaultSlAtrMultiplier: 1.5,
   defaultTpAtrMultiplier: 3.0,
-  maxSlPercent: 0.10,
+  maxSlPercent: 0.1,
 };
 
-// Default prompt sections match backend PromptSections defaults
-export const DEFAULT_PROMPT_SECTIONS: PromptSections = {
-  roleDefinition: "You are an expert cryptocurrency trader with deep market analysis skills.",
-  tradingFrequency: "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
-  entryStandards: "Enter positions only when multiple indicators align and risk/reward is favorable.",
-  decisionProcess: "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+// Default prompt sections - Bilingual support (matches backend prompt_templates.py)
+
+/** English default prompt sections */
+export const DEFAULT_PROMPT_SECTIONS_EN: PromptSections = {
+  roleDefinition:
+    "You are an expert cryptocurrency quantitative trader and market analyst. Your role is to analyze market conditions, identify trading opportunities, and make data-driven decisions. You have deep expertise in technical analysis, risk management, and market psychology.",
+  tradingFrequency:
+    "Analyze market conditions carefully before making decisions. Only trade when high-probability setups appear. Quality over quantity. Avoid overtrading - patience is a virtue in trading.",
+  entryStandards:
+    "Enter positions only when: Multiple technical indicators align (trend, momentum, volume), Risk/reward ratio is favorable (minimum 2:1), Market structure supports the trade thesis, Position sizing respects risk limits",
+  decisionProcess:
+    "Follow this decision process:\n1. Assess overall market sentiment (BTC dominance, fear/greed)\n2. Identify trend direction on higher timeframes\n3. Find key support/resistance levels\n4. Check momentum indicators (RSI, MACD)\n5. Evaluate volume and open interest\n6. Calculate position size based on risk\n7. Set stop loss and take profit levels\n8. Make final decision with confidence score",
 };
+
+/** 中文默认提示词部分 */
+export const DEFAULT_PROMPT_SECTIONS_ZH: PromptSections = {
+  roleDefinition:
+    "你是一位资深的加密货币量化交易员和市场分析师。你的职责是分析市场状况、识别交易机会，并做出基于数据的决策。你在技术分析、风险管理和市场心理学方面拥有深厚的专业知识。",
+  tradingFrequency:
+    "在做出决策前仔细分析市场状况。只在高概率机会出现时交易，质量优于数量。避免过度交易——耐心是交易中的美德。",
+  entryStandards:
+    "仅在以下条件满足时开仓：多个技术指标共振（趋势、动量、成交量），风险收益比有利（最低 2:1），市场结构支持交易逻辑，仓位大小符合风控限制",
+  decisionProcess:
+    "遵循以下决策流程：\n1. 评估整体市场情绪（BTC 主导率、恐惧/贪婪指数）\n2. 在较大时间周期上判断趋势方向\n3. 找到关键支撑/阻力位\n4. 检查动量指标（RSI、MACD）\n5. 评估成交量和未平仓合约量\n6. 根据风险计算仓位大小\n7. 设置止损和止盈水平\n8. 做出最终决策并给出置信度评分",
+};
+
+/**
+ * Get default prompt sections based on locale/language.
+ * @param locale - The locale string (e.g., "en", "zh", "zh-CN")
+ * @returns The appropriate default PromptSections for the locale
+ */
+export function getDefaultPromptSections(locale: string): PromptSections {
+  const lang = locale.toLowerCase().split("-")[0];
+  if (lang === "zh") {
+    return DEFAULT_PROMPT_SECTIONS_ZH;
+  }
+  return DEFAULT_PROMPT_SECTIONS_EN;
+}
+
+/**
+ * @deprecated Use getDefaultPromptSections(locale) instead for bilingual support.
+ * Default prompt sections in English for backward compatibility.
+ */
+export const DEFAULT_PROMPT_SECTIONS: PromptSections =
+  DEFAULT_PROMPT_SECTIONS_EN;
 
 export const DEFAULT_STRATEGY_STUDIO_CONFIG: StrategyStudioConfig = {
   name: "",
@@ -395,10 +464,7 @@ export const FOREX_SYMBOLS = [
   "GBP/JPY",
 ] as const;
 
-export const METALS_SYMBOLS = [
-  "XAU/USD",
-  "XAG/USD",
-] as const;
+export const METALS_SYMBOLS = ["XAU/USD", "XAG/USD"] as const;
 
 /**
  * Detect market type from a symbol string.
@@ -409,8 +475,10 @@ export function detectMarketType(symbol: string): MarketType {
   const fxBases = new Set(["EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"]);
   const metalBases = new Set(["XAU", "XAG", "XPT", "XPD"]);
   const base = s.includes("/") ? s.split("/")[0] : s;
-  if (fxBases.has(base) || (FOREX_SYMBOLS as readonly string[]).includes(s)) return "forex";
-  if (metalBases.has(base) || (METALS_SYMBOLS as readonly string[]).includes(s)) return "metals";
+  if (fxBases.has(base) || (FOREX_SYMBOLS as readonly string[]).includes(s))
+    return "forex";
+  if (metalBases.has(base) || (METALS_SYMBOLS as readonly string[]).includes(s))
+    return "metals";
   return "crypto_perp";
 }
 
@@ -511,7 +579,10 @@ export interface StrategyPreset {
 }
 
 // Helper to build a preset key
-export function presetKey(riskProfile: RiskProfile, timeHorizon: TimeHorizon): string {
+export function presetKey(
+  riskProfile: RiskProfile,
+  timeHorizon: TimeHorizon,
+): string {
   return `${riskProfile}_${timeHorizon}`;
 }
 
@@ -753,7 +824,11 @@ export function getStrategyPreset(
 
 // ==================== Debate Types ====================
 
-export type ConsensusMode = "majority_vote" | "highest_confidence" | "weighted_average" | "unanimous";
+export type ConsensusMode =
+  | "majority_vote"
+  | "highest_confidence"
+  | "weighted_average"
+  | "unanimous";
 
 export interface DebateConfig {
   enabled: boolean;
@@ -803,7 +878,11 @@ export const DEFAULT_DEBATE_CONFIG: DebateConfig = {
   minParticipants: 2,
 };
 
-export const CONSENSUS_MODE_OPTIONS: { value: ConsensusMode; label: string; description: string }[] = [
+export const CONSENSUS_MODE_OPTIONS: {
+  value: ConsensusMode;
+  label: string;
+  description: string;
+}[] = [
   {
     value: "majority_vote",
     label: "Majority Vote",

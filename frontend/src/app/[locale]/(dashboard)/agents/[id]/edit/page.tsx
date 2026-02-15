@@ -47,7 +47,7 @@ import type {
   TimeHorizon,
   StrategyStudioConfig,
 } from "@/types";
-import { getStrategyPreset, DEFAULT_PROMPT_SECTIONS } from "@/types";
+import { getStrategyPreset, getDefaultPromptSections } from "@/types";
 
 function LoadingSkeleton() {
   return (
@@ -105,6 +105,7 @@ export default function EditAgentPage() {
     toApiFormat,
   } = useStrategyStudio({
     autoPreview: true,
+    locale,
   });
 
   // Handle preset selection in edit page
@@ -129,6 +130,7 @@ export default function EditAgentPage() {
           selectedTimeHorizon,
         );
         if (preset) {
+          const defaultPromptSections = getDefaultPromptSections(locale);
           const indicatorsChanged =
             JSON.stringify(newConfig.indicators) !==
             JSON.stringify(preset.values.indicators);
@@ -139,7 +141,7 @@ export default function EditAgentPage() {
           // Check if prompt sections have been customized (differs from default)
           const promptSectionsChanged =
             JSON.stringify(newConfig.promptSections) !==
-            JSON.stringify(DEFAULT_PROMPT_SECTIONS);
+            JSON.stringify(defaultPromptSections);
 
           // Check if advanced prompt has content
           const advancedPromptChanged =
@@ -158,7 +160,13 @@ export default function EditAgentPage() {
       }
       setConfig(newConfig);
     },
-    [isCustomPreset, selectedRiskProfile, selectedTimeHorizon, setConfig],
+    [
+      isCustomPreset,
+      selectedRiskProfile,
+      selectedTimeHorizon,
+      setConfig,
+      locale,
+    ],
   );
 
   // Populate form when agent data loads
@@ -343,6 +351,7 @@ export default function EditAgentPage() {
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <Bot className="w-4 h-4 text-primary" />
                   {t("create.name")}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="name"
@@ -381,7 +390,10 @@ export default function EditAgentPage() {
 
             {/* AI Model */}
             <div className="space-y-2">
-              <Label htmlFor="ai_model">{t("create.aiModel")}</Label>
+              <Label htmlFor="ai_model" className="flex items-center gap-1">
+                {t("create.aiModel")}
+                <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={config.aiModel || ""}
                 onValueChange={(v) => setConfig({ ...config, aiModel: v })}

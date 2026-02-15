@@ -1,14 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, Plus, Search, TrendingUp, DollarSign, Gem, Info } from "lucide-react";
+import {
+  X,
+  Plus,
+  Search,
+  TrendingUp,
+  DollarSign,
+  Gem,
+  Info,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { POPULAR_SYMBOLS, FOREX_SYMBOLS, METALS_SYMBOLS, detectMarketType } from "@/types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  POPULAR_SYMBOLS,
+  FOREX_SYMBOLS,
+  METALS_SYMBOLS,
+  detectMarketType,
+} from "@/types";
 import type { MarketType } from "@/types";
 import { useTranslations } from "next-intl";
 
@@ -59,26 +77,28 @@ export function CoinSelector({
   const filteredPopularSymbols = POPULAR_SYMBOLS.filter(
     (symbol) =>
       !value.includes(symbol) &&
-      symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      symbol.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const filteredForexSymbols = FOREX_SYMBOLS.filter(
     (symbol) =>
       !value.includes(symbol) &&
-      symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      symbol.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const filteredMetalsSymbols = METALS_SYMBOLS.filter(
     (symbol) =>
       !value.includes(symbol) &&
-      symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      symbol.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   /** Badge color hint based on market type */
   const getBadgeClass = (symbol: string) => {
     const mt = detectMarketType(symbol);
-    if (mt === "forex") return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    if (mt === "metals") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    if (mt === "forex")
+      return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    if (mt === "metals")
+      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
     return "";
   };
 
@@ -95,7 +115,8 @@ export function CoinSelector({
     return types;
   }, [value]);
 
-  const hasNonCrypto = selectedMarketTypes.has("forex") || selectedMarketTypes.has("metals");
+  const hasNonCrypto =
+    selectedMarketTypes.has("forex") || selectedMarketTypes.has("metals");
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -111,8 +132,9 @@ export function CoinSelector({
       <CardContent className="space-y-4">
         {/* Selected Instruments */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">
+          <label className="text-sm font-medium flex items-center gap-1">
             {t("coinSelector.selectedCoins")} ({value.length}/{maxCoins})
+            <span className="text-destructive">*</span>
           </label>
           <div className="flex flex-wrap gap-2 min-h-[40px] p-3 rounded-md border border-border/50 bg-background/50">
             {value.length === 0 ? (

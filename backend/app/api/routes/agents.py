@@ -411,17 +411,19 @@ async def update_agent_status(
         if agent.strategy and agent.strategy.type == "ai":
             from ...workers.execution_worker import get_worker_manager
             worker_manager = await get_worker_manager()
+            strategy_id = str(agent.strategy_id)
             if new == "active":
-                await worker_manager.start_strategy(agent_id)
+                await worker_manager.start_strategy(strategy_id)
             elif new in ("paused", "stopped"):
-                await worker_manager.stop_strategy(agent_id)
+                await worker_manager.stop_strategy(strategy_id)
         else:
             from ...workers.quant_worker import get_quant_worker_manager
             worker_manager = await get_quant_worker_manager()
+            strategy_id = str(agent.strategy_id)
             if new == "active":
-                await worker_manager.start_strategy(agent_id)
+                await worker_manager.start_strategy(strategy_id)
             elif new in ("paused", "stopped"):
-                await worker_manager.stop_strategy(agent_id)
+                await worker_manager.stop_strategy(strategy_id)
     except Exception as e:
         logger.error(f"Error syncing worker for agent {agent_id}: {e}")
 

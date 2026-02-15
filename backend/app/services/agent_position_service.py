@@ -108,6 +108,7 @@ class AgentPositionService:
         agent_id: uuid.UUID,
         agent: AgentDB,
         current_prices: Optional[dict[str, float]] = None,
+        account_equity: Optional[float] = None,
     ) -> AgentAccountState:
         """
         Build an agent-isolated virtual AccountState.
@@ -119,6 +120,8 @@ class AgentPositionService:
             agent_id: The agent's ID
             agent: The AgentDB instance (for capital allocation)
             current_prices: Dict of symbol -> current price (for unrealized P&L calc)
+            account_equity: Real account equity for percentage-based capital allocation.
+                           Required when agent uses allocated_capital_percent.
 
         Returns:
             AgentAccountState with isolated positions and virtual balance
@@ -169,9 +172,12 @@ class AgentPositionService:
         elif agent.allocated_capital is not None:
             base_capital = agent.allocated_capital
         elif agent.allocated_capital_percent is not None:
-            # For percentage-based allocation, we'd need the account equity
-            # For now, use a reasonable default; the caller should set this
-            base_capital = 10000.0  # placeholder, actual value set by caller
+            # Use provided account_equity for percentage-based allocation
+            if account_equity is not None and account_equity > 0:
+                base_capital = account_equity * agent.allocated_capital_percent
+            else:
+                # Fallback to default if account_equity not provided
+                base_capital = 10000.0 * agent.allocated_capital_percent
         else:
             base_capital = 10000.0
 

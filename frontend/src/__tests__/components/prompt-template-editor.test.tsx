@@ -10,6 +10,7 @@ import { PromptSections, DEFAULT_PROMPT_SECTIONS } from "@/types";
 // Mock next-intl
 jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => "en",
 }));
 
 // Mock MonacoMarkdownEditor
@@ -26,7 +27,13 @@ jest.mock("@/components/ui/monaco-markdown-editor", () => ({
 
 // Mock Collapsible components
 jest.mock("@/components/ui/collapsible", () => ({
-  Collapsible: ({ children, open }: { children: React.ReactNode; open: boolean }) => (
+  Collapsible: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open: boolean;
+  }) => (
     <div data-testid="collapsible" data-open={open}>
       {children}
     </div>
@@ -46,12 +53,6 @@ const defaultSections: PromptSections = {
   tradingFrequency: "",
   entryStandards: "",
   decisionProcess: "",
-  marketAnalysis: true,
-  tradingStrategy: true,
-  riskManagement: true,
-  entryConditions: true,
-  exitConditions: true,
-  positionSizing: true,
 };
 
 describe("PromptTemplateEditor", () => {
@@ -88,10 +89,18 @@ describe("PromptTemplateEditor", () => {
   it("renders collapsible sections in simple mode", () => {
     render(<PromptTemplateEditor {...defaultProps} />);
 
-    expect(screen.getByText("promptEditor.sections.roleDefinition")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.tradingFrequency")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.entryStandards")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.decisionProcess")).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.roleDefinition"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.tradingFrequency"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.entryStandards"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.decisionProcess"),
+    ).toBeInTheDocument();
   });
 
   it("switches to advanced mode when toggle is clicked", () => {
@@ -100,7 +109,7 @@ describe("PromptTemplateEditor", () => {
       <PromptTemplateEditor
         {...defaultProps}
         onPromptModeChange={onPromptModeChange}
-      />
+      />,
     );
 
     const toggle = screen.getByRole("switch");
@@ -117,7 +126,7 @@ describe("PromptTemplateEditor", () => {
         promptMode="advanced"
         advancedPrompt="some content"
         onAdvancedPromptChange={onAdvancedPromptChange}
-      />
+      />,
     );
 
     const toggle = screen.getByRole("switch");
@@ -127,15 +136,12 @@ describe("PromptTemplateEditor", () => {
   });
 
   it("renders monaco editor in advanced mode", () => {
-    render(
-      <PromptTemplateEditor
-        {...defaultProps}
-        promptMode="advanced"
-      />
-    );
+    render(<PromptTemplateEditor {...defaultProps} promptMode="advanced" />);
 
     expect(screen.getByTestId("monaco-editor")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.advancedModeTitle")).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.advancedModeTitle"),
+    ).toBeInTheDocument();
   });
 
   it("updates advanced prompt when monaco editor changes", () => {
@@ -145,7 +151,7 @@ describe("PromptTemplateEditor", () => {
         {...defaultProps}
         promptMode="advanced"
         onAdvancedPromptChange={onAdvancedPromptChange}
-      />
+      />,
     );
 
     const editor = screen.getByTestId("monaco-editor");
@@ -159,13 +165,13 @@ describe("PromptTemplateEditor", () => {
 
     // Find first collapsible trigger
     const triggers = screen.getAllByTestId("collapsible-trigger");
-    
+
     // Click to expand
     fireEvent.click(triggers[0]);
-    
+
     // Click again to collapse
     fireEvent.click(triggers[0]);
-    
+
     // Component should handle toggle internally
     expect(triggers.length).toBe(4); // 4 sections
   });
@@ -175,12 +181,9 @@ describe("PromptTemplateEditor", () => {
       ...defaultSections,
       roleDefinition: "Custom role definition content",
     };
-    
+
     render(
-      <PromptTemplateEditor
-        {...defaultProps}
-        value={customizedSections}
-      />
+      <PromptTemplateEditor {...defaultProps} value={customizedSections} />,
     );
 
     // Should show customized indicator
@@ -189,12 +192,7 @@ describe("PromptTemplateEditor", () => {
 
   it("updates section content via textarea", () => {
     const onChange = jest.fn();
-    render(
-      <PromptTemplateEditor
-        {...defaultProps}
-        onChange={onChange}
-      />
-    );
+    render(<PromptTemplateEditor {...defaultProps} onChange={onChange} />);
 
     // Find and interact with textarea (in collapsible content)
     const textareas = screen.getAllByRole("textbox");

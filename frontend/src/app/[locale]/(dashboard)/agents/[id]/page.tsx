@@ -33,7 +33,13 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,9 +48,22 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -54,9 +73,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useUserModels, groupModelsByProvider, getProviderDisplayName } from "@/hooks";
+import {
+  useUserModels,
+  groupModelsByProvider,
+  getProviderDisplayName,
+} from "@/hooks";
 import { useAgent, useUpdateAgentStatus } from "@/hooks/use-agents";
-import { useAgentDecisions, useAgentDecisionStats } from "@/hooks/use-decisions";
+import {
+  useAgentDecisions,
+  useAgentDecisionStats,
+} from "@/hooks/use-decisions";
 import { agentsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { TradingViewChart } from "@/components/charts/tradingview-chart";
@@ -64,7 +90,10 @@ import type { AgentStatus } from "@/types";
 
 // Backward compat alias used throughout this file
 type StrategyStatus = AgentStatus;
-import { MarketSnapshotSection, AccountSnapshotSection } from "@/components/decisions/snapshot-sections";
+import {
+  MarketSnapshotSection,
+  AccountSnapshotSection,
+} from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
 import { ChainOfThought as ChainOfThoughtView } from "@/components/decisions/chain-of-thought";
 
@@ -132,23 +161,31 @@ function OverviewTab({
   } = useAgentDecisions(agentId, tradePage, TRADES_PAGE_SIZE, tradeFilters);
   const tradeDecisions = tradePageData?.items ?? [];
   const tradeTotalItems = tradePageData?.total ?? 0;
-  const tradeTotalPages = Math.max(1, Math.ceil(tradeTotalItems / TRADES_PAGE_SIZE));
+  const tradeTotalPages = Math.max(
+    1,
+    Math.ceil(tradeTotalItems / TRADES_PAGE_SIZE),
+  );
 
   // Build trade rows from execution_results, matched with decision data and account snapshot
   const tradeRows = tradeDecisions.flatMap((decision) => {
-    const snapshotPositions = (decision.account_snapshot as Record<string, unknown> | null)?.positions as Array<{
-      symbol: string;
-      side: string;
-      size: number;
-      size_usd: number;
-      entry_price: number;
-      mark_price: number;
-      leverage: number;
-      unrealized_pnl: number;
-      unrealized_pnl_percent: number;
-      liquidation_price?: number | null;
-    }> | undefined;
-    const execResults = (decision.execution_results as Array<Record<string, unknown>>) ?? [];
+    const snapshotPositions = (
+      decision.account_snapshot as Record<string, unknown> | null
+    )?.positions as
+      | Array<{
+          symbol: string;
+          side: string;
+          size: number;
+          size_usd: number;
+          entry_price: number;
+          mark_price: number;
+          leverage: number;
+          unrealized_pnl: number;
+          unrealized_pnl_percent: number;
+          liquidation_price?: number | null;
+        }>
+      | undefined;
+    const execResults =
+      (decision.execution_results as Array<Record<string, unknown>>) ?? [];
 
     return execResults
       .filter((er) => er.executed === true)
@@ -157,7 +194,7 @@ function OverviewTab({
         const action = er.action as string;
         const orderResult = er.order_result as Record<string, unknown> | null;
         const aiDecision = decision.decisions.find(
-          (d) => d.symbol === symbol && d.action === action
+          (d) => d.symbol === symbol && d.action === action,
         );
         const position = snapshotPositions?.find((p) => p.symbol === symbol);
         const side = action.includes("long") ? "long" : "short";
@@ -172,7 +209,10 @@ function OverviewTab({
           // For close actions: prefer position_leverage from exec_result (backend enriched),
           // then fallback to account_snapshot position, then AI decision
           leverage: isClose
-            ? ((er.position_leverage as number) ?? position?.leverage ?? aiDecision?.leverage ?? 0)
+            ? ((er.position_leverage as number) ??
+              position?.leverage ??
+              aiDecision?.leverage ??
+              0)
             : (aiDecision?.leverage ?? position?.leverage ?? 0),
           entryPrice: isClose
             ? (position?.entry_price ?? aiDecision?.entry_price)
@@ -198,16 +238,23 @@ function OverviewTab({
 
   const goToTradePage = (newPage: number) => {
     setTradePage(newPage);
-    tradeListTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    tradeListTopRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   // Helper to format price
   const fmtPrice = (v: number | undefined | null) =>
-    v != null ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : t("overview.tradeNA");
+    v != null
+      ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : t("overview.tradeNA");
 
   // Helper to format PnL
   const fmtPnl = (v: number | undefined | null) =>
-    v != null ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : t("overview.tradeNA");
+    v != null
+      ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : t("overview.tradeNA");
 
   return (
     <div className="space-y-6">
@@ -226,7 +273,7 @@ function OverviewTab({
                     "px-3 py-1 rounded-md text-xs font-mono font-medium transition-colors",
                     selectedSymbol === s
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
                   )}
                 >
                   {s}/USDT
@@ -247,41 +294,82 @@ function OverviewTab({
           {/* Strategy Details */}
           <Card className="bg-card/50 border-border/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("overview.strategyInfo")}</CardTitle>
+              <CardTitle className="text-base">
+                {t("overview.strategyInfo")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("overview.symbols")}</span>
+                <span className="text-muted-foreground">
+                  {t("overview.symbols")}
+                </span>
                 <div className="flex gap-1 flex-wrap justify-end">
                   {symbols.map((s) => (
-                    <Badge key={s} variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0">
+                    <Badge
+                      key={s}
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                    >
                       {s}
                     </Badge>
                   ))}
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("overview.tradingMode")}</span>
-                <span className="font-medium">{t(`tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("overview.aiModel")}</span>
-                <span className="font-medium text-xs truncate max-w-[150px]" title={agent.ai_model || ""}>
-                  {agent.ai_model ? (agent.ai_model.includes(":") ? agent.ai_model.split(":").slice(1).join(":") : agent.ai_model) : "-"}
+                <span className="text-muted-foreground">
+                  {t("overview.tradingMode")}
+                </span>
+                <span className="font-medium">
+                  {t(
+                    `tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`,
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("overview.executionInterval")}</span>
-                <span className="font-mono text-xs">{t("overview.everyMinutes", { minutes: (config?.execution_interval_minutes as number) || 30 })}</span>
+                <span className="text-muted-foreground">
+                  {t("overview.aiModel")}
+                </span>
+                <span
+                  className="font-medium text-xs truncate max-w-[150px]"
+                  title={agent.ai_model || ""}
+                >
+                  {agent.ai_model
+                    ? agent.ai_model.includes(":")
+                      ? agent.ai_model.split(":").slice(1).join(":")
+                      : agent.ai_model
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("overview.executionInterval")}
+                </span>
+                <span className="font-mono text-xs">
+                  {t("overview.everyMinutes", {
+                    minutes: agent.execution_interval_minutes,
+                  })}
+                </span>
               </div>
               <div className="pt-2 border-t border-border/30 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("overview.createdAt")}</span>
-                  <span className="text-xs">{agent.created_at ? new Date(agent.created_at).toLocaleDateString() : "-"}</span>
+                  <span className="text-muted-foreground">
+                    {t("overview.createdAt")}
+                  </span>
+                  <span className="text-xs">
+                    {agent.created_at
+                      ? new Date(agent.created_at).toLocaleDateString()
+                      : "-"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("overview.lastRun")}</span>
-                  <span className="text-xs">{agent.last_run_at ? new Date(agent.last_run_at).toLocaleString() : t("overview.never")}</span>
+                  <span className="text-muted-foreground">
+                    {t("overview.lastRun")}
+                  </span>
+                  <span className="text-xs">
+                    {agent.last_run_at
+                      ? new Date(agent.last_run_at).toLocaleString()
+                      : t("overview.never")}
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -290,34 +378,57 @@ function OverviewTab({
           {/* Profit Summary */}
           <Card className="bg-card/50 border-border/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("overview.profitSummary")}</CardTitle>
+              <CardTitle className="text-base">
+                {t("overview.profitSummary")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("overview.totalPnl")}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("overview.totalPnl")}
+                </span>
                 {hasTradeData ? (
-                  <span className={cn(
-                    "font-mono font-bold",
-                    (agent.total_pnl ?? 0) >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-                  )}>
-                    {(agent.total_pnl ?? 0) >= 0 ? "+" : ""}${Math.abs(agent.total_pnl ?? 0).toLocaleString()}
+                  <span
+                    className={cn(
+                      "font-mono font-bold",
+                      (agent.total_pnl ?? 0) >= 0
+                        ? "text-[var(--profit)]"
+                        : "text-[var(--loss)]",
+                    )}
+                  >
+                    {(agent.total_pnl ?? 0) >= 0 ? "+" : ""}$
+                    {Math.abs(agent.total_pnl ?? 0).toLocaleString()}
                   </span>
                 ) : (
-                  <span className="font-mono text-muted-foreground">{t("overview.noData")}</span>
+                  <span className="font-mono text-muted-foreground">
+                    {t("overview.noData")}
+                  </span>
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("overview.winRate")}</span>
-                <span className="font-mono font-medium">{hasTradeData ? `${(agent.win_rate ?? 0).toFixed(1)}%` : "-"}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("overview.winRate")}
+                </span>
+                <span className="font-mono font-medium">
+                  {hasTradeData ? `${(agent.win_rate ?? 0).toFixed(1)}%` : "-"}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("overview.totalTrades")}</span>
-                <span className="font-mono font-medium">{agent.total_trades ?? 0}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("overview.totalTrades")}
+                </span>
+                <span className="font-mono font-medium">
+                  {agent.total_trades ?? 0}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("overview.maxDrawdown")}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("overview.maxDrawdown")}
+                </span>
                 <span className="font-mono font-medium text-[var(--loss)]">
-                  {hasTradeData ? `-${(agent.max_drawdown ?? 0).toFixed(2)}%` : "-"}
+                  {hasTradeData
+                    ? `-${(agent.max_drawdown ?? 0).toFixed(2)}%`
+                    : "-"}
                 </span>
               </div>
             </CardContent>
@@ -338,22 +449,41 @@ function OverviewTab({
           {/* Toolbar: filters + refresh */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <Select value={tradeActionFilter || "__all__"} onValueChange={(v) => handleTradeActionFilterChange(v === "__all__" ? "" : v)}>
+              <Select
+                value={tradeActionFilter || "__all__"}
+                onValueChange={(v) =>
+                  handleTradeActionFilterChange(v === "__all__" ? "" : v)
+                }
+              >
                 <SelectTrigger className="w-[160px] h-8 text-xs">
                   <SelectValue placeholder={t("overview.tradeFilterAll")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">{t("overview.tradeFilterAll")}</SelectItem>
-                  {["open_long", "open_short", "close_long", "close_short"].map((action) => (
-                    <SelectItem key={action} value={action}>
-                      {action.replace("_", " ").toUpperCase()}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="__all__">
+                    {t("overview.tradeFilterAll")}
+                  </SelectItem>
+                  {["open_long", "open_short", "close_long", "close_short"].map(
+                    (action) => (
+                      <SelectItem key={action} value={action}>
+                        {action.replace("_", " ").toUpperCase()}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" size="sm" onClick={() => mutateTrades()} disabled={isTradeValidating}>
-              <RefreshCw className={cn("w-4 h-4 mr-2", isTradeValidating && "animate-spin")} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => mutateTrades()}
+              disabled={isTradeValidating}
+            >
+              <RefreshCw
+                className={cn(
+                  "w-4 h-4 mr-2",
+                  isTradeValidating && "animate-spin",
+                )}
+              />
               {t("refresh")}
             </Button>
           </div>
@@ -362,8 +492,12 @@ function OverviewTab({
           {tradeTotalItems === 0 && tradeRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Brain className="w-8 h-8 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">{t("overview.noRecentTrades")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("overview.noRecentTradesHint")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("overview.noRecentTrades")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("overview.noRecentTradesHint")}
+              </p>
             </div>
           ) : (
             <div className="relative">
@@ -371,28 +505,52 @@ function OverviewTab({
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border/50">
-                      <TableHead className="text-xs">{t("overview.tradeTime")}</TableHead>
-                      <TableHead className="text-xs">{t("overview.tradeSymbol")}</TableHead>
-                      <TableHead className="text-xs">{t("overview.tradeAction")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeLeverage")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeEntryPrice")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeClosePrice")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeSize")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradeSizeUsd")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("overview.tradePnl")}</TableHead>
+                      <TableHead className="text-xs">
+                        {t("overview.tradeTime")}
+                      </TableHead>
+                      <TableHead className="text-xs">
+                        {t("overview.tradeSymbol")}
+                      </TableHead>
+                      <TableHead className="text-xs">
+                        {t("overview.tradeAction")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradeLeverage")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradeEntryPrice")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradeClosePrice")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradeSize")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradeSizeUsd")}
+                      </TableHead>
+                      <TableHead className="text-xs text-right">
+                        {t("overview.tradePnl")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tradeRows.map((row) => {
-                      const pnlValue = row.isClose ? row.realizedPnl : row.unrealizedPnl;
-                      const pnlPct = row.isClose ? undefined : row.unrealizedPnlPercent;
+                      const pnlValue = row.isClose
+                        ? row.realizedPnl
+                        : row.unrealizedPnl;
+                      const pnlPct = row.isClose
+                        ? undefined
+                        : row.unrealizedPnlPercent;
 
                       return (
                         <TableRow key={row.key} className="border-border/30">
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(row.timestamp).toLocaleString()}
                           </TableCell>
-                          <TableCell className="font-mono text-xs font-medium">{row.symbol}/USDT</TableCell>
+                          <TableCell className="font-mono text-xs font-medium">
+                            {row.symbol}/USDT
+                          </TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
@@ -400,42 +558,63 @@ function OverviewTab({
                                 "text-xs",
                                 row.isClose
                                   ? "bg-muted text-foreground border-border"
-                                  : getActionColor(row.action)
+                                  : getActionColor(row.action),
                               )}
                             >
                               {row.isClose
-                                ? (row.side === "long" ? t("overview.tradeCloseLong") : t("overview.tradeCloseShort"))
-                                : (row.side === "long" ? t("overview.tradeLong") : t("overview.tradeShort"))}
+                                ? row.side === "long"
+                                  ? t("overview.tradeCloseLong")
+                                  : t("overview.tradeCloseShort")
+                                : row.side === "long"
+                                  ? t("overview.tradeLong")
+                                  : t("overview.tradeShort")}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-mono text-xs text-right">{row.leverage}x</TableCell>
                           <TableCell className="font-mono text-xs text-right">
-                            {fmtPrice(row.isClose ? row.entryPrice : row.filledPrice)}
+                            {row.leverage}x
                           </TableCell>
                           <TableCell className="font-mono text-xs text-right">
-                            {row.isClose ? fmtPrice(row.filledPrice) : t("overview.tradeNA")}
+                            {fmtPrice(
+                              row.isClose ? row.entryPrice : row.filledPrice,
+                            )}
                           </TableCell>
                           <TableCell className="font-mono text-xs text-right">
-                            {row.filledSize != null ? row.filledSize : t("overview.tradeNA")}
+                            {row.isClose
+                              ? fmtPrice(row.filledPrice)
+                              : t("overview.tradeNA")}
                           </TableCell>
                           <TableCell className="font-mono text-xs text-right">
-                            {row.sizeUsd != null ? `$${row.sizeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : t("overview.tradeNA")}
+                            {row.filledSize != null
+                              ? row.filledSize
+                              : t("overview.tradeNA")}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-right">
+                            {row.sizeUsd != null
+                              ? `$${row.sizeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : t("overview.tradeNA")}
                           </TableCell>
                           <TableCell className="text-right">
                             {pnlValue != null ? (
-                              <span className={cn(
-                                "font-mono text-xs font-semibold",
-                                pnlValue >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-                              )}>
+                              <span
+                                className={cn(
+                                  "font-mono text-xs font-semibold",
+                                  pnlValue >= 0
+                                    ? "text-[var(--profit)]"
+                                    : "text-[var(--loss)]",
+                                )}
+                              >
                                 {fmtPnl(pnlValue)}
                                 {pnlPct != null && (
                                   <span className="ml-1 font-normal text-muted-foreground">
-                                    ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
+                                    ({pnlPct >= 0 ? "+" : ""}
+                                    {pnlPct.toFixed(2)}%)
                                   </span>
                                 )}
                               </span>
                             ) : (
-                              <span className="font-mono text-xs text-muted-foreground">{t("overview.tradeNA")}</span>
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {t("overview.tradeNA")}
+                              </span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -460,7 +639,8 @@ function OverviewTab({
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               {(() => {
-                const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
+                const pages: (number | "ellipsis-start" | "ellipsis-end")[] =
+                  [];
                 if (tradeTotalPages <= 7) {
                   for (let i = 1; i <= tradeTotalPages; i++) pages.push(i);
                 } else {
@@ -469,12 +649,16 @@ function OverviewTab({
                   const start = Math.max(2, tradePage - 1);
                   const end = Math.min(tradeTotalPages - 1, tradePage + 1);
                   for (let i = start; i <= end; i++) pages.push(i);
-                  if (tradePage < tradeTotalPages - 2) pages.push("ellipsis-end");
+                  if (tradePage < tradeTotalPages - 2)
+                    pages.push("ellipsis-end");
                   pages.push(tradeTotalPages);
                 }
                 return pages.map((p) =>
                   typeof p === "string" ? (
-                    <span key={p} className="w-8 h-8 flex items-center justify-center text-sm text-muted-foreground">
+                    <span
+                      key={p}
+                      className="w-8 h-8 flex items-center justify-center text-sm text-muted-foreground"
+                    >
                       ...
                     </span>
                   ) : (
@@ -487,7 +671,7 @@ function OverviewTab({
                     >
                       {p}
                     </Button>
-                  )
+                  ),
                 );
               })()}
               <Button
@@ -508,7 +692,15 @@ function OverviewTab({
 }
 
 // Strategy Configuration Section (read-only, compact layout)
-function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<ReturnType<typeof useAgent>["data"]>; agentId: string; t: ReturnType<typeof useTranslations> }) {
+function StrategyConfigSection({
+  agent,
+  agentId,
+  t,
+}: {
+  agent: NonNullable<ReturnType<typeof useAgent>["data"]>;
+  agentId: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
   const config = agent.config as Record<string, unknown>;
   const riskControls = (config?.risk_controls as Record<string, number>) || {};
   const symbols = (config?.symbols as string[]) || [];
@@ -516,9 +708,11 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
   const indicators = (config?.indicators as Record<string, unknown>) || {};
   const debateEnabled = (config?.debate_enabled as boolean) || false;
   const debateModels = (config?.debate_models as string[]) || [];
-  const debateConsensusMode = (config?.debate_consensus_mode as string) || "majority_vote";
-  const debateMinParticipants = (config?.debate_min_participants as number) || 2;
-  const executionInterval = (config?.execution_interval_minutes as number) || 30;
+  const debateConsensusMode =
+    (config?.debate_consensus_mode as string) || "majority_vote";
+  const debateMinParticipants =
+    (config?.debate_min_participants as number) || 2;
+  const executionInterval = agent.execution_interval_minutes;
 
   // Parse AI model display name
   const aiModelDisplay = agent.ai_model
@@ -535,7 +729,8 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
   const macdSlow = indicators.macd_slow as number | undefined;
   const macdSignal = indicators.macd_signal as number | undefined;
   const atrPeriod = indicators.atr_period as number | undefined;
-  const hasIndicators = emaPeriods.length > 0 || rsiPeriod || macdFast || atrPeriod;
+  const hasIndicators =
+    emaPeriods.length > 0 || rsiPeriod || macdFast || atrPeriod;
 
   return (
     <Card className="bg-card/50 border-border/50">
@@ -546,7 +741,9 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
               <Settings className="w-5 h-5 text-primary" />
               {t("settings.strategyConfig")}
             </CardTitle>
-            <CardDescription className="mt-1">{t("settings.strategyConfigDesc")}</CardDescription>
+            <CardDescription className="mt-1">
+              {t("settings.strategyConfigDesc")}
+            </CardDescription>
           </div>
           <Link href={`/agents/${agentId}/edit`}>
             <Button size="sm">
@@ -559,52 +756,103 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
       <CardContent className="space-y-0">
         {/* Basic Configuration */}
         <div className="py-3 border-b border-border/40">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("overview.configuration")}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {t("overview.configuration")}
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.tradingMode")}</span>
-              <span className="text-sm font-medium">{t(`tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`)}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.tradingMode")}
+              </span>
+              <span className="text-sm font-medium">
+                {t(
+                  `tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`,
+                )}
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.aiModel")}</span>
-              <span className="text-sm font-medium truncate" title={`${aiProviderDisplay}: ${aiModelDisplay}`}>{aiModelDisplay}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.aiModel")}
+              </span>
+              <span
+                className="text-sm font-medium truncate"
+                title={`${aiProviderDisplay}: ${aiModelDisplay}`}
+              >
+                {aiModelDisplay}
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.executionInterval")}</span>
-              <span className="text-sm font-mono">{t("overview.everyMinutes", { minutes: executionInterval })}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.executionInterval")}
+              </span>
+              <span className="text-sm font-mono">
+                {t("overview.everyMinutes", { minutes: executionInterval })}
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.createdAt")}</span>
-              <span className="text-sm">{agent.created_at ? new Date(agent.created_at).toLocaleDateString() : "-"}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.createdAt")}
+              </span>
+              <span className="text-sm">
+                {agent.created_at
+                  ? new Date(agent.created_at).toLocaleDateString()
+                  : "-"}
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.lastRun")}</span>
-              <span className="text-sm">{agent.last_run_at ? new Date(agent.last_run_at).toLocaleString() : t("overview.never")}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.lastRun")}
+              </span>
+              <span className="text-sm">
+                {agent.last_run_at
+                  ? new Date(agent.last_run_at).toLocaleString()
+                  : t("overview.never")}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Trading Pairs & Timeframes */}
         <div className="py-3 border-b border-border/40">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("overview.symbolsAndTimeframes")}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {t("overview.symbolsAndTimeframes")}
+          </p>
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground mr-1">{t("overview.symbols")}:</span>
-              {symbols.length > 0 ? symbols.map((symbol) => (
-                <Badge key={symbol} variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0">
-                  {symbol}
-                </Badge>
-              )) : (
-                <span className="text-sm text-muted-foreground italic">{t("overview.noSymbols")}</span>
+              <span className="text-sm text-muted-foreground mr-1">
+                {t("overview.symbols")}:
+              </span>
+              {symbols.length > 0 ? (
+                symbols.map((symbol) => (
+                  <Badge
+                    key={symbol}
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                  >
+                    {symbol}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground italic">
+                  {t("overview.noSymbols")}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground mr-1">{t("overview.timeframes")}:</span>
-              {timeframes.length > 0 ? timeframes.map((tf) => (
-                <Badge key={tf} variant="outline" className="bg-muted font-mono text-xs py-0">
-                  {tf}
-                </Badge>
-              )) : (
+              <span className="text-sm text-muted-foreground mr-1">
+                {t("overview.timeframes")}:
+              </span>
+              {timeframes.length > 0 ? (
+                timeframes.map((tf) => (
+                  <Badge
+                    key={tf}
+                    variant="outline"
+                    className="bg-muted font-mono text-xs py-0"
+                  >
+                    {tf}
+                  </Badge>
+                ))
+              ) : (
                 <span className="text-sm text-muted-foreground italic">-</span>
               )}
             </div>
@@ -613,66 +861,110 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
 
         {/* Technical Indicators */}
         <div className="py-3 border-b border-border/40">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("overview.indicators")}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {t("overview.indicators")}
+          </p>
           {hasIndicators ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1">
               {emaPeriods.length > 0 && (
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.emaPeriods")}</span>
-                  <span className="text-sm font-mono">{emaPeriods.join(", ")}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.emaPeriods")}
+                  </span>
+                  <span className="text-sm font-mono">
+                    {emaPeriods.join(", ")}
+                  </span>
                 </div>
               )}
               {rsiPeriod && (
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.rsiPeriod")}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.rsiPeriod")}
+                  </span>
                   <span className="text-sm font-mono">{rsiPeriod}</span>
                 </div>
               )}
               {macdFast && (
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.macdParams")}</span>
-                  <span className="text-sm font-mono">{macdFast}/{macdSlow}/{macdSignal}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.macdParams")}
+                  </span>
+                  <span className="text-sm font-mono">
+                    {macdFast}/{macdSlow}/{macdSignal}
+                  </span>
                 </div>
               )}
               {atrPeriod && (
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.atrPeriod")}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.atrPeriod")}
+                  </span>
                   <span className="text-sm font-mono">{atrPeriod}</span>
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">{t("overview.noIndicators")}</p>
+            <p className="text-sm text-muted-foreground italic">
+              {t("overview.noIndicators")}
+            </p>
           )}
         </div>
 
         {/* Risk Controls */}
-        <div className={cn("py-3", debateEnabled && "border-b border-border/40")}>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("overview.riskControls")}</p>
+        <div
+          className={cn("py-3", debateEnabled && "border-b border-border/40")}
+        >
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {t("overview.riskControls")}
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.maxLeverage")}</span>
-              <span className="text-sm font-mono">{riskControls.max_leverage ?? 1}x</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.maxLeverage")}
+              </span>
+              <span className="text-sm font-mono">
+                {riskControls.max_leverage ?? 1}x
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.maxPosition")}</span>
-              <span className="text-sm font-mono">{((riskControls.max_position_ratio ?? 0.1) * 100).toFixed(0)}%</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.maxPosition")}
+              </span>
+              <span className="text-sm font-mono">
+                {((riskControls.max_position_ratio ?? 0.1) * 100).toFixed(0)}%
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.minConfidence")}</span>
-              <span className="text-sm font-mono">{riskControls.min_confidence ?? 70}%</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.minConfidence")}
+              </span>
+              <span className="text-sm font-mono">
+                {riskControls.min_confidence ?? 70}%
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.maxTotalExposure")}</span>
-              <span className="text-sm font-mono">{((riskControls.max_total_exposure ?? 0.8) * 100).toFixed(0)}%</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.maxTotalExposure")}
+              </span>
+              <span className="text-sm font-mono">
+                {((riskControls.max_total_exposure ?? 0.8) * 100).toFixed(0)}%
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.minRiskReward")}</span>
-              <span className="text-sm font-mono">1:{(riskControls.min_risk_reward_ratio ?? 2.0).toFixed(1)}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.minRiskReward")}
+              </span>
+              <span className="text-sm font-mono">
+                1:{(riskControls.min_risk_reward_ratio ?? 2.0).toFixed(1)}
+              </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{t("overview.maxDrawdownLimit")}</span>
-              <span className="text-sm font-mono text-[var(--loss)]">{((riskControls.max_drawdown_percent ?? 0.1) * 100).toFixed(0)}%</span>
+              <span className="text-sm text-muted-foreground">
+                {t("overview.maxDrawdownLimit")}
+              </span>
+              <span className="text-sm font-mono text-[var(--loss)]">
+                {((riskControls.max_drawdown_percent ?? 0.1) * 100).toFixed(0)}%
+              </span>
             </div>
           </div>
         </div>
@@ -680,24 +972,42 @@ function StrategyConfigSection({ agent, agentId, t }: { agent: NonNullable<Retur
         {/* Debate Settings (conditional) */}
         {debateEnabled && (
           <div className="py-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("overview.debate")}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              {t("overview.debate")}
+            </p>
             <div className="space-y-2">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.consensusMode")}</span>
-                  <span className="text-sm font-medium">{t(`overview.consensusModes.${debateConsensusMode}`)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.consensusMode")}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {t(`overview.consensusModes.${debateConsensusMode}`)}
+                  </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">{t("overview.minParticipants")}</span>
-                  <span className="text-sm font-mono">{debateMinParticipants}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("overview.minParticipants")}
+                  </span>
+                  <span className="text-sm font-mono">
+                    {debateMinParticipants}
+                  </span>
                 </div>
               </div>
               {debateModels.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-muted-foreground mr-1">{t("overview.debateModels")}:</span>
+                  <span className="text-sm text-muted-foreground mr-1">
+                    {t("overview.debateModels")}:
+                  </span>
                   {debateModels.map((model) => (
-                    <Badge key={model} variant="outline" className="bg-muted font-mono text-xs py-0">
-                      {model.includes(":") ? model.split(":").slice(1).join(":") : model}
+                    <Badge
+                      key={model}
+                      variant="outline"
+                      className="bg-muted font-mono text-xs py-0"
+                    >
+                      {model.includes(":")
+                        ? model.split(":").slice(1).join(":")
+                        : model}
                     </Badge>
                   ))}
                 </div>
@@ -748,9 +1058,16 @@ function RawResponseViewer({
           <div className="flex items-center gap-2 text-muted-foreground">
             <Code className="w-4 h-4" />
             <span className="font-medium">{t("decisions.rawResponse")}</span>
-            <span className="text-xs opacity-70">({t("decisions.rawResponseHint")})</span>
+            <span className="text-xs opacity-70">
+              ({t("decisions.rawResponseHint")})
+            </span>
           </div>
-          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 text-muted-foreground transition-transform",
+              isOpen && "rotate-180",
+            )}
+          />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -763,9 +1080,15 @@ function RawResponseViewer({
               onClick={handleCopy}
             >
               {copied ? (
-                <><Check className="w-3.5 h-3.5 mr-1" />{t("decisions.copied")}</>
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  {t("decisions.copied")}
+                </>
               ) : (
-                <><Copy className="w-3.5 h-3.5 mr-1" />{t("decisions.copyRaw")}</>
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-1" />
+                  {t("decisions.copyRaw")}
+                </>
               )}
             </Button>
           </div>
@@ -799,11 +1122,18 @@ function DecisionsTab({
   highlightDecisionId?: string;
 }) {
   const [page, setPage] = useState(1);
-  const [executionFilter, setExecutionFilter] = useState<"all" | "executed" | "skipped">("all");
+  const [executionFilter, setExecutionFilter] = useState<
+    "all" | "executed" | "skipped"
+  >("all");
   const [actionFilter, setActionFilter] = useState<string>("");
 
   const filters = { executionFilter, action: actionFilter || undefined };
-  const { data: pageData, isLoading, isValidating, mutate } = useAgentDecisions(agentId, page, DECISIONS_PAGE_SIZE, filters);
+  const {
+    data: pageData,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useAgentDecisions(agentId, page, DECISIONS_PAGE_SIZE, filters);
   const { data: stats } = useAgentDecisionStats(agentId);
 
   const decisions = pageData?.items ?? [];
@@ -811,7 +1141,7 @@ function DecisionsTab({
   const totalPages = Math.max(1, Math.ceil(totalItems / DECISIONS_PAGE_SIZE));
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
-    highlightDecisionId ? new Set([highlightDecisionId]) : new Set()
+    highlightDecisionId ? new Set([highlightDecisionId]) : new Set(),
   );
   const highlightRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
@@ -825,7 +1155,10 @@ function DecisionsTab({
         return new Set(prev).add(highlightDecisionId);
       });
       const timer = setTimeout(() => {
-        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        highlightRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
         hasScrolled.current = true;
       }, 300);
       return () => clearTimeout(timer);
@@ -850,7 +1183,9 @@ function DecisionsTab({
     listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleExecutionFilterChange = (value: "all" | "executed" | "skipped") => {
+  const handleExecutionFilterChange = (
+    value: "all" | "executed" | "skipped",
+  ) => {
     setExecutionFilter(value);
     setPage(1);
     setExpandedIds(new Set());
@@ -863,9 +1198,10 @@ function DecisionsTab({
   };
 
   // Stats-driven metrics
-  const executionRate = stats && stats.total_decisions > 0
-    ? Math.round((stats.executed_decisions / stats.total_decisions) * 100)
-    : 0;
+  const executionRate =
+    stats && stats.total_decisions > 0
+      ? Math.round((stats.executed_decisions / stats.total_decisions) * 100)
+      : 0;
   const actionCounts = stats?.action_counts ?? {};
 
   if (isLoading) {
@@ -890,21 +1226,37 @@ function DecisionsTab({
                 "px-3 py-1.5 text-xs font-medium transition-colors",
                 executionFilter === value
                   ? "bg-primary text-primary-foreground"
-                  : "bg-background hover:bg-muted text-muted-foreground"
+                  : "bg-background hover:bg-muted text-muted-foreground",
               )}
             >
-              {t(`decisions.filter${value.charAt(0).toUpperCase() + value.slice(1)}`)}
+              {t(
+                `decisions.filter${value.charAt(0).toUpperCase() + value.slice(1)}`,
+              )}
             </button>
           ))}
         </div>
         {/* Action type filter */}
-        <Select value={actionFilter || "__all__"} onValueChange={(v) => handleActionFilterChange(v === "__all__" ? "" : v)}>
+        <Select
+          value={actionFilter || "__all__"}
+          onValueChange={(v) =>
+            handleActionFilterChange(v === "__all__" ? "" : v)
+          }
+        >
           <SelectTrigger className="w-[140px] h-8 text-xs">
             <SelectValue placeholder={t("decisions.filterActionAll")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">{t("decisions.filterActionAll")}</SelectItem>
-            {["open_long", "open_short", "close_long", "close_short", "hold", "wait"].map((action) => (
+            <SelectItem value="__all__">
+              {t("decisions.filterActionAll")}
+            </SelectItem>
+            {[
+              "open_long",
+              "open_short",
+              "close_long",
+              "close_short",
+              "hold",
+              "wait",
+            ].map((action) => (
               <SelectItem key={action} value={action}>
                 {action.replace("_", " ").toUpperCase()}
               </SelectItem>
@@ -915,7 +1267,12 @@ function DecisionsTab({
       {/* Actions */}
       <div className="flex items-center gap-2">
         {agentStatus === "active" && onRunNow && (
-          <Button variant="outline" size="sm" onClick={onRunNow} disabled={isRunningNow}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRunNow}
+            disabled={isRunningNow}
+          >
             {isRunningNow ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
@@ -924,8 +1281,15 @@ function DecisionsTab({
             {t("actions.runNow")}
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
-          <RefreshCw className={cn("w-4 h-4 mr-2", isValidating && "animate-spin")} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => mutate()}
+          disabled={isValidating}
+        >
+          <RefreshCw
+            className={cn("w-4 h-4 mr-2", isValidating && "animate-spin")}
+          />
           {t("refresh")}
         </Button>
       </div>
@@ -939,7 +1303,9 @@ function DecisionsTab({
         <Card className="bg-card/50 border-border/50">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Brain className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">{t("decisions.empty")}</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {t("decisions.empty")}
+            </h3>
             <p className="text-muted-foreground text-center">
               {t("decisions.emptyHint")}
             </p>
@@ -959,7 +1325,9 @@ function DecisionsTab({
               <Brain className="w-4 h-4" />
               <span className="text-xs">{t("decisions.totalDecisions")}</span>
             </div>
-            <p className="text-2xl font-bold font-mono">{stats?.total_decisions ?? 0}</p>
+            <p className="text-2xl font-bold font-mono">
+              {stats?.total_decisions ?? 0}
+            </p>
           </CardContent>
         </Card>
 
@@ -979,7 +1347,9 @@ function DecisionsTab({
               <Target className="w-4 h-4" />
               <span className="text-xs">{t("decisions.avgConfidence")}</span>
             </div>
-            <p className="text-2xl font-bold font-mono">{Math.round(stats?.average_confidence ?? 0)}%</p>
+            <p className="text-2xl font-bold font-mono">
+              {Math.round(stats?.average_confidence ?? 0)}%
+            </p>
           </CardContent>
         </Card>
 
@@ -989,7 +1359,9 @@ function DecisionsTab({
               <Clock className="w-4 h-4" />
               <span className="text-xs">{t("decisions.avgLatency")}</span>
             </div>
-            <p className="text-2xl font-bold font-mono">{Math.round(stats?.average_latency_ms ?? 0)}ms</p>
+            <p className="text-2xl font-bold font-mono">
+              {Math.round(stats?.average_latency_ms ?? 0)}ms
+            </p>
           </CardContent>
         </Card>
 
@@ -999,7 +1371,9 @@ function DecisionsTab({
               <Activity className="w-4 h-4" />
               <span className="text-xs">{t("decisions.totalTokens")}</span>
             </div>
-            <p className="text-2xl font-bold font-mono">{(stats?.total_tokens ?? 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold font-mono">
+              {(stats?.total_tokens ?? 0).toLocaleString()}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -1012,12 +1386,24 @@ function DecisionsTab({
             <span className="text-xs">{t("decisions.actionDistribution")}</span>
           </div>
           <div className="flex flex-wrap gap-3">
-            {["open_long", "open_short", "close_long", "close_short", "hold", "wait"].map((action) => (
+            {[
+              "open_long",
+              "open_short",
+              "close_long",
+              "close_short",
+              "hold",
+              "wait",
+            ].map((action) => (
               <div key={action} className="flex items-center gap-1.5">
-                <Badge variant="outline" className={cn("text-xs py-0", getActionColor(action))}>
+                <Badge
+                  variant="outline"
+                  className={cn("text-xs py-0", getActionColor(action))}
+                >
                   {action.replace("_", " ").toUpperCase()}
                 </Badge>
-                <span className="text-sm font-bold font-mono">{actionCounts[action] || 0}</span>
+                <span className="text-sm font-bold font-mono">
+                  {actionCounts[action] || 0}
+                </span>
               </div>
             ))}
           </div>
@@ -1029,309 +1415,470 @@ function DecisionsTab({
       <div ref={listTopRef} />
 
       <div className="relative">
-
-      {decisions.map((decision) => {
-        const isHighlighted = highlightDecisionId === decision.id;
-        return (
-        <Collapsible
-          key={decision.id}
-          open={expandedIds.has(decision.id)}
-          onOpenChange={() => toggleExpanded(decision.id)}
-        >
-          <div ref={isHighlighted ? highlightRef : undefined}>
-          <Card className={cn(
-            "bg-card/50 border-border/50 transition-all duration-500",
-            isHighlighted && "ring-2 ring-primary/50 border-primary/30"
-          )}>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Brain className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">
-                          {agentName} {t("decisions.decision")} #{decision.id.slice(0, 8)}
-                        </CardTitle>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            decision.executed
-                              ? "bg-[var(--profit)]/20 text-[var(--profit)]"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {decision.executed ? (
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                          ) : (
-                            <AlertCircle className="w-3 h-3 mr-1" />
-                          )}
-                          {decision.executed ? t("decisions.executed") : t("decisions.skipped")}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        {new Date(decision.timestamp).toLocaleString()}
-                        <span className="mx-1">•</span>
-                        {t("decisions.confidence")}: {decision.overall_confidence}%
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-2">
-                      {decision.decisions.slice(0, 3).map((d, i) => (
-                        <Badge
-                          key={i}
-                          variant="outline"
-                          className={cn("text-xs", getActionColor(d.action))}
-                        >
-                          {d.symbol} {d.action.replace("_", " ").toUpperCase()}
-                        </Badge>
-                      ))}
-                    </div>
-                    {expandedIds.has(decision.id) ? (
-                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0 space-y-6">
-                {/* Market Assessment */}
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
-                  <h4 className="text-sm font-semibold mb-2">{t("decisions.marketAssessment")}</h4>
-                  <p className="text-sm text-muted-foreground">{decision.market_assessment}</p>
-                </div>
-
-                {/* Account Snapshot */}
-                {decision.account_snapshot && (
-                  <AccountSnapshotSection snapshot={decision.account_snapshot} t={t} />
-                )}
-
-                {/* Market Data Snapshot */}
-                {decision.market_snapshot && decision.market_snapshot.length > 0 && (
-                  <MarketSnapshotSection snapshot={decision.market_snapshot} t={t} />
-                )}
-
-                {/* Chain of Thought - Enhanced Timeline View */}
-                <ChainOfThoughtView content={decision.chain_of_thought} />
-
-                {/* Trading Decisions */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3">{t("decisions.tradingDecisions")}</h4>
-                  <div className="space-y-3">
-                    {decision.decisions.map((d, i) => {
-                      // For close actions, resolve real leverage/size from account_snapshot or execution_results
-                      const isCloseAction = d.action === "close_long" || d.action === "close_short";
-                      const snapshotPos = isCloseAction
-                        ? ((decision.account_snapshot as Record<string, unknown> | null)?.positions as Array<{ symbol: string; leverage: number; size_usd: number }> | undefined)?.find((p) => p.symbol === d.symbol)
-                        : undefined;
-                      const execRes = isCloseAction
-                        ? (decision.execution_results as Array<Record<string, unknown>> | undefined)?.find((er) => er.symbol === d.symbol && er.action === d.action)
-                        : undefined;
-                      const displayLeverage = isCloseAction
-                        ? ((execRes?.position_leverage as number) ?? snapshotPos?.leverage ?? d.leverage)
-                        : d.leverage;
-                      const displaySize = isCloseAction
-                        ? ((execRes?.position_size_usd as number) ?? snapshotPos?.size_usd ?? d.position_size_usd)
-                        : d.position_size_usd;
-
-                      return (
-                      <div key={i} className="p-4 rounded-lg bg-muted/30 border border-border/30">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold">{d.symbol}</span>
-                            <Badge variant="outline" className={cn(getActionColor(d.action))}>
-                              {d.action.replace("_", " ").toUpperCase()}
-                            </Badge>
+        {decisions.map((decision) => {
+          const isHighlighted = highlightDecisionId === decision.id;
+          return (
+            <Collapsible
+              key={decision.id}
+              open={expandedIds.has(decision.id)}
+              onOpenChange={() => toggleExpanded(decision.id)}
+            >
+              <div ref={isHighlighted ? highlightRef : undefined}>
+                <Card
+                  className={cn(
+                    "bg-card/50 border-border/50 transition-all duration-500",
+                    isHighlighted && "ring-2 ring-primary/50 border-primary/30",
+                  )}
+                >
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Brain className="w-5 h-5 text-primary" />
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                              <div
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-base">
+                                {agentName} {t("decisions.decision")} #
+                                {decision.id.slice(0, 8)}
+                              </CardTitle>
+                              <Badge
+                                variant="outline"
                                 className={cn(
-                                  "h-full rounded-full",
-                                  d.confidence >= 80 ? "bg-[var(--profit)]" :
-                                  d.confidence >= 60 ? "bg-[var(--warning)]" : "bg-muted-foreground"
+                                  "text-xs",
+                                  decision.executed
+                                    ? "bg-[var(--profit)]/20 text-[var(--profit)]"
+                                    : "bg-muted text-muted-foreground",
                                 )}
-                                style={{ width: `${d.confidence}%` }}
-                              />
+                              >
+                                {decision.executed ? (
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                ) : (
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                )}
+                                {decision.executed
+                                  ? t("decisions.executed")
+                                  : t("decisions.skipped")}
+                              </Badge>
                             </div>
-                            <span className="text-sm font-medium">{d.confidence}%</span>
+                            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              {new Date(decision.timestamp).toLocaleString()}
+                              <span className="mx-1">•</span>
+                              {t("decisions.confidence")}:{" "}
+                              {decision.overall_confidence}%
+                            </div>
                           </div>
                         </div>
-                        {d.action !== "hold" && d.action !== "wait" && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">{t("decisions.leverage")}</span>
-                              <p className="font-mono font-semibold">{displayLeverage}x</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">{t("decisions.size")}</span>
-                              <p className="font-mono font-semibold">${displaySize.toLocaleString()}</p>
-                            </div>
-                            {d.stop_loss && (
-                              <div>
-                                <span className="text-muted-foreground">{t("decisions.stopLoss")}</span>
-                                <p className="font-mono font-semibold text-[var(--loss)]">${d.stop_loss.toLocaleString()}</p>
-                              </div>
-                            )}
-                            {d.take_profit && (
-                              <div>
-                                <span className="text-muted-foreground">{t("decisions.takeProfit")}</span>
-                                <p className="font-mono font-semibold text-[var(--profit)]">${d.take_profit.toLocaleString()}</p>
-                              </div>
-                            )}
+                        <div className="flex items-center gap-4">
+                          <div className="flex gap-2">
+                            {decision.decisions.slice(0, 3).map((d, i) => (
+                              <Badge
+                                key={i}
+                                variant="outline"
+                                className={cn(
+                                  "text-xs",
+                                  getActionColor(d.action),
+                                )}
+                              >
+                                {d.symbol}{" "}
+                                {d.action.replace("_", " ").toUpperCase()}
+                              </Badge>
+                            ))}
                           </div>
-                        )}
-                        <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-border/30">
-                          {d.reasoning}
+                          {expandedIds.has(decision.id) ? (
+                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-6">
+                      {/* Market Assessment */}
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
+                        <h4 className="text-sm font-semibold mb-2">
+                          {t("decisions.marketAssessment")}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {decision.market_assessment}
                         </p>
                       </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* Execution Records */}
-                {decision.execution_results && decision.execution_results.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-primary" />
-                      {t("decisions.executionRecords")}
-                    </h4>
-                    <div className="space-y-2">
-                      {(decision.execution_results as Array<Record<string, unknown>>).map((er, i) => {
-                        const wasExecuted = er.executed === true;
-                        const orderResult = er.order_result as Record<string, unknown> | null;
-                        const hasFailed = wasExecuted === false && orderResult?.error != null;
-                        return (
-                          <div
-                            key={i}
-                            className={`p-3 rounded-lg border ${
-                              wasExecuted
-                                ? "bg-[var(--profit)]/5 border-[var(--profit)]/20"
-                                : hasFailed
-                                ? "bg-[var(--loss)]/5 border-[var(--loss)]/20"
-                                : "bg-muted/30 border-border/30"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-sm">{er.symbol as string}</span>
-                                <Badge variant="outline" className={cn("text-xs", getActionColor(er.action as string))}>
-                                  {(er.action as string)?.replace("_", " ").toUpperCase()}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                {wasExecuted ? (
-                                  <>
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-[var(--profit)]" />
-                                    <span className="text-xs font-medium text-[var(--profit)]">
-                                      {t("decisions.execution.success")}
+                      {/* Account Snapshot */}
+                      {decision.account_snapshot && (
+                        <AccountSnapshotSection
+                          snapshot={decision.account_snapshot}
+                          t={t}
+                        />
+                      )}
+
+                      {/* Market Data Snapshot */}
+                      {decision.market_snapshot &&
+                        decision.market_snapshot.length > 0 && (
+                          <MarketSnapshotSection
+                            snapshot={decision.market_snapshot}
+                            t={t}
+                          />
+                        )}
+
+                      {/* Chain of Thought - Enhanced Timeline View */}
+                      <ChainOfThoughtView content={decision.chain_of_thought} />
+
+                      {/* Trading Decisions */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3">
+                          {t("decisions.tradingDecisions")}
+                        </h4>
+                        <div className="space-y-3">
+                          {decision.decisions.map((d, i) => {
+                            // For close actions, resolve real leverage/size from account_snapshot or execution_results
+                            const isCloseAction =
+                              d.action === "close_long" ||
+                              d.action === "close_short";
+                            const snapshotPos = isCloseAction
+                              ? (
+                                  (
+                                    decision.account_snapshot as Record<
+                                      string,
+                                      unknown
+                                    > | null
+                                  )?.positions as
+                                    | Array<{
+                                        symbol: string;
+                                        leverage: number;
+                                        size_usd: number;
+                                      }>
+                                    | undefined
+                                )?.find((p) => p.symbol === d.symbol)
+                              : undefined;
+                            const execRes = isCloseAction
+                              ? (
+                                  decision.execution_results as
+                                    | Array<Record<string, unknown>>
+                                    | undefined
+                                )?.find(
+                                  (er) =>
+                                    er.symbol === d.symbol &&
+                                    er.action === d.action,
+                                )
+                              : undefined;
+                            const displayLeverage = isCloseAction
+                              ? ((execRes?.position_leverage as number) ??
+                                snapshotPos?.leverage ??
+                                d.leverage)
+                              : d.leverage;
+                            const displaySize = isCloseAction
+                              ? ((execRes?.position_size_usd as number) ??
+                                snapshotPos?.size_usd ??
+                                d.position_size_usd)
+                              : d.position_size_usd;
+
+                            return (
+                              <div
+                                key={i}
+                                className="p-4 rounded-lg bg-muted/30 border border-border/30"
+                              >
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-lg font-bold">
+                                      {d.symbol}
                                     </span>
-                                  </>
-                                ) : hasFailed ? (
-                                  <>
-                                    <XCircle className="w-3.5 h-3.5 text-[var(--loss)]" />
-                                    <span className="text-xs font-medium text-[var(--loss)]">
-                                      {t("decisions.execution.failed")}
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(getActionColor(d.action))}
+                                    >
+                                      {d.action.replace("_", " ").toUpperCase()}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full",
+                                          d.confidence >= 80
+                                            ? "bg-[var(--profit)]"
+                                            : d.confidence >= 60
+                                              ? "bg-[var(--warning)]"
+                                              : "bg-muted-foreground",
+                                        )}
+                                        style={{ width: `${d.confidence}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-sm font-medium">
+                                      {d.confidence}%
                                     </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                      {t("decisions.execution.skipped")}
-                                    </span>
-                                  </>
+                                  </div>
+                                </div>
+                                {d.action !== "hold" && d.action !== "wait" && (
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                      <span className="text-muted-foreground">
+                                        {t("decisions.leverage")}
+                                      </span>
+                                      <p className="font-mono font-semibold">
+                                        {displayLeverage}x
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">
+                                        {t("decisions.size")}
+                                      </span>
+                                      <p className="font-mono font-semibold">
+                                        ${displaySize.toLocaleString()}
+                                      </p>
+                                    </div>
+                                    {d.stop_loss && (
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          {t("decisions.stopLoss")}
+                                        </span>
+                                        <p className="font-mono font-semibold text-[var(--loss)]">
+                                          ${d.stop_loss.toLocaleString()}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {d.take_profit && (
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          {t("decisions.takeProfit")}
+                                        </span>
+                                        <p className="font-mono font-semibold text-[var(--profit)]">
+                                          ${d.take_profit.toLocaleString()}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
+                                <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-border/30">
+                                  {d.reasoning}
+                                </p>
                               </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Execution Records */}
+                      {decision.execution_results &&
+                        decision.execution_results.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                              <Activity className="w-4 h-4 text-primary" />
+                              {t("decisions.executionRecords")}
+                            </h4>
+                            <div className="space-y-2">
+                              {(
+                                decision.execution_results as Array<
+                                  Record<string, unknown>
+                                >
+                              ).map((er, i) => {
+                                const wasExecuted = er.executed === true;
+                                const orderResult = er.order_result as Record<
+                                  string,
+                                  unknown
+                                > | null;
+                                const hasFailed =
+                                  wasExecuted === false &&
+                                  orderResult?.error != null;
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`p-3 rounded-lg border ${
+                                      wasExecuted
+                                        ? "bg-[var(--profit)]/5 border-[var(--profit)]/20"
+                                        : hasFailed
+                                          ? "bg-[var(--loss)]/5 border-[var(--loss)]/20"
+                                          : "bg-muted/30 border-border/30"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-sm">
+                                          {er.symbol as string}
+                                        </span>
+                                        <Badge
+                                          variant="outline"
+                                          className={cn(
+                                            "text-xs",
+                                            getActionColor(er.action as string),
+                                          )}
+                                        >
+                                          {(er.action as string)
+                                            ?.replace("_", " ")
+                                            .toUpperCase()}
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        {wasExecuted ? (
+                                          <>
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--profit)]" />
+                                            <span className="text-xs font-medium text-[var(--profit)]">
+                                              {t("decisions.execution.success")}
+                                            </span>
+                                          </>
+                                        ) : hasFailed ? (
+                                          <>
+                                            <XCircle className="w-3.5 h-3.5 text-[var(--loss)]" />
+                                            <span className="text-xs font-medium text-[var(--loss)]">
+                                              {t("decisions.execution.failed")}
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {t("decisions.execution.skipped")}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {wasExecuted && orderResult && (
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                        {orderResult.order_id != null && (
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t("decisions.execution.orderId")}
+                                            </span>
+                                            <p className="font-mono font-medium truncate">
+                                              {String(orderResult.order_id)}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {orderResult.filled_size != null && (
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t(
+                                                "decisions.execution.filledSize",
+                                              )}
+                                            </span>
+                                            <p className="font-mono font-medium">
+                                              {Number(orderResult.filled_size)}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {orderResult.filled_price != null && (
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t(
+                                                "decisions.execution.filledPrice",
+                                              )}
+                                            </span>
+                                            <p className="font-mono font-medium">
+                                              $
+                                              {Number(
+                                                orderResult.filled_price,
+                                              ).toLocaleString()}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {orderResult.status != null && (
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t("decisions.execution.status")}
+                                            </span>
+                                            <p className="font-mono font-medium">
+                                              {String(orderResult.status)}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {wasExecuted &&
+                                      er.requested_size_usd != null &&
+                                      er.actual_size_usd != null && (
+                                        <div className="flex gap-4 mt-2 text-xs">
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t(
+                                                "decisions.execution.requestedSize",
+                                              )}
+                                            </span>
+                                            <span className="font-mono font-medium ml-1">
+                                              $
+                                              {Number(
+                                                er.requested_size_usd,
+                                              ).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              {t(
+                                                "decisions.execution.actualSize",
+                                              )}
+                                            </span>
+                                            <span className="font-mono font-medium ml-1">
+                                              $
+                                              {Number(
+                                                er.actual_size_usd,
+                                              ).toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    {!wasExecuted && er.reason != null && (
+                                      <div className="text-xs mt-1">
+                                        <span className="text-muted-foreground">
+                                          {t("decisions.execution.reason")}
+                                          :{" "}
+                                        </span>
+                                        <span className="text-muted-foreground/80">
+                                          {String(er.reason)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {hasFailed &&
+                                      orderResult?.error != null && (
+                                        <div className="text-xs mt-1">
+                                          <span className="text-[var(--loss)]">
+                                            {t("decisions.execution.reason")}
+                                            :{" "}
+                                          </span>
+                                          <span className="text-[var(--loss)]/80">
+                                            {String(orderResult.error)}
+                                          </span>
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                            {wasExecuted && orderResult && (
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                                {orderResult.order_id != null && (
-                                  <div>
-                                    <span className="text-muted-foreground">{t("decisions.execution.orderId")}</span>
-                                    <p className="font-mono font-medium truncate">{String(orderResult.order_id)}</p>
-                                  </div>
-                                )}
-                                {orderResult.filled_size != null && (
-                                  <div>
-                                    <span className="text-muted-foreground">{t("decisions.execution.filledSize")}</span>
-                                    <p className="font-mono font-medium">{Number(orderResult.filled_size)}</p>
-                                  </div>
-                                )}
-                                {orderResult.filled_price != null && (
-                                  <div>
-                                    <span className="text-muted-foreground">{t("decisions.execution.filledPrice")}</span>
-                                    <p className="font-mono font-medium">${Number(orderResult.filled_price).toLocaleString()}</p>
-                                  </div>
-                                )}
-                                {orderResult.status != null && (
-                                  <div>
-                                    <span className="text-muted-foreground">{t("decisions.execution.status")}</span>
-                                    <p className="font-mono font-medium">{String(orderResult.status)}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {wasExecuted && er.requested_size_usd != null && er.actual_size_usd != null && (
-                              <div className="flex gap-4 mt-2 text-xs">
-                                <div>
-                                  <span className="text-muted-foreground">{t("decisions.execution.requestedSize")}</span>
-                                  <span className="font-mono font-medium ml-1">${Number(er.requested_size_usd).toLocaleString()}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">{t("decisions.execution.actualSize")}</span>
-                                  <span className="font-mono font-medium ml-1">${Number(er.actual_size_usd).toLocaleString()}</span>
-                                </div>
-                              </div>
-                            )}
-                            {!wasExecuted && er.reason != null && (
-                              <div className="text-xs mt-1">
-                                <span className="text-muted-foreground">{t("decisions.execution.reason")}: </span>
-                                <span className="text-muted-foreground/80">{String(er.reason)}</span>
-                              </div>
-                            )}
-                            {hasFailed && orderResult?.error != null && (
-                              <div className="text-xs mt-1">
-                                <span className="text-[var(--loss)]">{t("decisions.execution.reason")}: </span>
-                                <span className="text-[var(--loss)]/80">{String(orderResult.error)}</span>
-                              </div>
-                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        )}
 
-                {/* Raw AI Response */}
-                {decision.raw_response && (
-                  <RawResponseViewer rawResponse={decision.raw_response} t={t} />
-                )}
+                      {/* Raw AI Response */}
+                      {decision.raw_response && (
+                        <RawResponseViewer
+                          rawResponse={decision.raw_response}
+                          t={t}
+                        />
+                      )}
 
-                {/* AI Info */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
-                  <span>{t("decisions.model")}: {decision.ai_model}</span>
-                  <span>{t("decisions.tokens")}: {decision.tokens_used}</span>
-                  <span>{t("decisions.latency")}: {decision.latency_ms}ms</span>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-          </div>
-        </Collapsible>
-        );
-      })}
-
-      </div>{/* end loading overlay wrapper */}
+                      {/* AI Info */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
+                        <span>
+                          {t("decisions.model")}: {decision.ai_model}
+                        </span>
+                        <span>
+                          {t("decisions.tokens")}: {decision.tokens_used}
+                        </span>
+                        <span>
+                          {t("decisions.latency")}: {decision.latency_ms}ms
+                        </span>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </div>
+            </Collapsible>
+          );
+        })}
+      </div>
+      {/* end loading overlay wrapper */}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -1360,7 +1907,10 @@ function DecisionsTab({
             }
             return pages.map((p) =>
               typeof p === "string" ? (
-                <span key={p} className="w-8 h-8 flex items-center justify-center text-sm text-muted-foreground">
+                <span
+                  key={p}
+                  className="w-8 h-8 flex items-center justify-center text-sm text-muted-foreground"
+                >
                   ...
                 </span>
               ) : (
@@ -1373,7 +1923,7 @@ function DecisionsTab({
                 >
                   {p}
                 </Button>
-              )
+              ),
             );
           })()}
           <Button
@@ -1396,7 +1946,7 @@ function SettingsTab({
   agent,
   agentId,
   t,
-  onUpdate
+  onUpdate,
 }: {
   agent: NonNullable<ReturnType<typeof useAgent>["data"]>;
   agentId: string;
@@ -1419,11 +1969,12 @@ function SettingsTab({
     name: agent.name,
     description: agent.description || "",
     ai_model: agent.ai_model || "",
-    execution_interval_minutes: (config?.execution_interval_minutes as number) || 30,
+    execution_interval_minutes: agent.execution_interval_minutes,
     auto_execute: (config?.auto_execute as boolean) ?? true,
   });
 
-  const updateForm = (patch: Partial<typeof formData>) => setFormData(prev => ({ ...prev, ...patch }));
+  const updateForm = (patch: Partial<typeof formData>) =>
+    setFormData((prev) => ({ ...prev, ...patch }));
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1441,7 +1992,8 @@ function SettingsTab({
       onUpdate();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update settings";
+      const message =
+        err instanceof Error ? err.message : "Failed to update settings";
       setSaveError(message);
     } finally {
       setIsSaving(false);
@@ -1454,28 +2006,35 @@ function SettingsTab({
       await agentsApi.delete(agentId);
       window.location.href = "/agents";
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete agent";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete agent";
       setSaveError(message);
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
 
-  const inputClass = "w-full px-3 py-2 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50";
-  const smallInputClass = "w-24 px-3 py-2 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const inputClass =
+    "w-full px-3 py-2 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const smallInputClass =
+    "w-24 px-3 py-2 rounded-md bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50";
 
   return (
     <div className="space-y-6">
       {/* Quick Settings (Editable) */}
       <Card className="bg-card/50 border-border/50">
         <CardHeader>
-          <CardTitle className="text-lg">{t("settings.quickSettings")}</CardTitle>
+          <CardTitle className="text-lg">
+            {t("settings.quickSettings")}
+          </CardTitle>
           <CardDescription>{t("settings.quickSettingsDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t("settings.agentName")}</label>
+              <label className="text-sm font-medium">
+                {t("settings.agentName")}
+              </label>
               <input
                 type="text"
                 value={formData.name}
@@ -1485,25 +2044,32 @@ function SettingsTab({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t("settings.aiModel")}</label>
-              <Select value={formData.ai_model} onValueChange={(v) => updateForm({ ai_model: v })}>
+              <label className="text-sm font-medium">
+                {t("settings.aiModel")}
+              </label>
+              <Select
+                value={formData.ai_model}
+                onValueChange={(v) => updateForm({ ai_model: v })}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t("settings.aiModelPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.keys(groupedModels).length > 0 ? (
-                    Object.entries(groupedModels).map(([provider, providerModels]) => (
-                      <div key={provider}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                          {getProviderDisplayName(provider)}
+                    Object.entries(groupedModels).map(
+                      ([provider, providerModels]) => (
+                        <div key={provider}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                            {getProviderDisplayName(provider)}
+                          </div>
+                          {providerModels.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
                         </div>
-                        {providerModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                          </SelectItem>
-                        ))}
-                      </div>
-                    ))
+                      ),
+                    )
                   ) : (
                     <div className="px-2 py-1.5 text-sm text-muted-foreground">
                       {t("settings.noModels")}
@@ -1515,7 +2081,9 @@ function SettingsTab({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("settings.description")}</label>
+            <label className="text-sm font-medium">
+              {t("settings.description")}
+            </label>
             <input
               type="text"
               value={formData.description}
@@ -1527,28 +2095,43 @@ function SettingsTab({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t("settings.executionInterval")}</label>
+              <label className="text-sm font-medium">
+                {t("settings.executionInterval")}
+              </label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={5}
                   max={1440}
                   value={formData.execution_interval_minutes}
-                  onChange={(e) => updateForm({ execution_interval_minutes: parseInt(e.target.value) || 30 })}
+                  onChange={(e) =>
+                    updateForm({
+                      execution_interval_minutes:
+                        parseInt(e.target.value) || 30,
+                    })
+                  }
                   className={smallInputClass}
                 />
-                <span className="text-sm text-muted-foreground">{t("settings.minutes")}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("settings.minutes")}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
               <div>
-                <p className="text-sm font-medium">{t("settings.autoExecute")}</p>
-                <p className="text-xs text-muted-foreground">{t("settings.autoExecuteDesc")}</p>
+                <p className="text-sm font-medium">
+                  {t("settings.autoExecute")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.autoExecuteDesc")}
+                </p>
               </div>
               <Switch
                 checked={formData.auto_execute}
-                onCheckedChange={(checked) => updateForm({ auto_execute: checked })}
+                onCheckedChange={(checked) =>
+                  updateForm({ auto_execute: checked })
+                }
               />
             </div>
           </div>
@@ -1584,7 +2167,9 @@ function SettingsTab({
       {/* Danger Zone */}
       <Card className="bg-card/50 border-[var(--loss)]/30">
         <CardHeader>
-          <CardTitle className="text-lg text-[var(--loss)]">{t("settings.dangerZone")}</CardTitle>
+          <CardTitle className="text-lg text-[var(--loss)]">
+            {t("settings.dangerZone")}
+          </CardTitle>
           <CardDescription>{t("settings.dangerZoneDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -1598,7 +2183,9 @@ function SettingsTab({
                 <Trash2 className="w-4 h-4 mr-2" />
                 {t("settings.deleteAgent")}
               </Button>
-              <p className="text-sm text-muted-foreground">{t("settings.deleteRequireStopped")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.deleteRequireStopped")}
+              </p>
             </div>
           ) : !showDeleteConfirm ? (
             <Button
@@ -1652,11 +2239,13 @@ export default function AgentDetailPage() {
   const tabParam = searchParams.get("tab");
   const decisionParam = searchParams.get("decision");
   const validTabs = ["overview", "decisions", "settings"];
-  const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
+  const initialTab =
+    tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const { data: agent, isLoading, error, mutate } = useAgent(agentId);
-  const { trigger: updateStatus, isMutating: isUpdating } = useUpdateAgentStatus(agentId);
+  const { trigger: updateStatus, isMutating: isUpdating } =
+    useUpdateAgentStatus(agentId);
   const [isRunningNow, setIsRunningNow] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
@@ -1667,7 +2256,8 @@ export default function AgentDetailPage() {
       toast.success(t("toast.runNowSuccess"));
       mutate(); // refresh agent data
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.runNowFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.runNowFailed");
       toast.error(t("toast.runNowFailed"), message);
     } finally {
       setIsRunningNow(false);
@@ -1678,10 +2268,11 @@ export default function AgentDetailPage() {
     try {
       await updateStatus(status);
       mutate();
-      const statusKey = status === 'active' ? 'started' : status;
+      const statusKey = status === "active" ? "started" : status;
       toast.success(t(`toast.${statusKey}`));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.updateFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.updateFailed");
       toast.error(t("toast.updateFailed"), message);
     }
   };
@@ -1734,7 +2325,10 @@ export default function AgentDetailPage() {
           <div>
             <h1 className="text-2xl font-bold">{agent.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className={cn("text-xs", getStatusColor(agent.status))}>
+              <Badge
+                variant="outline"
+                className={cn("text-xs", getStatusColor(agent.status))}
+              >
                 {t(`status.${agent.status}`)}
               </Badge>
               <span className="text-sm text-muted-foreground">
@@ -1771,7 +2365,9 @@ export default function AgentDetailPage() {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                {agent.status === "draft" ? t("actions.start") : t("actions.resume")}
+                {agent.status === "draft"
+                  ? t("actions.start")
+                  : t("actions.resume")}
               </Button>
               {agent.status === "paused" && (
                 <Button
@@ -1785,7 +2381,7 @@ export default function AgentDetailPage() {
                 </Button>
               )}
             </>
-          ) : (agent.status === "error" || agent.status === "warning") ? (
+          ) : agent.status === "error" || agent.status === "warning" ? (
             <>
               <Button
                 onClick={() => handleStatusChange("active")}
@@ -1817,7 +2413,9 @@ export default function AgentDetailPage() {
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>{t("actions.stopConfirmTitle")}</DialogTitle>
-            <DialogDescription>{t("actions.stopConfirmDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("actions.stopConfirmDesc")}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStopConfirm(false)}>
@@ -1851,11 +2449,7 @@ export default function AgentDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <OverviewTab
-            agent={agent}
-            agentId={agentId}
-            t={t}
-          />
+          <OverviewTab agent={agent} agentId={agentId} t={t} />
         </TabsContent>
 
         <TabsContent value="decisions" className="mt-6">
@@ -1871,7 +2465,12 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6">
-          <SettingsTab agent={agent} agentId={agentId} t={t} onUpdate={mutate} />
+          <SettingsTab
+            agent={agent}
+            agentId={agentId}
+            t={t}
+            onUpdate={mutate}
+          />
         </TabsContent>
       </Tabs>
     </div>

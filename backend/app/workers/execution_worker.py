@@ -136,8 +136,24 @@ class ExecutionWorker:
             repo = StrategyRepository(session)
             strategy = await repo.get_by_id(self.strategy_id)
 
-            if not strategy or strategy.status != "active":
-                logger.info(f"Strategy {self.strategy_id} not active, stopping")
+            if not strategy:
+                logger.info(f"Strategy {self.strategy_id} not found, stopping")
+                self._running = False
+                return
+
+            # Check for active agent (strategy itself has no status field)
+            from sqlalchemy import select
+            from ..db.models import AgentDB
+
+            agent_stmt = select(AgentDB).where(
+                AgentDB.strategy_id == self.strategy_id,
+                AgentDB.status == "active",
+            )
+            result = await session.execute(agent_stmt)
+            agent = result.scalar_one_or_none()
+
+            if not agent:
+                logger.info(f"No active agent for strategy {self.strategy_id}, stopping")
                 self._running = False
                 return
 
@@ -153,10 +169,12 @@ class ExecutionWorker:
             # Run decision cycle (decision is saved inside run_cycle)
             result = await engine.run_cycle()
 
-            # Update strategy timestamps
-            await repo.update(
-                self.strategy_id,
-                strategy.user_id,
+            # Update agent timestamps
+            from ..db.repositories.agent import AgentRepository
+            agent_repo = AgentRepository(session)
+            await agent_repo.update(
+                agent.id,
+                agent.user_id,
                 last_run_at=datetime.now(UTC),
                 next_run_at=datetime.now(UTC) + timedelta(minutes=self.interval_minutes),
             )
@@ -173,9 +191,10 @@ class ExecutionWorker:
 
 
     async def _update_strategy_status(self, status: str, error: Optional[str] = None) -> None:
-        """Update strategy status in database"""
+        """Update agent status in database"""
         async with AsyncSessionLocal() as session:
-            repo = StrategyRepository(session)
+            from ..db.repositories.agent import AgentRepository
+            repo = AgentRepository(session)
             await repo.update_status(self.strategy_id, status, error)
             await session.commit()
 
@@ -376,8 +395,12 @@ class WorkerManager:
                                 await trader.close()
                             except Exception:
                                 pass
-                        await repo.update_status(strategy.id, "error", str(e))
-                        await session.commit()
+                        # Update agent status to error
+                        if agent:
+                            from ..db.repositories.agent import AgentRepository
+                            agent_repo = AgentRepository(session)
+                            await agent_repo.update_status(agent.id, "error", str(e))
+                            await session.commit()
                         return False
                     except TradeError as e:
                         logger.error(f"Failed to initialize trader for strategy {strategy_id}: {e.message}")
@@ -386,8 +409,12 @@ class WorkerManager:
                                 await trader.close()
                             except Exception:
                                 pass
-                        await repo.update_status(strategy.id, "error", e.message)
-                        await session.commit()
+                        # Update agent status to error
+                        if agent:
+                            from ..db.repositories.agent import AgentRepository
+                            agent_repo = AgentRepository(session)
+                            await agent_repo.update_status(agent.id, "error", e.message)
+                            await session.commit()
                         return False
 
                 # Get interval from agent or config
@@ -587,34 +614,52 @@ class WorkerManager:
                     logger.warning(f"Error closing trader: {e}")
 
     async def _load_active_strategies(self) -> None:
-        """Load and start workers for all active strategies (legacy mode only)"""
+        """Load and start workers for all active agents (legacy mode only)"""
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from ..db.models import AgentDB
+
         async with AsyncSessionLocal() as session:
-            strategy_repo = StrategyRepository(session)
             account_repo = AccountRepository(session)
 
-            strategies = await strategy_repo.get_active_strategies()
+            # Query active agents with their strategies
+            stmt = (
+                select(AgentDB)
+                .where(AgentDB.status == "active")
+                .options(
+                    selectinload(AgentDB.strategy),
+                    selectinload(AgentDB.account),
+                )
+            )
+            result = await session.execute(stmt)
+            agents = result.scalars().all()
 
-            for strategy in strategies:
-                if not strategy.account_id:
-                    logger.warning(f"Strategy {strategy.id} has no account, skipping")
+            for agent in agents:
+                strategy = agent.strategy
+                if not strategy:
+                    logger.warning(f"Agent {agent.id} has no strategy, skipping")
+                    continue
+
+                if not agent.account_id:
+                    logger.warning(f"Agent {agent.id} has no account, skipping")
                     continue
 
                 # Get the account (should be loaded via relationship)
-                account = strategy.account
+                account = agent.account
                 if not account:
-                    logger.warning(f"Account not found for strategy {strategy.id}, skipping")
+                    logger.warning(f"Account not found for agent {agent.id}, skipping")
                     continue
 
                 # Get decrypted credentials
                 credentials = await account_repo.get_decrypted_credentials(
-                    strategy.account_id,
-                    strategy.user_id
+                    agent.account_id,
+                    agent.user_id
                 )
                 if not credentials:
-                    logger.warning(f"Failed to get credentials for strategy {strategy.id}, skipping")
+                    logger.warning(f"Failed to get credentials for agent {agent.id}, skipping")
                     continue
 
-                # Start the worker
+                # Start the worker (strategy_id is the key for workers)
                 success = await self.start_strategy(
                     str(strategy.id),
                     credentials=credentials,
@@ -622,9 +667,9 @@ class WorkerManager:
                 )
 
                 if success:
-                    logger.info(f"Auto-started worker for strategy {strategy.id}")
+                    logger.info(f"Auto-started worker for agent {agent.id}, strategy {strategy.id}")
                 else:
-                    logger.error(f"Failed to auto-start worker for strategy {strategy.id}")
+                    logger.error(f"Failed to auto-start worker for agent {agent.id}")
 
                 # Brief delay between strategy initialisations to avoid
                 # overwhelming exchange APIs with concurrent load_markets() calls.
@@ -632,19 +677,22 @@ class WorkerManager:
 
     async def _monitor_loop(self) -> None:
         """Monitor workers and sync with database (legacy mode only)"""
+        from sqlalchemy import select
+        from ..db.models import AgentDB
+
         while self._running:
             try:
                 await asyncio.sleep(60)  # Check every minute
 
-                # Sync with database
+                # Sync with database - query active agents
                 async with AsyncSessionLocal() as session:
-                    repo = StrategyRepository(session)
-                    active = await repo.get_active_strategies()
-                    active_ids = {str(s.id) for s in active}
+                    stmt = select(AgentDB.strategy_id).where(AgentDB.status == "active")
+                    result = await session.execute(stmt)
+                    active_strategy_ids = {str(row[0]) for row in result.fetchall()}
 
-                    # Stop workers for deactivated strategies
+                    # Stop workers for deactivated agents
                     for strategy_id in list(self._workers.keys()):
-                        if strategy_id not in active_ids:
+                        if strategy_id not in active_strategy_ids:
                             await self.stop_strategy(strategy_id)
 
             except asyncio.CancelledError:

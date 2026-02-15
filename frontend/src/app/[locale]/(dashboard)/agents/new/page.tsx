@@ -21,7 +21,13 @@ import {
   Wallet,
   Play,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,10 +121,10 @@ function StepIndicator({
                   isActive
                     ? "border-primary bg-primary text-primary-foreground"
                     : isComplete
-                    ? "border-primary bg-primary/10 text-primary"
-                    : isSkipped
-                    ? "border-muted-foreground/30 bg-muted text-muted-foreground"
-                    : "border-border bg-background text-muted-foreground"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : isSkipped
+                        ? "border-muted-foreground/30 bg-muted text-muted-foreground"
+                        : "border-border bg-background text-muted-foreground",
                 )}
               >
                 {isComplete || isSkipped ? (
@@ -130,7 +136,7 @@ function StepIndicator({
               <span
                 className={cn(
                   "text-xs mt-1.5 font-medium whitespace-nowrap",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 {t(`wizard.steps.${stepKeys[index]}`)}
@@ -140,7 +146,7 @@ function StepIndicator({
               <div
                 className={cn(
                   "flex-1 h-0.5 mx-3 -mt-5",
-                  index < currentStep ? "bg-primary" : "bg-border"
+                  index < currentStep ? "bg-primary" : "bg-border",
                 )}
               />
             )}
@@ -270,11 +276,18 @@ export default function AgentWizardPage() {
         strategy_id: state.selectedStrategyId,
         ai_model: isAiStrategy ? state.aiModel || undefined : undefined,
         execution_mode: state.executionMode,
-        account_id: state.executionMode === "live" ? state.accountId || undefined : undefined,
-        mock_initial_balance: state.executionMode === "mock" ? state.mockInitialBalance : undefined,
-        allocated_capital: state.capitalMode === "fixed" ? state.allocatedCapital : undefined,
+        account_id:
+          state.executionMode === "live"
+            ? state.accountId || undefined
+            : undefined,
+        mock_initial_balance:
+          state.executionMode === "mock" ? state.mockInitialBalance : undefined,
+        allocated_capital:
+          state.capitalMode === "fixed" ? state.allocatedCapital : undefined,
         allocated_capital_percent:
-          state.capitalMode === "percent" ? state.allocatedCapitalPercent / 100 : undefined,
+          state.capitalMode === "percent"
+            ? state.allocatedCapitalPercent / 100
+            : undefined,
         execution_interval_minutes: state.executionIntervalMinutes,
         auto_execute: state.autoExecute,
       };
@@ -282,7 +295,8 @@ export default function AgentWizardPage() {
       toast.success(t("toast.created"));
       router.push(`/agents`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.createFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.createFailed");
       toast.error(t("toast.createFailed"), message);
     } finally {
       setIsSubmitting(false);
@@ -293,11 +307,17 @@ export default function AgentWizardPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/agents")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/agents")}
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gradient">{t("wizard.title")}</h1>
+          <h1 className="text-2xl font-bold text-gradient">
+            {t("wizard.title")}
+          </h1>
           <p className="text-muted-foreground">{t("wizard.subtitle")}</p>
         </div>
       </div>
@@ -410,8 +430,12 @@ function StrategyPickerStep({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{t("wizard.strategyStep.title")}</h2>
-        <p className="text-muted-foreground text-sm">{t("wizard.strategyStep.subtitle")}</p>
+        <h2 className="text-xl font-semibold">
+          {t("wizard.strategyStep.title")}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {t("wizard.strategyStep.subtitle")}
+        </p>
       </div>
 
       {/* Filters */}
@@ -449,11 +473,16 @@ function StrategyPickerStep({
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <FileText className="w-10 h-10 text-muted-foreground mb-3" />
-            <h3 className="font-semibold text-lg mb-1">{t("wizard.strategyStep.empty")}</h3>
+            <h3 className="font-semibold text-lg mb-1">
+              {t("wizard.strategyStep.empty")}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
               {t("wizard.strategyStep.emptyDesc")}
             </p>
-            <Button variant="outline" onClick={() => window.location.href = "/strategies/new"}>
+            <Button
+              variant="outline"
+              onClick={() => (window.location.href = "/strategies/new")}
+            >
               <Plus className="w-4 h-4 mr-2" />
               {t("wizard.strategyStep.createStrategy")}
             </Button>
@@ -463,8 +492,10 @@ function StrategyPickerStep({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
           {filteredStrategies.map((strategy) => {
             const isSelected = state.selectedStrategyId === strategy.id;
-            const Icon = STRATEGY_TYPE_ICONS[strategy.type as StrategyType] || FileText;
-            const colorClass = STRATEGY_TYPE_COLORS[strategy.type as StrategyType] || "";
+            const Icon =
+              STRATEGY_TYPE_ICONS[strategy.type as StrategyType] || FileText;
+            const colorClass =
+              STRATEGY_TYPE_COLORS[strategy.type as StrategyType] || "";
 
             return (
               <Card
@@ -473,18 +504,22 @@ function StrategyPickerStep({
                   "cursor-pointer transition-all hover:border-primary/40",
                   isSelected
                     ? "border-primary ring-2 ring-primary/20"
-                    : "border-border/50"
+                    : "border-border/50",
                 )}
                 onClick={() => selectStrategy(strategy)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={cn("p-1.5 rounded-lg border", colorClass)}>
+                      <div
+                        className={cn("p-1.5 rounded-lg border", colorClass)}
+                      >
                         <Icon className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-sm leading-tight">{strategy.name}</h4>
+                        <h4 className="font-semibold text-sm leading-tight">
+                          {strategy.name}
+                        </h4>
                         <Badge variant="outline" className="text-[10px] mt-0.5">
                           {tStrat(`type.${strategy.type}`)}
                         </Badge>
@@ -503,7 +538,11 @@ function StrategyPickerStep({
                   )}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {strategy.symbols.slice(0, 4).map((sym) => (
-                      <Badge key={sym} variant="secondary" className="text-[10px]">
+                      <Badge
+                        key={sym}
+                        variant="secondary"
+                        className="text-[10px]"
+                      >
                         {sym}
                       </Badge>
                     ))}
@@ -571,7 +610,9 @@ function ModelSelectStep({
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">{t("wizard.modelStep.title")}</h2>
-        <p className="text-muted-foreground text-sm">{t("wizard.modelStep.subtitle")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("wizard.modelStep.subtitle")}
+        </p>
       </div>
 
       {isLoading ? (
@@ -582,11 +623,16 @@ function ModelSelectStep({
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Bot className="w-10 h-10 text-muted-foreground mb-3" />
-            <h3 className="font-semibold text-lg mb-1">{t("wizard.modelStep.noModels")}</h3>
+            <h3 className="font-semibold text-lg mb-1">
+              {t("wizard.modelStep.noModels")}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
               {t("wizard.modelStep.noModelsDesc")}
             </p>
-            <Button variant="outline" onClick={() => window.location.href = "/models"}>
+            <Button
+              variant="outline"
+              onClick={() => (window.location.href = "/models")}
+            >
               <Plus className="w-4 h-4 mr-2" />
               {t("wizard.modelStep.addModel")}
             </Button>
@@ -609,7 +655,7 @@ function ModelSelectStep({
                         "cursor-pointer transition-all hover:border-primary/40",
                         isSelected
                           ? "border-primary ring-2 ring-primary/20"
-                          : "border-border/50"
+                          : "border-border/50",
                       )}
                       onClick={() =>
                         setState((prev) => ({ ...prev, aiModel: model.id }))
@@ -618,7 +664,9 @@ function ModelSelectStep({
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="min-w-0">
-                            <h4 className="font-semibold text-sm truncate">{model.name}</h4>
+                            <h4 className="font-semibold text-sm truncate">
+                              {model.name}
+                            </h4>
                             {model.description && (
                               <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {model.description}
@@ -687,8 +735,12 @@ function ExecutionModeStep({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{t("wizard.executionStep.title")}</h2>
-        <p className="text-muted-foreground text-sm">{t("wizard.executionStep.subtitle")}</p>
+        <h2 className="text-xl font-semibold">
+          {t("wizard.executionStep.title")}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {t("wizard.executionStep.subtitle")}
+        </p>
       </div>
 
       {/* Mode Toggle Cards */}
@@ -699,15 +751,19 @@ function ExecutionModeStep({
             "cursor-pointer transition-all hover:border-primary/40",
             state.executionMode === "live"
               ? "border-primary ring-2 ring-primary/20"
-              : "border-border/50"
+              : "border-border/50",
           )}
-          onClick={() => setState((prev) => ({ ...prev, executionMode: "live" }))}
+          onClick={() =>
+            setState((prev) => ({ ...prev, executionMode: "live" }))
+          }
         >
           <CardContent className="p-6 text-center">
             <div className="inline-flex p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 mb-3">
               <Wallet className="w-6 h-6" />
             </div>
-            <h3 className="font-semibold text-lg mb-1">{t("wizard.executionStep.live")}</h3>
+            <h3 className="font-semibold text-lg mb-1">
+              {t("wizard.executionStep.live")}
+            </h3>
             <p className="text-sm text-muted-foreground">
               {t("wizard.executionStep.liveDesc")}
             </p>
@@ -725,15 +781,19 @@ function ExecutionModeStep({
             "cursor-pointer transition-all hover:border-primary/40",
             state.executionMode === "mock"
               ? "border-primary ring-2 ring-primary/20"
-              : "border-border/50"
+              : "border-border/50",
           )}
-          onClick={() => setState((prev) => ({ ...prev, executionMode: "mock" }))}
+          onClick={() =>
+            setState((prev) => ({ ...prev, executionMode: "mock" }))
+          }
         >
           <CardContent className="p-6 text-center">
             <div className="inline-flex p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 mb-3">
               <Play className="w-6 h-6" />
             </div>
-            <h3 className="font-semibold text-lg mb-1">{t("wizard.executionStep.mock")}</h3>
+            <h3 className="font-semibold text-lg mb-1">
+              {t("wizard.executionStep.mock")}
+            </h3>
             <p className="text-sm text-muted-foreground">
               {t("wizard.executionStep.mockDesc")}
             </p>
@@ -760,7 +820,10 @@ function ExecutionModeStep({
 
             {/* Account Select */}
             <div className="space-y-2">
-              <Label>{t("wizard.executionStep.selectAccount")}</Label>
+              <Label className="flex items-center gap-1">
+                {t("wizard.executionStep.selectAccount")}
+                <span className="text-destructive">*</span>
+              </Label>
               {accounts.length === 0 ? (
                 <div className="flex items-center justify-between p-3 rounded-lg border border-dashed">
                   <span className="text-sm text-muted-foreground">
@@ -769,7 +832,7 @@ function ExecutionModeStep({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.location.href = "/accounts/new"}
+                    onClick={() => (window.location.href = "/accounts/new")}
                   >
                     <Plus className="w-3 h-3 mr-1" />
                     {t("wizard.executionStep.addAccount")}
@@ -783,7 +846,11 @@ function ExecutionModeStep({
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("wizard.executionStep.selectAccountPlaceholder")} />
+                    <SelectValue
+                      placeholder={t(
+                        "wizard.executionStep.selectAccountPlaceholder",
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((acc) => (
@@ -869,15 +936,22 @@ function ReviewStep({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{t("wizard.reviewStep.title")}</h2>
-        <p className="text-muted-foreground text-sm">{t("wizard.reviewStep.subtitle")}</p>
+        <h2 className="text-xl font-semibold">
+          {t("wizard.reviewStep.title")}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {t("wizard.reviewStep.subtitle")}
+        </p>
       </div>
 
       {/* Agent Name & Settings */}
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="space-y-2">
-            <Label>{t("wizard.reviewStep.agentName")}</Label>
+            <Label className="flex items-center gap-1">
+              {t("wizard.reviewStep.agentName")}
+              <span className="text-destructive">*</span>
+            </Label>
             <Input
               value={state.agentName}
               onChange={(e) =>
@@ -931,7 +1005,9 @@ function ReviewStep({
       {/* Configuration Summary */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">{t("wizard.reviewStep.summary")}</CardTitle>
+          <CardTitle className="text-base">
+            {t("wizard.reviewStep.summary")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="space-y-2.5 text-sm">
@@ -957,7 +1033,9 @@ function ReviewStep({
               label={t("wizard.reviewStep.summaryMode")}
               value={
                 <Badge
-                  variant={state.executionMode === "live" ? "default" : "secondary"}
+                  variant={
+                    state.executionMode === "live" ? "default" : "secondary"
+                  }
                   className="text-xs"
                 >
                   {t(`executionMode.${state.executionMode}`)}

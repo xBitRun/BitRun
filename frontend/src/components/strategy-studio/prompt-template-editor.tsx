@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, ChevronDown, ChevronUp, AlertTriangle, Code2, Layers } from "lucide-react";
+import {
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Code2,
+  Layers,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,9 +19,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MonacoMarkdownEditor } from "@/components/ui/monaco-markdown-editor";
-import { PromptSections, DEFAULT_PROMPT_SECTIONS } from "@/types";
+import { PromptSections, getDefaultPromptSections } from "@/types";
 import type { TradingMode } from "@/types";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface PromptTemplateEditorProps {
   promptMode: "simple" | "advanced";
@@ -53,9 +60,13 @@ export function PromptTemplateEditor({
   tradingMode,
 }: PromptTemplateEditorProps) {
   const t = useTranslations("strategyStudio");
+  const locale = useLocale();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
+
+  // Get locale-aware default prompt sections
+  const defaultPromptSections = getDefaultPromptSections(locale);
 
   const handleModeChange = (checked: boolean) => {
     const newMode = checked ? "advanced" : "simple";
@@ -83,7 +94,7 @@ export function PromptTemplateEditor({
   // Check if a section has been customized (differs from default)
   const isCustomized = (key: keyof PromptSections): boolean => {
     const currentValue = value[key]?.trim() || "";
-    const defaultValue = DEFAULT_PROMPT_SECTIONS[key]?.trim() || "";
+    const defaultValue = defaultPromptSections[key]?.trim() || "";
     return currentValue !== defaultValue && currentValue !== "";
   };
 
@@ -157,10 +168,10 @@ export function PromptTemplateEditor({
                   <CollapsibleContent className="pt-2">
                     <Textarea
                       value={value[config.key]}
-                      onChange={(e) => updateSection(config.key, e.target.value)}
-                      placeholder={t(
-                        `promptEditor.placeholders.${config.key}`
-                      )}
+                      onChange={(e) =>
+                        updateSection(config.key, e.target.value)
+                      }
+                      placeholder={t(`promptEditor.placeholders.${config.key}`)}
                       rows={config.rows}
                       className="resize-none text-sm"
                     />

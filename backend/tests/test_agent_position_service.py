@@ -247,22 +247,40 @@ class TestGetAgentAccountState:
         )
         assert state.equity == pytest.approx(5000.0)
 
+    async def test_live_mode_percent_allocation_with_equity(
+        self,
+        agent_pos_service: AgentPositionService,
+        test_agent: AgentDB,
+    ):
+        """Live mode with percent allocation uses provided account_equity."""
+        test_agent.execution_mode = "live"
+        test_agent.allocated_capital = None
+        test_agent.allocated_capital_percent = 0.5  # 50%
+
+        state = await agent_pos_service.get_agent_account_state(
+            agent_id=test_agent.id,
+            agent=test_agent,
+            account_equity=20000.0,  # Real account equity
+        )
+        # 50% of 20000 = 10000
+        assert state.equity == pytest.approx(10000.0)
+
     async def test_live_mode_percent_allocation_fallback(
         self,
         agent_pos_service: AgentPositionService,
         test_agent: AgentDB,
     ):
-        """Live mode with only percent allocation uses placeholder capital."""
+        """Live mode with percent allocation but no account_equity uses fallback."""
         test_agent.execution_mode = "live"
         test_agent.allocated_capital = None
-        test_agent.allocated_capital_percent = 0.5
+        test_agent.allocated_capital_percent = 0.5  # 50%
 
         state = await agent_pos_service.get_agent_account_state(
             agent_id=test_agent.id,
             agent=test_agent,
         )
-        # Placeholder is 10000.0
-        assert state.equity == pytest.approx(10000.0)
+        # Fallback: 50% of 10000 = 5000
+        assert state.equity == pytest.approx(5000.0)
 
     async def test_live_mode_no_allocation(
         self,

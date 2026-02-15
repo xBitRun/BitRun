@@ -304,11 +304,28 @@ class StrategyCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_ai_prompt(self):
-        """AI strategies must have a prompt in config."""
+        """AI strategies must have a valid prompt configuration."""
         if self.type == StrategyType.AI:
+            # Check for custom prompt
             prompt = self.config.get("prompt", "")
-            if not prompt or len(prompt.strip()) < 10:
-                raise ValueError("AI strategy requires a prompt with at least 10 characters")
+            if prompt and len(prompt.strip()) >= 10:
+                return self
+
+            # Check for advanced prompt
+            advanced_prompt = self.config.get("advanced_prompt", "")
+            if advanced_prompt and len(advanced_prompt.strip()) >= 10:
+                return self
+
+            # Check for prompt sections (simple mode)
+            prompt_sections = self.config.get("prompt_sections", {})
+            if prompt_sections and isinstance(prompt_sections, dict):
+                # Simple mode uses sections with defaults - valid if sections exist
+                return self
+
+            raise ValueError(
+                "AI strategy requires one of: 'prompt' (10+ chars), "
+                "'advanced_prompt' (10+ chars), or 'prompt_sections'"
+            )
         return self
 
 

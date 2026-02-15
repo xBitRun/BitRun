@@ -244,10 +244,18 @@ class StrategyEngine:
                                 current_prices[sym] = md.price
                         except Exception:
                             pass
+                # Get real account equity for percentage-based capital allocation
+                real_equity = None
+                try:
+                    real_account = await self.trader.get_account_state()
+                    real_equity = real_account.equity
+                except Exception:
+                    pass
                 agent_account = await self.position_service.get_agent_account_state(
                     agent_id=self.agent.id,
                     agent=self.agent,
                     current_prices=current_prices,
+                    account_equity=real_equity,
                 )
                 account_state = agent_account.to_account_state(current_prices)
             else:
@@ -505,6 +513,7 @@ class StrategyEngine:
                         agent_state = await self.position_service.get_agent_account_state(
                             agent_id=self.agent.id,
                             agent=self.agent,
+                            account_equity=self._last_account_state.equity,
                         )
                         positions_data = [
                             {

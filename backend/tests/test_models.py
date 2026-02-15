@@ -518,6 +518,26 @@ class TestStrategyCreate:
         # 10 chars should pass
         self._make(config={"prompt": "a" * 10})
 
+    def test_ai_strategy_with_prompt_sections(self):
+        """Simple mode: strategy with only prompt_sections should be valid."""
+        sc = self._make(config={"prompt_sections": {"role_definition": "test"}})
+        assert sc.type == StrategyType.AI
+
+    def test_ai_strategy_with_advanced_prompt(self):
+        """Advanced mode: strategy with advanced_prompt should be valid."""
+        sc = self._make(config={"advanced_prompt": "This is a custom advanced prompt"})
+        assert sc.type == StrategyType.AI
+
+    def test_ai_strategy_empty_config_fails(self):
+        """No prompt, no prompt_sections, no advanced_prompt should fail."""
+        with pytest.raises(ValidationError):
+            self._make(config={})
+
+    def test_ai_strategy_short_advanced_prompt_fails(self):
+        """Advanced prompt under 10 chars should fail."""
+        with pytest.raises(ValidationError):
+            self._make(config={"advanced_prompt": "short"})
+
     def test_grid_strategy_config_validation(self):
         sc = self._make(
             type=StrategyType.GRID,

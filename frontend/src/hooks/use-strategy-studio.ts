@@ -16,6 +16,7 @@ import {
   RiskProfile,
   TimeHorizon,
   getStrategyPreset,
+  getDefaultPromptSections,
   DEFAULT_RISK_CONTROLS,
 } from "@/types";
 import { api } from "@/lib/api";
@@ -23,6 +24,8 @@ import { api } from "@/lib/api";
 interface UseStrategyStudioOptions {
   initialConfig?: Partial<StrategyStudioConfig>;
   autoPreview?: boolean;
+  /** Locale for default prompt sections (e.g., "en", "zh") */
+  locale?: string;
 }
 
 interface UseStrategyStudioReturn {
@@ -38,8 +41,22 @@ interface UseStrategyStudioReturn {
   applyPreset: (riskProfile: RiskProfile, timeHorizon: TimeHorizon) => void;
 
   // Update helpers
-  updateBasicInfo: (updates: Partial<Pick<StrategyStudioConfig, "name" | "description" | "accountId" | "aiModel">>) => void;
-  updateTradingConfig: (updates: Partial<Pick<StrategyStudioConfig, "tradingMode" | "executionIntervalMinutes" | "autoExecute">>) => void;
+  updateBasicInfo: (
+    updates: Partial<
+      Pick<
+        StrategyStudioConfig,
+        "name" | "description" | "accountId" | "aiModel"
+      >
+    >,
+  ) => void;
+  updateTradingConfig: (
+    updates: Partial<
+      Pick<
+        StrategyStudioConfig,
+        "tradingMode" | "executionIntervalMinutes" | "autoExecute"
+      >
+    >,
+  ) => void;
   updateSymbols: (symbols: string[]) => void;
   updateTimeframes: (timeframes: Timeframe[]) => void;
   updateIndicators: (indicators: IndicatorSettings) => void;
@@ -65,7 +82,9 @@ interface UseStrategyStudioReturn {
 }
 
 // Convert frontend config to backend API format
-function configToApiFormat(config: StrategyStudioConfig): Record<string, unknown> {
+function configToApiFormat(
+  config: StrategyStudioConfig,
+): Record<string, unknown> {
   return {
     name: config.name,
     description: config.description,
@@ -78,12 +97,24 @@ function configToApiFormat(config: StrategyStudioConfig): Record<string, unknown
       symbols: config.symbols,
       timeframes: config.timeframes,
       indicators: {
-        ema_periods: config.indicators.ema.enabled ? config.indicators.ema.periods : [],
-        rsi_period: config.indicators.rsi.enabled ? config.indicators.rsi.period : 0,
-        macd_fast: config.indicators.macd.enabled ? config.indicators.macd.fast : 0,
-        macd_slow: config.indicators.macd.enabled ? config.indicators.macd.slow : 0,
-        macd_signal: config.indicators.macd.enabled ? config.indicators.macd.signal : 0,
-        atr_period: config.indicators.atr.enabled ? config.indicators.atr.period : 0,
+        ema_periods: config.indicators.ema.enabled
+          ? config.indicators.ema.periods
+          : [],
+        rsi_period: config.indicators.rsi.enabled
+          ? config.indicators.rsi.period
+          : 0,
+        macd_fast: config.indicators.macd.enabled
+          ? config.indicators.macd.fast
+          : 0,
+        macd_slow: config.indicators.macd.enabled
+          ? config.indicators.macd.slow
+          : 0,
+        macd_signal: config.indicators.macd.enabled
+          ? config.indicators.macd.signal
+          : 0,
+        atr_period: config.indicators.atr.enabled
+          ? config.indicators.atr.period
+          : 0,
       },
       risk_controls: {
         max_leverage: config.riskControls.maxLeverage,
@@ -116,29 +147,35 @@ function configToApiFormat(config: StrategyStudioConfig): Record<string, unknown
 }
 
 // Convert API response to frontend config
-export function apiResponseToConfig(response: Record<string, unknown>): Partial<StrategyStudioConfig> {
-  const config = response.config as Record<string, unknown> || {};
-  const riskControls = config.risk_controls as Record<string, number> || {};
-  const promptSections = config.prompt_sections as Record<string, string> || {};
-  const indicators = config.indicators as Record<string, unknown> || {};
+export function apiResponseToConfig(
+  response: Record<string, unknown>,
+): Partial<StrategyStudioConfig> {
+  const config = (response.config as Record<string, unknown>) || {};
+  const riskControls = (config.risk_controls as Record<string, number>) || {};
+  const promptSections =
+    (config.prompt_sections as Record<string, string>) || {};
+  const indicators = (config.indicators as Record<string, unknown>) || {};
 
   return {
-    name: response.name as string || "",
-    description: response.description as string || "",
-    accountId: response.account_id as string || "",
-    aiModel: response.ai_model as string || "",
+    name: (response.name as string) || "",
+    description: (response.description as string) || "",
+    accountId: (response.account_id as string) || "",
+    aiModel: (response.ai_model as string) || "",
     tradingMode: (response.trading_mode as TradingMode) || "conservative",
     language: (config.language as string) || "en",
     symbols: (config.symbols as string[]) || ["BTC", "ETH"],
     timeframes: (config.timeframes as Timeframe[]) || ["15m", "1h", "4h"],
-    executionIntervalMinutes: (config.execution_interval_minutes as number) || 30,
+    executionIntervalMinutes:
+      (config.execution_interval_minutes as number) || 30,
     autoExecute: (config.auto_execute as boolean) ?? true,
     promptMode: (config.prompt_mode as "simple" | "advanced") || "simple",
-    customPrompt: response.prompt as string || "",
+    customPrompt: (response.prompt as string) || "",
     advancedPrompt: (config.advanced_prompt as string) || "",
     indicators: {
       ema: {
-        enabled: Array.isArray(indicators.ema_periods) && (indicators.ema_periods as number[]).length > 0,
+        enabled:
+          Array.isArray(indicators.ema_periods) &&
+          (indicators.ema_periods as number[]).length > 0,
         periods: (indicators.ema_periods as number[]) || [9, 21, 55],
       },
       rsi: {
@@ -165,7 +202,7 @@ export function apiResponseToConfig(response: Record<string, unknown>): Partial<
       minConfidence: riskControls.min_confidence || 60,
       defaultSlAtrMultiplier: riskControls.default_sl_atr_multiplier || 1.5,
       defaultTpAtrMultiplier: riskControls.default_tp_atr_multiplier || 3.0,
-      maxSlPercent: riskControls.max_sl_percent || 0.10,
+      maxSlPercent: riskControls.max_sl_percent || 0.1,
     },
     promptSections: {
       roleDefinition: promptSections.role_definition || "",
@@ -176,21 +213,27 @@ export function apiResponseToConfig(response: Record<string, unknown>): Partial<
     // Debate configuration
     debateEnabled: (config.debate_enabled as boolean) ?? false,
     debateModels: (config.debate_models as string[]) || [],
-    debateConsensusMode: (config.debate_consensus_mode as ConsensusMode) || "majority_vote",
+    debateConsensusMode:
+      (config.debate_consensus_mode as ConsensusMode) || "majority_vote",
     debateMinParticipants: (config.debate_min_participants as number) || 2,
   };
 }
 
 export function useStrategyStudio(
-  options: UseStrategyStudioOptions = {}
+  options: UseStrategyStudioOptions = {},
 ): UseStrategyStudioReturn {
-  const { initialConfig, autoPreview = true } = options;
+  const { initialConfig, autoPreview = true, locale = "en" } = options;
 
-  // Config state
-  const [config, setConfig] = useState<StrategyStudioConfig>({
+  // Get locale-aware default prompt sections
+  const defaultPromptSections = getDefaultPromptSections(locale);
+
+  // Config state with locale-aware defaults
+  const [config, setConfig] = useState<StrategyStudioConfig>(() => ({
     ...DEFAULT_STRATEGY_STUDIO_CONFIG,
+    language: locale.split("-")[0], // Set language from locale
+    promptSections: defaultPromptSections,
     ...initialConfig,
-  });
+  }));
 
   // Tab state
   const [activeTab, setActiveTab] = useState<StudioTab>("coins");
@@ -213,12 +256,24 @@ export function useStrategyStudio(
       symbols: config.symbols,
       timeframes: config.timeframes,
       indicators: {
-        ema_periods: config.indicators.ema.enabled ? config.indicators.ema.periods : [],
-        rsi_period: config.indicators.rsi.enabled ? config.indicators.rsi.period : 0,
-        macd_fast: config.indicators.macd.enabled ? config.indicators.macd.fast : 0,
-        macd_slow: config.indicators.macd.enabled ? config.indicators.macd.slow : 0,
-        macd_signal: config.indicators.macd.enabled ? config.indicators.macd.signal : 0,
-        atr_period: config.indicators.atr.enabled ? config.indicators.atr.period : 0,
+        ema_periods: config.indicators.ema.enabled
+          ? config.indicators.ema.periods
+          : [],
+        rsi_period: config.indicators.rsi.enabled
+          ? config.indicators.rsi.period
+          : 0,
+        macd_fast: config.indicators.macd.enabled
+          ? config.indicators.macd.fast
+          : 0,
+        macd_slow: config.indicators.macd.enabled
+          ? config.indicators.macd.slow
+          : 0,
+        macd_signal: config.indicators.macd.enabled
+          ? config.indicators.macd.signal
+          : 0,
+        atr_period: config.indicators.atr.enabled
+          ? config.indicators.atr.period
+          : 0,
       },
       risk_controls: {
         max_leverage: config.riskControls.maxLeverage,
@@ -264,7 +319,7 @@ export function useStrategyStudio(
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
-    }
+    },
   );
 
   // Apply a strategy preset (riskProfile + timeHorizon)
@@ -283,22 +338,36 @@ export function useStrategyStudio(
         riskControls: { ...DEFAULT_RISK_CONTROLS, ...values.riskControls },
       }));
     },
-    []
+    [],
   );
 
   // Update helpers
   const updateBasicInfo = useCallback(
-    (updates: Partial<Pick<StrategyStudioConfig, "name" | "description" | "accountId" | "aiModel">>) => {
+    (
+      updates: Partial<
+        Pick<
+          StrategyStudioConfig,
+          "name" | "description" | "accountId" | "aiModel"
+        >
+      >,
+    ) => {
       setConfig((prev) => ({ ...prev, ...updates }));
     },
-    []
+    [],
   );
 
   const updateTradingConfig = useCallback(
-    (updates: Partial<Pick<StrategyStudioConfig, "tradingMode" | "executionIntervalMinutes" | "autoExecute">>) => {
+    (
+      updates: Partial<
+        Pick<
+          StrategyStudioConfig,
+          "tradingMode" | "executionIntervalMinutes" | "autoExecute"
+        >
+      >,
+    ) => {
       setConfig((prev) => ({ ...prev, ...updates }));
     },
-    []
+    [],
   );
 
   const updateSymbols = useCallback((symbols: string[]) => {
@@ -352,10 +421,15 @@ export function useStrategyStudio(
 
   // Reset
   const reset = useCallback(() => {
-    setConfig({ ...DEFAULT_STRATEGY_STUDIO_CONFIG, ...initialConfig });
+    setConfig({
+      ...DEFAULT_STRATEGY_STUDIO_CONFIG,
+      language: locale.split("-")[0],
+      promptSections: defaultPromptSections,
+      ...initialConfig,
+    });
     setActiveTab("coins");
     setErrors({});
-  }, [initialConfig]);
+  }, [initialConfig, locale, defaultPromptSections]);
 
   // Convert to API format
   const toApiFormat = useCallback(() => {

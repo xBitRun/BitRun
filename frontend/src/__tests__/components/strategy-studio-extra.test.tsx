@@ -14,16 +14,72 @@ import React from "react";
 // Mock @/types with constants needed by components
 jest.mock("@/types", () => ({
   CONSENSUS_MODE_OPTIONS: [
-    { value: "majority_vote", label: "Majority Vote", description: "Most common action wins" },
-    { value: "highest_confidence", label: "Highest Confidence", description: "Highest confidence model wins" },
-    { value: "weighted_average", label: "Weighted Average", description: "Weighted average of all models" },
-    { value: "unanimous", label: "Unanimous", description: "All models must agree" },
+    {
+      value: "majority_vote",
+      label: "Majority Vote",
+      description: "Most common action wins",
+    },
+    {
+      value: "highest_confidence",
+      label: "Highest Confidence",
+      description: "Highest confidence model wins",
+    },
+    {
+      value: "weighted_average",
+      label: "Weighted Average",
+      description: "Weighted average of all models",
+    },
+    {
+      value: "unanimous",
+      label: "Unanimous",
+      description: "All models must agree",
+    },
   ],
   DEFAULT_PROMPT_SECTIONS: {
-    roleDefinition: "You are an expert cryptocurrency trader with deep market analysis skills.",
-    tradingFrequency: "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
-    entryStandards: "Enter positions only when multiple indicators align and risk/reward is favorable.",
-    decisionProcess: "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+    roleDefinition:
+      "You are an expert cryptocurrency trader with deep market analysis skills.",
+    tradingFrequency:
+      "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
+    entryStandards:
+      "Enter positions only when multiple indicators align and risk/reward is favorable.",
+    decisionProcess:
+      "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+  },
+  DEFAULT_PROMPT_SECTIONS_EN: {
+    roleDefinition:
+      "You are an expert cryptocurrency trader with deep market analysis skills.",
+    tradingFrequency:
+      "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
+    entryStandards:
+      "Enter positions only when multiple indicators align and risk/reward is favorable.",
+    decisionProcess:
+      "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+  },
+  DEFAULT_PROMPT_SECTIONS_ZH: {
+    roleDefinition: "你是一位资深的加密货币量化交易员和市场分析师。",
+    tradingFrequency: "在做出决策前仔细分析市场状况。",
+    entryStandards: "仅在以下条件满足时开仓。",
+    decisionProcess: "遵循以下决策流程。",
+  },
+  getDefaultPromptSections: (locale: string) => {
+    if (locale === "zh") {
+      return {
+        roleDefinition: "你是一位资深的加密货币量化交易员和市场分析师。",
+        tradingFrequency: "在做出决策前仔细分析市场状况。",
+        entryStandards: "仅在以下条件满足时开仓。",
+        decisionProcess: "遵循以下决策流程。",
+      };
+    }
+    return {
+      roleDefinition:
+        "You are an expert cryptocurrency trader with deep market analysis skills.",
+      tradingFrequency:
+        "Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
+      entryStandards:
+        "Enter positions only when multiple indicators align and risk/reward is favorable.",
+      decisionProcess:
+        "1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
+    };
   },
   DEFAULT_STRATEGY_STUDIO_CONFIG: {
     name: "",
@@ -75,8 +131,20 @@ jest.mock("@/types", () => ({
 jest.mock("@/hooks", () => ({
   useUserModels: jest.fn(() => ({
     models: [
-      { id: "deepseek:chat", name: "DeepSeek Chat", provider: "deepseek", cost_per_1k_input: 0.1, cost_per_1k_output: 0.2 },
-      { id: "openai:gpt-4o", name: "GPT-4o", provider: "openai", cost_per_1k_input: 2.5, cost_per_1k_output: 10 },
+      {
+        id: "deepseek:chat",
+        name: "DeepSeek Chat",
+        provider: "deepseek",
+        cost_per_1k_input: 0.1,
+        cost_per_1k_output: 0.2,
+      },
+      {
+        id: "openai:gpt-4o",
+        name: "GPT-4o",
+        provider: "openai",
+        cost_per_1k_input: 2.5,
+        cost_per_1k_output: 10,
+      },
     ],
     hasConfiguredProviders: true,
     isLoading: false,
@@ -84,7 +152,10 @@ jest.mock("@/hooks", () => ({
     refresh: jest.fn(),
   })),
   getProviderDisplayName: jest.fn((id: string) => {
-    const map: Record<string, string> = { deepseek: "DeepSeek", openai: "OpenAI" };
+    const map: Record<string, string> = {
+      deepseek: "DeepSeek",
+      openai: "OpenAI",
+    };
     return map[id] || id;
   }),
 }));
@@ -103,7 +174,9 @@ jest.mock("@/components/strategy-studio/timeframe-selector", () => ({
 }));
 
 jest.mock("@/components/strategy-studio/indicator-config", () => ({
-  IndicatorConfig: () => <div data-testid="indicator-config">IndicatorConfig</div>,
+  IndicatorConfig: () => (
+    <div data-testid="indicator-config">IndicatorConfig</div>
+  ),
 }));
 
 jest.mock("@/components/strategy-studio/risk-controls-panel", () => ({
@@ -122,7 +195,9 @@ jest.mock("@/components/ui/toast", () => ({
 // Mock react-markdown
 jest.mock("react-markdown", () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 // Mock next/link
@@ -179,7 +254,13 @@ describe("DebateConfig", () => {
   });
 
   it("should show warning when less than 2 models selected", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat"]}
+      />,
+    );
 
     expect(screen.getByText("debate.minModelsWarning")).toBeInTheDocument();
   });
@@ -190,11 +271,19 @@ describe("DebateConfig", () => {
     // Click on a model
     fireEvent.click(screen.getByText("DeepSeek Chat"));
 
-    expect(defaultProps.onModelIdsChange).toHaveBeenCalledWith(["deepseek:chat"]);
+    expect(defaultProps.onModelIdsChange).toHaveBeenCalledWith([
+      "deepseek:chat",
+    ]);
   });
 
   it("should remove model when clicking selected model", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat"]}
+      />,
+    );
 
     fireEvent.click(screen.getByText("DeepSeek Chat"));
 
@@ -203,7 +292,9 @@ describe("DebateConfig", () => {
 
   it("should not allow selecting more than 5 models", () => {
     const fiveModels = ["model1", "model2", "model3", "model4", "model5"];
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={fiveModels} />);
+    render(
+      <DebateConfig {...defaultProps} enabled={true} modelIds={fiveModels} />,
+    );
 
     // Try to click another model
     fireEvent.click(screen.getByText("DeepSeek Chat"));
@@ -213,7 +304,13 @@ describe("DebateConfig", () => {
   });
 
   it("should display model count badge", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
     expect(screen.getByText(/2\/5/)).toBeInTheDocument();
   });
@@ -235,18 +332,32 @@ describe("DebateConfig", () => {
     const option = screen.getByText("Highest Confidence");
     await user.click(option);
 
-    expect(defaultProps.onConsensusModeChange).toHaveBeenCalledWith("highest_confidence");
+    expect(defaultProps.onConsensusModeChange).toHaveBeenCalledWith(
+      "highest_confidence",
+    );
   });
 
   it("should display min participants selector", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
     expect(screen.getByText("debate.minParticipants")).toBeInTheDocument();
   });
 
   it("should change min participants", async () => {
     const user = userEvent.setup();
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o", "model3"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o", "model3"]}
+      />,
+    );
 
     const selectTrigger = screen.getAllByRole("combobox")[1]; // Second select is min participants
     await user.click(selectTrigger);
@@ -258,7 +369,13 @@ describe("DebateConfig", () => {
   });
 
   it("should filter min participants options based on selected models", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat"]}
+      />,
+    );
 
     // With only 1 model selected, should only show option for 2 (minimum)
     const selectTrigger = screen.getAllByRole("combobox")[1];
@@ -269,7 +386,13 @@ describe("DebateConfig", () => {
   });
 
   it("should display estimated cost", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
     // Estimated cost = 2 models * 0.1 = 0.2
     expect(screen.getByText(/debate\.estimatedCost/)).toBeInTheDocument();
@@ -285,7 +408,9 @@ describe("DebateConfig", () => {
       refresh: jest.fn(),
     });
 
-    const { container } = render(<DebateConfig {...defaultProps} enabled={true} />);
+    const { container } = render(
+      <DebateConfig {...defaultProps} enabled={true} />,
+    );
 
     // Skeleton components render with data-slot="skeleton" attribute
     const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
@@ -342,16 +467,32 @@ describe("DebateConfig", () => {
   });
 
   it("should disable validate button when less than 2 models selected", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat"]}
+      />,
+    );
 
-    const validateButton = screen.getByText("debate.validate").closest("button");
+    const validateButton = screen
+      .getByText("debate.validate")
+      .closest("button");
     expect(validateButton).toBeDisabled();
   });
 
   it("should enable validate button when 2 or more models selected", () => {
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
-    const validateButton = screen.getByText("debate.validate").closest("button");
+    const validateButton = screen
+      .getByText("debate.validate")
+      .closest("button");
     expect(validateButton).not.toBeDisabled();
   });
 
@@ -367,17 +508,30 @@ describe("DebateConfig", () => {
       }),
     });
 
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
-    const validateButton = screen.getByText("debate.validate").closest("button");
+    const validateButton = screen
+      .getByText("debate.validate")
+      .closest("button");
     if (validateButton) {
       await user.click(validateButton);
 
-      expect(global.fetch).toHaveBeenCalledWith("/api/strategies/validate-debate-models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model_ids: ["deepseek:chat", "openai:gpt-4o"] }),
-      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/strategies/validate-debate-models",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model_ids: ["deepseek:chat", "openai:gpt-4o"],
+          }),
+        },
+      );
     }
   });
 
@@ -393,9 +547,17 @@ describe("DebateConfig", () => {
       }),
     });
 
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
-    const validateButton = screen.getByText("debate.validate").closest("button");
+    const validateButton = screen
+      .getByText("debate.validate")
+      .closest("button");
     expect(validateButton).not.toBeDisabled();
     await user.click(validateButton!);
 
@@ -410,15 +572,27 @@ describe("DebateConfig", () => {
       ok: true,
       json: async () => ({
         models: [
-          { modelId: "deepseek:chat", valid: false, error: "Model not available" },
+          {
+            modelId: "deepseek:chat",
+            valid: false,
+            error: "Model not available",
+          },
           { modelId: "openai:gpt-4o", valid: true },
         ],
       }),
     });
 
-    render(<DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat", "openai:gpt-4o"]} />);
+    render(
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat", "openai:gpt-4o"]}
+      />,
+    );
 
-    const validateButton = screen.getByText("debate.validate").closest("button");
+    const validateButton = screen
+      .getByText("debate.validate")
+      .closest("button");
     expect(validateButton).not.toBeDisabled();
     await user.click(validateButton!);
 
@@ -437,12 +611,20 @@ describe("DebateConfig", () => {
 
   it("should clear validation results when models change", () => {
     const { rerender } = render(
-      <DebateConfig {...defaultProps} enabled={true} modelIds={["deepseek:chat"]} />
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["deepseek:chat"]}
+      />,
     );
 
     // Change model selection
     rerender(
-      <DebateConfig {...defaultProps} enabled={true} modelIds={["openai:gpt-4o"]} />
+      <DebateConfig
+        {...defaultProps}
+        enabled={true}
+        modelIds={["openai:gpt-4o"]}
+      />,
     );
 
     // Validation results should be cleared (no validation indicators visible)
@@ -498,7 +680,9 @@ describe("PromptPreview", () => {
   it("should display prompt content when preview exists", () => {
     render(<PromptPreview {...defaultProps} preview={mockPreview} />);
 
-    expect(screen.getByText("You are a conservative trader...")).toBeInTheDocument();
+    expect(
+      screen.getByText("You are a conservative trader..."),
+    ).toBeInTheDocument();
   });
 
   it("should show token count badge when preview exists", () => {
@@ -515,7 +699,7 @@ describe("PromptPreview", () => {
     // Refresh button is the first icon-only button (contains RefreshCw icon)
     const buttons = screen.getAllByRole("button");
     const refreshButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-refresh-cw") !== null
+      (btn) => btn.querySelector(".lucide-refresh-cw") !== null,
     );
     expect(refreshButton).toBeTruthy();
     await user.click(refreshButton!);
@@ -528,7 +712,7 @@ describe("PromptPreview", () => {
 
     const buttons = screen.getAllByRole("button");
     const refreshButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-refresh-cw") !== null
+      (btn) => btn.querySelector(".lucide-refresh-cw") !== null,
     );
     expect(refreshButton).toBeDisabled();
   });
@@ -546,12 +730,14 @@ describe("PromptPreview", () => {
 
     const buttons = screen.getAllByRole("button");
     const copyButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-copy") !== null
+      (btn) => btn.querySelector(".lucide-copy") !== null,
     );
     expect(copyButton).toBeTruthy();
     await user.click(copyButton!);
 
-    expect(mockWriteText).toHaveBeenCalledWith("You are a conservative trader...");
+    expect(mockWriteText).toHaveBeenCalledWith(
+      "You are a conservative trader...",
+    );
   });
 
   it("should show check icon after copying", async () => {
@@ -567,7 +753,7 @@ describe("PromptPreview", () => {
 
     const buttons = screen.getAllByRole("button");
     const copyButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-copy") !== null
+      (btn) => btn.querySelector(".lucide-copy") !== null,
     );
     expect(copyButton).toBeTruthy();
     await user.click(copyButton!);
@@ -581,7 +767,7 @@ describe("PromptPreview", () => {
 
     const buttons = screen.getAllByRole("button");
     const copyButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-copy") !== null
+      (btn) => btn.querySelector(".lucide-copy") !== null,
     );
     expect(copyButton).toBeDisabled();
   });
@@ -592,14 +778,20 @@ describe("PromptPreview", () => {
     // The refresh icon should have animate-spin class when loading
     const buttons = screen.getAllByRole("button");
     const refreshButton = buttons.find(
-      (btn) => btn.querySelector(".lucide-refresh-cw") !== null
+      (btn) => btn.querySelector(".lucide-refresh-cw") !== null,
     );
     expect(refreshButton).toBeTruthy();
     expect(refreshButton!.querySelector(".animate-spin")).toBeTruthy();
   });
 
   it("should display section tabs in simple mode", () => {
-    render(<PromptPreview {...defaultProps} preview={mockPreview} promptMode="simple" />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={mockPreview}
+        promptMode="simple"
+      />,
+    );
 
     expect(screen.getByText("preview.fullPrompt")).toBeInTheDocument();
     expect(screen.getByText("preview.role")).toBeInTheDocument();
@@ -607,18 +799,32 @@ describe("PromptPreview", () => {
   });
 
   it("should only show full prompt tab in advanced mode", () => {
-    render(<PromptPreview {...defaultProps} preview={mockPreview} promptMode="advanced" />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={mockPreview}
+        promptMode="advanced"
+      />,
+    );
 
     // In advanced mode, only 1 section exists so TabsList is hidden
     // But the full prompt content should still be visible
-    expect(screen.getByText("You are a conservative trader...")).toBeInTheDocument();
+    expect(
+      screen.getByText("You are a conservative trader..."),
+    ).toBeInTheDocument();
     // Section tabs like "role" should not be present
     expect(screen.queryByText("preview.role")).not.toBeInTheDocument();
   });
 
   it("should switch between sections when clicking tabs", async () => {
     const user = userEvent.setup();
-    render(<PromptPreview {...defaultProps} preview={mockPreview} promptMode="simple" />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={mockPreview}
+        promptMode="simple"
+      />,
+    );
 
     const roleTab = screen.getByText("preview.role");
     await user.click(roleTab);
@@ -636,7 +842,13 @@ describe("PromptPreview", () => {
         roleDefinition: "",
       },
     };
-    render(<PromptPreview {...defaultProps} preview={previewWithEmptySection} promptMode="simple" />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={previewWithEmptySection}
+        promptMode="simple"
+      />,
+    );
 
     const roleTab = screen.getByText("preview.role");
     await user.click(roleTab);
@@ -647,7 +859,9 @@ describe("PromptPreview", () => {
   it("should call onTest when test AI button clicked", async () => {
     const user = userEvent.setup();
     const onTest = jest.fn();
-    render(<PromptPreview {...defaultProps} preview={mockPreview} onTest={onTest} />);
+    render(
+      <PromptPreview {...defaultProps} preview={mockPreview} onTest={onTest} />,
+    );
 
     const testButton = screen.getByText("preview.testAI");
     await user.click(testButton);
@@ -665,7 +879,14 @@ describe("PromptPreview", () => {
 
   it("should disable test button when test is loading", () => {
     const onTest = jest.fn();
-    render(<PromptPreview {...defaultProps} preview={mockPreview} onTest={onTest} isTestLoading={true} />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={mockPreview}
+        onTest={onTest}
+        isTestLoading={true}
+      />,
+    );
 
     const testButton = screen.getByText("preview.testing");
     expect(testButton).toBeDisabled();
@@ -673,7 +894,14 @@ describe("PromptPreview", () => {
 
   it("should show testing text when test is loading", () => {
     const onTest = jest.fn();
-    render(<PromptPreview {...defaultProps} preview={mockPreview} onTest={onTest} isTestLoading={true} />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={mockPreview}
+        onTest={onTest}
+        isTestLoading={true}
+      />,
+    );
 
     expect(screen.getByText("preview.testing")).toBeInTheDocument();
   });
@@ -689,7 +917,9 @@ describe("PromptPreview", () => {
       ...mockPreview,
       estimatedTokens: 1234567,
     };
-    render(<PromptPreview {...defaultProps} preview={previewWithLargeTokenCount} />);
+    render(
+      <PromptPreview {...defaultProps} preview={previewWithLargeTokenCount} />,
+    );
 
     expect(screen.getByText(/1,234,567 tokens/)).toBeInTheDocument();
   });
@@ -697,7 +927,9 @@ describe("PromptPreview", () => {
   it("should display full prompt content", () => {
     render(<PromptPreview {...defaultProps} preview={mockPreview} />);
 
-    expect(screen.getByText("You are a conservative trader...")).toBeInTheDocument();
+    expect(
+      screen.getByText("You are a conservative trader..."),
+    ).toBeInTheDocument();
   });
 
   it("should display section content when switching tabs", async () => {
@@ -713,7 +945,13 @@ describe("PromptPreview", () => {
         customPrompt: "",
       },
     };
-    render(<PromptPreview {...defaultProps} preview={previewWithSections} promptMode="simple" />);
+    render(
+      <PromptPreview
+        {...defaultProps}
+        preview={previewWithSections}
+        promptMode="simple"
+      />,
+    );
 
     const frequencyTab = screen.getByText("preview.frequency");
     await user.click(frequencyTab);
@@ -762,18 +1000,32 @@ describe("PromptTemplateEditor", () => {
   it("should render section editors in simple mode", () => {
     render(<PromptTemplateEditor {...defaultProps} promptMode="simple" />);
 
-    expect(screen.getByText("promptEditor.advancedSections")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.roleDefinition")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.tradingFrequency")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.entryStandards")).toBeInTheDocument();
-    expect(screen.getByText("promptEditor.sections.decisionProcess")).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.advancedSections"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.roleDefinition"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.tradingFrequency"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.entryStandards"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.sections.decisionProcess"),
+    ).toBeInTheDocument();
   });
 
   it("should render advanced editor in advanced mode", () => {
     render(<PromptTemplateEditor {...defaultProps} promptMode="advanced" />);
 
-    expect(screen.getByText("promptEditor.advancedModeTitle")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("promptEditor.advancedModePlaceholder")).toBeInTheDocument();
+    expect(
+      screen.getByText("promptEditor.advancedModeTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("promptEditor.advancedModePlaceholder"),
+    ).toBeInTheDocument();
   });
 
   it("should toggle between simple and advanced mode", () => {
@@ -788,11 +1040,15 @@ describe("PromptTemplateEditor", () => {
   it("should expand section when clicked", () => {
     render(<PromptTemplateEditor {...defaultProps} promptMode="simple" />);
 
-    const roleSection = screen.getByText("promptEditor.sections.roleDefinition").closest("button");
+    const roleSection = screen
+      .getByText("promptEditor.sections.roleDefinition")
+      .closest("button");
     if (roleSection) {
       fireEvent.click(roleSection);
       // After expanding, textarea should be visible
-      expect(screen.getByPlaceholderText("promptEditor.placeholders.roleDefinition")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("promptEditor.placeholders.roleDefinition"),
+      ).toBeInTheDocument();
     }
   });
 });
@@ -892,7 +1148,9 @@ describe("StrategyStudioTabs", () => {
 
   it("should update config when CoinSelector changes", () => {
     const onConfigChange = jest.fn();
-    render(<StrategyStudioTabs {...defaultProps} onConfigChange={onConfigChange} />);
+    render(
+      <StrategyStudioTabs {...defaultProps} onConfigChange={onConfigChange} />,
+    );
 
     // CoinSelector is mocked, so we can't directly interact with it
     // But we can verify the component structure
@@ -906,7 +1164,7 @@ describe("StrategyStudioTabs", () => {
         activeTab="risk"
         riskProfile="conservative"
         timeHorizon="swing"
-      />
+      />,
     );
 
     expect(screen.getByTestId("risk-controls")).toBeInTheDocument();
@@ -915,7 +1173,9 @@ describe("StrategyStudioTabs", () => {
   it("should render PromptTemplateEditor on prompt tab", () => {
     // Mock PromptTemplateEditor
     jest.mock("@/components/strategy-studio/prompt-template-editor", () => ({
-      PromptTemplateEditor: () => <div data-testid="prompt-editor">PromptEditor</div>,
+      PromptTemplateEditor: () => (
+        <div data-testid="prompt-editor">PromptEditor</div>
+      ),
     }));
 
     render(<StrategyStudioTabs {...defaultProps} activeTab="prompt" />);
@@ -941,7 +1201,9 @@ describe("StrategyStudioTabs", () => {
   it("should render PromptPreview on preview tab", () => {
     // Mock PromptPreview
     jest.mock("@/components/strategy-studio/prompt-preview", () => ({
-      PromptPreview: () => <div data-testid="prompt-preview">PromptPreview</div>,
+      PromptPreview: () => (
+        <div data-testid="prompt-preview">PromptPreview</div>
+      ),
     }));
 
     render(<StrategyStudioTabs {...defaultProps} activeTab="preview" />);
@@ -953,13 +1215,21 @@ describe("StrategyStudioTabs", () => {
   it("should handle all tab switches", () => {
     const onTabChange = jest.fn();
     const { rerender } = render(
-      <StrategyStudioTabs {...defaultProps} activeTab="coins" onTabChange={onTabChange} />
+      <StrategyStudioTabs
+        {...defaultProps}
+        activeTab="coins"
+        onTabChange={onTabChange}
+      />,
     );
 
     const tabs = ["indicators", "risk", "prompt", "debate", "preview"] as const;
     tabs.forEach((tab) => {
       rerender(
-        <StrategyStudioTabs {...defaultProps} activeTab={tab} onTabChange={onTabChange} />
+        <StrategyStudioTabs
+          {...defaultProps}
+          activeTab={tab}
+          onTabChange={onTabChange}
+        />,
       );
       expect(screen.getByText(`tabs.${tab}`)).toBeInTheDocument();
     });
@@ -984,7 +1254,9 @@ describe("DebateResultCard", () => {
       confidence: 80,
       latencyMs: 1200,
       tokensUsed: 500,
-      decisions: [{ symbol: "BTC", action: "open_long", confidence: 80, reasoning: "" }],
+      decisions: [
+        { symbol: "BTC", action: "open_long", confidence: 80, reasoning: "" },
+      ],
     },
     {
       modelId: "openai:gpt-4o",
@@ -992,13 +1264,18 @@ describe("DebateResultCard", () => {
       confidence: 75,
       latencyMs: 2000,
       tokensUsed: 800,
-      decisions: [{ symbol: "BTC", action: "open_long", confidence: 75, reasoning: "" }],
+      decisions: [
+        { symbol: "BTC", action: "open_long", confidence: 75, reasoning: "" },
+      ],
     },
   ];
 
   it("should render result title and consensus mode", () => {
     render(
-      <DebateResultCard summary={mockSummary} participants={mockParticipants} />
+      <DebateResultCard
+        summary={mockSummary}
+        participants={mockParticipants}
+      />,
     );
 
     expect(screen.getByText("debate.resultTitle")).toBeInTheDocument();
@@ -1006,23 +1283,33 @@ describe("DebateResultCard", () => {
 
   it("should display successful and failed model counts", () => {
     render(
-      <DebateResultCard summary={mockSummary} participants={mockParticipants} />
+      <DebateResultCard
+        summary={mockSummary}
+        participants={mockParticipants}
+      />,
     );
 
     // "2" appears in both the successful count and the participants badge
     expect(screen.getByText("debate.successfulModels")).toBeInTheDocument();
     expect(screen.getByText("debate.failedModels")).toBeInTheDocument();
     // The successful count "2" is inside the stats grid
-    const statsGrid = screen.getByText("debate.successfulModels").closest("div.p-3");
+    const statsGrid = screen
+      .getByText("debate.successfulModels")
+      .closest("div.p-3");
     expect(statsGrid?.querySelector(".text-2xl")?.textContent).toBe("2");
     // Failed count "0"
-    const failedGrid = screen.getByText("debate.failedModels").closest("div.p-3");
+    const failedGrid = screen
+      .getByText("debate.failedModels")
+      .closest("div.p-3");
     expect(failedGrid?.querySelector(".text-2xl")?.textContent).toBe("0");
   });
 
   it("should display agreement score as percentage", () => {
     render(
-      <DebateResultCard summary={mockSummary} participants={mockParticipants} />
+      <DebateResultCard
+        summary={mockSummary}
+        participants={mockParticipants}
+      />,
     );
 
     // 0.85 * 100 = 85%
@@ -1040,7 +1327,7 @@ describe("DebateResultCard", () => {
         summary={mockSummary}
         participants={mockParticipants}
         finalDecisions={decisions}
-      />
+      />,
     );
 
     expect(screen.getByText("BTC")).toBeInTheDocument();
@@ -1053,11 +1340,11 @@ describe("DebateResultCard", () => {
         summary={mockSummary}
         participants={mockParticipants}
         consensusReasoning="Both models agree on BTC long position"
-      />
+      />,
     );
 
     expect(
-      screen.getByText("Both models agree on BTC long position")
+      screen.getByText("Both models agree on BTC long position"),
     ).toBeInTheDocument();
   });
 });
