@@ -48,6 +48,7 @@ import {
   useUserModels,
   groupModelsByProvider,
   getProviderDisplayName,
+  useStrategyExchangeCompatibility,
 } from "@/hooks";
 import type { StrategyResponse, CreateAgentRequest } from "@/lib/api";
 import type { StrategyType, ExecutionMode } from "@/types";
@@ -359,6 +360,7 @@ export default function AgentWizardPage() {
           state={state}
           setState={setState}
           accounts={accounts ?? []}
+          strategySymbols={state.selectedStrategy?.symbols}
           t={t}
           onNext={goNext}
           onBack={goBack}
@@ -717,6 +719,7 @@ function ExecutionModeStep({
   state,
   setState,
   accounts,
+  strategySymbols,
   t,
   onNext,
   onBack,
@@ -724,13 +727,23 @@ function ExecutionModeStep({
   state: WizardState;
   setState: React.Dispatch<React.SetStateAction<WizardState>>;
   accounts: AccountInfo[];
+  strategySymbols?: string[];
   t: ReturnType<typeof useTranslations>;
   onNext: () => void;
   onBack: () => void;
 }) {
+  // Get selected account's exchange
+  const selectedAccount = accounts.find((a) => a.id === state.accountId);
+  const selectedExchange = selectedAccount?.exchange;
+
+  // Check strategy-exchange compatibility
+  const { isCompatible, incompatibleSymbols } =
+    useStrategyExchangeCompatibility(selectedExchange, strategySymbols);
+
   const canProceed =
-    state.executionMode === "mock" ||
-    (state.executionMode === "live" && !!state.accountId);
+    (state.executionMode === "mock" ||
+      (state.executionMode === "live" && !!state.accountId)) &&
+    isCompatible;
 
   return (
     <div className="space-y-4">
@@ -863,6 +876,24 @@ function ExecutionModeStep({
                 </Select>
               )}
             </div>
+
+            {/* Compatibility Warning */}
+            {selectedAccount && !isCompatible && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                <div className="text-xs text-destructive">
+                  <p className="font-medium">
+                    {t("wizard.executionStep.compatibilityWarning")}
+                  </p>
+                  <p className="mt-1">
+                    {t("wizard.executionStep.incompatibleSymbols", {
+                      symbols: incompatibleSymbols.join(", "),
+                      exchange: selectedExchange ?? "",
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

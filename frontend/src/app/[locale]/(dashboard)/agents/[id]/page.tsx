@@ -1025,9 +1025,11 @@ function StrategyConfigSection({
 function RawResponseViewer({
   rawResponse,
   t,
+  isQuant = false,
 }: {
   rawResponse: string;
   t: ReturnType<typeof useTranslations>;
+  isQuant?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1052,16 +1054,22 @@ function RawResponseViewer({
     }
   };
 
+  // Use different labels for Quant strategies
+  const titleLabel = isQuant
+    ? t("decisions.executionLog")
+    : t("decisions.rawResponse");
+  const hintLabel = isQuant
+    ? t("decisions.executionLogHint")
+    : t("decisions.rawResponseHint");
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <button className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg bg-muted/20 border border-border/30 hover:bg-muted/40 transition-colors text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Code className="w-4 h-4" />
-            <span className="font-medium">{t("decisions.rawResponse")}</span>
-            <span className="text-xs opacity-70">
-              ({t("decisions.rawResponseHint")})
-            </span>
+            <span className="font-medium">{titleLabel}</span>
+            <span className="text-xs opacity-70">({hintLabel})</span>
           </div>
           <ChevronDown
             className={cn(
@@ -1527,7 +1535,10 @@ function DecisionsTab({
                         )}
 
                       {/* Chain of Thought - Enhanced Timeline View */}
-                      <ChainOfThoughtView content={decision.chain_of_thought} />
+                      <ChainOfThoughtView
+                        content={decision.chain_of_thought}
+                        titleKey={decision.ai_model?.startsWith("quant:") ? "executionReasoning" : "chainOfThought"}
+                      />
 
                       {/* Trading Decisions */}
                       <div>
@@ -1851,26 +1862,40 @@ function DecisionsTab({
                           </div>
                         )}
 
-                      {/* Raw AI Response */}
+                      {/* Raw AI Response / Execution Log */}
                       {decision.raw_response && (
                         <RawResponseViewer
                           rawResponse={decision.raw_response}
                           t={t}
+                          isQuant={decision.ai_model?.startsWith("quant:")}
                         />
                       )}
 
-                      {/* AI Info */}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
-                        <span>
-                          {t("decisions.model")}: {decision.ai_model}
-                        </span>
-                        <span>
-                          {t("decisions.tokens")}: {decision.tokens_used}
-                        </span>
-                        <span>
-                          {t("decisions.latency")}: {decision.latency_ms}ms
-                        </span>
-                      </div>
+                      {/* AI Info / Strategy Info */}
+                      {decision.ai_model?.startsWith("quant:") ? (
+                        // Quant strategy: only show strategy type
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
+                          <span>
+                            {t("decisions.strategyType")}:{" "}
+                            {decision.ai_model
+                              .replace("quant:", "")
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                      ) : (
+                        // AI strategy: show full info
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
+                          <span>
+                            {t("decisions.model")}: {decision.ai_model}
+                          </span>
+                          <span>
+                            {t("decisions.tokens")}: {decision.tokens_used}
+                          </span>
+                          <span>
+                            {t("decisions.latency")}: {decision.latency_ms}ms
+                          </span>
+                        </div>
+                      )}
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

@@ -146,19 +146,36 @@ class MockTrader(BaseTrader):
             self._sim.set_current_time(datetime.now(UTC))
 
     def _to_ccxt_symbol(self, symbol: str) -> str:
-        """Convert bare symbol to CCXT unified format."""
+        """Convert bare symbol to CCXT unified format.
+
+        Note: Hyperliquid uses USDC for both quote and settlement.
+        Other exchanges typically use USDT for both.
+        """
         symbol = symbol.upper().strip()
 
         mtype = detect_market_type(symbol)
         if mtype in (MarketType.FOREX, MarketType.METALS):
             return symbol if "/" in symbol else f"{symbol}/USD"
 
-        # Already formatted
+        # Already formatted with settlement
         if ":" in symbol:
             return symbol
-        if "/" in symbol:
-            return f"{symbol}:USDT"
 
+        # Already has quote currency
+        if "/" in symbol:
+            parts = symbol.split("/")
+            base = parts[0]
+            quote = parts[1]
+            # Hyperliquid uses USDC settlement
+            if self._exchange_id == "hyperliquid":
+                return f"{base}/{quote}:USDC"
+            return f"{base}/{quote}:USDT"
+
+        # Bare symbol (e.g., "BTC")
+        # Hyperliquid: BTC/USDC:USDC (USDC for both quote and settlement)
+        # Others: BTC/USDT:USDT (USDT for both)
+        if self._exchange_id == "hyperliquid":
+            return f"{symbol}/USDC:USDC"
         return f"{symbol}/USDT:USDT"
 
     # ------------------------------------------------------------------
@@ -226,10 +243,32 @@ class MockTrader(BaseTrader):
                         timestamp=datetime.now(UTC),
                     )
             except Exception as e:
-                logger.debug(f"Live market data fetch failed for {symbol}: {e}")
+                logger.warning(f"Live market data fetch failed for {symbol}: {e}")
 
-        # Fallback to simulator
-        return await self._sim.get_market_data(symbol)
+        # Try to use cached price from initialization
+        if symbol in self._last_prices:
+            cached_price = self._last_prices[symbol]
+            logger.debug(f"Using cached price for {symbol}: {cached_price}")
+            return MarketData(
+                symbol=symbol,
+                mid_price=cached_price,
+                bid_price=cached_price,
+                ask_price=cached_price,
+                volume_24h=0,
+                funding_rate=None,
+                timestamp=datetime.now(UTC),
+            )
+
+        # Fallback to simulator (may raise TradeError if no price)
+        try:
+            return await self._sim.get_market_data(symbol)
+        except TradeError:
+            # Provide more helpful error message
+            raise TradeError(
+                f"Cannot get price for {symbol}. "
+                f"Ensure the symbol format is correct (e.g., 'BTC' for BTC/USDT) "
+                f"and the exchange API is accessible."
+            )
 
     async def get_klines(
         self, symbol: str, timeframe: str = "1h", limit: int = 100,

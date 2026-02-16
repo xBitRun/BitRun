@@ -4,7 +4,7 @@
  * Type definitions for the unified symbol selector component.
  */
 
-import type { MarketType, ExchangeType } from "@/types";
+import type { AssetType, MarketType, ExchangeType } from "@/types";
 
 /**
  * Selection mode for the symbol selector
@@ -45,6 +45,13 @@ export interface SymbolSelectorProps {
    * If not provided, shows symbols from preset list.
    */
   exchange?: ExchangeType | string;
+
+  /**
+   * Asset type filter - when provided with exchange, filters symbols by asset type.
+   * Also determines the settlement currency (USDT vs USDC).
+   * Default: 'crypto_perp'
+   */
+  assetType?: AssetType;
 
   // ===== UI Customization =====
   /** Show market type tabs (crypto/forex/metals) - default: true */

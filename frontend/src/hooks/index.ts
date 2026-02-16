@@ -108,6 +108,16 @@ export { useOutboundIP } from "./use-system";
 export { useSymbols, useSymbolsList } from "./use-symbols";
 export type { UseSymbolsResult } from "./use-symbols";
 
+// Exchange Capabilities hooks
+export {
+  useExchangeCapabilities,
+  useExchangeCapability,
+  useExchangesForAsset,
+  useSettlementCurrency,
+  useSupportsAsset,
+  useStrategyExchangeCompatibility,
+} from "./use-exchange-capabilities";
+
 // Quant Strategies hooks (deprecated - use agents + strategies)
 export {
   useQuantStrategies,

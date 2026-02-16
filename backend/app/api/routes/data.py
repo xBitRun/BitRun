@@ -1,7 +1,7 @@
 """Data management routes"""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
@@ -11,6 +11,14 @@ from ...core.dependencies import CurrentUserDep
 from ...services.market_data_cache import (
     get_market_data_cache,
     get_backtest_preloader,
+)
+from ...traders.exchange_capabilities import (
+    AssetType,
+    ExchangeCapabilities,
+    get_active_exchanges,
+    get_exchange_capabilities,
+    get_exchanges_for_asset,
+    get_settlement_currency,
 )
 
 router = APIRouter(prefix="/data", tags=["Data Management"])
@@ -59,11 +67,86 @@ class SymbolItem(BaseModel):
 class SymbolsResponse(BaseModel):
     """Response for symbols endpoint"""
     exchange: str = Field(..., description="Exchange name")
+    asset_type: Optional[str] = Field(None, description="Asset type filter applied")
     symbols: list[SymbolItem] = Field(..., description="List of available symbols")
     cached: bool = Field(..., description="Whether result was from cache")
 
 
+class ExchangeCapabilitiesResponse(BaseModel):
+    """Response for exchanges endpoint"""
+    exchanges: list[ExchangeCapabilities] = Field(..., description="List of exchange capabilities")
+    last_updated: datetime = Field(..., description="Timestamp of last update")
+
+
+class ExchangesForAssetResponse(BaseModel):
+    """Response for exchanges supporting a specific asset type"""
+    asset_type: AssetType = Field(..., description="Requested asset type")
+    exchanges: list[ExchangeCapabilities] = Field(..., description="List of exchanges supporting this asset type")
+
+
 # ==================== Routes ====================
+
+# -------------------- Exchange Capabilities --------------------
+
+@router.get("/exchanges", response_model=ExchangeCapabilitiesResponse)
+async def get_all_exchange_capabilities(
+    user_id: CurrentUserDep,
+):
+    """
+    Get all exchange capabilities.
+
+    Returns information about supported exchanges including:
+    - Supported asset types (crypto_perp, crypto_spot, forex, metals, equities)
+    - Settlement currencies (USDT, USDC, USD)
+    - Available features (funding_rates, leverage_adjustment, etc.)
+    - Limits (max_leverage, min_order_size, etc.)
+    """
+    exchanges = get_active_exchanges()
+    return ExchangeCapabilitiesResponse(
+        exchanges=exchanges,
+        last_updated=datetime.now(UTC),
+    )
+
+
+@router.get("/exchanges/{exchange_id}", response_model=ExchangeCapabilities)
+async def get_single_exchange_capability(
+    exchange_id: str,
+    user_id: CurrentUserDep,
+):
+    """
+    Get capabilities for a specific exchange.
+
+    Args:
+        exchange_id: Exchange identifier (e.g., 'hyperliquid', 'binance')
+    """
+    cap = get_exchange_capabilities(exchange_id)
+    if not cap:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Exchange '{exchange_id}' not found"
+        )
+    return cap
+
+
+@router.get("/exchanges/for-asset/{asset_type}", response_model=ExchangesForAssetResponse)
+async def get_exchanges_by_asset_type(
+    asset_type: AssetType,
+    user_id: CurrentUserDep,
+):
+    """
+    Get all exchanges that support a specific asset type.
+
+    Args:
+        asset_type: Asset type to filter by (crypto_perp, crypto_spot, forex, metals, equities)
+    """
+    exchanges = get_exchanges_for_asset(asset_type)
+    return ExchangesForAssetResponse(
+        asset_type=asset_type,
+        exchanges=exchanges,
+    )
+
+
+# -------------------- Cache Management --------------------
 
 @router.get("/cache/stats", response_model=CacheStats)
 async def get_cache_stats(
@@ -196,21 +279,28 @@ def _extract_base_symbol(full_symbol: str) -> str:
     return full_symbol
 
 
-def _is_valid_perpetual(symbol: str, market: dict, exchange: str) -> bool:
-    """Check if symbol is a valid perpetual contract for the exchange"""
+def _is_valid_perpetual(symbol: str, market: dict, exchange: str, asset_type: Optional[AssetType] = None) -> bool:
+    """Check if symbol is a valid perpetual contract for the exchange.
+
+    Uses ExchangeCapabilities for settlement currency lookup.
+    Falls back to hardcoded logic if exchange not in capabilities.
+    """
     if market.get("type") != "swap":
         return False
 
-    # Hyperliquid uses USDC, others use USDT
-    if exchange.lower() == "hyperliquid":
-        return "/USDC" in symbol
-    return "/USDT" in symbol
+    # Get settlement currency from capabilities
+    target_asset = asset_type or AssetType.CRYPTO_PERP
+    settlement = get_settlement_currency(exchange, target_asset)
+
+    # Check if symbol contains the settlement currency
+    return f"/{settlement.value}" in symbol
 
 
 @router.get("/symbols", response_model=SymbolsResponse)
 async def get_available_symbols(
     user_id: CurrentUserDep,
     exchange: str = "binance",
+    asset_type: Optional[AssetType] = None,
 ):
     """
     Get list of available trading symbols.
@@ -218,12 +308,33 @@ async def get_available_symbols(
     Returns symbols in both base format (e.g., 'BTC') and full CCXT format
     (e.g., 'BTC/USDT:USDT'). Results are cached for 24 hours.
 
-    Supported exchanges: binance, okx, bybit, bitget, kucoin, gate, hyperliquid
+    Args:
+        exchange: Exchange name (binance, okx, bybit, bitget, kucoin, gate, hyperliquid)
+        asset_type: Filter by asset type (crypto_perp, crypto_spot, forex, metals, equities)
+                   If not specified, defaults to crypto_perp for backward compatibility.
+
+    Note:
+        - Hyperliquid uses USDC settlement
+        - Other exchanges use USDT settlement
+        - The settlement currency is automatically determined based on exchange capabilities
     """
+    # Default to crypto_perp for backward compatibility
+    target_asset = asset_type or AssetType.CRYPTO_PERP
+
+    # Verify exchange supports this asset type
+    cap = get_exchange_capabilities(exchange)
+    if cap and target_asset not in cap.supported_assets:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Exchange '{exchange}' does not support asset type '{target_asset.value}'"
+        )
+
     cache = get_market_data_cache()
 
     # Try cache first (cached as list of full symbols)
-    cached_symbols = await cache.get_symbols(exchange)
+    # Cache key includes asset_type for differentiation
+    cache_key = f"{exchange}:{target_asset.value}" if asset_type else exchange
+    cached_symbols = await cache.get_symbols(cache_key)
     if cached_symbols:
         symbol_items = [
             SymbolItem(symbol=_extract_base_symbol(s), full_symbol=s)
@@ -231,6 +342,7 @@ async def get_available_symbols(
         ]
         return SymbolsResponse(
             exchange=exchange,
+            asset_type=target_asset.value if asset_type else None,
             symbols=symbol_items,
             cached=True,
         )
@@ -247,12 +359,12 @@ async def get_available_symbols(
         # Filter for perpetual contracts
         symbols = [
             s for s in markets.keys()
-            if _is_valid_perpetual(s, markets[s], exchange)
+            if _is_valid_perpetual(s, markets[s], exchange, target_asset)
         ]
         symbols.sort()
 
-        # Cache the result (as list of full symbols for backward compatibility)
-        await cache.set_symbols(symbols, exchange)
+        # Cache the result (as list of full symbols)
+        await cache.set_symbols(symbols, cache_key)
 
         # Convert to SymbolItem format
         symbol_items = [
@@ -262,6 +374,7 @@ async def get_available_symbols(
 
         return SymbolsResponse(
             exchange=exchange,
+            asset_type=target_asset.value if asset_type else None,
             symbols=symbol_items,
             cached=False,
         )

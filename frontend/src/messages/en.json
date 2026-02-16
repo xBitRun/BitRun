@@ -335,7 +335,9 @@
         "addAccount": "Add Account",
         "mockBalance": "Initial Virtual Balance (USDT)",
         "mockBalancePlaceholder": "10000",
-        "riskWarning": "Live trading involves real funds. Start with conservative settings."
+        "riskWarning": "Live trading involves real funds. Start with conservative settings.",
+        "compatibilityWarning": "Strategy Incompatible with Exchange",
+        "incompatibleSymbols": "Symbols {symbols} have settlement currency mismatch with {exchange}. Please select a different account or modify the strategy."
       },
       "reviewStep": {
         "title": "Review & Launch",
@@ -1297,6 +1299,7 @@
       "confidence": "Confidence",
       "marketAssessment": "Market Assessment",
       "chainOfThought": "Chain of Thought",
+      "executionReasoning": "Execution Reasoning",
       "tradingDecisions": "Trading Decisions",
       "leverage": "Leverage",
       "size": "Size",
@@ -1305,8 +1308,11 @@
       "model": "Model",
       "tokens": "Tokens",
       "latency": "Latency",
+      "strategyType": "Strategy Type",
       "rawResponse": "Raw AI Response",
       "rawResponseHint": "Complete raw data returned by the model",
+      "executionLog": "Execution Log",
+      "executionLogHint": "Execution details from strategy engine",
       "copyRaw": "Copy",
       "copied": "Copied",
       "more": "+{count} more",

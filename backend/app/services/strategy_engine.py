@@ -134,7 +134,7 @@ class StrategyEngine:
                     trader=trader,
                     config=self.config,
                 )
-                logger.info(f"Enhanced context enabled for strategy {strategy.id}")
+                logger.info(f"Enhanced context enabled for strategy {self.strategy.id}")
             except Exception as e:
                 logger.warning(f"Failed to initialize DataAccessLayer: {e}, falling back to basic context")
                 self.data_access_layer = None

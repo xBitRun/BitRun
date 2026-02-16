@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,21 +12,23 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { MarkdownToggle } from '@/components/ui/markdown-toggle';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MarkdownToggle } from "@/components/ui/markdown-toggle";
+import { Button } from "@/components/ui/button";
 
 interface ChainOfThoughtProps {
   content: string;
   className?: string;
   /** Number of steps to show before collapsing (default: 3) */
   initialVisibleSteps?: number;
+  /** Custom title translation key (default: 'chainOfThought') */
+  titleKey?: string;
 }
 
 interface ThoughtStep {
   text: string;
-  type: 'bullish' | 'bearish' | 'neutral' | 'warning' | 'conclusion';
+  type: "bullish" | "bearish" | "neutral" | "warning" | "conclusion";
 }
 
 // Heuristic patterns to classify thought steps
@@ -71,12 +73,12 @@ const CONCLUSION_PATTERNS = [
   /结论|决策|建议|总结|综上|因此/,
 ];
 
-export function classifyStep(text: string): ThoughtStep['type'] {
-  if (CONCLUSION_PATTERNS.some((p) => p.test(text))) return 'conclusion';
-  if (WARNING_PATTERNS.some((p) => p.test(text))) return 'warning';
-  if (BULLISH_PATTERNS.some((p) => p.test(text))) return 'bullish';
-  if (BEARISH_PATTERNS.some((p) => p.test(text))) return 'bearish';
-  return 'neutral';
+export function classifyStep(text: string): ThoughtStep["type"] {
+  if (CONCLUSION_PATTERNS.some((p) => p.test(text))) return "conclusion";
+  if (WARNING_PATTERNS.some((p) => p.test(text))) return "warning";
+  if (BULLISH_PATTERNS.some((p) => p.test(text))) return "bullish";
+  if (BEARISH_PATTERNS.some((p) => p.test(text))) return "bearish";
+  return "neutral";
 }
 
 export function parseSteps(content: string): ThoughtStep[] {
@@ -97,38 +99,38 @@ export function parseSteps(content: string): ThoughtStep[] {
 const stepConfig = {
   bullish: {
     icon: TrendingUp,
-    color: 'text-[var(--profit)]',
-    bg: 'bg-[var(--profit)]/10',
-    border: 'border-[var(--profit)]/30',
-    dot: 'bg-[var(--profit)]',
+    color: "text-[var(--profit)]",
+    bg: "bg-[var(--profit)]/10",
+    border: "border-[var(--profit)]/30",
+    dot: "bg-[var(--profit)]",
   },
   bearish: {
     icon: TrendingDown,
-    color: 'text-[var(--loss)]',
-    bg: 'bg-[var(--loss)]/10',
-    border: 'border-[var(--loss)]/30',
-    dot: 'bg-[var(--loss)]',
+    color: "text-[var(--loss)]",
+    bg: "bg-[var(--loss)]/10",
+    border: "border-[var(--loss)]/30",
+    dot: "bg-[var(--loss)]",
   },
   warning: {
     icon: AlertTriangle,
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
-    dot: 'bg-amber-500',
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    dot: "bg-amber-500",
   },
   conclusion: {
     icon: CheckCircle2,
-    color: 'text-primary',
-    bg: 'bg-primary/10',
-    border: 'border-primary/30',
-    dot: 'bg-primary',
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/30",
+    dot: "bg-primary",
   },
   neutral: {
     icon: Activity,
-    color: 'text-muted-foreground',
-    bg: 'bg-muted/30',
-    border: 'border-border/50',
-    dot: 'bg-muted-foreground',
+    color: "text-muted-foreground",
+    bg: "bg-muted/30",
+    border: "border-border/50",
+    dot: "bg-muted-foreground",
   },
 };
 
@@ -137,9 +139,9 @@ export function highlightSignals(text: string): string {
   // Highlight signal keywords
   let highlighted = text;
   const signalPatterns: Array<[RegExp, string]> = [
-    [/\b(RSI|MACD|EMA|ATR|SMA|BB)\b/gi, '**$1**'],
-    [/\b(\d+\.?\d*%)/g, '`$1`'],
-    [/\$([\d,]+\.?\d*)/g, '`$$$1`'],
+    [/\b(RSI|MACD|EMA|ATR|SMA|BB)\b/gi, "**$1**"],
+    [/\b(\d+\.?\d*%)/g, "`$1`"],
+    [/\$([\d,]+\.?\d*)/g, "`$$$1`"],
   ];
 
   for (const [pattern, replacement] of signalPatterns) {
@@ -152,8 +154,9 @@ export function ChainOfThought({
   content,
   className,
   initialVisibleSteps = 3,
+  titleKey = "chainOfThought",
 }: ChainOfThoughtProps) {
-  const t = useTranslations('decisions.details');
+  const t = useTranslations("decisions.details");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
 
@@ -177,7 +180,7 @@ export function ChainOfThought({
       <div className={className}>
         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />
-          {t('chainOfThought')}
+          {t(titleKey)}
         </h4>
         <div className="p-4 rounded-lg bg-muted/20 border border-border/30">
           <MarkdownToggle content={content} />
@@ -195,9 +198,9 @@ export function ChainOfThought({
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />
-          {t('chainOfThought')}
+          {t(titleKey)}
           <span className="text-xs font-normal text-muted-foreground">
-            ({steps.length} {t('steps')})
+            ({steps.length} {t("steps")})
           </span>
         </h4>
         {needsCollapse && (
@@ -210,12 +213,12 @@ export function ChainOfThought({
             {isExpanded ? (
               <>
                 <ChevronUp className="w-3.5 h-3.5 mr-1" />
-                {t('collapseAll')}
+                {t("collapseAll")}
               </>
             ) : (
               <>
                 <ChevronDown className="w-3.5 h-3.5 mr-1" />
-                {t('expandAll', { count: hiddenCount })}
+                {t("expandAll", { count: hiddenCount })}
               </>
             )}
           </Button>
@@ -232,7 +235,7 @@ export function ChainOfThought({
             const config = stepConfig[step.type];
             const Icon = config.icon;
             const isLast = index === steps.length - 1;
-            const isConclusion = step.type === 'conclusion';
+            const isConclusion = step.type === "conclusion";
             const isStepExpanded = expandedSteps.has(index);
 
             // For long steps, truncate unless expanded
@@ -244,8 +247,8 @@ export function ChainOfThought({
                 {/* Timeline dot */}
                 <div
                   className={cn(
-                    'absolute -left-6 top-1.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-background z-10',
-                    config.dot
+                    "absolute -left-6 top-1.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-background z-10",
+                    config.dot,
                   )}
                 >
                   {isLast ? (
@@ -258,19 +261,23 @@ export function ChainOfThought({
                 {/* Content */}
                 <div
                   className={cn(
-                    'flex-1 p-3 rounded-lg border text-sm transition-all',
+                    "flex-1 p-3 rounded-lg border text-sm transition-all",
                     config.bg,
                     config.border,
-                    isConclusion && 'ring-1 ring-primary/20 border-primary/40',
-                    isLast && !isConclusion && 'ring-1 ring-primary/10',
-                    isLongStep && 'cursor-pointer hover:ring-1 hover:ring-primary/20'
+                    isConclusion && "ring-1 ring-primary/20 border-primary/40",
+                    isLast && !isConclusion && "ring-1 ring-primary/10",
+                    isLongStep &&
+                      "cursor-pointer hover:ring-1 hover:ring-primary/20",
                   )}
                   onClick={isLongStep ? () => toggleStep(index) : undefined}
                 >
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <Icon className={cn('w-3.5 h-3.5', config.color)} />
+                    <Icon className={cn("w-3.5 h-3.5", config.color)} />
                     <span
-                      className={cn('text-xs font-semibold uppercase', config.color)}
+                      className={cn(
+                        "text-xs font-semibold uppercase",
+                        config.color,
+                      )}
                     >
                       {step.type}
                     </span>
@@ -286,8 +293,9 @@ export function ChainOfThought({
                   </div>
                   <div
                     className={cn(
-                      'text-foreground/80 whitespace-pre-wrap text-xs leading-relaxed',
-                      shouldTruncate && 'max-h-[4.5rem] overflow-hidden relative'
+                      "text-foreground/80 whitespace-pre-wrap text-xs leading-relaxed",
+                      shouldTruncate &&
+                        "max-h-[4.5rem] overflow-hidden relative",
                     )}
                   >
                     <MarkdownToggle content={highlightSignals(step.text)} />
@@ -310,7 +318,7 @@ export function ChainOfThought({
             <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center">
               <ChevronDown className="w-2 h-2" />
             </div>
-            {t('expandAll', { count: hiddenCount })}
+            {t("expandAll", { count: hiddenCount })}
           </button>
         )}
       </div>

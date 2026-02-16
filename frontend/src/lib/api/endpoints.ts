@@ -1269,7 +1269,13 @@ export const systemApi = {
   getOutboundIP: () => api.get<OutboundIPResponse>("/system/outbound-ip"),
 };
 
-// ==================== Data (Symbols) ====================
+// ==================== Data (Symbols & Exchanges) ====================
+
+import type {
+  AssetType,
+  ExchangeCapabilities,
+  ExchangeCapabilitiesResponse,
+} from "@/types";
 
 export interface SymbolItem {
   symbol: string;
@@ -1278,17 +1284,50 @@ export interface SymbolItem {
 
 export interface SymbolsResponse {
   exchange: string;
+  asset_type?: string | null;
   symbols: SymbolItem[];
   cached: boolean;
+}
+
+export interface ExchangesForAssetResponse {
+  asset_type: AssetType;
+  exchanges: ExchangeCapabilities[];
 }
 
 export const dataApi = {
   /**
    * Get available trading symbols for an exchange.
    * Returns both base symbol (e.g., 'BTC') and full CCXT format (e.g., 'BTC/USDT:USDT').
+   *
+   * @param exchange - Exchange name (binance, okx, hyperliquid, etc.)
+   * @param assetType - Optional asset type filter (crypto_perp, crypto_spot, forex, metals)
    */
-  getSymbols: (exchange: string = "binance") =>
+  getSymbols: (exchange: string = "binance", assetType?: AssetType) =>
     api.get<SymbolsResponse>("/data/symbols", {
-      params: { exchange },
+      params: { exchange, ...(assetType ? { asset_type: assetType } : {}) },
     }),
+
+  /**
+   * Get all exchange capabilities.
+   * Returns information about supported exchanges including asset types, settlement currencies, features.
+   */
+  getExchanges: () => api.get<ExchangeCapabilitiesResponse>("/data/exchanges"),
+
+  /**
+   * Get capabilities for a specific exchange.
+   *
+   * @param exchangeId - Exchange identifier (e.g., 'hyperliquid', 'binance')
+   */
+  getExchange: (exchangeId: string) =>
+    api.get<ExchangeCapabilities>(`/data/exchanges/${exchangeId}`),
+
+  /**
+   * Get all exchanges that support a specific asset type.
+   *
+   * @param assetType - Asset type to filter by
+   */
+  getExchangesForAsset: (assetType: AssetType) =>
+    api.get<ExchangesForAssetResponse>(
+      `/data/exchanges/for-asset/${assetType}`,
+    ),
 };

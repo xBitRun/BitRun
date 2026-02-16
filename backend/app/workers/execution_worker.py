@@ -143,11 +143,16 @@ class ExecutionWorker:
 
             # Check for active agent (strategy itself has no status field)
             from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
             from ..db.models import AgentDB
 
-            agent_stmt = select(AgentDB).where(
-                AgentDB.strategy_id == self.strategy_id,
-                AgentDB.status == "active",
+            agent_stmt = (
+                select(AgentDB)
+                .where(
+                    AgentDB.strategy_id == self.strategy_id,
+                    AgentDB.status == "active",
+                )
+                .options(selectinload(AgentDB.strategy))
             )
             result = await session.execute(agent_stmt)
             agent = result.scalar_one_or_none()
@@ -160,7 +165,7 @@ class ExecutionWorker:
             # Create strategy engine with db_session for decision persistence
             # AI client is created by StrategyEngine based on strategy's ai_model
             engine = StrategyEngine(
-                strategy=strategy,
+                agent=agent,
                 trader=self.trader,
                 ai_client=self.ai_client,  # May be None, engine creates based on strategy config
                 db_session=session,  # Pass session for decision persistence

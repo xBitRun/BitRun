@@ -16,18 +16,42 @@ from .base import (
     detect_market_type,
 )
 from .ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
+from .exchange_capabilities import (
+    AssetType,
+    ExchangeCapabilities,
+    ExchangeFeature,
+    EXCHANGE_CAPABILITIES,
+    SettlementCurrency,
+    get_active_exchanges,
+    get_all_exchanges,
+    get_ccxt_id,
+    get_exchange_capabilities,
+    get_exchanges_for_asset,
+    get_settlement_currency,
+    supports_asset,
+)
 from .exchange_pool import ExchangePool
 from .hyperliquid import mnemonic_to_private_key
 
 __all__ = [
     "AccountState",
+    "AssetType",
     "BaseTrader",
     "CCXTTrader",
     "create_trader_from_account",
     "detect_market_type",
+    "EXCHANGE_CAPABILITIES",
+    "ExchangeCapabilities",
+    "ExchangeFeature",
     "EXCHANGE_ID_MAP",
     "ExchangePool",
     "FundingRate",
+    "get_active_exchanges",
+    "get_all_exchanges",
+    "get_ccxt_id",
+    "get_exchange_capabilities",
+    "get_exchanges_for_asset",
+    "get_settlement_currency",
     "MarketData",
     "MarketType",
     "mnemonic_to_private_key",
@@ -37,5 +61,7 @@ __all__ = [
     "OrderStatus",
     "OrderType",
     "Position",
+    "SettlementCurrency",
+    "supports_asset",
     "TradeError",
 ]

@@ -267,7 +267,7 @@ class QuantEngineBase(ABC):
         Raises TradeError if the price is invalid (zero/negative/None).
         """
         market_data = await self.trader.get_market_data(self.symbol)
-        price = market_data.mark_price
+        price = market_data.mid_price
         if not price or price <= 0:
             raise TradeError(
                 f"Invalid market price for {self.symbol}: {price}",

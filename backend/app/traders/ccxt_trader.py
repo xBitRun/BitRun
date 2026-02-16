@@ -278,7 +278,7 @@ class CCXTTrader(BaseTrader):
         Normalise a bare symbol ("BTC") or pair ("EUR/USD") into the CCXT
         unified format used by the current exchange.
 
-        Crypto perpetuals  → "BTC/USDT:USDT" (or USDC for Hyperliquid)
+        Crypto perpetuals  → "BTC/USDT:USDT" (or USDC:USDC for Hyperliquid)
         Forex / Metals     → "EUR/USD" / "XAU/USD" (already standard)
         """
         symbol = symbol.upper().strip()
@@ -294,10 +294,22 @@ class CCXTTrader(BaseTrader):
             # Bare metal code → default to /USD
             return f"{symbol}/USD"
 
-        # --- Crypto path (existing logic) ---
-        if "/" in symbol:
+        # --- Crypto path ---
+        # Already formatted with settlement
+        if ":" in symbol:
             return symbol
 
+        # Already has quote currency
+        if "/" in symbol:
+            parts = symbol.split("/")
+            base = parts[0]
+            quote = parts[1]
+            # Hyperliquid uses USDC settlement
+            if self._exchange_id == "hyperliquid":
+                return f"{base}/{quote}:USDC"
+            return f"{base}/{quote}:USDT"
+
+        # Bare symbol - extract base and apply exchange-specific format
         base = (
             symbol.replace("USDT", "")
             .replace("-SWAP", "")
@@ -307,7 +319,7 @@ class CCXTTrader(BaseTrader):
         )
 
         if self._exchange_id == "hyperliquid":
-            # Hyperliquid CCXT uses "BTC/USDC:USDC" for perpetuals
+            # Hyperliquid uses USDC for both quote and settlement: BTC/USDC:USDC
             return f"{base}/USDC:USDC"
 
         # OKX / Binance / Bybit all use USDT settled perps

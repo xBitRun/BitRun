@@ -20,6 +20,7 @@ from ...core.dependencies import (
 )
 from ...db.repositories.account import AccountRepository
 from ...db.repositories.agent import AgentRepository
+from ...db.repositories.decision import DecisionRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...models.agent import (
     AgentCreate,
@@ -595,6 +596,82 @@ async def trigger_agent_execution(
     }
 
 
+async def _save_quant_decision_record(
+    db,
+    agent,
+    strategy_type: str,
+    quant_result: dict,
+    symbol: str,
+) -> Optional[uuid.UUID]:
+    """Save a Quant strategy execution as a decision record.
+
+    This allows Quant strategies (grid/dca/rsi) to appear in the decision list
+    alongside AI strategy decisions.
+    """
+    decision_repo = DecisionRepository(db)
+
+    # Build chain of thought from quant result
+    trades_executed = quant_result.get("trades_executed", 0)
+    pnl_change = quant_result.get("pnl_change", 0.0)
+    message = quant_result.get("message", "")
+    success = quant_result.get("success", False)
+
+    # Determine action based on strategy type and execution
+    if trades_executed > 0:
+        if pnl_change > 0:
+            action = "close_long"
+            action_desc = "卖出平仓获利"
+        else:
+            action = "open_long"
+            action_desc = "买入开仓"
+    else:
+        action = "hold"
+        action_desc = "持有/观望"
+
+    # Build strategy-specific chain of thought
+    strategy_names = {
+        "grid": "网格交易策略",
+        "dca": "定投策略",
+        "rsi": "RSI指标策略",
+    }
+    strategy_name = strategy_names.get(strategy_type, strategy_type.upper())
+
+    chain_of_thought = f"[{strategy_name}] {message}"
+    if trades_executed > 0:
+        chain_of_thought += f"\n执行了 {trades_executed} 笔交易"
+    if pnl_change != 0:
+        chain_of_thought += f"\n盈亏变化: ${pnl_change:.2f}"
+
+    # Build market assessment
+    market_assessment = f"交易对: {symbol}\n执行状态: {'成功' if success else '失败'}"
+
+    # Build decisions list (rule-based, so confidence is 100)
+    decisions = [{
+        "action": action,
+        "symbol": symbol,
+        "confidence": 100,
+        "reasoning": action_desc,
+        "size_usd": 0,  # Quant doesn't track per-decision size
+    }]
+
+    record = await decision_repo.create(
+        agent_id=agent.id,
+        system_prompt=f"Quant Strategy: {strategy_name}",
+        user_prompt=f"Symbol: {symbol}, Config: {agent.config}",
+        raw_response=str(quant_result),
+        chain_of_thought=chain_of_thought,
+        market_assessment=market_assessment,
+        decisions=decisions,
+        overall_confidence=100,
+        ai_model=f"quant:{strategy_type}",
+        tokens_used=0,
+        latency_ms=0,
+    )
+
+    logger.info(f"Saved quant decision record {record.id} for agent {agent.id}")
+    return record.id
+
+
 async def _trigger_quant_cycle(
     worker_manager,
     agent,
@@ -654,7 +731,7 @@ async def _trigger_quant_cycle(
 
         engine = create_engine(
             strategy_type=strategy_type,
-            strategy_id=agent_id_str,  # Note: create_engine expects agent_id here
+            agent_id=agent_id_str,  # Note: create_engine expects agent_id here
             trader=trader,
             symbol=agent.symbol,
             config=agent.config or {},
@@ -665,6 +742,18 @@ async def _trigger_quant_cycle(
         )
 
         result = await engine.run_cycle()
+
+        # Save decision record for Quant strategies
+        try:
+            await _save_quant_decision_record(
+                db=db,
+                agent=agent,
+                strategy_type=strategy_type,
+                quant_result=result,
+                symbol=agent.symbol,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save quant decision record: {e}")
 
         # Update runtime state if changed
         if result.get("updated_state"):

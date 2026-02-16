@@ -437,6 +437,55 @@ export interface PromptPreviewResponse {
 
 export type MarketType = "crypto_perp" | "crypto_spot" | "forex" | "metals";
 
+// ==================== Exchange Capabilities ====================
+
+/** Asset type enum (matches backend AssetType) */
+export type AssetType =
+  | "crypto_perp"
+  | "crypto_spot"
+  | "forex"
+  | "metals"
+  | "equities";
+
+/** Settlement currency enum */
+export type SettlementCurrency = "USDT" | "USDC" | "USD" | "BUSD";
+
+/** Exchange feature enum */
+export type ExchangeFeature =
+  | "funding_rates"
+  | "open_interest"
+  | "leverage_adjustment"
+  | "isolated_margin"
+  | "cross_margin"
+  | "stop_loss"
+  | "take_profit"
+  | "trailing_stop";
+
+/** Exchange capabilities interface */
+export interface ExchangeCapabilities {
+  id: string;
+  display_name: string;
+  supported_assets: AssetType[];
+  settlement_currencies: Record<AssetType, SettlementCurrency>;
+  default_settlement: SettlementCurrency;
+  features: ExchangeFeature[];
+  max_leverage: number;
+  min_order_size_usd: number;
+  max_kline_limit: number;
+  ccxt_id: string;
+  requires_passphrase: boolean;
+  supports_testnet: boolean;
+  is_active: boolean;
+  logo_url?: string | null;
+  website_url?: string | null;
+}
+
+/** Exchange capabilities API response */
+export interface ExchangeCapabilitiesResponse {
+  exchanges: ExchangeCapabilities[];
+  last_updated: string;
+}
+
 // Popular trading pairs for quick selection – grouped by market type
 export const POPULAR_SYMBOLS = [
   "BTC",

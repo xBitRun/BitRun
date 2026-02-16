@@ -32,6 +32,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { useSymbolsList } from "@/hooks/use-symbols";
+import { useSettlementCurrency } from "@/hooks/use-exchange-capabilities";
 import {
   POPULAR_CRYPTO_SYMBOLS,
   FOREX_SYMBOLS,
@@ -51,6 +52,10 @@ import type {
  * A searchable dropdown component for selecting trading pairs.
  * Supports both single and multiple selection modes.
  * Integrates with CCXT API to fetch available symbols from exchanges.
+ *
+ * When exchange is provided, automatically uses the correct settlement currency:
+ * - Hyperliquid: USDC
+ * - Other exchanges: USDT
  */
 export function SymbolSelector({
   value,
@@ -58,6 +63,7 @@ export function SymbolSelector({
   mode = "multiple",
   maxSelections = 10,
   exchange,
+  assetType = "crypto_perp",
   showMarketTypeTabs = true,
   placeholder,
   disabled = false,
@@ -83,8 +89,15 @@ export function SymbolSelector({
     return "crypto"; // crypto_perp, crypto_spot -> crypto
   };
 
+  // Get settlement currency for this exchange and asset type
+  const { settlement } = useSettlementCurrency(exchange, assetType);
+
   // Fetch symbols from API if exchange is provided
-  const { symbols: apiSymbols, isLoading, error } = useSymbolsList(exchange);
+  const {
+    symbols: apiSymbols,
+    isLoading,
+    error,
+  } = useSymbolsList(exchange, assetType);
 
   // Normalize value to array for internal processing
   const selectedSymbols = useMemo(() => {
@@ -103,14 +116,14 @@ export function SymbolSelector({
       }));
     }
 
-    // Fallback to preset symbols
+    // Fallback to preset symbols (use determined settlement currency)
     const options: SymbolOption[] = [];
 
-    // Add crypto symbols
+    // Add crypto symbols with correct settlement currency
     POPULAR_CRYPTO_SYMBOLS.forEach((symbol) => {
       options.push({
         symbol,
-        fullSymbol: `${symbol}/USDT:USDT`,
+        fullSymbol: `${symbol}/${settlement}:${settlement}`,
         marketType: "crypto_perp" as const,
       });
     });
@@ -134,7 +147,7 @@ export function SymbolSelector({
     });
 
     return options;
-  }, [exchange, apiSymbols]);
+  }, [exchange, apiSymbols, settlement]);
 
   // Filter symbols by tab and search
   const filteredOptions = useMemo(() => {

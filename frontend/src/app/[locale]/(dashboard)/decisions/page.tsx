@@ -275,7 +275,10 @@ export default function DecisionsPage() {
                         )}
 
                       {/* Chain of Thought - Enhanced Timeline View */}
-                      <ChainOfThought content={decision.chain_of_thought} />
+                      <ChainOfThought
+                        content={decision.chain_of_thought}
+                        titleKey={decision.ai_model?.startsWith("quant:") ? "executionReasoning" : "chainOfThought"}
+                      />
 
                       {/* Trading Decisions */}
                       <div>

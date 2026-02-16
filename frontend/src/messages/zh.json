@@ -335,7 +335,9 @@
         "addAccount": "添加账户",
         "mockBalance": "模拟初始资金 (USDT)",
         "mockBalancePlaceholder": "10000",
-        "riskWarning": "实盘交易涉及真实资金，请从保守设置开始。"
+        "riskWarning": "实盘交易涉及真实资金，请从保守设置开始。",
+        "compatibilityWarning": "策略与交易所不兼容",
+        "incompatibleSymbols": "交易对 {symbols} 的结算货币与 {exchange} 不匹配，请选择其他账户或修改策略。"
       },
       "reviewStep": {
         "title": "确认并启动",
@@ -1307,6 +1309,7 @@
       "confidence": "置信度",
       "marketAssessment": "市场评估",
       "chainOfThought": "思维链",
+      "executionReasoning": "执行推理",
       "tradingDecisions": "交易决策",
       "leverage": "杠杆",
       "size": "规模",
@@ -1315,8 +1318,11 @@
       "model": "模型",
       "tokens": "Token",
       "latency": "延迟",
+      "strategyType": "策略类型",
       "rawResponse": "原始 AI 响应",
       "rawResponseHint": "模型返回的完整原始数据",
+      "executionLog": "执行日志",
+      "executionLogHint": "策略引擎的执行详情",
       "copyRaw": "复制",
       "copied": "已复制",
       "more": "更多 +{count}",

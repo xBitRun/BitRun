@@ -25,6 +25,7 @@ from ..core.config import get_settings
 from ..db.database import AsyncSessionLocal
 from ..db.repositories.quant_strategy import QuantStrategyRepository
 from ..db.repositories.account import AccountRepository
+from ..db.repositories.decision import DecisionRepository
 from ..services.quant_engine import create_engine
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import create_trader_from_account
@@ -252,7 +253,7 @@ class QuantExecutionWorker:
             # Create appropriate engine with position isolation
             engine = create_engine(
                 strategy_type=strategy.strategy_type,
-                strategy_id=str(strategy.id),
+                agent_id=str(strategy.id),
                 trader=self.trader,
                 symbol=strategy.symbol,
                 config=strategy.config,
@@ -264,6 +265,53 @@ class QuantExecutionWorker:
 
             # Run cycle
             result = await engine.run_cycle()
+
+            # Save decision record for audit trail
+            try:
+                decision_repo = DecisionRepository(session)
+                trades_executed = result.get("trades_executed", 0)
+                pnl_change = result.get("pnl_change", 0.0)
+                message = result.get("message", "")
+                success = result.get("success", False)
+
+                # Determine action
+                if trades_executed > 0:
+                    action = "close_long" if pnl_change > 0 else "open_long"
+                    action_desc = "卖出平仓" if pnl_change > 0 else "买入开仓"
+                else:
+                    action = "hold"
+                    action_desc = "持有/观望"
+
+                strategy_names = {"grid": "网格交易", "dca": "定投", "rsi": "RSI指标"}
+                strategy_name = strategy_names.get(strategy.strategy_type, strategy.strategy_type)
+
+                chain_of_thought = f"[{strategy_name}] {message}"
+                if trades_executed > 0:
+                    chain_of_thought += f"\n执行了 {trades_executed} 笔交易"
+                if pnl_change != 0:
+                    chain_of_thought += f"\n盈亏变化: ${pnl_change:.2f}"
+
+                await decision_repo.create(
+                    agent_id=strategy.id,
+                    system_prompt=f"Quant Strategy: {strategy_name}",
+                    user_prompt=f"Symbol: {strategy.symbol}, Config: {strategy.config}",
+                    raw_response=str(result),
+                    chain_of_thought=chain_of_thought,
+                    market_assessment=f"交易对: {strategy.symbol}\n执行状态: {'成功' if success else '失败'}",
+                    decisions=[{
+                        "action": action,
+                        "symbol": strategy.symbol,
+                        "confidence": 100,
+                        "reasoning": action_desc,
+                        "size_usd": 0,
+                    }],
+                    overall_confidence=100,
+                    ai_model=f"quant:{strategy.strategy_type}",
+                    tokens_used=0,
+                    latency_ms=0,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save quant decision record: {e}")
 
             # Update runtime state
             if result.get("updated_state"):
@@ -441,11 +489,14 @@ class QuantWorkerManager:
                     trader = create_trader_from_account(account, credentials)
                     await trader.initialize()
 
-                # Determine cycle interval
-                interval = DEFAULT_INTERVALS.get(strategy.strategy_type, 5)
-                # For DCA, use the config interval
-                if strategy.strategy_type == "dca":
+                # Determine cycle interval: prefer database config over defaults
+                if strategy.execution_interval_minutes:
+                    interval = strategy.execution_interval_minutes
+                elif strategy.strategy_type == "dca":
+                    # Fallback to DCA config interval
                     interval = strategy.config.get("interval_minutes", 60)
+                else:
+                    interval = DEFAULT_INTERVALS.get(strategy.strategy_type, 5)
 
                 worker = QuantExecutionWorker(
                     agent_id=agent_id,

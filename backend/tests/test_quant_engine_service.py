@@ -64,7 +64,7 @@ class TestGridEngine:
         """First run initializes grid levels correctly."""
         trader = _mock_trader(mark_price=100.0)
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state={},
         )
 
@@ -81,7 +81,7 @@ class TestGridEngine:
         """Price below all grid levels triggers buys at every level."""
         trader = _mock_trader(mark_price=88.0)
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state={},
         )
 
@@ -106,7 +106,7 @@ class TestGridEngine:
             "total_returned": 0.0,
         }
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state=runtime_state,
         )
 
@@ -131,7 +131,7 @@ class TestGridEngine:
             "total_returned": 0.0,
         }
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state=runtime_state,
         )
 
@@ -145,7 +145,7 @@ class TestGridEngine:
         """Runtime state records last_price and last_check."""
         trader = _mock_trader(mark_price=100.0)
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state={},
         )
 
@@ -162,7 +162,7 @@ class TestGridEngine:
         trader.open_long = AsyncMock(side_effect=TradeError("Insufficient margin"))
 
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state={},
         )
 
@@ -176,7 +176,7 @@ class TestGridEngine:
         """Missing config keys → KeyError → failure result."""
         trader = _mock_trader()
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config={},  # missing upper_price, lower_price, etc.
             runtime_state={},
         )
@@ -200,7 +200,7 @@ class TestGridEngine:
             "total_returned": 0.0,
         }
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state=runtime_state,
         )
 
@@ -224,7 +224,7 @@ class TestGridEngine:
             "total_returned": 0.0,
         }
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state=runtime_state,
         )
 
@@ -248,7 +248,7 @@ class TestGridEngine:
         )
 
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state={},
         )
 
@@ -279,7 +279,7 @@ class TestDCAEngine:
         """First cycle initializes state and places a buy."""
         trader = _mock_trader(mark_price=50000.0)
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state={},
         )
 
@@ -305,7 +305,7 @@ class TestDCAEngine:
             "last_order_time": None,
         }
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
 
@@ -329,7 +329,7 @@ class TestDCAEngine:
             "last_order_time": None,
         }
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
 
@@ -352,7 +352,7 @@ class TestDCAEngine:
             "last_order_time": None,
         }
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
 
@@ -375,7 +375,7 @@ class TestDCAEngine:
             "last_order_time": None,
         }
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
 
@@ -398,7 +398,7 @@ class TestDCAEngine:
             "last_order_time": None,
         }
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
 
@@ -417,7 +417,7 @@ class TestDCAEngine:
         trader.open_long = AsyncMock(side_effect=TradeError("Insufficient margin"))
 
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state={},
         )
 
@@ -431,7 +431,7 @@ class TestDCAEngine:
         """Missing config key → exception → failure result."""
         trader = _mock_trader()
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config={},  # missing "order_amount"
             runtime_state={},
         )
@@ -464,7 +464,7 @@ class TestRSIEngine:
         """RSI below oversold threshold → open long."""
         trader = _mock_trader(mark_price=50000.0)
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -494,7 +494,7 @@ class TestRSIEngine:
             "last_signal": "buy",
         }
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
 
@@ -517,7 +517,7 @@ class TestRSIEngine:
         """RSI in neutral zone → no trades."""
         trader = _mock_trader(mark_price=50000.0)
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -543,7 +543,7 @@ class TestRSIEngine:
             "last_signal": "buy",
         }
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
 
@@ -561,7 +561,7 @@ class TestRSIEngine:
         """_calculate_rsi returns None → graceful early return."""
         trader = _mock_trader(mark_price=50000.0)
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -583,7 +583,7 @@ class TestRSIEngine:
         trader.get_klines = AsyncMock(return_value=klines)
 
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -599,7 +599,7 @@ class TestRSIEngine:
         trader.get_klines = AsyncMock(return_value=klines)
 
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -616,7 +616,7 @@ class TestRSIEngine:
         trader.get_klines = AsyncMock(return_value=klines)
 
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -629,7 +629,7 @@ class TestRSIEngine:
         """After buy, state records entry_price and position_size_usd."""
         trader = _mock_trader(mark_price=50000.0)
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -653,7 +653,7 @@ class TestRSIEngine:
         )
 
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -677,7 +677,7 @@ class TestRSIEngine:
             "last_signal": "buy",
         }
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
 
@@ -697,7 +697,7 @@ class TestRSIEngine:
         trader.open_long = AsyncMock(side_effect=TradeError("Insufficient margin"))
         trader.get_position = AsyncMock(return_value=None)
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
 
@@ -722,7 +722,7 @@ class TestCreateEngine:
         engine = create_engine("grid", "s1", trader, "BTC", {"upper_price": 100}, {})
 
         assert isinstance(engine, GridEngine)
-        assert engine.strategy_id == "s1"
+        assert engine.agent_id == "s1"
 
     def test_create_dca_engine(self):
         trader = _mock_trader()
@@ -777,7 +777,7 @@ class TestQuantEngineBaseIsolation:
         )
         
         engine = GridEngine(
-            strategy_id="00000000-0000-0000-0000-000000000001",
+            agent_id="00000000-0000-0000-0000-000000000001",
             trader=trader,
             symbol="BTC",
             config={"upper_price": 110.0, "lower_price": 90.0, "grid_count": 4, "total_investment": 400.0, "leverage": 2.0},
@@ -804,7 +804,7 @@ class TestQuantEngineBaseIsolation:
         )
         
         engine = DCAEngine(
-            strategy_id="00000000-0000-0000-0000-000000000001",
+            agent_id="00000000-0000-0000-0000-000000000001",
             trader=trader,
             symbol="BTC",
             config={"order_amount": 100.0, "interval_minutes": 60, "total_budget": 1000.0, "max_orders": 10},
@@ -828,7 +828,7 @@ class TestQuantEngineBaseIsolation:
         mock_position_service.claim_position = AsyncMock(return_value=claim_mock)
         
         engine = RSIEngine(
-            strategy_id="00000000-0000-0000-0000-000000000001",
+            agent_id="00000000-0000-0000-0000-000000000001",
             trader=trader,
             symbol="BTC",
             config={"rsi_period": 14, "overbought_threshold": 70.0, "oversold_threshold": 30.0, "order_amount": 100.0},
@@ -853,7 +853,7 @@ class TestQuantEngineBaseIsolation:
         mock_position_service.get_open_position = AsyncMock(return_value=claim_mock)
         
         engine = RSIEngine(
-            strategy_id="00000000-0000-0000-0000-000000000001",
+            agent_id="00000000-0000-0000-0000-000000000001",
             trader=trader,
             symbol="BTC",
             config={"rsi_period": 14, "overbought_threshold": 70.0, "oversold_threshold": 30.0, "order_amount": 100.0},
@@ -904,7 +904,7 @@ class TestRSIEngineStateSync:
         }
         
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
         
@@ -938,7 +938,7 @@ class TestRSIEngineStateSync:
         }
         
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
         
@@ -972,7 +972,7 @@ class TestRSIEngineStateSync:
         }
         
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state=runtime_state,
         )
         
@@ -994,7 +994,7 @@ class TestRSIEngineStateSync:
         trader.get_klines = AsyncMock(side_effect=Exception("API error"))
         
         engine = RSIEngine(
-            strategy_id="r1", trader=trader, symbol="BTC",
+            agent_id="r1", trader=trader, symbol="BTC",
             config=rsi_config, runtime_state={},
         )
         
@@ -1033,7 +1033,7 @@ class TestDCAEngineExtended:
         }
         
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state=runtime_state,
         )
         
@@ -1052,7 +1052,7 @@ class TestDCAEngineExtended:
         )
         
         engine = DCAEngine(
-            strategy_id="d1", trader=trader, symbol="BTC",
+            agent_id="d1", trader=trader, symbol="BTC",
             config=dca_config, runtime_state={},
         )
         
@@ -1092,7 +1092,7 @@ class TestGridEngineExtended:
         }
         
         engine = GridEngine(
-            strategy_id="g1", trader=trader, symbol="BTC",
+            agent_id="g1", trader=trader, symbol="BTC",
             config=grid_config, runtime_state=runtime_state,
         )
         
