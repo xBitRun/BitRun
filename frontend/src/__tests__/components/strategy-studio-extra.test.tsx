@@ -161,9 +161,11 @@ jest.mock("@/hooks", () => ({
 }));
 
 // Mock sub-components used by StrategyStudioTabs
-jest.mock("@/components/strategy-studio/coin-selector", () => ({
-  CoinSelector: ({ value }: { value: string[] }) => (
-    <div data-testid="coin-selector">Coins: {value.join(",")}</div>
+jest.mock("@/components/symbol-selector", () => ({
+  SymbolSelector: ({ value }: { value: string | string[] }) => (
+    <div data-testid="symbol-selector">
+      Symbols: {Array.isArray(value) ? value.join(",") : value}
+    </div>
   ),
 }));
 
@@ -1115,10 +1117,10 @@ describe("StrategyStudioTabs", () => {
     expect(screen.getByText("tabs.preview")).toBeInTheDocument();
   });
 
-  it("should render CoinSelector on coins tab", () => {
+  it("should render SymbolSelector on coins tab", () => {
     render(<StrategyStudioTabs {...defaultProps} activeTab="coins" />);
 
-    expect(screen.getByTestId("coin-selector")).toBeInTheDocument();
+    expect(screen.getByTestId("symbol-selector")).toBeInTheDocument();
     expect(screen.getByTestId("timeframe-selector")).toBeInTheDocument();
   });
 
@@ -1146,15 +1148,15 @@ describe("StrategyStudioTabs", () => {
     }
   });
 
-  it("should update config when CoinSelector changes", () => {
+  it("should update config when SymbolSelector changes", () => {
     const onConfigChange = jest.fn();
     render(
       <StrategyStudioTabs {...defaultProps} onConfigChange={onConfigChange} />,
     );
 
-    // CoinSelector is mocked, so we can't directly interact with it
+    // SymbolSelector is mocked, so we can't directly interact with it
     // But we can verify the component structure
-    expect(screen.getByTestId("coin-selector")).toBeInTheDocument();
+    expect(screen.getByTestId("symbol-selector")).toBeInTheDocument();
   });
 
   it("should pass riskProfile and timeHorizon to RiskControlsPanel", () => {

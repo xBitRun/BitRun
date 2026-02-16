@@ -1,9 +1,24 @@
 "use client";
 
-import { Coins, Activity, Shield, FileText, Eye, Users } from "lucide-react";
+import {
+  Coins,
+  Activity,
+  Shield,
+  FileText,
+  Eye,
+  Users,
+  TrendingUp,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StudioTab, StrategyStudioConfig, PromptPreviewResponse, RiskProfile, TimeHorizon } from "@/types";
-import { CoinSelector } from "./coin-selector";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  StudioTab,
+  StrategyStudioConfig,
+  PromptPreviewResponse,
+  RiskProfile,
+  TimeHorizon,
+} from "@/types";
+import { SymbolSelector } from "@/components/symbol-selector";
 import { IndicatorConfig } from "./indicator-config";
 import { TimeframeSelector } from "./timeframe-selector";
 import { RiskControlsPanel } from "./risk-controls-panel";
@@ -28,7 +43,7 @@ interface StrategyStudioTabsProps {
   timeHorizon?: TimeHorizon | null;
 }
 
-const TAB_CONFIG: { value: StudioTab; icon: React.ElementType; }[] = [
+const TAB_CONFIG: { value: StudioTab; icon: React.ElementType }[] = [
   { value: "coins", icon: Coins },
   { value: "indicators", icon: Activity },
   { value: "risk", icon: Shield },
@@ -54,7 +69,7 @@ export function StrategyStudioTabs({
 
   const updateConfig = <K extends keyof StrategyStudioConfig>(
     key: K,
-    value: StrategyStudioConfig[K]
+    value: StrategyStudioConfig[K],
   ) => {
     onConfigChange({ ...config, [key]: value });
   };
@@ -72,7 +87,7 @@ export function StrategyStudioTabs({
             value={value}
             className={cn(
               "flex flex-col items-center gap-1 py-3 px-2",
-              "data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              "data-[state=active]:bg-background data-[state=active]:shadow-sm",
             )}
           >
             <Icon className="h-5 w-5" />
@@ -83,10 +98,30 @@ export function StrategyStudioTabs({
 
       <div className="mt-6">
         <TabsContent value="coins" className="m-0 space-y-4">
-          <CoinSelector
-            value={config.symbols}
-            onChange={(symbols) => updateConfig("symbols", symbols)}
-          />
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                {t("coinSelector.title")}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {t("coinSelector.description")}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <SymbolSelector
+                value={config.symbols}
+                onChange={(symbols) =>
+                  updateConfig("symbols", symbols as string[])
+                }
+                mode="multiple"
+                maxSelections={10}
+                showMarketTypeTabs={true}
+                allowCustomInput={true}
+                placeholder={t("coinSelector.selectedCoins")}
+              />
+            </CardContent>
+          </Card>
           <TimeframeSelector
             value={config.timeframes}
             onChange={(timeframes) => updateConfig("timeframes", timeframes)}
@@ -103,7 +138,9 @@ export function StrategyStudioTabs({
         <TabsContent value="risk" className="m-0">
           <RiskControlsPanel
             value={config.riskControls}
-            onChange={(riskControls) => updateConfig("riskControls", riskControls)}
+            onChange={(riskControls) =>
+              updateConfig("riskControls", riskControls)
+            }
             tradingMode={config.tradingMode}
             riskProfile={riskProfile}
             timeHorizon={timeHorizon}
@@ -115,7 +152,9 @@ export function StrategyStudioTabs({
             promptMode={config.promptMode}
             onPromptModeChange={(mode) => updateConfig("promptMode", mode)}
             value={config.promptSections}
-            onChange={(promptSections) => updateConfig("promptSections", promptSections)}
+            onChange={(promptSections) =>
+              updateConfig("promptSections", promptSections)
+            }
             customPrompt={config.customPrompt}
             onCustomPromptChange={(customPrompt) =>
               updateConfig("customPrompt", customPrompt)
@@ -131,13 +170,21 @@ export function StrategyStudioTabs({
         <TabsContent value="debate" className="m-0">
           <DebateConfig
             enabled={config.debateEnabled}
-            onEnabledChange={(enabled) => updateConfig("debateEnabled", enabled)}
+            onEnabledChange={(enabled) =>
+              updateConfig("debateEnabled", enabled)
+            }
             modelIds={config.debateModels}
-            onModelIdsChange={(modelIds) => updateConfig("debateModels", modelIds)}
+            onModelIdsChange={(modelIds) =>
+              updateConfig("debateModels", modelIds)
+            }
             consensusMode={config.debateConsensusMode}
-            onConsensusModeChange={(mode) => updateConfig("debateConsensusMode", mode)}
+            onConsensusModeChange={(mode) =>
+              updateConfig("debateConsensusMode", mode)
+            }
             minParticipants={config.debateMinParticipants}
-            onMinParticipantsChange={(min) => updateConfig("debateMinParticipants", min)}
+            onMinParticipantsChange={(min) =>
+              updateConfig("debateMinParticipants", min)
+            }
           />
         </TabsContent>
 

@@ -1,6 +1,5 @@
 /**
  * Tests for Strategy Studio components:
- * - CoinSelector
  * - RiskControlsPanel
  * - StrategyPresetSelector
  * - TimeframeSelector
@@ -46,111 +45,11 @@ jest.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { CoinSelector } from "@/components/strategy-studio/coin-selector";
 import { RiskControlsPanel } from "@/components/strategy-studio/risk-controls-panel";
 import { StrategyPresetSelector } from "@/components/strategy-studio/strategy-preset-selector";
 import { TimeframeSelector } from "@/components/strategy-studio/timeframe-selector";
 import { IndicatorConfig } from "@/components/strategy-studio/indicator-config";
 import type { RiskControlsConfig, IndicatorSettings } from "@/types";
-
-// ==================== CoinSelector ====================
-
-describe("CoinSelector", () => {
-  const defaultProps = {
-    value: [] as string[],
-    onChange: jest.fn(),
-    maxCoins: 10,
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it("should render title and description", () => {
-    render(<CoinSelector {...defaultProps} />);
-
-    expect(screen.getByText("coinSelector.title")).toBeInTheDocument();
-    expect(screen.getByText("coinSelector.description")).toBeInTheDocument();
-  });
-
-  it("should show empty state when no coins selected", () => {
-    render(<CoinSelector {...defaultProps} />);
-
-    expect(
-      screen.getByText("coinSelector.noCoinsSelected")
-    ).toBeInTheDocument();
-  });
-
-  it("should display selected coins as badges", () => {
-    render(<CoinSelector {...defaultProps} value={["BTC", "ETH"]} />);
-
-    expect(screen.getByText("BTC")).toBeInTheDocument();
-    expect(screen.getByText("ETH")).toBeInTheDocument();
-  });
-
-  it("should call onChange when adding a popular symbol", async () => {
-    const user = userEvent.setup();
-    const onChange = jest.fn();
-    render(<CoinSelector {...defaultProps} onChange={onChange} />);
-
-    // Click on SOL button (BTC, ETH, SOL etc are in POPULAR_SYMBOLS)
-    const solButton = screen.getByRole("button", { name: /SOL/ });
-    await user.click(solButton);
-
-    expect(onChange).toHaveBeenCalledWith(["SOL"]);
-  });
-
-  it("should call onChange when removing a coin", async () => {
-    const user = userEvent.setup();
-    const onChange = jest.fn();
-    render(
-      <CoinSelector {...defaultProps} value={["BTC", "ETH"]} onChange={onChange} />
-    );
-
-    // Find the remove button inside the BTC badge
-    const btcBadge = screen.getByText("BTC").closest(".px-3");
-    const removeButton = btcBadge?.querySelector("button");
-    if (removeButton) {
-      await user.click(removeButton);
-    }
-
-    expect(onChange).toHaveBeenCalledWith(["ETH"]);
-  });
-
-  it("should show selected count", () => {
-    render(<CoinSelector {...defaultProps} value={["BTC", "ETH"]} />);
-
-    expect(screen.getByText(/2\/10/)).toBeInTheDocument();
-  });
-
-  it("should add custom coin via input", async () => {
-    const user = userEvent.setup();
-    const onChange = jest.fn();
-    render(<CoinSelector {...defaultProps} onChange={onChange} />);
-
-    const customInput = screen.getByPlaceholderText(
-      "coinSelector.customPlaceholder"
-    );
-    await user.type(customInput, "DOGE");
-    await user.keyboard("{Enter}");
-
-    expect(onChange).toHaveBeenCalledWith(["DOGE"]);
-  });
-
-  it("should filter popular symbols by search", async () => {
-    const user = userEvent.setup();
-    render(<CoinSelector {...defaultProps} />);
-
-    const searchInput = screen.getByPlaceholderText(
-      "coinSelector.searchPlaceholder"
-    );
-    await user.type(searchInput, "BT");
-
-    // BTC should be visible, SOL should not
-    expect(screen.getByRole("button", { name: /BTC/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /SOL/ })).not.toBeInTheDocument();
-  });
-});
 
 // ==================== RiskControlsPanel ====================
 
@@ -219,12 +118,10 @@ describe("RiskControlsPanel", () => {
       defaultTpAtrMultiplier: 3,
       maxSlPercent: 0.1,
     };
-    render(
-      <RiskControlsPanel {...defaultProps} value={highRiskConfig} />
-    );
+    render(<RiskControlsPanel {...defaultProps} value={highRiskConfig} />);
 
     expect(
-      screen.getByText("riskControls.highRiskWarning")
+      screen.getByText("riskControls.highRiskWarning"),
     ).toBeInTheDocument();
   });
 
@@ -361,9 +258,7 @@ describe("RiskControlsPanel", () => {
       defaultTpAtrMultiplier: 3,
       maxSlPercent: 0.1,
     };
-    render(
-      <RiskControlsPanel {...defaultProps} value={lowRiskConfig} />
-    );
+    render(<RiskControlsPanel {...defaultProps} value={lowRiskConfig} />);
 
     expect(screen.getByText("riskControls.levels.low")).toBeInTheDocument();
   });
@@ -380,9 +275,7 @@ describe("RiskControlsPanel", () => {
       defaultTpAtrMultiplier: 3,
       maxSlPercent: 0.1,
     };
-    render(
-      <RiskControlsPanel {...defaultProps} value={mediumRiskConfig} />
-    );
+    render(<RiskControlsPanel {...defaultProps} value={mediumRiskConfig} />);
 
     expect(screen.getByText("riskControls.levels.medium")).toBeInTheDocument();
   });
@@ -390,19 +283,25 @@ describe("RiskControlsPanel", () => {
   it("should show recommendations for conservative mode", () => {
     render(<RiskControlsPanel {...defaultProps} tradingMode="conservative" />);
 
-    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/riskControls\.recommended/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("should show recommendations for balanced mode", () => {
     render(<RiskControlsPanel {...defaultProps} tradingMode="balanced" />);
 
-    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/riskControls\.recommended/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("should show recommendations for aggressive mode", () => {
     render(<RiskControlsPanel {...defaultProps} tradingMode="aggressive" />);
 
-    expect(screen.getAllByText(/riskControls\.recommended/).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/riskControls\.recommended/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("should handle invalid leverage input (defaults to 1)", async () => {
@@ -432,8 +331,12 @@ describe("RiskControlsPanel", () => {
     render(<RiskControlsPanel {...defaultProps} />);
 
     expect(screen.getByText("riskControls.maxLeverage")).toBeInTheDocument();
-    expect(screen.getByText("riskControls.maxPositionRatio")).toBeInTheDocument();
-    expect(screen.getByText("riskControls.maxTotalExposure")).toBeInTheDocument();
+    expect(
+      screen.getByText("riskControls.maxPositionRatio"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("riskControls.maxTotalExposure"),
+    ).toBeInTheDocument();
     expect(screen.getByText("riskControls.minRiskReward")).toBeInTheDocument();
     expect(screen.getByText("riskControls.maxDrawdown")).toBeInTheDocument();
     expect(screen.getByText("riskControls.minConfidence")).toBeInTheDocument();
@@ -472,9 +375,7 @@ describe("StrategyPresetSelector", () => {
   it("should render risk profile options", () => {
     render(<StrategyPresetSelector {...defaultProps} />);
 
-    expect(
-      screen.getByText("riskProfile.conservative")
-    ).toBeInTheDocument();
+    expect(screen.getByText("riskProfile.conservative")).toBeInTheDocument();
     expect(screen.getByText("riskProfile.balanced")).toBeInTheDocument();
     expect(screen.getByText("riskProfile.aggressive")).toBeInTheDocument();
   });
@@ -627,7 +528,7 @@ describe("IndicatorConfig", () => {
 
     // ATR period description should not be visible (ATR is disabled)
     expect(
-      screen.queryByText("indicators.atr.description")
+      screen.queryByText("indicators.atr.description"),
     ).not.toBeInTheDocument();
   });
 
@@ -655,11 +556,12 @@ describe("IndicatorConfig", () => {
 
     const periodInputs = screen.getAllByDisplayValue("9");
     // Find the first EMA period input (not MACD signal)
-    const firstPeriodInput = periodInputs.find(
-      (input) =>
-        input.getAttribute("type") === "number" &&
-        input.closest("div")?.textContent?.includes("Period 1")
-    ) || periodInputs[0];
+    const firstPeriodInput =
+      periodInputs.find(
+        (input) =>
+          input.getAttribute("type") === "number" &&
+          input.closest("div")?.textContent?.includes("Period 1"),
+      ) || periodInputs[0];
 
     fireEvent.change(firstPeriodInput, { target: { value: "5" } });
 
@@ -787,11 +689,13 @@ describe("IndicatorConfig", () => {
     const onChange = jest.fn();
     render(<IndicatorConfig {...defaultProps} onChange={onChange} />);
 
-    const signalInput = screen.getAllByDisplayValue("9").find(
-      (input) =>
-        input.getAttribute("type") === "number" &&
-        input.closest("div")?.textContent?.includes("signal")
-    );
+    const signalInput = screen
+      .getAllByDisplayValue("9")
+      .find(
+        (input) =>
+          input.getAttribute("type") === "number" &&
+          input.closest("div")?.textContent?.includes("signal"),
+      );
     if (signalInput) {
       fireEvent.change(signalInput, { target: { value: "10" } });
 
@@ -841,7 +745,11 @@ describe("IndicatorConfig", () => {
       atr: { enabled: true, period: 14 },
     };
     render(
-      <IndicatorConfig {...defaultProps} value={enabledATR} onChange={onChange} />
+      <IndicatorConfig
+        {...defaultProps}
+        value={enabledATR}
+        onChange={onChange}
+      />,
     );
 
     // Find ATR slider
@@ -901,11 +809,13 @@ describe("IndicatorConfig", () => {
 
     const fastInput = screen.getByDisplayValue("12") as HTMLInputElement;
     const slowInput = screen.getByDisplayValue("26") as HTMLInputElement;
-    const signalInput = screen.getAllByDisplayValue("9").find(
-      (input) =>
-        input.getAttribute("type") === "number" &&
-        input.closest("div")?.textContent?.includes("signal")
-    ) as HTMLInputElement;
+    const signalInput = screen
+      .getAllByDisplayValue("9")
+      .find(
+        (input) =>
+          input.getAttribute("type") === "number" &&
+          input.closest("div")?.textContent?.includes("signal"),
+      ) as HTMLInputElement;
 
     expect(fastInput.min).toBe("1");
     expect(fastInput.max).toBe("50");

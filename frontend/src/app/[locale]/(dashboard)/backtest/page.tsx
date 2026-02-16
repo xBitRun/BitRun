@@ -13,7 +13,6 @@ import {
   Target,
   Activity,
   Percent,
-  ChevronsUpDown,
   Check,
   X,
   DollarSign,
@@ -42,29 +41,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
-import { useStrategies, useRunBacktest, useBacktestSymbols } from "@/hooks";
+import { useStrategies, useRunBacktest } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import type {
   BacktestExchange,
@@ -90,6 +71,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { SymbolSelector } from "@/components/symbol-selector";
 
 // Supported exchanges for backtesting
 const EXCHANGE_OPTIONS: {
@@ -127,12 +109,7 @@ function MetricCard({
           <Icon className="w-4 h-4" />
           <span className="text-xs">{label}</span>
         </div>
-        <p
-          className={cn(
-            "text-xl font-bold font-mono truncate",
-            valueColor
-          )}
-        >
+        <p className={cn("text-xl font-bold font-mono truncate", valueColor)}>
           {prefix}
           {value}
           {suffix}
@@ -210,15 +187,17 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
           label={t("metrics.winRate")}
           value={`${data.win_rate.toFixed(1)}%`}
           valueColor={
-            data.win_rate >= 50
-              ? "text-[var(--profit)]"
-              : "text-[var(--loss)]"
+            data.win_rate >= 50 ? "text-[var(--profit)]" : "text-[var(--loss)]"
           }
         />
         <MetricCard
           icon={BarChart3}
           label={t("metrics.profitFactor")}
-          value={data.profit_factor === Infinity ? "∞" : data.profit_factor.toFixed(2)}
+          value={
+            data.profit_factor === Infinity
+              ? "∞"
+              : data.profit_factor.toFixed(2)
+          }
           valueColor={
             data.profit_factor >= 1
               ? "text-[var(--profit)]"
@@ -268,17 +247,33 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  equity: { label: t("charts.equity"), color: "var(--primary)" },
-                  balance: { label: t("charts.balance"), color: "var(--muted-foreground)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    equity: {
+                      label: t("charts.equity"),
+                      color: "var(--primary)",
+                    },
+                    balance: {
+                      label: t("charts.balance"),
+                      color: "var(--muted-foreground)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <AreaChart accessibilityLayer data={equityData}>
                   <defs>
                     <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-equity)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--color-equity)" stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor="var(--color-equity)"
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="var(--color-equity)"
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} />
@@ -290,11 +285,17 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
                     tick={{ fontSize: 10 }}
                     tickFormatter={(v) => v?.slice(5, 10) ?? ""}
                   />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                  />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                        labelFormatter={(v) =>
+                          String(v).replace("T", " ").slice(0, 16)
+                        }
                         formatter={(value) => (
                           <span className="font-mono font-medium text-foreground">
                             ${Number(value).toFixed(2)}
@@ -334,16 +335,29 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  drawdown_percent: { label: t("charts.drawdown"), color: "var(--loss, #ef4444)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    drawdown_percent: {
+                      label: t("charts.drawdown"),
+                      color: "var(--loss, #ef4444)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <AreaChart accessibilityLayer data={drawdownData}>
                   <defs>
                     <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-drawdown_percent)" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="var(--color-drawdown_percent)" stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor="var(--color-drawdown_percent)"
+                        stopOpacity={0.4}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="var(--color-drawdown_percent)"
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} />
@@ -365,7 +379,9 @@ function OverviewTab({ data }: { data: BacktestResponse }) {
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        labelFormatter={(v) => String(v).replace("T", " ").slice(0, 16)}
+                        labelFormatter={(v) =>
+                          String(v).replace("T", " ").slice(0, 16)
+                        }
                         formatter={(value) => (
                           <span className="font-mono font-medium text-foreground">
                             -{Number(value).toFixed(2)}%
@@ -404,14 +420,17 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
     const min = Math.min(...pnls);
     const max = Math.max(...pnls);
     const range = max - min || 1;
-    const binCount = Math.min(20, Math.max(5, Math.ceil(data.trades.length / 3)));
+    const binCount = Math.min(
+      20,
+      Math.max(5, Math.ceil(data.trades.length / 3)),
+    );
     const binSize = range / binCount;
     const bins: { range: string; count: number; isPositive: boolean }[] = [];
     for (let i = 0; i < binCount; i++) {
       const lo = min + i * binSize;
       const hi = lo + binSize;
       const count = pnls.filter(
-        (p) => p >= lo && (i === binCount - 1 ? p <= hi : p < hi)
+        (p) => p >= lo && (i === binCount - 1 ? p <= hi : p < hi),
       ).length;
       bins.push({
         range: `${lo >= 0 ? "+" : ""}${lo.toFixed(0)}`,
@@ -461,22 +480,49 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  count: { label: t("charts.tradeCount"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    count: {
+                      label: t("charts.tradeCount"),
+                      color: "var(--primary)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <BarChart accessibilityLayer data={pnlBins}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="range" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <XAxis
+                    dataKey="range"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <ReferenceLine x="0" stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                  <Bar dataKey="count" name={t("charts.tradeCount")} radius={[4, 4, 0, 0]}>
+                  <ReferenceLine
+                    x="0"
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                  />
+                  <Bar
+                    dataKey="count"
+                    name={t("charts.tradeCount")}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {pnlBins.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fill={
+                          entry.isPositive
+                            ? "var(--profit, #22c55e)"
+                            : "var(--loss, #ef4444)"
+                        }
                         fillOpacity={0.8}
                       />
                     ))}
@@ -496,15 +542,30 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  count: { label: t("tradeAnalysis.trades"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    count: {
+                      label: t("tradeAnalysis.trades"),
+                      color: "var(--primary)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <BarChart accessibilityLayer data={holdingDist}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar
                     dataKey="count"
@@ -537,21 +598,31 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("metrics.totalTrades")}</span>
-                    <span className="font-mono">{longStats?.total_trades ?? 0}</span>
+                    <span className="text-muted-foreground">
+                      {t("metrics.totalTrades")}
+                    </span>
+                    <span className="font-mono">
+                      {longStats?.total_trades ?? 0}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("metrics.winRate")}</span>
-                    <span className="font-mono">{(longStats?.win_rate ?? 0).toFixed(1)}%</span>
+                    <span className="text-muted-foreground">
+                      {t("metrics.winRate")}
+                    </span>
+                    <span className="font-mono">
+                      {(longStats?.win_rate ?? 0).toFixed(1)}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("charts.pnl")}</span>
+                    <span className="text-muted-foreground">
+                      {t("charts.pnl")}
+                    </span>
                     <span
                       className={cn(
                         "font-mono",
                         (longStats?.total_pnl ?? 0) >= 0
                           ? "text-[var(--profit)]"
-                          : "text-[var(--loss)]"
+                          : "text-[var(--loss)]",
                       )}
                     >
                       ${(longStats?.total_pnl ?? 0).toFixed(2)}
@@ -566,21 +637,31 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("metrics.totalTrades")}</span>
-                    <span className="font-mono">{shortStats?.total_trades ?? 0}</span>
+                    <span className="text-muted-foreground">
+                      {t("metrics.totalTrades")}
+                    </span>
+                    <span className="font-mono">
+                      {shortStats?.total_trades ?? 0}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("metrics.winRate")}</span>
-                    <span className="font-mono">{(shortStats?.win_rate ?? 0).toFixed(1)}%</span>
+                    <span className="text-muted-foreground">
+                      {t("metrics.winRate")}
+                    </span>
+                    <span className="font-mono">
+                      {(shortStats?.win_rate ?? 0).toFixed(1)}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("charts.pnl")}</span>
+                    <span className="text-muted-foreground">
+                      {t("charts.pnl")}
+                    </span>
                     <span
                       className={cn(
                         "font-mono",
                         (shortStats?.total_pnl ?? 0) >= 0
                           ? "text-[var(--profit)]"
-                          : "text-[var(--loss)]"
+                          : "text-[var(--loss)]",
                       )}
                     >
                       ${(shortStats?.total_pnl ?? 0).toFixed(2)}
@@ -602,40 +683,60 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
           <CardContent>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.maxConsecutiveWins")}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.maxConsecutiveWins")}
+                </span>
                 <span className="font-mono text-[var(--profit)]">
                   {ts?.max_consecutive_wins ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.maxConsecutiveLosses")}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.maxConsecutiveLosses")}
+                </span>
                 <span className="font-mono text-[var(--loss)]">
                   {ts?.max_consecutive_losses ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.avgHoldingHours")}</span>
-                <span className="font-mono">{(ts?.avg_holding_hours ?? 0).toFixed(1)}h</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.avgHoldingHours")}
+                </span>
+                <span className="font-mono">
+                  {(ts?.avg_holding_hours ?? 0).toFixed(1)}h
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.largestWin")}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.largestWin")}
+                </span>
                 <span className="font-mono text-[var(--profit)]">
                   ${(ts?.largest_win ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.largestLoss")}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.largestLoss")}
+                </span>
                 <span className="font-mono text-[var(--loss)]">
                   ${(ts?.largest_loss ?? 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.averageWin")}</span>
-                <span className="font-mono">${(ts?.average_win ?? 0).toFixed(2)}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.averageWin")}
+                </span>
+                <span className="font-mono">
+                  ${(ts?.average_win ?? 0).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("metrics.averageLoss")}</span>
-                <span className="font-mono">${(ts?.average_loss ?? 0).toFixed(2)}</span>
+                <span className="text-muted-foreground">
+                  {t("metrics.averageLoss")}
+                </span>
+                <span className="font-mono">
+                  ${(ts?.average_loss ?? 0).toFixed(2)}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -650,7 +751,15 @@ function TradeAnalysisTab({ data }: { data: BacktestResponse }) {
 function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
   const t = useTranslations("backtest");
 
-  const weekdayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  const weekdayKeys = [
+    "sun",
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+    "sat",
+  ] as const;
 
   const monthlyData = useMemo(() => {
     const raw = data.monthly_returns || [];
@@ -666,16 +775,14 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(endY, endM - 1 - i, 1);
       months.push(
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
       );
     }
 
     // 如果原始数据有比 6 个月范围更早的月份，前面追加
     const rawMap = new Map(raw.map((m) => [m.month, m]));
     const earliest = months[0];
-    const earlier = raw
-      .filter((m) => m.month < earliest)
-      .map((m) => m.month);
+    const earlier = raw.filter((m) => m.month < earliest).map((m) => m.month);
     const allMonths = [...earlier, ...months];
 
     return allMonths.map((month) => {
@@ -740,9 +847,14 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  return_percent: { label: t("charts.returnPercent"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    return_percent: {
+                      label: t("charts.returnPercent"),
+                      color: "var(--primary)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <BarChart accessibilityLayer data={monthlyData}>
@@ -772,12 +884,24 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                       />
                     }
                   />
-                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                  <Bar dataKey="return_percent" name={t("charts.returnPercent")} radius={[4, 4, 0, 0]}>
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                  />
+                  <Bar
+                    dataKey="return_percent"
+                    name={t("charts.returnPercent")}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {monthlyData.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fill={
+                          entry.isPositive
+                            ? "var(--profit, #22c55e)"
+                            : "var(--loss, #ef4444)"
+                        }
                         fillOpacity={0.8}
                       />
                     ))}
@@ -797,16 +921,29 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  cumulative: { label: t("charts.cumulativeReturn"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    cumulative: {
+                      label: t("charts.cumulativeReturn"),
+                      color: "var(--primary)",
+                    },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <AreaChart accessibilityLayer data={cumulativeData}>
                   <defs>
                     <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-cumulative)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--color-cumulative)" stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor="var(--color-cumulative)"
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="var(--color-cumulative)"
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} />
@@ -818,7 +955,12 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                     tick={{ fontSize: 10 }}
                     tickFormatter={(v) => v?.slice(2) ?? ""}
                   />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `${v}%`}
+                  />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -830,7 +972,11 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                       />
                     }
                   />
-                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                  />
                   <Area
                     type="monotone"
                     dataKey="cumulative"
@@ -856,15 +1002,28 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  pnl: { label: t("charts.pnl"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    pnl: { label: t("charts.pnl"), color: "var(--primary)" },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <BarChart accessibilityLayer data={pnlByWeekday}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `$${v}`}
+                  />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -876,12 +1035,24 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                       />
                     }
                   />
-                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                  <Bar dataKey="pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                  />
+                  <Bar
+                    dataKey="pnl"
+                    name={t("charts.pnl")}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {pnlByWeekday.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fill={
+                          entry.isPositive
+                            ? "var(--profit, #22c55e)"
+                            : "var(--loss, #ef4444)"
+                        }
                         fillOpacity={0.8}
                       />
                     ))}
@@ -899,15 +1070,29 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={{
-                  pnl: { label: t("charts.pnl"), color: "var(--primary)" },
-                } satisfies ChartConfig}
+                config={
+                  {
+                    pnl: { label: t("charts.pnl"), color: "var(--primary)" },
+                  } satisfies ChartConfig
+                }
                 className="min-h-[250px] w-full"
               >
                 <BarChart accessibilityLayer data={pnlByHour}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} interval={2} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ fontSize: 10 }}
+                    interval={2}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `$${v}`}
+                  />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -919,12 +1104,24 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                       />
                     }
                   />
-                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                  <Bar dataKey="pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                  />
+                  <Bar
+                    dataKey="pnl"
+                    name={t("charts.pnl")}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {pnlByHour.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={entry.isPositive ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                        fill={
+                          entry.isPositive
+                            ? "var(--profit, #22c55e)"
+                            : "var(--loss, #ef4444)"
+                        }
                         fillOpacity={0.8}
                       />
                     ))}
@@ -966,7 +1163,7 @@ function TimeAnalysisTab({ data }: { data: BacktestResponse }) {
                           "py-2 px-3 text-right font-mono text-xs",
                           m.isPositive
                             ? "text-[var(--profit)]"
-                            : "text-[var(--loss)]"
+                            : "text-[var(--loss)]",
                         )}
                       >
                         {m.isPositive ? "+" : ""}
@@ -1012,15 +1209,31 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
           </CardHeader>
           <CardContent>
             <ChartContainer
-              config={{
-                total_pnl: { label: t("charts.pnl"), color: "var(--primary)" },
-              } satisfies ChartConfig}
+              config={
+                {
+                  total_pnl: {
+                    label: t("charts.pnl"),
+                    color: "var(--primary)",
+                  },
+                } satisfies ChartConfig
+              }
               className="min-h-[250px] w-full"
             >
               <BarChart accessibilityLayer data={sb}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                <XAxis
+                  dataKey="symbol"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => `$${v}`}
+                />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
@@ -1032,12 +1245,24 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
                     />
                   }
                 />
-                <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                <Bar dataKey="total_pnl" name={t("charts.pnl")} radius={[4, 4, 0, 0]}>
+                <ReferenceLine
+                  y={0}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="3 3"
+                />
+                <Bar
+                  dataKey="total_pnl"
+                  name={t("charts.pnl")}
+                  radius={[4, 4, 0, 0]}
+                >
                   {sb.map((entry, index) => (
                     <Cell
                       key={index}
-                      fill={entry.total_pnl >= 0 ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                      fill={
+                        entry.total_pnl >= 0
+                          ? "var(--profit, #22c55e)"
+                          : "var(--loss, #ef4444)"
+                      }
                       fillOpacity={0.8}
                     />
                   ))}
@@ -1055,15 +1280,32 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
           </CardHeader>
           <CardContent>
             <ChartContainer
-              config={{
-                win_rate: { label: t("symbolBreakdown.winRate"), color: "var(--primary)" },
-              } satisfies ChartConfig}
+              config={
+                {
+                  win_rate: {
+                    label: t("symbolBreakdown.winRate"),
+                    color: "var(--primary)",
+                  },
+                } satisfies ChartConfig
+              }
               className="min-h-[250px] w-full"
             >
               <BarChart accessibilityLayer data={sb}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="symbol" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 10 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                <XAxis
+                  dataKey="symbol"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => `${v}%`}
+                  domain={[0, 100]}
+                />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
@@ -1075,12 +1317,24 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
                     />
                   }
                 />
-                <ReferenceLine y={50} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                <Bar dataKey="win_rate" name={t("symbolBreakdown.winRate")} radius={[4, 4, 0, 0]}>
+                <ReferenceLine
+                  y={50}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="3 3"
+                />
+                <Bar
+                  dataKey="win_rate"
+                  name={t("symbolBreakdown.winRate")}
+                  radius={[4, 4, 0, 0]}
+                >
                   {sb.map((entry, index) => (
                     <Cell
                       key={index}
-                      fill={entry.win_rate >= 50 ? "var(--profit, #22c55e)" : "var(--loss, #ef4444)"}
+                      fill={
+                        entry.win_rate >= 50
+                          ? "var(--profit, #22c55e)"
+                          : "var(--loss, #ef4444)"
+                      }
                       fillOpacity={0.8}
                     />
                   ))}
@@ -1118,14 +1372,18 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
               <tbody>
                 {sb.map((s) => (
                   <tr key={s.symbol} className="border-b border-border/20">
-                    <td className="py-2 px-3 font-mono font-medium">{s.symbol}</td>
-                    <td className="py-2 px-3 text-right font-mono">{s.total_trades}</td>
+                    <td className="py-2 px-3 font-mono font-medium">
+                      {s.symbol}
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono">
+                      {s.total_trades}
+                    </td>
                     <td
                       className={cn(
                         "py-2 px-3 text-right font-mono",
                         s.win_rate >= 50
                           ? "text-[var(--profit)]"
-                          : "text-[var(--loss)]"
+                          : "text-[var(--loss)]",
                       )}
                     >
                       {s.win_rate.toFixed(1)}%
@@ -1135,7 +1393,7 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
                         "py-2 px-3 text-right font-mono",
                         s.total_pnl >= 0
                           ? "text-[var(--profit)]"
-                          : "text-[var(--loss)]"
+                          : "text-[var(--loss)]",
                       )}
                     >
                       ${s.total_pnl.toFixed(2)}
@@ -1145,7 +1403,7 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
                         "py-2 px-3 text-right font-mono",
                         s.average_pnl >= 0
                           ? "text-[var(--profit)]"
-                          : "text-[var(--loss)]"
+                          : "text-[var(--loss)]",
                       )}
                     >
                       ${s.average_pnl.toFixed(2)}
@@ -1163,7 +1421,15 @@ function SymbolBreakdownTab({ data }: { data: BacktestResponse }) {
 
 // ===================== Tab: Analysis =====================
 
-function AnalysisTab({ data }: { data: { strengths: string[]; weaknesses: string[]; recommendations: string[] } }) {
+function AnalysisTab({
+  data,
+}: {
+  data: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
+}) {
   const t = useTranslations("backtest");
 
   return (
@@ -1302,15 +1568,13 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
     <th
       className={cn(
         "py-2 px-2 text-muted-foreground font-medium cursor-pointer hover:text-foreground select-none",
-        cls
+        cls,
       )}
       onClick={() => handleSort(field)}
     >
       <span className="inline-flex items-center gap-1">
         {children}
-        {sortKey === field && (
-          <ArrowUpDown className="w-3 h-3" />
-        )}
+        {sortKey === field && <ArrowUpDown className="w-3 h-3" />}
       </span>
     </th>
   );
@@ -1374,7 +1638,7 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
                       ? "bg-[var(--profit)]/[0.03]"
                       : trade.pnl < 0
                         ? "bg-[var(--loss)]/[0.03]"
-                        : ""
+                        : "",
                   )}
                 >
                   <td className="py-1.5 px-2 font-mono font-medium">
@@ -1386,7 +1650,7 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
                         "px-1.5 py-0.5 rounded text-xs font-medium",
                         trade.side === "long"
                           ? "bg-[var(--profit)]/10 text-[var(--profit)]"
-                          : "bg-[var(--loss)]/10 text-[var(--loss)]"
+                          : "bg-[var(--loss)]/10 text-[var(--loss)]",
                       )}
                     >
                       {trade.side === "long"
@@ -1408,7 +1672,7 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
                       "py-1.5 px-2 text-right font-mono font-medium",
                       trade.pnl >= 0
                         ? "text-[var(--profit)]"
-                        : "text-[var(--loss)]"
+                        : "text-[var(--loss)]",
                     )}
                   >
                     {trade.pnl >= 0 ? "+" : ""}
@@ -1419,7 +1683,7 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
                       "py-1.5 px-2 text-right font-mono",
                       trade.pnl_percent >= 0
                         ? "text-[var(--profit)]"
-                        : "text-[var(--loss)]"
+                        : "text-[var(--loss)]",
                     )}
                   >
                     {trade.pnl_percent >= 0 ? "+" : ""}
@@ -1436,7 +1700,7 @@ function TradeListTab({ data }: { data: BacktestResponse }) {
                           ? "bg-[var(--profit)]/10 text-[var(--profit)]"
                           : trade.exit_reason === "stop_loss"
                             ? "bg-[var(--loss)]/10 text-[var(--loss)]"
-                            : "bg-muted text-muted-foreground"
+                            : "bg-muted text-muted-foreground",
                       )}
                     >
                       {exitReasonLabel(trade.exit_reason)}
@@ -1466,18 +1730,10 @@ export default function BacktestPage() {
   // Exchange state
   const [selectedExchange, setSelectedExchange] =
     useState<BacktestExchange>("hyperliquid");
-  const { data: symbolsData, isLoading: isLoadingSymbols } =
-    useBacktestSymbols(selectedExchange);
-
-  const symbolsList = useMemo(
-    () => symbolsData?.symbols ?? [],
-    [symbolsData]
-  );
 
   // Form state
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
-  const [pairOpen, setPairOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [initialBalance, setInitialBalance] = useState<string>("10000");
@@ -1490,20 +1746,14 @@ export default function BacktestPage() {
     setSelectedSymbols([]);
   };
 
-  const toggleSymbol = (symbol: string) => {
-    setSelectedSymbols((prev) =>
-      prev.includes(symbol)
-        ? prev.filter((s) => s !== symbol)
-        : [...prev, symbol]
-    );
-  };
-
-  const removeSymbol = (symbol: string) => {
-    setSelectedSymbols((prev) => prev.filter((s) => s !== symbol));
-  };
-
   const handleRunBacktest = async () => {
-    if (!selectedAgent || selectedSymbols.length === 0 || !startDate || !endDate) return;
+    if (
+      !selectedAgent ||
+      selectedSymbols.length === 0 ||
+      !startDate ||
+      !endDate
+    )
+      return;
 
     try {
       const result = await runBacktest({
@@ -1519,7 +1769,7 @@ export default function BacktestPage() {
         setResults(result);
         toast.success(
           t("toast.completed"),
-          `Total return: ${result.total_return_percent?.toFixed(2)}%`
+          `Total return: ${result.total_return_percent?.toFixed(2)}%`,
         );
       }
     } catch (error) {
@@ -1530,7 +1780,11 @@ export default function BacktestPage() {
   };
 
   const canRun =
-    selectedAgent && selectedSymbols.length > 0 && startDate && endDate && !isRunning;
+    selectedAgent &&
+    selectedSymbols.length > 0 &&
+    startDate &&
+    endDate &&
+    !isRunning;
 
   return (
     <div className="space-y-6">
@@ -1593,81 +1847,15 @@ export default function BacktestPage() {
             {/* Trading Pairs (Multi-select) */}
             <div className="space-y-2 lg:col-span-2">
               <Label>{t("tradingPair")}</Label>
-              <Popover open={pairOpen} onOpenChange={setPairOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={pairOpen}
-                    className="w-full justify-between bg-muted/50 font-normal h-auto min-h-9"
-                    disabled={isLoadingSymbols}
-                  >
-                    {isLoadingSymbols ? (
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {t("loadingPairs")}
-                      </span>
-                    ) : selectedSymbols.length > 0 ? (
-                      <span className="flex flex-wrap gap-1">
-                        {selectedSymbols.map((sym) => (
-                          <Badge
-                            key={sym}
-                            variant="secondary"
-                            className="text-xs px-1.5 py-0"
-                          >
-                            {sym}
-                            <button
-                              type="button"
-                              className="ml-1 hover:text-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeSymbol(sym);
-                              }}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {t("selectPair")}
-                      </span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[--radix-popover-trigger-width] p-0"
-                  align="start"
-                >
-                  <Command>
-                    <CommandInput placeholder={t("searchPair")} />
-                    <CommandList>
-                      <CommandEmpty>{t("noMatch")}</CommandEmpty>
-                      <CommandGroup>
-                        {symbolsList.map((item) => (
-                          <CommandItem
-                            key={item.symbol}
-                            value={item.full_symbol || item.symbol}
-                            onSelect={() => toggleSymbol(item.symbol)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedSymbols.includes(item.symbol)
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {item.full_symbol || item.symbol}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <SymbolSelector
+                value={selectedSymbols}
+                onChange={(value) => setSelectedSymbols(value as string[])}
+                mode="multiple"
+                exchange={selectedExchange}
+                placeholder={t("selectPair")}
+                className="bg-muted/50"
+                showMarketTypeTabs={false}
+              />
             </div>
 
             {/* Time Range */}
@@ -1756,9 +1944,7 @@ export default function BacktestPage() {
                   <div className="p-4 rounded-full bg-muted/50 mb-4">
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {t("running")}
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-2">{t("running")}</h3>
                   <p className="text-muted-foreground max-w-sm">
                     {t("runningHint")}
                   </p>

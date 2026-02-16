@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SymbolSelector } from "@/components/symbol-selector";
 
 // Exchange options
 const EXCHANGES = [
@@ -103,8 +104,8 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                   isCompleted
                     ? "bg-primary text-primary-foreground"
                     : isCurrent
-                    ? "bg-primary/20 text-primary border-2 border-primary"
-                    : "bg-muted text-muted-foreground"
+                      ? "bg-primary/20 text-primary border-2 border-primary"
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {isCompleted ? (
@@ -116,7 +117,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
               <span
                 className={cn(
                   "text-xs mt-1.5 font-medium",
-                  isCurrent ? "text-primary" : "text-muted-foreground"
+                  isCurrent ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 {step.label}
@@ -126,7 +127,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
               <div
                 className={cn(
                   "w-12 lg:w-20 h-0.5 mx-2 mb-5",
-                  index < currentStep ? "bg-primary" : "bg-muted"
+                  index < currentStep ? "bg-primary" : "bg-muted",
                 )}
               />
             )}
@@ -243,10 +244,12 @@ function AccountStep({
                 <Button
                   key={exchange.id}
                   type="button"
-                  variant={state.exchange === exchange.id ? "default" : "outline"}
+                  variant={
+                    state.exchange === exchange.id ? "default" : "outline"
+                  }
                   className={cn(
                     "h-auto py-4",
-                    state.exchange === exchange.id && "glow-primary"
+                    state.exchange === exchange.id && "glow-primary",
                   )}
                   onClick={() => onChange({ exchange: exchange.id })}
                 >
@@ -293,11 +296,13 @@ function AccountStep({
                       <Button
                         type="button"
                         variant={
-                          state.hlImportType === "privateKey" ? "default" : "outline"
+                          state.hlImportType === "privateKey"
+                            ? "default"
+                            : "outline"
                         }
                         className={cn(
                           "h-auto py-3",
-                          state.hlImportType === "privateKey" && "glow-primary"
+                          state.hlImportType === "privateKey" && "glow-primary",
                         )}
                         onClick={() => onChange({ hlImportType: "privateKey" })}
                       >
@@ -306,11 +311,13 @@ function AccountStep({
                       <Button
                         type="button"
                         variant={
-                          state.hlImportType === "mnemonic" ? "default" : "outline"
+                          state.hlImportType === "mnemonic"
+                            ? "default"
+                            : "outline"
                         }
                         className={cn(
                           "h-auto py-3",
-                          state.hlImportType === "mnemonic" && "glow-primary"
+                          state.hlImportType === "mnemonic" && "glow-primary",
                         )}
                         onClick={() => onChange({ hlImportType: "mnemonic" })}
                       >
@@ -327,7 +334,9 @@ function AccountStep({
                         type="password"
                         placeholder="0x..."
                         value={state.privateKey}
-                        onChange={(e) => onChange({ privateKey: e.target.value })}
+                        onChange={(e) =>
+                          onChange({ privateKey: e.target.value })
+                        }
                         className="bg-muted/50 font-mono"
                       />
                     </div>
@@ -465,26 +474,17 @@ function AgentStep({
           {/* Trading Pairs */}
           <div className="space-y-2">
             <Label>{t("agent.tradingPairs")}</Label>
-            <div className="flex flex-wrap gap-2">
-              {["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"].map((pair) => (
-                <Badge
-                  key={pair}
-                  variant={state.tradingPairs.includes(pair) ? "default" : "outline"}
-                  className={cn(
-                    "cursor-pointer px-4 py-2 text-sm",
-                    state.tradingPairs.includes(pair) && "glow-primary"
-                  )}
-                  onClick={() => {
-                    const pairs = state.tradingPairs.includes(pair)
-                      ? state.tradingPairs.filter((p) => p !== pair)
-                      : [...state.tradingPairs, pair];
-                    onChange({ tradingPairs: pairs });
-                  }}
-                >
-                  {pair}
-                </Badge>
-              ))}
-            </div>
+            <SymbolSelector
+              value={state.tradingPairs}
+              onChange={(value) =>
+                onChange({ tradingPairs: value as string[] })
+              }
+              mode="multiple"
+              exchange={state.exchange}
+              maxSelections={4}
+              showMarketTypeTabs={false}
+              placeholder={t("agent.tradingPairs")}
+            />
           </div>
 
           {/* Trading Mode */}
@@ -498,7 +498,7 @@ function AgentStep({
                   variant={state.tradingMode === mode ? "default" : "outline"}
                   className={cn(
                     "h-auto py-3",
-                    state.tradingMode === mode && "glow-primary"
+                    state.tradingMode === mode && "glow-primary",
                   )}
                   onClick={() => onChange({ tradingMode: mode })}
                 >
@@ -645,7 +645,9 @@ function RiskStep({
             </div>
             <Slider
               value={[state.confidenceThreshold]}
-              onValueChange={([value]) => onChange({ confidenceThreshold: value })}
+              onValueChange={([value]) =>
+                onChange({ confidenceThreshold: value })
+              }
               min={50}
               max={95}
               step={5}
@@ -715,11 +717,15 @@ function LaunchStep({
           {/* Configuration Preview */}
           <div className="p-5 rounded-lg bg-muted/30 space-y-3">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("launch.agentName")}</span>
+              <span className="text-muted-foreground">
+                {t("launch.agentName")}
+              </span>
               <span className="font-medium">{state.agentName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("launch.exchange")}</span>
+              <span className="text-muted-foreground">
+                {t("launch.exchange")}
+              </span>
               <span className="font-medium">
                 {EXCHANGES.find((e) => e.id === state.exchange)?.name}
                 {state.isTestnet && (
@@ -731,11 +737,15 @@ function LaunchStep({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("launch.pairs")}</span>
-              <span className="font-medium">{state.tradingPairs.join(", ")}</span>
+              <span className="font-medium">
+                {state.tradingPairs.join(", ")}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("launch.mode")}</span>
-              <span className="font-medium capitalize">{state.tradingMode}</span>
+              <span className="font-medium capitalize">
+                {state.tradingMode}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">
@@ -816,7 +826,9 @@ interface InlineOnboardingWizardProps {
 }
 
 // Main Inline Onboarding Wizard
-export function InlineOnboardingWizard({ onComplete }: InlineOnboardingWizardProps) {
+export function InlineOnboardingWizard({
+  onComplete,
+}: InlineOnboardingWizardProps) {
   const t = useTranslations("onboarding");
   const [step, setStep] = useState(0);
   const [state, setState] = useState<OnboardingState>(initialState);
@@ -865,7 +877,8 @@ export function InlineOnboardingWizard({ onComplete }: InlineOnboardingWizardPro
       const { strategiesApi, agentsApi } = await import("@/lib/api");
 
       const symbols = state.tradingPairs.map((p) => p.replace("/", ""));
-      const tradingMode = state.tradingMode === "moderate" ? "conservative" : state.tradingMode;
+      const tradingMode =
+        state.tradingMode === "moderate" ? "conservative" : state.tradingMode;
 
       // Step 1: Create strategy template
       const strategy = await strategiesApi.create({

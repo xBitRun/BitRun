@@ -18,8 +18,6 @@ import {
   MoreHorizontal,
   Copy,
   Share2,
-  ChevronDown,
-  ChevronRight,
   Calendar,
   TrendingUp,
   BarChart3,
@@ -28,7 +26,13 @@ import {
   Clock,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,15 +51,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useStrategy, useDeleteStrategy, useStrategyVersions } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
+import { DetailPageHeader } from "@/components/layout";
 import type { StrategyType } from "@/types";
 
 function getTypeIcon(type: StrategyType) {
@@ -131,7 +131,6 @@ export default function StrategyDetailPage({
   const { data: versions } = useStrategyVersions(id);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const handleDelete = async () => {
@@ -184,99 +183,58 @@ export default function StrategyDetailPage({
     );
   }
 
-  const TypeIcon = getTypeIcon(strategy.type);
   const config = strategy.config || {};
   const hasCommonParams: boolean =
     Object.keys(config).filter((k) => k !== "riskControls").length > 0;
+  const IconComponent = getTypeIcon(strategy.type);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push("/strategies")}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-primary/10">
-              <TypeIcon className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{strategy.name}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge
-                  variant="outline"
-                  className={cn("text-xs", getTypeColor(strategy.type))}
-                >
-                  {tType(strategy.type)}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    getVisibilityColor(strategy.visibility),
-                  )}
-                >
-                  {t(`visibility.${strategy.visibility}`)}
-                </Badge>
-                {strategy.description && (
-                  <span className="text-sm text-muted-foreground line-clamp-1">
-                    {strategy.description}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 ml-14 lg:ml-0">
-          <Button variant="outline" asChild>
-            <Link href={`/strategies/${strategy.id}/edit`}>
-              <Pencil className="w-4 h-4 mr-2" />
-              {t("detail.actions.edit")}
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href={`/agents/new?strategyId=${strategy.id}`}>
-              <Zap className="w-4 h-4 mr-2" />
-              {t("actions.createAgent")}
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleCopyId}>
-                <Copy className="w-4 h-4 mr-2" />
-                {t("detail.actions.copyId")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShare}>
-                <Share2 className="w-4 h-4 mr-2" />
-                {t("detail.actions.share")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => {
-                  setDangerZoneOpen(true);
-                  setShowDeleteConfirm(true);
-                }}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {t("detail.settings.deleteStrategy")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      <DetailPageHeader
+        backHref="/strategies"
+        icon={<IconComponent className="w-6 h-6 text-primary" />}
+        title={strategy.name}
+        description={strategy.description ?? undefined}
+        badges={[
+          {
+            label: tType(strategy.type),
+            className: getTypeColor(strategy.type),
+          },
+          {
+            label: t(`visibility.${strategy.visibility}`),
+            className: getVisibilityColor(strategy.visibility),
+          },
+        ]}
+        primaryActions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/strategies/${strategy.id}/edit`}>
+                <Pencil className="w-4 h-4 mr-2" />
+                {t("detail.actions.edit")}
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/agents/new?strategyId=${strategy.id}`}>
+                <Zap className="w-4 h-4 mr-2" />
+                {t("actions.createAgent")}
+              </Link>
+            </Button>
+          </>
+        }
+        moreMenuItems={[
+          {
+            label: t("detail.actions.copyId"),
+            icon: <Copy className="w-4 h-4" />,
+            onClick: handleCopyId,
+          },
+          {
+            label: t("detail.actions.share"),
+            icon: <Share2 className="w-4 h-4" />,
+            onClick: handleShare,
+          },
+        ]}
+      />
 
       {/* Main Layout: Tabs + Sidebar */}
       <div className="flex flex-col gap-6 lg:flex-row">
@@ -559,6 +517,29 @@ export default function StrategyDetailPage({
                   </CardContent>
                 </Card>
               )}
+
+              {/* Danger Zone */}
+              <Card className="bg-card/50 border-[var(--loss)]/30">
+                <CardHeader>
+                  <CardTitle className="text-lg text-[var(--loss)]">
+                    {t("detail.settings.dangerZone")}
+                  </CardTitle>
+                  <CardDescription>
+                    {t("detail.settings.deleteConfirm")}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {t("detail.settings.deleteStrategy")}
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -618,43 +599,6 @@ export default function StrategyDetailPage({
               </div>
             </CardContent>
           </Card>
-
-          {/* Danger Zone - Collapsible */}
-          <Collapsible open={dangerZoneOpen} onOpenChange={setDangerZoneOpen}>
-            <Card className="border-destructive/20 bg-card/50 backdrop-blur-sm">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                  <CardTitle className="text-base flex items-center justify-between text-destructive/80">
-                    <span className="flex items-center gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      {t("detail.settings.dangerZone")}
-                    </span>
-                    {dangerZoneOpen ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t("detail.settings.deleteConfirm")}
-                  </p>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {t("detail.settings.deleteStrategy")}
-                  </Button>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
         </div>
       </div>
 

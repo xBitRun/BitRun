@@ -3,7 +3,7 @@
  */
 
 // Mobile detection
-export { useIsMobile } from './use-mobile';
+export { useIsMobile } from "./use-mobile";
 
 // Strategy hooks (v2 - unified templates)
 export {
@@ -16,7 +16,7 @@ export {
   useMarketplaceStrategies,
   useStrategyVersions,
   useRestoreStrategyVersion,
-} from './use-strategies';
+} from "./use-strategies";
 
 // Agent hooks (execution instances)
 export {
@@ -29,7 +29,7 @@ export {
   useTriggerAgent,
   useAgentPositions,
   useActiveAgentsCount,
-} from './use-agents';
+} from "./use-agents";
 
 // Account hooks
 export {
@@ -41,7 +41,7 @@ export {
   useDeleteAccount,
   useTestAccountConnection,
   useTotalEquity,
-} from './use-accounts';
+} from "./use-accounts";
 
 // Decision hooks
 export {
@@ -52,15 +52,15 @@ export {
   useAgentDecisionStats,
   useDecisionStats,
   useLatestDecision,
-} from './use-decisions';
-export type { DecisionFilters } from './use-decisions';
+} from "./use-decisions";
+export type { DecisionFilters } from "./use-decisions";
 
 // Backtest hooks
 export {
   useRunBacktest,
   useQuickBacktest,
   useBacktestSymbols,
-} from './use-backtest';
+} from "./use-backtest";
 
 // Dashboard hooks
 export {
@@ -69,11 +69,11 @@ export {
   useAccountsWithBalances,
   usePerformanceStats,
   useActivityFeed,
-} from './use-dashboard';
-export type { DashboardStats, Position } from './use-dashboard';
+} from "./use-dashboard";
+export type { DashboardStats, Position } from "./use-dashboard";
 
 // WebSocket hook
-export { useWebSocket } from './use-websocket';
+export { useWebSocket } from "./use-websocket";
 
 // AI Models hooks
 export {
@@ -83,7 +83,7 @@ export {
   getModelDisplayName,
   getProviderDisplayName,
   groupModelsByProvider,
-} from './use-models';
+} from "./use-models";
 
 // AI Provider Config hooks
 export {
@@ -93,19 +93,20 @@ export {
   getPresetInfo,
   getProviderIcon,
   getProviderConfigDisplayName,
-} from './use-providers';
+} from "./use-providers";
 
 // Strategy Studio hook
-export {
-  useStrategyStudio,
-  apiResponseToConfig,
-} from './use-strategy-studio';
+export { useStrategyStudio, apiResponseToConfig } from "./use-strategy-studio";
 
 // Competition hooks
-export { useLeaderboard, useStrategyRanking } from './use-competition';
+export { useLeaderboard, useStrategyRanking } from "./use-competition";
 
 // System hooks
-export { useOutboundIP } from './use-system';
+export { useOutboundIP } from "./use-system";
+
+// Symbols hooks
+export { useSymbols, useSymbolsList } from "./use-symbols";
+export type { UseSymbolsResult } from "./use-symbols";
 
 // Quant Strategies hooks (deprecated - use agents + strategies)
 export {
@@ -115,4 +116,4 @@ export {
   useUpdateQuantStrategy,
   useDeleteQuantStrategy,
   useUpdateQuantStrategyStatus,
-} from './use-quant-strategies';
+} from "./use-quant-strategies";

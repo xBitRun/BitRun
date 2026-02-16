@@ -96,6 +96,7 @@ import {
 } from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
 import { ChainOfThought as ChainOfThoughtView } from "@/components/decisions/chain-of-thought";
+import { DetailPageHeader } from "@/components/layout";
 
 function getStatusColor(status: StrategyStatus) {
   switch (status) {
@@ -2308,68 +2309,74 @@ export default function AgentDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Link */}
-      <Link href="/agents">
-        <Button variant="ghost" size="sm">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {t("backToAgents")}
-        </Button>
-      </Link>
-
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-primary/10">
-            <Bot className="w-8 h-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{agent.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge
-                variant="outline"
-                className={cn("text-xs", getStatusColor(agent.status))}
-              >
-                {t(`status.${agent.status}`)}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {agent.description}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Actions */}
-        <div className="flex items-center gap-2">
-          {agent.status === "active" ? (
-            <Button
-              variant="default"
-              className="bg-primary/20 text-primary hover:bg-primary/30"
-              onClick={() => handleStatusChange("paused")}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Pause className="w-4 h-4 mr-2" />
-              )}
-              {t("actions.pause")}
-            </Button>
-          ) : agent.status === "paused" || agent.status === "draft" ? (
-            <>
+      <DetailPageHeader
+        backHref="/agents"
+        icon={<Bot className="w-6 h-6 text-primary" />}
+        title={agent.name}
+        description={agent.description ?? undefined}
+        badges={[
+          {
+            label: t(`status.${agent.status}`),
+            className: getStatusColor(agent.status),
+          },
+        ]}
+        primaryActions={
+          <div className="flex items-center gap-2">
+            {agent.status === "active" ? (
               <Button
-                onClick={() => handleStatusChange("active")}
+                variant="default"
+                className="bg-primary/20 text-primary hover:bg-primary/30"
+                onClick={() => handleStatusChange("paused")}
                 disabled={isUpdating}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <Play className="w-4 h-4 mr-2" />
+                  <Pause className="w-4 h-4 mr-2" />
                 )}
-                {agent.status === "draft"
-                  ? t("actions.start")
-                  : t("actions.resume")}
+                {t("actions.pause")}
               </Button>
-              {agent.status === "paused" && (
+            ) : agent.status === "paused" || agent.status === "draft" ? (
+              <>
+                <Button
+                  onClick={() => handleStatusChange("active")}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  {agent.status === "draft"
+                    ? t("actions.start")
+                    : t("actions.resume")}
+                </Button>
+                {agent.status === "paused" && (
+                  <Button
+                    variant="outline"
+                    className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                    onClick={() => setShowStopConfirm(true)}
+                    disabled={isUpdating}
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    {t("actions.stop")}
+                  </Button>
+                )}
+              </>
+            ) : agent.status === "error" || agent.status === "warning" ? (
+              <>
+                <Button
+                  onClick={() => handleStatusChange("active")}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                  )}
+                  {t("actions.restart")}
+                </Button>
                 <Button
                   variant="outline"
                   className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
@@ -2379,34 +2386,11 @@ export default function AgentDetailPage() {
                   <Square className="w-4 h-4 mr-2" />
                   {t("actions.stop")}
                 </Button>
-              )}
-            </>
-          ) : agent.status === "error" || agent.status === "warning" ? (
-            <>
-              <Button
-                onClick={() => handleStatusChange("active")}
-                disabled={isUpdating}
-              >
-                {isUpdating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                )}
-                {t("actions.restart")}
-              </Button>
-              <Button
-                variant="outline"
-                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-                onClick={() => setShowStopConfirm(true)}
-                disabled={isUpdating}
-              >
-                <Square className="w-4 h-4 mr-2" />
-                {t("actions.stop")}
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </div>
+              </>
+            ) : null}
+          </div>
+        }
+      />
 
       {/* Stop Confirm Dialog */}
       <Dialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>

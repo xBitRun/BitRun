@@ -944,7 +944,6 @@
       "by": "作者",
       "forkAndUse": "复刻使用",
       "viewDetails": "查看详情",
-      "publishHint": "在策略页面将您的策略分享到市场",
       "totalStrategies": "共 {count} 个策略",
       "loadMore": "加载更多"
     },
@@ -2022,6 +2021,36 @@
         "weightedAverage": "加权平均",
         "unanimous": "全票通过"
       }
+    }
+  },
+  "symbolSelector": {
+    "title": "选择交易对",
+    "placeholder": "选择交易对...",
+    "searchPlaceholder": "搜索交易对...",
+    "noResults": "未找到匹配的交易对",
+    "selected": "已选择",
+    "maxReached": "已达到最大选择数量",
+    "popular": "热门",
+    "customInput": "自定义输入",
+    "customPlaceholder": "输入交易对代码，如 ARB",
+    "add": "添加",
+    "loading": "加载中...",
+    "loadFailed": "加载交易对失败",
+    "retry": "重试",
+    "marketType": {
+      "crypto": "加密货币",
+      "forex": "外汇",
+      "metals": "贵金属"
+    },
+    "exchange": {
+      "label": "交易所",
+      "placeholder": "选择交易所"
+    },
+    "single": {
+      "placeholder": "选择一个交易对"
+    },
+    "multiple": {
+      "placeholder": "选择交易对（可多选）"
     }
   },
   "quantStrategies": {

@@ -2,7 +2,7 @@
  * API Module exports
  */
 
-export { api, ApiError, AuthError, TokenManager } from './client';
+export { api, ApiError, AuthError, TokenManager } from "./client";
 export {
   authApi,
   strategiesApi,
@@ -18,7 +18,8 @@ export {
   modelsApi,
   providersApi,
   workersApi,
-} from './endpoints';
+  dataApi,
+} from "./endpoints";
 
 export type {
   // Auth
@@ -89,4 +90,7 @@ export type {
   StrategyRankingResponse,
   // System
   OutboundIPResponse,
-} from './endpoints';
+  // Data
+  SymbolItem,
+  SymbolsResponse,
+} from "./endpoints";

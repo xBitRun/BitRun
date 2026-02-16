@@ -50,6 +50,19 @@ class InvalidateCacheRequest(BaseModel):
     exchange: Optional[str] = Field(None, description="Specific exchange (None = all)")
 
 
+class SymbolItem(BaseModel):
+    """Single symbol with base and full format"""
+    symbol: str = Field(..., description="Base symbol (e.g., 'BTC')")
+    full_symbol: str = Field(..., description="Full CCXT symbol (e.g., 'BTC/USDT:USDT')")
+
+
+class SymbolsResponse(BaseModel):
+    """Response for symbols endpoint"""
+    exchange: str = Field(..., description="Exchange name")
+    symbols: list[SymbolItem] = Field(..., description="List of available symbols")
+    cached: bool = Field(..., description="Whether result was from cache")
+
+
 # ==================== Routes ====================
 
 @router.get("/cache/stats", response_model=CacheStats)
@@ -176,7 +189,25 @@ async def invalidate_cache(
     }
 
 
-@router.get("/symbols")
+def _extract_base_symbol(full_symbol: str) -> str:
+    """Extract base symbol from CCXT format (e.g., 'BTC/USDT:USDT' -> 'BTC')"""
+    if "/" in full_symbol:
+        return full_symbol.split("/")[0]
+    return full_symbol
+
+
+def _is_valid_perpetual(symbol: str, market: dict, exchange: str) -> bool:
+    """Check if symbol is a valid perpetual contract for the exchange"""
+    if market.get("type") != "swap":
+        return False
+
+    # Hyperliquid uses USDC, others use USDT
+    if exchange.lower() == "hyperliquid":
+        return "/USDC" in symbol
+    return "/USDT" in symbol
+
+
+@router.get("/symbols", response_model=SymbolsResponse)
 async def get_available_symbols(
     user_id: CurrentUserDep,
     exchange: str = "binance",
@@ -184,18 +215,25 @@ async def get_available_symbols(
     """
     Get list of available trading symbols.
 
-    Results are cached for 24 hours.
+    Returns symbols in both base format (e.g., 'BTC') and full CCXT format
+    (e.g., 'BTC/USDT:USDT'). Results are cached for 24 hours.
+
+    Supported exchanges: binance, okx, bybit, bitget, kucoin, gate, hyperliquid
     """
     cache = get_market_data_cache()
 
-    # Try cache first
+    # Try cache first (cached as list of full symbols)
     cached_symbols = await cache.get_symbols(exchange)
     if cached_symbols:
-        return {
-            "exchange": exchange,
-            "symbols": cached_symbols,
-            "cached": True,
-        }
+        symbol_items = [
+            SymbolItem(symbol=_extract_base_symbol(s), full_symbol=s)
+            for s in cached_symbols
+        ]
+        return SymbolsResponse(
+            exchange=exchange,
+            symbols=symbol_items,
+            cached=True,
+        )
 
     # Fetch from exchange
     from ...backtest.data_provider import DataProvider
@@ -206,20 +244,26 @@ async def get_available_symbols(
         await provider.initialize()
         markets = await provider.get_available_markets()
 
-        # Filter for USDT perpetuals
+        # Filter for perpetual contracts
         symbols = [
             s for s in markets.keys()
-            if "/USDT" in s and markets[s].get("type") == "swap"
+            if _is_valid_perpetual(s, markets[s], exchange)
         ]
         symbols.sort()
 
-        # Cache the result
+        # Cache the result (as list of full symbols for backward compatibility)
         await cache.set_symbols(symbols, exchange)
 
-        return {
-            "exchange": exchange,
-            "symbols": symbols,
-            "cached": False,
-        }
+        # Convert to SymbolItem format
+        symbol_items = [
+            SymbolItem(symbol=_extract_base_symbol(s), full_symbol=s)
+            for s in symbols
+        ]
+
+        return SymbolsResponse(
+            exchange=exchange,
+            symbols=symbol_items,
+            cached=False,
+        )
     finally:
         await provider.close()

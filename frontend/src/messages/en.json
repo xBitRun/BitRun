@@ -944,7 +944,6 @@
       "by": "by",
       "forkAndUse": "Fork & Use",
       "viewDetails": "View Details",
-      "publishHint": "Share your strategies to the market from the Strategies page",
       "totalStrategies": "{count} strategies available",
       "loadMore": "Load More"
     },
@@ -2012,6 +2011,36 @@
         "weightedAverage": "Weighted Average",
         "unanimous": "Unanimous"
       }
+    }
+  },
+  "symbolSelector": {
+    "title": "Select Trading Pair",
+    "placeholder": "Select trading pair...",
+    "searchPlaceholder": "Search trading pairs...",
+    "noResults": "No matching trading pairs found",
+    "selected": "Selected",
+    "maxReached": "Maximum selections reached",
+    "popular": "Popular",
+    "customInput": "Custom Input",
+    "customPlaceholder": "Enter symbol code, e.g., ARB",
+    "add": "Add",
+    "loading": "Loading...",
+    "loadFailed": "Failed to load trading pairs",
+    "retry": "Retry",
+    "marketType": {
+      "crypto": "Crypto",
+      "forex": "Forex",
+      "metals": "Metals"
+    },
+    "exchange": {
+      "label": "Exchange",
+      "placeholder": "Select exchange"
+    },
+    "single": {
+      "placeholder": "Select a trading pair"
+    },
+    "multiple": {
+      "placeholder": "Select trading pairs (multiple)"
     }
   },
   "quantStrategies": {

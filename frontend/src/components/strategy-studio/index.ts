@@ -1,4 +1,3 @@
-export { CoinSelector } from "./coin-selector";
 export { IndicatorConfig } from "./indicator-config";
 export { TimeframeSelector } from "./timeframe-selector";
 export { RiskControlsPanel } from "./risk-controls-panel";

@@ -36,12 +36,8 @@ import {
   StrategyStudioTabs,
   StrategyPresetSelector,
 } from "@/components/strategy-studio";
-import {
-  useStrategyStudio,
-  useUserModels,
-  groupModelsByProvider,
-  getProviderDisplayName,
-} from "@/hooks";
+import { SymbolSelector } from "@/components/symbol-selector";
+import { useStrategyStudio } from "@/hooks";
 import type {
   StrategyType,
   RiskProfile,
@@ -118,8 +114,6 @@ export default function CreateStrategyPage() {
   const [rsiLeverage, setRsiLeverage] = useState("1");
 
   // ============ AI Strategy Studio ============
-  const { models } = useUserModels();
-  const groupedModels = groupModelsByProvider(models);
 
   // Strategy preset state
   const [selectedRiskProfile, setSelectedRiskProfile] =
@@ -445,55 +439,6 @@ export default function CreateStrategyPage() {
                 onSelect={handlePresetSelect}
                 onCustom={handleCustomPreset}
               />
-
-              {/* AI Model */}
-              <div className="space-y-2">
-                <Label htmlFor="ai_model">{tStudio("create.aiModel")}</Label>
-                <Select
-                  value={studioConfig.aiModel || ""}
-                  onValueChange={(v) =>
-                    setStudioConfig({ ...studioConfig, aiModel: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={tStudio("create.aiModelPlaceholder")}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(groupedModels).length > 0 ? (
-                      Object.entries(groupedModels).map(
-                        ([provider, providerModels]) => (
-                          <div key={provider}>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              {getProviderDisplayName(provider)}
-                            </div>
-                            {providerModels.map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
-                                {model.name}
-                              </SelectItem>
-                            ))}
-                          </div>
-                        ),
-                      )
-                    ) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        {tStudio("create.noModels")}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-                {models.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <Link
-                      href="/models"
-                      className="text-primary hover:underline"
-                    >
-                      {tStudio("create.addModelLink")}
-                    </Link>
-                  </p>
-                )}
-              </div>
             </CardContent>
           </Card>
 
@@ -569,9 +514,10 @@ export default function CreateStrategyPage() {
                   {t("create.symbol")}
                   <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <SymbolSelector
                   value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  onChange={(v) => setSymbol(v as string)}
+                  mode="single"
                   placeholder={t("create.symbolPlaceholder")}
                 />
               </div>

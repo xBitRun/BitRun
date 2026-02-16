@@ -5,7 +5,11 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StrategyStudioTabs } from "@/components/strategy-studio/strategy-studio-tabs";
-import { StrategyStudioConfig, StudioTab, PromptPreviewResponse } from "@/types";
+import {
+  StrategyStudioConfig,
+  StudioTab,
+  PromptPreviewResponse,
+} from "@/types";
 
 // Mock next-intl
 jest.mock("next-intl", () => ({
@@ -13,28 +17,51 @@ jest.mock("next-intl", () => ({
 }));
 
 // Mock child components
-jest.mock("@/components/strategy-studio/coin-selector", () => ({
-  CoinSelector: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
-    <div data-testid="coin-selector" data-value={value.join(",")}>
-      <button onClick={() => onChange(["BTC", "ETH"])}>Select Coins</button>
+jest.mock("@/components/symbol-selector", () => ({
+  SymbolSelector: ({
+    value,
+    onChange,
+  }: {
+    value: string | string[];
+    onChange: (v: string | string[]) => void;
+  }) => (
+    <div
+      data-testid="symbol-selector"
+      data-value={Array.isArray(value) ? value.join(",") : value}
+    >
+      <button onClick={() => onChange(["BTC", "ETH"])}>Select Symbols</button>
     </div>
   ),
 }));
 
 jest.mock("@/components/strategy-studio/indicator-config", () => ({
-  IndicatorConfig: ({ value, onChange }: { value: object; onChange: (v: object) => void }) => (
-    <div data-testid="indicator-config">Indicator Config</div>
-  ),
+  IndicatorConfig: ({
+    value,
+    onChange,
+  }: {
+    value: object;
+    onChange: (v: object) => void;
+  }) => <div data-testid="indicator-config">Indicator Config</div>,
 }));
 
 jest.mock("@/components/strategy-studio/timeframe-selector", () => ({
-  TimeframeSelector: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
-    <div data-testid="timeframe-selector">Timeframe Selector</div>
-  ),
+  TimeframeSelector: ({
+    value,
+    onChange,
+  }: {
+    value: string[];
+    onChange: (v: string[]) => void;
+  }) => <div data-testid="timeframe-selector">Timeframe Selector</div>,
 }));
 
 jest.mock("@/components/strategy-studio/risk-controls-panel", () => ({
-  RiskControlsPanel: ({ value, onChange, tradingMode, riskProfile, timeHorizon }: any) => (
+  RiskControlsPanel: ({
+    value,
+    onChange,
+    tradingMode,
+    riskProfile,
+    timeHorizon,
+  }: any) => (
     <div
       data-testid="risk-controls-panel"
       data-trading-mode={tradingMode}
@@ -53,8 +80,18 @@ jest.mock("@/components/strategy-studio/prompt-template-editor", () => ({
 }));
 
 jest.mock("@/components/strategy-studio/prompt-preview", () => ({
-  PromptPreview: ({ preview, isLoading, onRefresh, onTest, isTestLoading }: any) => (
-    <div data-testid="prompt-preview" data-loading={isLoading} data-test-loading={isTestLoading}>
+  PromptPreview: ({
+    preview,
+    isLoading,
+    onRefresh,
+    onTest,
+    isTestLoading,
+  }: any) => (
+    <div
+      data-testid="prompt-preview"
+      data-loading={isLoading}
+      data-test-loading={isTestLoading}
+    >
       <button onClick={onRefresh}>Refresh</button>
       {onTest && <button onClick={onTest}>Test AI</button>}
       Prompt Preview
@@ -73,7 +110,12 @@ let capturedOnValueChange: ((value: string) => void) | null = null;
 
 // Mock Tabs to provide controlled testing of onValueChange
 jest.mock("@/components/ui/tabs", () => ({
-  Tabs: ({ children, value, onValueChange, className }: {
+  Tabs: ({
+    children,
+    value,
+    onValueChange,
+    className,
+  }: {
     children: React.ReactNode;
     value: string;
     onValueChange: (value: string) => void;
@@ -87,10 +129,22 @@ jest.mock("@/components/ui/tabs", () => ({
       </div>
     );
   },
-  TabsList: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div role="tablist" className={className}>{children}</div>
+  TabsList: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <div role="tablist" className={className}>
+      {children}
+    </div>
   ),
-  TabsTrigger: ({ children, value, className }: {
+  TabsTrigger: ({
+    children,
+    value,
+    className,
+  }: {
     children: React.ReactNode;
     value: string;
     className?: string;
@@ -104,12 +158,18 @@ jest.mock("@/components/ui/tabs", () => ({
       {children}
     </button>
   ),
-  TabsContent: ({ children, value, className }: {
+  TabsContent: ({
+    children,
+    value,
+    className,
+  }: {
     children: React.ReactNode;
     value: string;
     className?: string;
   }) => (
-    <div role="tabpanel" data-value={value} className={className}>{children}</div>
+    <div role="tabpanel" data-value={value} className={className}>
+      {children}
+    </div>
   ),
 }));
 
@@ -178,7 +238,7 @@ describe("StrategyStudioTabs", () => {
   it("renders coins tab content by default", () => {
     render(<StrategyStudioTabs {...defaultProps} activeTab="coins" />);
 
-    expect(screen.getByTestId("coin-selector")).toBeInTheDocument();
+    expect(screen.getByTestId("symbol-selector")).toBeInTheDocument();
     expect(screen.getByTestId("timeframe-selector")).toBeInTheDocument();
   });
 
@@ -195,7 +255,7 @@ describe("StrategyStudioTabs", () => {
         activeTab="risk"
         riskProfile="conservative"
         timeHorizon="long"
-      />
+      />,
     );
 
     const riskPanel = screen.getByTestId("risk-controls-panel");
@@ -223,7 +283,7 @@ describe("StrategyStudioTabs", () => {
         {...defaultProps}
         activeTab="preview"
         isPreviewLoading={true}
-      />
+      />,
     );
 
     const preview = screen.getByTestId("prompt-preview");
@@ -239,24 +299,19 @@ describe("StrategyStudioTabs", () => {
         activeTab="preview"
         onTestAI={onTestAI}
         isTestLoading={false}
-      />
+      />,
     );
 
     const testButton = screen.getByText("Test AI");
     expect(testButton).toBeInTheDocument();
-    
+
     fireEvent.click(testButton);
     expect(onTestAI).toHaveBeenCalled();
   });
 
   it("calls onTabChange when tab is clicked", () => {
     const onTabChange = jest.fn();
-    render(
-      <StrategyStudioTabs
-        {...defaultProps}
-        onTabChange={onTabChange}
-      />
-    );
+    render(<StrategyStudioTabs {...defaultProps} onTabChange={onTabChange} />);
 
     // Find the risk tab trigger by its text content and click it
     const riskTab = screen.getByText("tabs.risk");
@@ -271,11 +326,11 @@ describe("StrategyStudioTabs", () => {
         {...defaultProps}
         activeTab="coins"
         onConfigChange={onConfigChange}
-      />
+      />,
     );
 
-    // Click the button in coin selector that triggers onChange
-    fireEvent.click(screen.getByText("Select Coins"));
+    // Click the button in symbol selector that triggers onChange
+    fireEvent.click(screen.getByText("Select Symbols"));
 
     expect(onConfigChange).toHaveBeenCalledWith({
       ...defaultConfig,
@@ -290,7 +345,7 @@ describe("StrategyStudioTabs", () => {
         {...defaultProps}
         activeTab="preview"
         onRefreshPreview={onRefreshPreview}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByText("Refresh"));
@@ -309,7 +364,7 @@ describe("StrategyStudioTabs", () => {
         {...defaultProps}
         activeTab="preview"
         promptPreview={mockPreview}
-      />
+      />,
     );
 
     expect(screen.getByTestId("prompt-preview")).toBeInTheDocument();

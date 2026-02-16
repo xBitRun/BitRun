@@ -4,7 +4,7 @@
  * Type-safe API endpoint definitions for all backend routes.
  */
 
-import { api, ApiError } from './client';
+import { api, ApiError } from "./client";
 import type {
   StrategyType,
   StrategyVisibility,
@@ -13,7 +13,7 @@ import type {
   TradingMode,
   ExchangeType,
   DashboardStats,
-} from '@/types';
+} from "@/types";
 
 // Backward compat
 type StrategyStatus = AgentStatus;
@@ -40,7 +40,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  name: string;  // Backend uses 'name', not 'username'
+  name: string; // Backend uses 'name', not 'username'
 }
 
 export interface UserResponse {
@@ -55,31 +55,32 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   expires_in: number;
-  user?: UserResponse;  // Inline user info from login to avoid extra /me call
+  user?: UserResponse; // Inline user info from login to avoid extra /me call
 }
 
 // Login uses OAuth2 form data format, custom fetch needed
 async function loginWithForm(data: LoginRequest): Promise<TokenResponse> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
   const formData = new URLSearchParams();
-  formData.append('username', data.email);  // OAuth2 uses 'username' field
-  formData.append('password', data.password);
+  formData.append("username", data.email); // OAuth2 uses 'username' field
+  formData.append("password", data.password);
 
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: formData.toString(),
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    
+
     // Backend returns structured error: { code: "AUTH_...", remaining_attempts?: number, ... }
     const detail = errorData.detail;
-    if (detail && typeof detail === 'object' && detail.code) {
+    if (detail && typeof detail === "object" && detail.code) {
       const authError: AuthApiError = {
         code: detail.code,
         remaining_attempts: detail.remaining_attempts,
@@ -89,13 +90,13 @@ async function loginWithForm(data: LoginRequest): Promise<TokenResponse> {
         detail.code,
         response.status,
         detail.code,
-        authError as unknown as Record<string, unknown>
+        authError as unknown as Record<string, unknown>,
       );
     }
-    
+
     // Fallback for unexpected error format
-    const message = typeof detail === 'string' ? detail : 'Login failed';
-    throw new ApiError(message, response.status, 'LOGIN_FAILED');
+    const message = typeof detail === "string" ? detail : "Login failed";
+    throw new ApiError(message, response.status, "LOGIN_FAILED");
   }
 
   return response.json();
@@ -114,22 +115,24 @@ export const authApi = {
   login: (data: LoginRequest) => loginWithForm(data),
 
   register: (data: RegisterRequest) =>
-    api.post<UserResponse>('/auth/register', data, { skipAuth: true }),
+    api.post<UserResponse>("/auth/register", data, { skipAuth: true }),
 
-  logout: () =>
-    api.post<{ message: string }>('/auth/logout'),
+  logout: () => api.post<{ message: string }>("/auth/logout"),
 
-  me: () =>
-    api.get<UserResponse>('/auth/me'),
+  me: () => api.get<UserResponse>("/auth/me"),
 
   refresh: (refreshToken: string) =>
-    api.post<TokenResponse>('/auth/refresh', { refresh_token: refreshToken }, { skipAuth: true }),
+    api.post<TokenResponse>(
+      "/auth/refresh",
+      { refresh_token: refreshToken },
+      { skipAuth: true },
+    ),
 
   updateProfile: (data: ProfileUpdateRequest) =>
-    api.put<UserResponse>('/auth/profile', data),
+    api.put<UserResponse>("/auth/profile", data),
 
   changePassword: (data: ChangePasswordRequest) =>
-    api.post<{ message: string }>('/auth/change-password', data),
+    api.post<{ message: string }>("/auth/change-password", data),
 };
 
 // ==================== Strategies (v2 - unified logic templates) ====================
@@ -175,7 +178,7 @@ export interface StrategyResponse {
   // Pricing
   is_paid: boolean;
   price_monthly?: number | null;
-  pricing_model: 'free' | 'one_time' | 'monthly';
+  pricing_model: "free" | "one_time" | "monthly";
 
   // Timestamps
   created_at: string;
@@ -202,47 +205,56 @@ export interface StrategyVersionResponse {
 }
 
 export const strategiesApi = {
-  list: (params?: { type_filter?: StrategyType; visibility?: StrategyVisibility }) => {
+  list: (params?: {
+    type_filter?: StrategyType;
+    visibility?: StrategyVisibility;
+  }) => {
     const searchParams = new URLSearchParams();
-    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
-    if (params?.visibility) searchParams.set('visibility', params.visibility);
+    if (params?.type_filter)
+      searchParams.set("type_filter", params.type_filter);
+    if (params?.visibility) searchParams.set("visibility", params.visibility);
     const query = searchParams.toString();
-    return api.get<StrategyResponse[]>(`/strategies${query ? `?${query}` : ''}`);
+    return api.get<StrategyResponse[]>(
+      `/strategies${query ? `?${query}` : ""}`,
+    );
   },
 
-  get: (id: string) =>
-    api.get<StrategyResponse>(`/strategies/${id}`),
+  get: (id: string) => api.get<StrategyResponse>(`/strategies/${id}`),
 
   create: (data: CreateStrategyRequest) =>
-    api.post<StrategyResponse>('/strategies', data),
+    api.post<StrategyResponse>("/strategies", data),
 
   update: (id: string, data: UpdateStrategyRequest) =>
     api.patch<StrategyResponse>(`/strategies/${id}`, data),
 
-  delete: (id: string) =>
-    api.delete<void>(`/strategies/${id}`),
+  delete: (id: string) => api.delete<void>(`/strategies/${id}`),
 
-  fork: (id: string) =>
-    api.post<StrategyResponse>(`/strategies/${id}/fork`),
+  fork: (id: string) => api.post<StrategyResponse>(`/strategies/${id}/fork`),
 
   /** Browse public strategies (marketplace) */
   marketplace: (params?: {
     type_filter?: StrategyType;
     category?: string;
     search?: string;
-    sort_by?: 'popular' | 'recent';
+    sort_by?: "popular" | "recent";
     limit?: number;
     offset?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.type_filter) searchParams.set('type', params.type_filter);
-    if (params?.category) searchParams.set('category', params.category);
-    if (params?.search) searchParams.set('search', params.search);
-    if (params?.sort_by) searchParams.set('sort_by', params.sort_by === 'popular' ? 'fork_count' : 'newest');
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.type_filter) searchParams.set("type", params.type_filter);
+    if (params?.category) searchParams.set("category", params.category);
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.sort_by)
+      searchParams.set(
+        "sort_by",
+        params.sort_by === "popular" ? "fork_count" : "newest",
+      );
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
     const query = searchParams.toString();
-    return api.get<MarketplaceResponse>(`/strategies/marketplace${query ? `?${query}` : ''}`);
+    return api.get<MarketplaceResponse>(
+      `/strategies/marketplace${query ? `?${query}` : ""}`,
+    );
   },
 
   previewPrompt: (data: Record<string, unknown>) =>
@@ -250,7 +262,7 @@ export const strategiesApi = {
       system_prompt: string;
       estimated_tokens: number;
       sections: Record<string, string>;
-    }>('/strategies/preview-prompt', data),
+    }>("/strategies/preview-prompt", data),
 
   /** List version history for a strategy */
   listVersions: (strategyId: string) =>
@@ -258,23 +270,33 @@ export const strategiesApi = {
 
   /** Get a specific version snapshot */
   getVersion: (strategyId: string, version: number) =>
-    api.get<StrategyVersionResponse>(`/strategies/${strategyId}/versions/${version}`),
+    api.get<StrategyVersionResponse>(
+      `/strategies/${strategyId}/versions/${version}`,
+    ),
 
   /** Restore a strategy to a previous version */
   restoreVersion: (strategyId: string, version: number) =>
-    api.post<StrategyResponse>(`/strategies/${strategyId}/versions/${version}/restore`),
+    api.post<StrategyResponse>(
+      `/strategies/${strategyId}/versions/${version}/restore`,
+    ),
 
   /** Check subscription status for a paid strategy */
   getSubscription: (strategyId: string) =>
-    api.get<{ strategy_id: string; subscribed: boolean; status?: string; expires_at?: string }>(
-      `/strategies/${strategyId}/subscription`
-    ),
+    api.get<{
+      strategy_id: string;
+      subscribed: boolean;
+      status?: string;
+      expires_at?: string;
+    }>(`/strategies/${strategyId}/subscription`),
 
   /** Subscribe to a paid strategy */
   subscribe: (strategyId: string) =>
-    api.post<{ strategy_id: string; subscribed: boolean; status?: string; expires_at?: string }>(
-      `/strategies/${strategyId}/subscribe`
-    ),
+    api.post<{
+      strategy_id: string;
+      subscribed: boolean;
+      status?: string;
+      expires_at?: string;
+    }>(`/strategies/${strategyId}/subscribe`),
 };
 
 // ==================== Agents (execution instances) ====================
@@ -366,7 +388,7 @@ export interface AgentPositionResponse {
   agent_id: string;
   account_id: string;
   symbol: string;
-  side: 'long' | 'short';
+  side: "long" | "short";
   size: number;
   size_usd: number;
   entry_price: number;
@@ -379,37 +401,46 @@ export interface AgentPositionResponse {
 }
 
 export const agentsApi = {
-  list: (params?: { status_filter?: AgentStatus; strategy_type?: StrategyType }) => {
+  list: (params?: {
+    status_filter?: AgentStatus;
+    strategy_type?: StrategyType;
+  }) => {
     const searchParams = new URLSearchParams();
-    if (params?.status_filter) searchParams.set('status_filter', params.status_filter);
-    if (params?.strategy_type) searchParams.set('strategy_type', params.strategy_type);
+    if (params?.status_filter)
+      searchParams.set("status_filter", params.status_filter);
+    if (params?.strategy_type)
+      searchParams.set("strategy_type", params.strategy_type);
     const query = searchParams.toString();
-    return api.get<AgentResponse[]>(`/agents${query ? `?${query}` : ''}`);
+    return api.get<AgentResponse[]>(`/agents${query ? `?${query}` : ""}`);
   },
 
-  get: (id: string) =>
-    api.get<AgentResponse>(`/agents/${id}`),
+  get: (id: string) => api.get<AgentResponse>(`/agents/${id}`),
 
   create: (data: CreateAgentRequest) =>
-    api.post<AgentResponse>('/agents', data),
+    api.post<AgentResponse>("/agents", data),
 
   update: (id: string, data: UpdateAgentRequest) =>
     api.patch<AgentResponse>(`/agents/${id}`, data),
 
-  delete: (id: string) =>
-    api.delete<void>(`/agents/${id}`),
+  delete: (id: string) => api.delete<void>(`/agents/${id}`),
 
   updateStatus: (id: string, status: AgentStatus, close_positions?: boolean) =>
-    api.post<AgentResponse>(`/agents/${id}/status`, { status, close_positions }),
+    api.post<AgentResponse>(`/agents/${id}/status`, {
+      status,
+      close_positions,
+    }),
 
   activate: (id: string) =>
-    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'active' }),
+    api.post<AgentResponse>(`/agents/${id}/status`, { status: "active" }),
 
   pause: (id: string) =>
-    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'paused' }),
+    api.post<AgentResponse>(`/agents/${id}/status`, { status: "paused" }),
 
   stop: (id: string, close_positions?: boolean) =>
-    api.post<AgentResponse>(`/agents/${id}/status`, { status: 'stopped', close_positions }),
+    api.post<AgentResponse>(`/agents/${id}/status`, {
+      status: "stopped",
+      close_positions,
+    }),
 
   getPositions: (id: string) =>
     api.get<AgentPositionResponse[]>(`/agents/${id}/positions`),
@@ -481,21 +512,24 @@ export const quantStrategiesApi = {
     });
   },
 
-  get: (id: string) =>
-    agentsApi.get(id),
+  get: (id: string) => agentsApi.get(id),
 
   create: (_data: CreateQuantStrategyRequest) => {
-    throw new Error('quantStrategiesApi.create is deprecated. Use strategiesApi.create + agentsApi.create instead.');
+    throw new Error(
+      "quantStrategiesApi.create is deprecated. Use strategiesApi.create + agentsApi.create instead.",
+    );
   },
 
   update: (id: string, data: UpdateQuantStrategyRequest) =>
     agentsApi.update(id, data),
 
-  delete: (id: string) =>
-    agentsApi.delete(id),
+  delete: (id: string) => agentsApi.delete(id),
 
-  updateStatus: (id: string, status: StrategyStatus, close_positions?: boolean) =>
-    agentsApi.updateStatus(id, status, close_positions),
+  updateStatus: (
+    id: string,
+    status: StrategyStatus,
+    close_positions?: boolean,
+  ) => agentsApi.updateStatus(id, status, close_positions),
 };
 
 // ==================== Workers ====================
@@ -509,8 +543,7 @@ export interface TriggerExecutionResponse {
 
 export const workersApi = {
   /** @deprecated Use agentsApi.trigger(agentId) instead */
-  triggerExecution: (agentId: string) =>
-    agentsApi.trigger(agentId),
+  triggerExecution: (agentId: string) => agentsApi.trigger(agentId),
 };
 
 // ==================== Accounts ====================
@@ -521,9 +554,9 @@ export interface CreateAccountRequest {
   is_testnet: boolean;
   api_key?: string;
   api_secret?: string;
-  private_key?: string;  // For Hyperliquid (direct private key)
-  mnemonic?: string;     // For Hyperliquid (12/24 word seed phrase)
-  passphrase?: string;   // For exchanges that require it
+  private_key?: string; // For Hyperliquid (direct private key)
+  mnemonic?: string; // For Hyperliquid (12/24 word seed phrase)
+  passphrase?: string; // For exchanges that require it
 }
 
 export interface AccountResponse {
@@ -534,7 +567,7 @@ export interface AccountResponse {
   is_connected: boolean;
   connection_error?: string | null;
   created_at: string;
-  last_synced_at?: string | null;  // Optional: last time balance was fetched
+  last_synced_at?: string | null; // Optional: last time balance was fetched
   // Credential status flags
   has_api_key: boolean;
   has_api_secret: boolean;
@@ -550,7 +583,7 @@ export interface AccountBalanceResponse {
   unrealized_pnl: number;
   positions: Array<{
     symbol: string;
-    side: 'long' | 'short';
+    side: "long" | "short";
     size: number;
     size_usd: number;
     entry_price: number;
@@ -563,20 +596,17 @@ export interface AccountBalanceResponse {
 }
 
 export const accountsApi = {
-  list: () =>
-    api.get<AccountResponse[]>('/accounts'),
+  list: () => api.get<AccountResponse[]>("/accounts"),
 
-  get: (id: string) =>
-    api.get<AccountResponse>(`/accounts/${id}`),
+  get: (id: string) => api.get<AccountResponse>(`/accounts/${id}`),
 
   create: (data: CreateAccountRequest) =>
-    api.post<AccountResponse>('/accounts', data),
+    api.post<AccountResponse>("/accounts", data),
 
   update: (id: string, data: Partial<CreateAccountRequest>) =>
     api.patch<AccountResponse>(`/accounts/${id}`, data),
 
-  delete: (id: string) =>
-    api.delete<void>(`/accounts/${id}`),
+  delete: (id: string) => api.delete<void>(`/accounts/${id}`),
 
   testConnection: (id: string) =>
     api.post<{ success: boolean; message: string }>(`/accounts/${id}/test`),
@@ -585,7 +615,7 @@ export const accountsApi = {
     api.get<AccountBalanceResponse>(`/accounts/${id}/balance`),
 
   getPositions: (id: string) =>
-    api.get<AccountBalanceResponse['positions']>(`/accounts/${id}/positions`),
+    api.get<AccountBalanceResponse["positions"]>(`/accounts/${id}/positions`),
 };
 
 // ==================== Decisions ====================
@@ -600,24 +630,30 @@ export interface MarketSnapshotItem {
     volume_24h: number;
     funding_rate: number | null;
   };
-  indicators: Record<string, {
-    ema: Record<string, number>;
-    rsi: number | null;
-    rsi_signal: string;
-    macd: { macd: number; signal: number; histogram: number };
-    macd_signal: string;
-    atr: number | null;
-    bollinger: { upper: number; middle: number; lower: number };
-    ema_trend: string;
-  }>;
-  klines: Record<string, Array<{
-    timestamp: string;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-  }>>;
+  indicators: Record<
+    string,
+    {
+      ema: Record<string, number>;
+      rsi: number | null;
+      rsi_signal: string;
+      macd: { macd: number; signal: number; histogram: number };
+      macd_signal: string;
+      atr: number | null;
+      bollinger: { upper: number; middle: number; lower: number };
+      ema_trend: string;
+    }
+  >;
+  klines: Record<
+    string,
+    Array<{
+      timestamp: string;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
   funding_history: Array<{ timestamp: string; rate: number }>;
   available_timeframes: string[];
 }
@@ -627,7 +663,7 @@ export interface DecisionResponse {
   agent_id: string;
   /** @deprecated use agent_id */
   strategy_id?: string;
-  timestamp: string;  // Backend uses timestamp, not created_at
+  timestamp: string; // Backend uses timestamp, not created_at
   chain_of_thought: string;
   market_assessment: string;
   decisions: Array<{
@@ -644,7 +680,7 @@ export interface DecisionResponse {
   }>;
   overall_confidence: number;
   executed: boolean;
-  execution_results: unknown[];  // Backend uses execution_results (array)
+  execution_results: unknown[]; // Backend uses execution_results (array)
   ai_model: string;
   tokens_used: number;
   latency_ms: number;
@@ -662,7 +698,7 @@ export interface AccountSnapshotItem {
   position_count: number;
   positions: Array<{
     symbol: string;
-    side: 'long' | 'short';
+    side: "long" | "short";
     size: number;
     size_usd: number;
     entry_price: number;
@@ -692,22 +728,43 @@ export interface DecisionStatsResponse {
 
 export const decisionsApi = {
   listRecent: (limit: number = 20) =>
-    api.get<DecisionResponse[]>('/decisions/recent', { params: { limit } }),
+    api.get<DecisionResponse[]>("/decisions/recent", { params: { limit } }),
 
   /** List decisions by agent (new primary endpoint) */
-  listByAgent: (agentId: string, limit: number = 10, offset: number = 0, executionFilter: string = "all", action?: string) =>
+  listByAgent: (
+    agentId: string,
+    limit: number = 10,
+    offset: number = 0,
+    executionFilter: string = "all",
+    action?: string,
+  ) =>
     api.get<PaginatedDecisionResponse>(`/decisions/agent/${agentId}`, {
-      params: { limit, offset, execution_filter: executionFilter, ...(action ? { action } : {}) }
+      params: {
+        limit,
+        offset,
+        execution_filter: executionFilter,
+        ...(action ? { action } : {}),
+      },
     }),
 
   /** @deprecated Use listByAgent instead */
-  listByStrategy: (strategyId: string, limit: number = 10, offset: number = 0, executionFilter: string = "all", action?: string) =>
+  listByStrategy: (
+    strategyId: string,
+    limit: number = 10,
+    offset: number = 0,
+    executionFilter: string = "all",
+    action?: string,
+  ) =>
     api.get<PaginatedDecisionResponse>(`/decisions/strategy/${strategyId}`, {
-      params: { limit, offset, execution_filter: executionFilter, ...(action ? { action } : {}) }
+      params: {
+        limit,
+        offset,
+        execution_filter: executionFilter,
+        ...(action ? { action } : {}),
+      },
     }),
 
-  get: (id: string) =>
-    api.get<DecisionResponse>(`/decisions/${id}`),
+  get: (id: string) => api.get<DecisionResponse>(`/decisions/${id}`),
 
   /** Get stats by agent (new primary endpoint) */
   getStatsByAgent: (agentId: string) =>
@@ -842,15 +899,18 @@ export interface BacktestResponse {
 
 export const backtestApi = {
   run: (data: BacktestRequest) =>
-    api.post<BacktestResponse>('/backtest/run', data),
+    api.post<BacktestResponse>("/backtest/run", data),
 
   quick: (data: QuickBacktestRequest) =>
-    api.post<BacktestResponse>('/backtest/quick', data),
+    api.post<BacktestResponse>("/backtest/quick", data),
 
-  getSymbols: (exchange: string = 'binance') =>
-    api.get<{ symbols: Array<{ symbol: string; full_symbol: string }> }>('/backtest/symbols', {
-      params: { exchange },
-    }),
+  getSymbols: (exchange: string = "binance") =>
+    api.get<{ symbols: Array<{ symbol: string; full_symbol: string }> }>(
+      "/backtest/symbols",
+      {
+        params: { exchange },
+      },
+    ),
 };
 
 // ==================== Dashboard ====================
@@ -886,12 +946,12 @@ export interface DashboardStatsResponse {
 
 export interface ActivityItem {
   id: string;
-  type: 'decision' | 'trade' | 'strategy_status' | 'system';
+  type: "decision" | "trade" | "strategy_status" | "system";
   timestamp: string;
   title: string;
   description: string;
   data?: Record<string, unknown>;
-  status?: 'success' | 'error' | 'info';
+  status?: "success" | "error" | "info";
 }
 
 export interface ActivityFeedResponse {
@@ -904,7 +964,8 @@ export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
     try {
       // Try to fetch from the new backend endpoint
-      const response = await api.get<DashboardStatsResponse>('/dashboard/stats');
+      const response =
+        await api.get<DashboardStatsResponse>("/dashboard/stats");
 
       return {
         totalEquity: response.total_equity,
@@ -921,7 +982,7 @@ export const dashboardApi = {
         agentsApi.list(),
       ]);
 
-      const activeAgents = agents.filter(a => a.status === 'active').length;
+      const activeAgents = agents.filter((a) => a.status === "active").length;
 
       return {
         totalEquity: 0,
@@ -935,17 +996,19 @@ export const dashboardApi = {
   },
 
   // Direct access to the full stats response
-  getFullStats: () => api.get<DashboardStatsResponse>('/dashboard/stats'),
+  getFullStats: () => api.get<DashboardStatsResponse>("/dashboard/stats"),
 
   // Get activity feed
   getActivity: (limit: number = 20, offset: number = 0) =>
-    api.get<ActivityFeedResponse>('/dashboard/activity', { params: { limit, offset } }),
+    api.get<ActivityFeedResponse>("/dashboard/activity", {
+      params: { limit, offset },
+    }),
 };
 
 // ==================== Health ====================
 
 export interface HealthResponse {
-  status: 'healthy' | 'degraded';
+  status: "healthy" | "degraded";
   version: string;
   environment: string;
   components?: {
@@ -955,11 +1018,9 @@ export interface HealthResponse {
 }
 
 export const healthApi = {
-  check: () =>
-    api.get<HealthResponse>('/health', { skipAuth: true }),
+  check: () => api.get<HealthResponse>("/health", { skipAuth: true }),
 
-  detailed: () =>
-    api.get<HealthResponse>('/health/detailed'),
+  detailed: () => api.get<HealthResponse>("/health/detailed"),
 };
 
 // ==================== AI Models ====================
@@ -989,11 +1050,12 @@ export interface TestModelRequest {
 }
 
 export const modelsApi = {
-  listProviders: () =>
-    api.get<AIProviderResponse[]>('/models/providers'),
+  listProviders: () => api.get<AIProviderResponse[]>("/models/providers"),
 
   list: (provider?: string) =>
-    api.get<AIModelInfoResponse[]>('/models', { params: provider ? { provider } : {} }),
+    api.get<AIModelInfoResponse[]>("/models", {
+      params: provider ? { provider } : {},
+    }),
 
   get: (modelId: string) =>
     api.get<AIModelInfoResponse>(`/models/${encodeURIComponent(modelId)}`),
@@ -1004,7 +1066,7 @@ export const modelsApi = {
       success: boolean;
       message: string;
       error_code?: string;
-    }>('/models/test', data),
+    }>("/models/test", data),
 };
 
 // ==================== AI Provider Configs ====================
@@ -1070,29 +1132,27 @@ export interface ProviderModelItem {
 }
 
 export const providersApi = {
-  listPresets: () =>
-    api.get<PresetProviderInfo[]>('/providers/presets'),
+  listPresets: () => api.get<PresetProviderInfo[]>("/providers/presets"),
 
   listFormats: () =>
-    api.get<{ formats: ApiFormatInfo[] }>('/providers/formats'),
+    api.get<{ formats: ApiFormatInfo[] }>("/providers/formats"),
 
-  list: () =>
-    api.get<ProviderConfigResponse[]>('/providers'),
+  list: () => api.get<ProviderConfigResponse[]>("/providers"),
 
-  get: (id: string) =>
-    api.get<ProviderConfigResponse>(`/providers/${id}`),
+  get: (id: string) => api.get<ProviderConfigResponse>(`/providers/${id}`),
 
   create: (data: CreateProviderRequest) =>
-    api.post<ProviderConfigResponse>('/providers', data),
+    api.post<ProviderConfigResponse>("/providers", data),
 
   update: (id: string, data: UpdateProviderRequest) =>
     api.patch<ProviderConfigResponse>(`/providers/${id}`, data),
 
-  delete: (id: string) =>
-    api.delete<void>(`/providers/${id}`),
+  delete: (id: string) => api.delete<void>(`/providers/${id}`),
 
   test: (id: string, apiKey?: string) =>
-    api.post<{ success: boolean; message: string }>(`/providers/${id}/test`, { api_key: apiKey }),
+    api.post<{ success: boolean; message: string }>(`/providers/${id}/test`, {
+      api_key: apiKey,
+    }),
 
   // Per-provider model CRUD
   listModels: (providerId: string) =>
@@ -1105,7 +1165,9 @@ export const providersApi = {
     api.put<ProviderModelItem[]>(`/providers/${providerId}/models`, { models }),
 
   deleteModel: (providerId: string, modelId: string) =>
-    api.delete<void>(`/providers/${providerId}/models/${encodeURIComponent(modelId)}`),
+    api.delete<void>(
+      `/providers/${providerId}/models/${encodeURIComponent(modelId)}`,
+    ),
 };
 
 // ==================== Competition ====================
@@ -1168,10 +1230,12 @@ export interface StrategyRankingResponse {
 export const competitionApi = {
   getLeaderboard: (sortBy?: string, order?: string) => {
     const params = new URLSearchParams();
-    if (sortBy) params.set('sort_by', sortBy);
-    if (order) params.set('order', order);
+    if (sortBy) params.set("sort_by", sortBy);
+    if (order) params.set("order", order);
     const qs = params.toString();
-    return api.get<LeaderboardResponse>(`/competition/leaderboard${qs ? `?${qs}` : ''}`);
+    return api.get<LeaderboardResponse>(
+      `/competition/leaderboard${qs ? `?${qs}` : ""}`,
+    );
   },
 
   getStrategyRanking: (params?: {
@@ -1181,12 +1245,15 @@ export const competitionApi = {
     offset?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.sort_by) searchParams.set('sort_by', params.sort_by);
-    if (params?.type_filter) searchParams.set('type_filter', params.type_filter);
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
+    if (params?.type_filter)
+      searchParams.set("type_filter", params.type_filter);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
     const qs = searchParams.toString();
-    return api.get<StrategyRankingResponse>(`/competition/strategy-ranking${qs ? `?${qs}` : ''}`);
+    return api.get<StrategyRankingResponse>(
+      `/competition/strategy-ranking${qs ? `?${qs}` : ""}`,
+    );
   },
 };
 
@@ -1199,6 +1266,29 @@ export interface OutboundIPResponse {
 }
 
 export const systemApi = {
-  getOutboundIP: () =>
-    api.get<OutboundIPResponse>('/system/outbound-ip'),
+  getOutboundIP: () => api.get<OutboundIPResponse>("/system/outbound-ip"),
+};
+
+// ==================== Data (Symbols) ====================
+
+export interface SymbolItem {
+  symbol: string;
+  full_symbol: string;
+}
+
+export interface SymbolsResponse {
+  exchange: string;
+  symbols: SymbolItem[];
+  cached: boolean;
+}
+
+export const dataApi = {
+  /**
+   * Get available trading symbols for an exchange.
+   * Returns both base symbol (e.g., 'BTC') and full CCXT format (e.g., 'BTC/USDT:USDT').
+   */
+  getSymbols: (exchange: string = "binance") =>
+    api.get<SymbolsResponse>("/data/symbols", {
+      params: { exchange },
+    }),
 };
