@@ -33,6 +33,11 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
+    titleKey: "marketplace",
+    href: "/marketplace",
+    icon: Store,
+  },
+  {
     titleKey: "strategies",
     href: "/strategies",
     icon: Sigma,
@@ -41,11 +46,6 @@ const navItems = [
     titleKey: "agents",
     href: "/agents",
     icon: Bot,
-  },
-  {
-    titleKey: "marketplace",
-    href: "/marketplace",
-    icon: Store,
   },
   {
     titleKey: "competition",
@@ -70,7 +70,13 @@ const navItems = [
 ] as const;
 
 // Desktop Sidebar Component
-function DesktopSidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
+function DesktopSidebar({
+  collapsed,
+  setCollapsed,
+}: {
+  collapsed: boolean;
+  setCollapsed: (v: boolean) => void;
+}) {
   const t = useTranslations("nav");
   const pathname = usePathname();
 
@@ -78,7 +84,7 @@ function DesktopSidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
     <aside
       className={cn(
         "hidden md:flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-16" : "w-64",
       )}
     >
       {/* Logo */}
@@ -121,7 +127,7 @@ function DesktopSidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
-                collapsed && "justify-center px-2"
+                collapsed && "justify-center px-2",
               )}
             >
               <item.icon
@@ -156,7 +162,7 @@ function DesktopSidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
             "w-full justify-center text-muted-foreground hover:text-foreground",
-            !collapsed && "justify-start"
+            !collapsed && "justify-start",
           )}
         >
           {collapsed ? (
@@ -174,7 +180,13 @@ function DesktopSidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
 }
 
 // Mobile Sidebar Component (Sheet)
-function MobileSidebar({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
+function MobileSidebar({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+}) {
   const t = useTranslations("nav");
   const pathname = usePathname();
 
@@ -214,7 +226,7 @@ function MobileSidebar({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
                 )}
               >
                 <item.icon
@@ -233,12 +245,7 @@ function MobileSidebar({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
 // Mobile Menu Button (to be used in Header)
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={onClick}
-      className="md:hidden"
-    >
+    <Button variant="ghost" size="icon" onClick={onClick} className="md:hidden">
       <Menu className="w-5 h-5" />
     </Button>
   );
@@ -250,10 +257,13 @@ interface AppSidebarProps {
 }
 
 // Main AppSidebar Export
-export function AppSidebar({ mobileOpen = false, onMobileOpenChange }: AppSidebarProps) {
+export function AppSidebar({
+  mobileOpen = false,
+  onMobileOpenChange,
+}: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
-  
+
   // Support both controlled and uncontrolled mode
   const isOpen = onMobileOpenChange ? mobileOpen : internalMobileOpen;
   const setOpen = onMobileOpenChange ?? setInternalMobileOpen;

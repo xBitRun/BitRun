@@ -114,7 +114,7 @@ async def get_leaderboard(
     Performance data (total_pnl, win_rate, etc.) lives on AgentDB.
     """
     repo = AgentRepository(db)
-    agents = await repo.get_by_user(user.id)
+    agents = await repo.get_by_user(user)
 
     entries: list[LeaderboardEntry] = []
     for a in agents:

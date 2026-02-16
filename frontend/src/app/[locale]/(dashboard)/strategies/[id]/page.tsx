@@ -3,58 +3,62 @@
 import { use, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
-  Play,
-  Pause,
-  Square,
-  RefreshCw,
   Grid3X3,
   ArrowDownUp,
   Activity,
   LineChart,
   Loader2,
   Trash2,
-  Clock,
-  RotateCcw,
   Bot,
+  Zap,
+  Pencil,
+  MoreHorizontal,
+  Copy,
+  Share2,
+  ChevronDown,
+  ChevronRight,
+  Calendar,
+  TrendingUp,
+  BarChart3,
+  Settings,
+  FileText,
+  Clock,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { useAgent } from "@/hooks";
+import { useStrategy, useDeleteStrategy, useStrategyVersions } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { TradingViewChart } from "@/components/charts/tradingview-chart";
-import type { StrategyStatus, AgentStatus } from "@/types";
-import type { AgentResponse } from "@/lib/api";
+import type { StrategyType } from "@/types";
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "active":
-      return "bg-[var(--profit)]/20 text-[var(--profit)]";
-    case "paused":
-      return "bg-[var(--warning)]/20 text-[var(--warning)]";
-    case "stopped":
-      return "bg-muted text-muted-foreground";
-    case "error":
-      return "bg-[var(--loss)]/20 text-[var(--loss)]";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
-
-function getTypeIcon(type: string) {
+function getTypeIcon(type: StrategyType) {
   switch (type) {
     case "ai":
       return Bot;
@@ -69,311 +73,45 @@ function getTypeIcon(type: string) {
   }
 }
 
-// ============ Quant Trade Section (runtime_state visualization) ============
-
-function QuantTradeSection({
-  strategy,
-  strategyType,
-  t,
-}: {
-  strategy: AgentResponse;
-  strategyType: string;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const runtimeState = (strategy.runtime_state || {}) as Record<string, unknown>;
-  const hasRuntimeState = Object.keys(runtimeState).length > 0;
-
-  if (!hasRuntimeState && strategy.total_trades === 0) {
-    return (
-      <Card className="bg-card/50 border-border/50">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <div className="p-4 rounded-full bg-muted/50 mb-4">
-            <LineChart className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">{t("detail.overview.tradeList")}</h3>
-          <p className="text-muted-foreground text-center text-sm">
-            {t("detail.overview.noTradeDataHint")}
-          </p>
-        </CardContent>
-      </Card>
-    );
+function getTypeColor(type: StrategyType) {
+  switch (type) {
+    case "ai":
+      return "border-violet-500/30 text-violet-500";
+    case "grid":
+      return "border-blue-500/30 text-blue-500";
+    case "dca":
+      return "border-emerald-500/30 text-emerald-500";
+    case "rsi":
+      return "border-amber-500/30 text-amber-500";
+    default:
+      return "";
   }
+}
 
-  // Grid Strategy — show grid levels table
-  if (strategyType === "grid" && hasRuntimeState) {
-    const gridLevels = (runtimeState.grid_levels as number[]) || [];
-    const filledBuys = new Set((runtimeState.filled_buys as string[]) || []);
-    const filledSells = new Set((runtimeState.filled_sells as string[]) || []);
-    const totalInvested = (runtimeState.total_invested as number) || 0;
-    const totalReturned = (runtimeState.total_returned as number) || 0;
-    const lastPrice = (runtimeState.last_price as number) || 0;
-    const lastCheck = runtimeState.last_check as string | undefined;
+function getVisibilityColor(visibility: string) {
+  return visibility === "public"
+    ? "border-emerald-500/30 text-emerald-500"
+    : "border-muted-foreground/30 text-muted-foreground";
+}
 
-    return (
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Grid3X3 className="w-5 h-5 text-primary" />
-              {t("detail.overview.gridLevels")}
-            </CardTitle>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              {lastPrice > 0 && (
-                <span>{t("detail.overview.gridLastPrice")}: <span className="font-mono font-medium text-foreground">${lastPrice.toLocaleString()}</span></span>
-              )}
-              {lastCheck && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {new Date(lastCheck).toLocaleString()}
-                </span>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Summary metrics */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.gridTotalInvested")}</p>
-              <p className="font-mono font-bold">${totalInvested.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.gridTotalReturned")}</p>
-              <p className="font-mono font-bold">${totalReturned.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.totalPnl")}</p>
-              <p className={cn("font-mono font-bold", (totalReturned - totalInvested) >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]")}>
-                {(totalReturned - totalInvested) >= 0 ? "+" : ""}${(totalReturned - totalInvested).toLocaleString()}
-              </p>
-            </div>
-          </div>
+// Config value renderer
+function renderConfigValue(value: unknown): string {
+  if (value === null || value === undefined) return "-";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return value.toLocaleString();
+  if (Array.isArray(value)) return value.join(", ");
+  return String(value);
+}
 
-          {/* Grid levels table */}
-          {gridLevels.length > 0 && (
-            <div className="max-h-80 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/50">
-                    <TableHead className="text-xs">{t("detail.overview.gridLevel")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("detail.overview.gridPrice")}</TableHead>
-                    <TableHead className="text-xs text-center">{t("detail.overview.gridBuyStatus")}</TableHead>
-                    <TableHead className="text-xs text-center">{t("detail.overview.gridSellStatus")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gridLevels.map((price, idx) => (
-                    <TableRow key={idx} className="border-border/30">
-                      <TableCell className="font-mono text-xs">#{idx + 1}</TableCell>
-                      <TableCell className="font-mono text-xs text-right">${price.toLocaleString()}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            filledBuys.has(String(idx))
-                              ? "bg-[var(--profit)]/10 text-[var(--profit)] border-[var(--profit)]/30"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {filledBuys.has(String(idx)) ? t("detail.overview.gridFilled") : t("detail.overview.gridPending")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            filledSells.has(String(idx))
-                              ? "bg-[var(--loss)]/10 text-[var(--loss)] border-[var(--loss)]/30"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {filledSells.has(String(idx)) ? t("detail.overview.gridFilled") : t("detail.overview.gridPending")}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // DCA Strategy — show DCA state
-  if (strategyType === "dca" && hasRuntimeState) {
-    const ordersPlaced = (runtimeState.orders_placed as number) || 0;
-    const totalInvested = (runtimeState.total_invested as number) || 0;
-    const totalQuantity = (runtimeState.total_quantity as number) || 0;
-    const avgCost = (runtimeState.avg_cost as number) || 0;
-    const lastOrderTime = runtimeState.last_order_time as string | undefined;
-    const lastCheck = runtimeState.last_check as string | undefined;
-
-    return (
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ArrowDownUp className="w-5 h-5 text-primary" />
-              {t("detail.overview.tradeList")}
-            </CardTitle>
-            {lastCheck && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {t("detail.overview.lastCheck")}: {new Date(lastCheck).toLocaleString()}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.dcaOrdersPlaced")}</p>
-              <p className="text-xl font-mono font-bold">{ordersPlaced}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.dcaTotalInvested")}</p>
-              <p className="text-xl font-mono font-bold">${totalInvested.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.dcaTotalQuantity")}</p>
-              <p className="text-xl font-mono font-bold">{totalQuantity}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.dcaAvgCost")}</p>
-              <p className="text-xl font-mono font-bold">${avgCost.toLocaleString()}</p>
-            </div>
-            {lastOrderTime && (
-              <div className="p-3 rounded-lg bg-muted/30">
-                <p className="text-xs text-muted-foreground">{t("detail.overview.dcaLastOrderTime")}</p>
-                <p className="text-sm font-mono">{new Date(lastOrderTime).toLocaleString()}</p>
-              </div>
-            )}
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.totalPnl")}</p>
-              <p className={cn(
-                "text-xl font-mono font-bold",
-                strategy.total_pnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-              )}>
-                {strategy.total_pnl >= 0 ? "+" : ""}${strategy.total_pnl.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // RSI Strategy — show RSI state
-  if (strategyType === "rsi" && hasRuntimeState) {
-    const hasPosition = (runtimeState.has_position as boolean) || false;
-    const entryPrice = (runtimeState.entry_price as number) || 0;
-    const positionSizeUsd = (runtimeState.position_size_usd as number) || 0;
-    const lastRsi = (runtimeState.last_rsi as number) || 0;
-    const lastSignal = (runtimeState.last_signal as string) || "";
-    const lastPrice = (runtimeState.last_price as number) || 0;
-    const lastCheck = runtimeState.last_check as string | undefined;
-
-    return (
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              {t("detail.overview.tradeList")}
-            </CardTitle>
-            {lastCheck && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {t("detail.overview.lastCheck")}: {new Date(lastCheck).toLocaleString()}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.rsiHasPosition")}</p>
-              <p className="text-xl font-mono font-bold">
-                {hasPosition ? t("detail.overview.rsiYes") : t("detail.overview.rsiNo")}
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.rsiLastRsi")}</p>
-              <p className={cn(
-                "text-xl font-mono font-bold",
-                lastRsi >= 70 ? "text-[var(--loss)]" : lastRsi <= 30 ? "text-[var(--profit)]" : ""
-              )}>
-                {lastRsi.toFixed(1)}
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.rsiLastSignal")}</p>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-xs mt-1",
-                  lastSignal === "buy"
-                    ? "bg-[var(--profit)]/10 text-[var(--profit)] border-[var(--profit)]/30"
-                    : lastSignal === "sell"
-                      ? "bg-[var(--loss)]/10 text-[var(--loss)] border-[var(--loss)]/30"
-                      : "bg-muted text-muted-foreground"
-                )}
-              >
-                {lastSignal === "buy"
-                  ? t("detail.overview.rsiBuySignal")
-                  : lastSignal === "sell"
-                    ? t("detail.overview.rsiSellSignal")
-                    : "-"}
-              </Badge>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.rsiLastPrice")}</p>
-              <p className="text-xl font-mono font-bold">${lastPrice.toLocaleString()}</p>
-            </div>
-            {hasPosition && (
-              <>
-                <div className="p-3 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground">{t("detail.overview.rsiEntryPrice")}</p>
-                  <p className="text-xl font-mono font-bold">${entryPrice.toLocaleString()}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground">{t("detail.overview.rsiPositionSize")}</p>
-                  <p className="text-xl font-mono font-bold">${positionSizeUsd.toLocaleString()}</p>
-                </div>
-              </>
-            )}
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">{t("detail.overview.totalPnl")}</p>
-              <p className={cn(
-                "text-xl font-mono font-bold",
-                strategy.total_pnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-              )}>
-                {strategy.total_pnl >= 0 ? "+" : ""}${strategy.total_pnl.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Fallback: show raw runtime state
-  return (
-    <Card className="bg-card/50 border-border/50">
-      <CardHeader>
-        <CardTitle className="text-base">{t("detail.overview.runtimeState")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <pre className="text-xs font-mono bg-muted/50 p-4 rounded-lg overflow-auto max-h-64">
-          {JSON.stringify(runtimeState, null, 2)}
-        </pre>
-      </CardContent>
-    </Card>
-  );
+// Format date
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function StrategyDetailPage({
@@ -382,39 +120,43 @@ export default function StrategyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const t = useTranslations("quantStrategies");
+  const t = useTranslations("strategies");
+  const tType = useTranslations("strategies.type");
   const router = useRouter();
   const toast = useToast();
-  const { data: strategy, error, isLoading, mutate } = useAgent(id);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
-  const handleStatusChange = async (newStatus: StrategyStatus) => {
-    setIsUpdating(true);
+  const { data: strategy, error, isLoading } = useStrategy(id);
+  const { trigger: deleteStrategy, isMutating: isDeleting } =
+    useDeleteStrategy(id);
+  const { data: versions } = useStrategyVersions(id);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const handleDelete = async () => {
     try {
-      const { agentsApi } = await import("@/lib/api");
-      await agentsApi.updateStatus(id, newStatus as AgentStatus);
-      mutate();
-      const statusKey = newStatus === "active" ? "started" : newStatus;
-      toast.success(t(`toast.${statusKey}`));
+      await deleteStrategy();
+      toast.success(t("toast.deleted"));
+      router.push("/strategies");
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.updateFailed");
-      toast.error(t("toast.updateFailed"), message);
-    } finally {
-      setIsUpdating(false);
+      const message =
+        err instanceof Error ? err.message : t("error.deleteFailed");
+      toast.error(t("error.deleteFailed"), message);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(t("detail.settings.deleteConfirm"))) return;
-    try {
-      const { agentsApi } = await import("@/lib/api");
-      await agentsApi.delete(id);
-      toast.success(t("toast.deleteSuccess"));
-      router.push("/strategies");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.deleteFailed");
-      toast.error(t("toast.deleteFailed"), message);
+  const handleCopyId = () => {
+    if (strategy) {
+      navigator.clipboard.writeText(strategy.id);
+      toast.success(t("detail.idCopied"));
+    }
+  };
+
+  const handleShare = () => {
+    if (strategy && typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success(t("detail.linkCopied"));
     }
   };
 
@@ -428,7 +170,7 @@ export default function StrategyDetailPage({
 
   if (error || !strategy) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-3xl mx-auto">
         <Button variant="ghost" onClick={() => router.push("/strategies")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           {t("detail.backToStrategies")}
@@ -442,283 +184,532 @@ export default function StrategyDetailPage({
     );
   }
 
-  // Compat: extract fields from AgentResponse shape
-  const agentConfig = (strategy.config || {}) as Record<string, unknown>;
-  const strategyType = strategy.strategy_type || (agentConfig.strategy_type as string) || "grid";
-  const strategySymbol = (agentConfig.symbol as string) || strategy.strategy_name || "BTC";
-  const TypeIcon = getTypeIcon(strategyType);
-  const config = agentConfig;
+  const TypeIcon = getTypeIcon(strategy.type);
+  const config = strategy.config || {};
+  const hasCommonParams: boolean =
+    Object.keys(config).filter((k) => k !== "riskControls").length > 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/strategies")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/strategies")}
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className="p-2.5 rounded-lg bg-primary/10">
               <TypeIcon className="w-6 h-6 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">{strategy.name}</h1>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className={cn("text-xs", getStatusColor(strategy.status))}>
-                  {t(`status.${strategy.status}`)}
+                <Badge
+                  variant="outline"
+                  className={cn("text-xs", getTypeColor(strategy.type))}
+                >
+                  {tType(strategy.type)}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {t(`types.${strategyType}`)}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    getVisibilityColor(strategy.visibility),
+                  )}
+                >
+                  {t(`visibility.${strategy.visibility}`)}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {strategySymbol}
-                </Badge>
+                {strategy.description && (
+                  <span className="text-sm text-muted-foreground line-clamp-1">
+                    {strategy.description}
+                  </span>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Status Actions */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => mutate()}>
-            <RefreshCw className="w-4 h-4" />
+        {/* Actions */}
+        <div className="flex items-center gap-2 ml-14 lg:ml-0">
+          <Button variant="outline" asChild>
+            <Link href={`/strategies/${strategy.id}/edit`}>
+              <Pencil className="w-4 h-4 mr-2" />
+              {t("detail.actions.edit")}
+            </Link>
           </Button>
-          {strategy.status === "active" && (
-            <Button
-              variant="default"
-              className="bg-primary/20 text-primary hover:bg-primary/30"
-              onClick={() => handleStatusChange("paused")}
-              disabled={isUpdating}
-            >
-              {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Pause className="w-4 h-4 mr-2" />}
-              {t("actions.pause")}
-            </Button>
-          )}
-          {(strategy.status === "paused" || strategy.status === "draft") && (
-            <Button
-              onClick={() => handleStatusChange("active")}
-              disabled={isUpdating}
-            >
-              {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-              {strategy.status === "draft" ? t("actions.start") : t("actions.resume")}
-            </Button>
-          )}
-          {strategy.status === "paused" && (
-            <Button
-              variant="outline"
-              className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-              onClick={() => setShowStopConfirm(true)}
-              disabled={isUpdating}
-            >
-              <Square className="w-4 h-4 mr-2" />
-              {t("actions.stop")}
-            </Button>
-          )}
-          {(strategy.status === "error" || strategy.status === "warning") && (
-            <>
-              <Button
-                onClick={() => handleStatusChange("active")}
-                disabled={isUpdating}
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
-                {t("actions.restart")}
+          <Button asChild>
+            <Link href={`/agents/new?strategyId=${strategy.id}`}>
+              <Zap className="w-4 h-4 mr-2" />
+              {t("actions.createAgent")}
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreHorizontal className="w-4 h-4" />
               </Button>
-              <Button
-                variant="outline"
-                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-                onClick={() => setShowStopConfirm(true)}
-                disabled={isUpdating}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCopyId}>
+                <Copy className="w-4 h-4 mr-2" />
+                {t("detail.actions.copyId")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare}>
+                <Share2 className="w-4 h-4 mr-2" />
+                {t("detail.actions.share")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  setDangerZoneOpen(true);
+                  setShowDeleteConfirm(true);
+                }}
               >
-                <Square className="w-4 h-4 mr-2" />
-                {t("actions.stop")}
-              </Button>
-            </>
-          )}
+                <Trash2 className="w-4 h-4 mr-2" />
+                {t("detail.settings.deleteStrategy")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Stop Confirm Dialog */}
-      <Dialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+      {/* Main Layout: Tabs + Sidebar */}
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Main Content Area */}
+        <div className="flex-1 min-w-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="overview">
+                <BarChart3 className="w-4 h-4 mr-1.5" />
+                {t("detail.tabs.overview")}
+              </TabsTrigger>
+              <TabsTrigger value="config">
+                <Settings className="w-4 h-4 mr-1.5" />
+                {t("detail.tabs.config")}
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                <FileText className="w-4 h-4 mr-1.5" />
+                {t("detail.tabs.settings")}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-4">
+              {/* Trading Symbols */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {t("detail.overview.symbols")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {strategy.symbols.length > 0 ? (
+                      strategy.symbols.map((symbol) => (
+                        <Badge
+                          key={symbol}
+                          variant="secondary"
+                          className="font-mono"
+                        >
+                          {symbol}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">
+                        {t("empty.noSymbol")}
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Strategy Summary */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {t("detail.overview.summary")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-sm">
+                        {t("detail.overview.strategyType")}
+                      </p>
+                      <p className="font-medium">{tType(strategy.type)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-sm">
+                        {t("detail.overview.visibility")}
+                      </p>
+                      <p className="font-medium">
+                        {t(`visibility.${strategy.visibility}`)}
+                      </p>
+                    </div>
+                  </div>
+                  {strategy.description && (
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-muted-foreground text-sm">
+                        {strategy.description}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {t("detail.overview.quickStats")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Users className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">
+                          {t("stats.forkCount")}
+                        </p>
+                        <p className="font-semibold text-lg">
+                          {strategy.fork_count}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <TagIcon className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">
+                          {t("detail.overview.tags")}
+                        </p>
+                        <p className="font-semibold text-lg">
+                          {strategy.tags.length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Config Tab */}
+            <TabsContent value="config" className="space-y-4">
+              <>
+                {/* Common Parameters */}
+                {hasCommonParams && (
+                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">
+                        {t("detail.config.commonParams")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {Object.entries(config)
+                          .filter(([key]) => key !== "riskControls")
+                          .map(([key, value]) => (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                            >
+                              <span className="text-muted-foreground text-sm capitalize">
+                                {key.replace(/_/g, " ")}
+                              </span>
+                              <span className="font-mono text-sm">
+                                {renderConfigValue(value)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Prompt Preview (AI Strategy) */}
+                {strategy.type === "ai" && config.prompt && (
+                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">
+                        {t("detail.config.promptPreview")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="p-4 rounded-lg bg-muted/30 max-h-64 overflow-auto">
+                        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                          {config.prompt as string}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* No config message */}
+                {Object.keys(config).length === 0 && (
+                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                    <CardContent className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">
+                        {t("detail.config.noConfig")}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-4">
+              {/* Basic Info Edit */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {t("detail.settings.basicInfo")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="font-medium">{strategy.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {strategy.description || t("empty.noDescription")}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/strategies/${strategy.id}/edit`}>
+                          <Pencil className="w-3 h-3 mr-1.5" />
+                          {t("detail.settings.edit")}
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Visibility */}
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {t("detail.settings.visibility")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          getVisibilityColor(strategy.visibility),
+                        )}
+                      >
+                        {t(`visibility.${strategy.visibility}`)}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {strategy.visibility === "public"
+                          ? t("detail.settings.publicHint")
+                          : t("detail.settings.privateHint")}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/strategies/${strategy.id}/edit`}>
+                        {t("detail.settings.change")}
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Version History */}
+              {versions && versions.length > 0 && (
+                <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      {t("versions.title")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {versions.slice(0, 5).map((version) => (
+                        <div
+                          key={version.version}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-sm font-medium">
+                              v{version.version}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(version.created_at)}
+                            </span>
+                          </div>
+                          {version.change_note && (
+                            <span className="text-sm text-muted-foreground">
+                              {version.change_note}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Sidebar */}
+        <div className="w-full lg:w-80 space-y-4">
+          {/* Strategy Info */}
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                {t("detail.sidebar.info")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {t("detail.sidebar.created")}
+                </span>
+                <span className="font-mono">
+                  {formatDate(strategy.created_at)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  {t("detail.sidebar.updated")}
+                </span>
+                <span className="font-mono">
+                  {formatDate(strategy.updated_at)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Statistics */}
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                {t("detail.sidebar.stats")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t("stats.forkCount")}
+                </span>
+                <span className="font-semibold">{strategy.fork_count}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t("stats.agentCount")}
+                </span>
+                <span className="font-semibold">-</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Danger Zone - Collapsible */}
+          <Collapsible open={dangerZoneOpen} onOpenChange={setDangerZoneOpen}>
+            <Card className="border-destructive/20 bg-card/50 backdrop-blur-sm">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <CardTitle className="text-base flex items-center justify-between text-destructive/80">
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      {t("detail.settings.dangerZone")}
+                    </span>
+                    {dangerZoneOpen ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t("detail.settings.deleteConfirm")}
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {t("detail.settings.deleteStrategy")}
+                  </Button>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        </div>
+      </div>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>{t("actions.stopConfirmTitle")}</DialogTitle>
-            <DialogDescription>{t("actions.stopConfirmDesc")}</DialogDescription>
+            <DialogTitle>{t("detail.settings.deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("detail.settings.deleteConfirmDesc")}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowStopConfirm(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
               {t("actions.cancel")}
             </Button>
             <Button
               variant="destructive"
-              onClick={async () => {
-                setShowStopConfirm(false);
-                await handleStatusChange("stopped");
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                handleDelete();
               }}
-              disabled={isUpdating}
+              disabled={isDeleting}
             >
-              {isUpdating ? (
+              {isDeleting ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Square className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4 mr-2" />
               )}
-              {t("actions.confirmStop")}
+              {t("detail.settings.confirmDelete")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">{t("detail.tabs.overview")}</TabsTrigger>
-          <TabsTrigger value="trades">{t("detail.tabs.trades")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("detail.tabs.settings")}</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Chart + Strategy Info Sidebar */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-            {/* TradingView Chart */}
-            <Card className="bg-card/50 border-border/50 overflow-hidden min-h-[500px] flex flex-col">
-              {/* Current trading pair display */}
-              <div className="flex items-center gap-2 px-4 pt-3 pb-0">
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono text-xs">
-                  {strategySymbol}/USDT
-                </Badge>
-                <span className="text-xs text-muted-foreground">{t(`types.${strategyType}`)}</span>
-              </div>
-              <CardContent className="p-0 flex-1">
-                <TradingViewChart
-                  symbol={`BINANCE:${strategySymbol}USDT`}
-                  interval="60"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Strategy Info Sidebar */}
-            <div className="space-y-4">
-              {/* Strategy Details */}
-              <Card className="bg-card/50 border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t("detail.overview.strategyInfo")}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{t("detail.overview.status")}</span>
-                    <Badge variant="outline" className={cn("text-xs", getStatusColor(strategy.status))}>
-                      {t(`status.${strategy.status}`)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{t("detail.overview.symbol")}</span>
-                    <span className="font-mono font-medium">{strategySymbol}/USDT</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{t("detail.overview.strategyType")}</span>
-                    <span className="font-medium">{t(`types.${strategyType}`)}</span>
-                  </div>
-
-                  {/* Strategy-specific config params */}
-                  <div className="pt-2 border-t border-border/30 space-y-2">
-                    {Object.entries(config).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs">{key.replace(/_/g, " ")}</span>
-                        <span className="font-mono text-xs">{String(value)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 border-t border-border/30 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("detail.overview.createdAt")}</span>
-                      <span className="text-xs">{new Date(strategy.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("detail.overview.lastRun")}</span>
-                      <span className="text-xs">
-                        {strategy.last_run_at
-                          ? new Date(strategy.last_run_at).toLocaleString()
-                          : t("detail.overview.never")}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Profit Summary */}
-              <Card className="bg-card/50 border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t("detail.overview.profitSummary")}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t("detail.overview.totalPnl")}</span>
-                    <span className={cn(
-                      "font-mono font-bold",
-                      strategy.total_pnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-                    )}>
-                      {strategy.total_pnl >= 0 ? "+" : ""}{strategy.total_pnl.toLocaleString()} USDT
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t("detail.overview.winRate")}</span>
-                    <span className="font-mono font-medium">{strategy.win_rate.toFixed(1)}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t("detail.overview.totalTrades")}</span>
-                    <span className="font-mono font-medium">{strategy.total_trades}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t("detail.overview.maxDrawdown")}</span>
-                    <span className="font-mono font-medium text-[var(--loss)]">
-                      ${strategy.max_drawdown.toLocaleString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Trade Execution / Runtime State */}
-          <QuantTradeSection strategy={strategy} strategyType={strategyType} t={t} />
-        </TabsContent>
-
-        {/* Trades Tab — same content as overview trade section for dedicated view */}
-        <TabsContent value="trades" className="space-y-6">
-          <QuantTradeSection strategy={strategy} strategyType={strategyType} t={t} />
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
-          {/* Danger Zone */}
-          <Card className="border-destructive/30">
-            <CardHeader>
-              <CardTitle className="text-destructive">{t("detail.settings.dangerZone")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{t("detail.settings.deleteStrategy")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {!["stopped", "draft"].includes(strategy.status)
-                      ? t("detail.settings.deleteRequireStopped")
-                      : t("detail.settings.deleteConfirm")}
-                  </p>
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={!["stopped", "draft"].includes(strategy.status)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  {t("detail.settings.confirmDelete")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
+  );
+}
+
+// Simple icon component for tag
+function TagIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+      <path d="M7 7h.01" />
+    </svg>
   );
 }

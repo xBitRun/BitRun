@@ -64,9 +64,9 @@ interface AccountCardProps {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
@@ -80,7 +80,7 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
     data: balance,
     isLoading: isLoadingBalance,
     error: balanceError,
-    mutate: refreshBalance
+    mutate: refreshBalance,
   } = useAccountBalance(account.is_connected ? account.id : null);
 
   const handleTest = async () => {
@@ -117,7 +117,8 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
                 )}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {exchangeNames[account.exchange as ExchangeType] || account.exchange}
+                {exchangeNames[account.exchange as ExchangeType] ||
+                  account.exchange}
               </p>
             </div>
           </div>
@@ -136,7 +137,10 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
                 )}
                 {t("menu.testConnection")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleRefreshBalance} disabled={!account.is_connected}>
+              <DropdownMenuItem
+                onClick={handleRefreshBalance}
+                disabled={!account.is_connected}
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 {t("menu.refreshBalance")}
               </DropdownMenuItem>
@@ -159,21 +163,29 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
       <CardContent className="space-y-4">
         {/* Connection Status */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-          <span className="text-sm text-muted-foreground">{t("card.status")}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("card.status")}
+          </span>
           <div className="flex items-center gap-2">
             <span
               className={cn(
                 "w-2 h-2 rounded-full",
-                account.is_connected ? "bg-[var(--profit)]" : "bg-[var(--loss)]"
+                account.is_connected
+                  ? "bg-[var(--profit)]"
+                  : "bg-[var(--loss)]",
               )}
             />
             <span
               className={cn(
                 "text-sm font-medium",
-                account.is_connected ? "text-[var(--profit)]" : "text-[var(--loss)]"
+                account.is_connected
+                  ? "text-[var(--profit)]"
+                  : "text-[var(--loss)]",
               )}
             >
-              {account.is_connected ? t("card.connected") : t("card.disconnected")}
+              {account.is_connected
+                ? t("card.connected")
+                : t("card.disconnected")}
             </span>
           </div>
         </div>
@@ -199,9 +211,7 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
           ) : isLoadingBalance ? (
             <Skeleton className="h-8 w-32" />
           ) : balanceError ? (
-            <p className="text-sm text-destructive">
-              {t("card.balanceError")}
-            </p>
+            <p className="text-sm text-destructive">{t("card.balanceError")}</p>
           ) : balance ? (
             <>
               <p className="text-2xl font-bold font-mono">
@@ -221,10 +231,14 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
                     <span className="text-muted-foreground">
                       {t("card.unrealizedPnl")}
                     </span>
-                    <span className={cn(
-                      "font-mono font-medium",
-                      balance.unrealized_pnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
-                    )}>
+                    <span
+                      className={cn(
+                        "font-mono font-medium",
+                        balance.unrealized_pnl >= 0
+                          ? "text-[var(--profit)]"
+                          : "text-[var(--loss)]",
+                      )}
+                    >
                       {balance.unrealized_pnl >= 0 ? "+" : ""}
                       {formatCurrency(balance.unrealized_pnl)}
                     </span>
@@ -278,7 +292,8 @@ export default function AccountsPage() {
       refresh();
       toast.success(t("toast.removeSuccess"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.removeFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.removeFailed");
       toast.error(t("toast.removeFailed"), message);
     }
   };
@@ -293,7 +308,8 @@ export default function AccountsPage() {
       }
       refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.testFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.testFailed");
       toast.error(t("toast.testFailed"), message);
     }
   };
@@ -313,19 +329,6 @@ export default function AccountsPage() {
           </Button>
         </Link>
       </div>
-
-      {/* Info Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="flex items-center gap-4 py-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <Wallet className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold">{t("info.title")}</h3>
-            <p className="text-sm text-muted-foreground">{t("info.description")}</p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Loading */}
       {isLoading && <ListPageSkeleton />}
@@ -371,7 +374,9 @@ export default function AccountsPage() {
                   <Plus className="w-8 h-8" />
                 </div>
                 <p className="font-medium">{t("addCard.title")}</p>
-                <p className="text-sm text-center mt-1">{t("addCard.subtitle")}</p>
+                <p className="text-sm text-center mt-1">
+                  {t("addCard.subtitle")}
+                </p>
               </CardContent>
             </Card>
           </Link>

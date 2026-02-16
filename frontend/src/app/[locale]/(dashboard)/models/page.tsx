@@ -68,14 +68,17 @@ import type { ProviderConfigResponse, AIModelInfoResponse } from "@/lib/api";
 // Add Model Dialog Component (works for any provider)
 interface AddModelDialogProps {
   providerId: string;
-  onAdd: (providerId: string, data: {
-    id: string;
-    name: string;
-    description?: string;
-    context_window?: number;
-    max_output_tokens?: number;
-    supports_json_mode?: boolean;
-  }) => Promise<void>;
+  onAdd: (
+    providerId: string,
+    data: {
+      id: string;
+      name: string;
+      description?: string;
+      context_window?: number;
+      max_output_tokens?: number;
+      supports_json_mode?: boolean;
+    },
+  ) => Promise<void>;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -147,27 +150,40 @@ function AddModelDialog({ providerId, onAdd, t }: AddModelDialogProps) {
               id="name"
               placeholder={t("customModel.namePlaceholder")}
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">{t("customModel.modelDescription")}</Label>
+            <Label htmlFor="description">
+              {t("customModel.modelDescription")}
+            </Label>
             <Textarea
               id="description"
               placeholder={t("customModel.descriptionPlaceholder")}
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={2}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="context_window">{t("customModel.contextWindow")}</Label>
+              <Label htmlFor="context_window">
+                {t("customModel.contextWindow")}
+              </Label>
               <Input
                 id="context_window"
                 type="number"
                 value={formData.context_window}
-                onChange={(e) => setFormData({ ...formData, context_window: parseInt(e.target.value) || 128000 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    context_window: parseInt(e.target.value) || 128000,
+                  })
+                }
               />
             </div>
             <div className="space-y-2">
@@ -176,7 +192,12 @@ function AddModelDialog({ providerId, onAdd, t }: AddModelDialogProps) {
                 id="max_output"
                 type="number"
                 value={formData.max_output_tokens}
-                onChange={(e) => setFormData({ ...formData, max_output_tokens: parseInt(e.target.value) || 4096 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    max_output_tokens: parseInt(e.target.value) || 4096,
+                  })
+                }
               />
             </div>
           </div>
@@ -184,7 +205,9 @@ function AddModelDialog({ providerId, onAdd, t }: AddModelDialogProps) {
             <Switch
               id="json_mode"
               checked={formData.supports_json_mode}
-              onCheckedChange={(checked) => setFormData({ ...formData, supports_json_mode: checked })}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, supports_json_mode: checked })
+              }
             />
             <Label htmlFor="json_mode" className="text-sm">
               {t("customModel.supportsJsonMode")}
@@ -234,7 +257,9 @@ function ModelItem({ model, providerId, onTest, onDelete, t }: ModelItemProps) {
 
   const handleDelete = async () => {
     // Extract model_id from full id (provider:model_id)
-    const modelApiId = model.id.includes(":") ? model.id.split(":", 2)[1] : model.id;
+    const modelApiId = model.id.includes(":")
+      ? model.id.split(":", 2)[1]
+      : model.id;
     setIsDeleting(true);
     try {
       await onDelete(providerId, modelApiId);
@@ -269,8 +294,8 @@ function ModelItem({ model, providerId, onTest, onDelete, t }: ModelItemProps) {
               {formatNumber(model.context_window)} ctx
             </span>
             <span className="flex items-center gap-1">
-              <DollarSign className="w-3 h-3" />
-              ${model.cost_per_1k_input}/{model.cost_per_1k_output}
+              <DollarSign className="w-3 h-3" />${model.cost_per_1k_input}/
+              {model.cost_per_1k_output}
             </span>
             {model.supports_vision && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
@@ -324,28 +349,46 @@ interface ProviderCardProps {
   onTest: (id: string) => void;
   onToggle: (id: string, enabled: boolean) => void;
   onTestModel: (modelId: string) => Promise<void>;
-  onAddModel: (providerId: string, data: {
-    id: string;
-    name: string;
-    description?: string;
-    context_window?: number;
-    max_output_tokens?: number;
-    supports_json_mode?: boolean;
-  }) => Promise<void>;
+  onAddModel: (
+    providerId: string,
+    data: {
+      id: string;
+      name: string;
+      description?: string;
+      context_window?: number;
+      max_output_tokens?: number;
+      supports_json_mode?: boolean;
+    },
+  ) => Promise<void>;
   onDeleteModel: (providerId: string, modelId: string) => Promise<void>;
   t: ReturnType<typeof useTranslations>;
 }
 
-function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAddModel, onDeleteModel, t }: ProviderCardProps) {
+function ProviderCard({
+  provider,
+  onDelete,
+  onTest,
+  onToggle,
+  onTestModel,
+  onAddModel,
+  onDeleteModel,
+  t,
+}: ProviderCardProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Fetch models when expanded
-  const { models, isLoading: modelsLoading, error: modelsError, refresh: refreshModels } = useModels(
-    isExpanded ? provider.provider_type : undefined
-  );
+  const {
+    models,
+    isLoading: modelsLoading,
+    error: modelsError,
+    refresh: refreshModels,
+  } = useModels(isExpanded ? provider.provider_type : undefined);
 
-  const handleAddModel = async (providerId: string, data: Parameters<typeof onAddModel>[1]) => {
+  const handleAddModel = async (
+    providerId: string,
+    data: Parameters<typeof onAddModel>[1],
+  ) => {
     await onAddModel(providerId, data);
     refreshModels();
   };
@@ -365,10 +408,12 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
   };
 
   return (
-    <Card className={cn(
-      "bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors",
-      !provider.is_enabled && "opacity-60"
-    )}>
+    <Card
+      className={cn(
+        "bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors",
+        !provider.is_enabled && "opacity-60",
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -406,7 +451,11 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
               </DropdownMenuItem>
               {provider.website_url && (
                 <DropdownMenuItem asChild>
-                  <a href={provider.website_url} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={provider.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     {t("menu.openWebsite")}
                   </a>
@@ -427,17 +476,23 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
       <CardContent className="space-y-4">
         {/* Status Row */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-          <span className="text-sm text-muted-foreground">{t("card.apiKey")}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("card.apiKey")}
+          </span>
           <div className="flex items-center gap-2">
             {provider.has_api_key ? (
               <>
                 <Check className="w-4 h-4 text-[var(--profit)]" />
-                <span className="text-sm text-[var(--profit)]">{t("card.configured")}</span>
+                <span className="text-sm text-[var(--profit)]">
+                  {t("card.configured")}
+                </span>
               </>
             ) : (
               <>
                 <X className="w-4 h-4 text-[var(--loss)]" />
-                <span className="text-sm text-[var(--loss)]">{t("card.notConfigured")}</span>
+                <span className="text-sm text-[var(--loss)]">
+                  {t("card.notConfigured")}
+                </span>
               </>
             )}
           </div>
@@ -445,7 +500,9 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
 
         {/* API Format */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{t("card.apiFormat")}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("card.apiFormat")}
+          </span>
           <Badge variant="outline" className="text-xs">
             {provider.api_format.toUpperCase()}
           </Badge>
@@ -454,7 +511,9 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
         {/* Base URL */}
         {provider.base_url && (
           <div className="space-y-1">
-            <span className="text-sm text-muted-foreground">{t("card.endpoint")}</span>
+            <span className="text-sm text-muted-foreground">
+              {t("card.endpoint")}
+            </span>
             <p className="text-xs font-mono text-foreground/80 truncate">
               {provider.base_url}
             </p>
@@ -513,7 +572,11 @@ function ProviderCard({ provider, onDelete, onTest, onToggle, onTestModel, onAdd
                 <p className="text-sm text-destructive flex-1">
                   {t("modelList.loadFailed")}
                 </p>
-                <Button variant="outline" size="sm" onClick={() => refreshModels()}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshModels()}
+                >
                   {t("modelList.retry")}
                 </Button>
               </div>
@@ -563,7 +626,8 @@ export default function ModelsPage() {
       refresh();
       toast.success(t("deleteSuccess"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete provider";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete provider";
       toast.error(t("deleteError"), message);
     }
   };
@@ -577,7 +641,8 @@ export default function ModelsPage() {
         toast.error(t("testFailed"), result.message);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Connection test failed";
+      const message =
+        err instanceof Error ? err.message : "Connection test failed";
       toast.error(t("testFailed"), message);
     }
   };
@@ -587,7 +652,8 @@ export default function ModelsPage() {
       await providersApi.update(id, { is_enabled: enabled });
       refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update provider";
+      const message =
+        err instanceof Error ? err.message : "Failed to update provider";
       toast.error(t("updateError"), message);
     }
   };
@@ -608,7 +674,7 @@ export default function ModelsPage() {
                 | "modelList.testError.model_not_found"
                 | "modelList.testError.rate_limit"
                 | "modelList.testError.api_error"
-                | "modelList.testError.unknown"
+                | "modelList.testError.unknown",
             )
           : result.message;
         toast.error(t("modelList.testFailed"), message);
@@ -619,14 +685,17 @@ export default function ModelsPage() {
     }
   };
 
-  const handleAddModel = async (providerId: string, data: {
-    id: string;
-    name: string;
-    description?: string;
-    context_window?: number;
-    max_output_tokens?: number;
-    supports_json_mode?: boolean;
-  }) => {
+  const handleAddModel = async (
+    providerId: string,
+    data: {
+      id: string;
+      name: string;
+      description?: string;
+      context_window?: number;
+      max_output_tokens?: number;
+      supports_json_mode?: boolean;
+    },
+  ) => {
     try {
       await providersApi.addModel(providerId, {
         id: data.id,
@@ -638,7 +707,8 @@ export default function ModelsPage() {
       });
       toast.success(t("customModel.success"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add model";
+      const message =
+        err instanceof Error ? err.message : "Failed to add model";
       toast.error(t("customModel.error"), message);
       throw err;
     }
@@ -649,7 +719,8 @@ export default function ModelsPage() {
       await providersApi.deleteModel(providerId, modelId);
       toast.success(t("modelList.deleteSuccess"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete model";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete model";
       toast.error(t("modelList.deleteFailed"), message);
     }
   };
@@ -669,19 +740,6 @@ export default function ModelsPage() {
           </Button>
         </Link>
       </div>
-
-      {/* Info Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="flex items-center gap-4 py-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <Cpu className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold">{t("info.title")}</h3>
-            <p className="text-sm text-muted-foreground">{t("info.description")}</p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Loading */}
       {isLoading && <ListPageSkeleton />}
@@ -731,13 +789,14 @@ export default function ModelsPage() {
                   <Plus className="w-8 h-8" />
                 </div>
                 <p className="font-medium">{t("addCard.title")}</p>
-                <p className="text-sm text-center mt-1">{t("addCard.subtitle")}</p>
+                <p className="text-sm text-center mt-1">
+                  {t("addCard.subtitle")}
+                </p>
               </CardContent>
             </Card>
           </Link>
         </div>
       )}
-
     </div>
   );
 }

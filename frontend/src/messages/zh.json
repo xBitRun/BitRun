@@ -148,7 +148,7 @@
   },
   "agents": {
     "title": "交易代理",
-    "subtitle": "将策略绑定到账户和 AI 模型，自动执行交易",
+    "subtitle": "绑定策略与账户和 AI 模型，独立运行、持仓隔离，自动执行交易",
     "createAgent": "创建代理",
     "searchPlaceholder": "搜索代理...",
     "filter": {
@@ -222,10 +222,6 @@
       "deleteRequireStopped": "运行中的代理需先停止才能删除",
       "viewDetails": "查看详情"
     },
-    "info": {
-      "title": "交易代理",
-      "description": "代理将策略绑定到 AI 模型和交易所账户，每个代理独立运行，持仓完全隔离。"
-    },
     "empty": {
       "title": "还没有交易代理",
       "description": "选择一个策略创建你的第一个交易代理",
@@ -282,7 +278,12 @@
       "interval": "决策间隔",
       "maxPosition": "单仓最大保证金",
       "cancel": "取消",
-      "submit": "创建代理"
+      "submit": "创建代理",
+      "nameRequired": "请输入代理名称",
+      "accountRequired": "请选择交易所账户",
+      "minutes": "分钟",
+      "hour": "小时",
+      "hours": "小时"
     },
     "confirmDelete": "确定要删除这个代理吗？",
     "wizard": {
@@ -405,9 +406,13 @@
       "changeWarningDesc": "任何更改将应用于下一次交易决策。",
       "saveChanges": "保存更改",
       "notFound": "未找到代理",
-      "errorShortPrompt": "交易指令至少需要 10 个字符",
       "success": "代理更新成功",
-      "failed": "更新代理失败"
+      "failed": "更新代理失败",
+      "strategyInfo": "策略信息",
+      "strategyName": "策略名称",
+      "strategyType": "策略类型",
+      "symbols": "交易标的",
+      "strategyModifyHint": "如需修改策略配置（指标、风控、提示词），请前往策略编辑页面"
     }
   },
   "backtest": {
@@ -558,16 +563,12 @@
   },
   "accounts": {
     "title": "交易账户",
-    "subtitle": "安全管理您连接的交易所账户",
+    "subtitle": "连接多交易所账户，凭证加密存储，支持测试网试运行",
     "addAccount": "添加账户",
     "confirmDelete": "确定要删除这个账户吗？",
     "security": {
       "title": "安全第一",
       "description": "所有 API 凭证均采用端到端加密。建议使用有限权限的子账户并启用 IP 白名单。"
-    },
-    "info": {
-      "title": "交易所账户连接",
-      "description": "连接 Hyperliquid、Binance、Bybit、OKX、Bitget、KuCoin、Gate.io 等交易所，凭证加密存储，可使用测试网免实盘试运行。"
     },
     "exchangeDescriptions": {
       "hyperliquid": "去中心化永续合约交易所",
@@ -951,7 +952,8 @@
       "title": "还没有策略",
       "searchHint": "尝试调整搜索条件或筛选器",
       "createHint": "创建你的第一个策略",
-      "noDescription": "暂无描述"
+      "noDescription": "暂无描述",
+      "noSymbol": "未配置交易对"
     },
     "versions": {
       "title": "版本历史",
@@ -978,7 +980,128 @@
       "updated": "策略更新成功",
       "deleted": "策略删除成功"
     },
-    "retry": "重试"
+    "retry": "重试",
+    "create": {
+      "title": "创建策略",
+      "description": "选择策略类型并配置参数",
+      "basicInfo": "基本信息",
+      "parameters": "策略参数",
+      "name": "策略名称",
+      "namePlaceholder": "例如：BTC 网格策略",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选的策略描述",
+      "symbol": "交易对",
+      "symbolPlaceholder": "例如：BTC",
+      "cancel": "取消",
+      "submit": "创建策略"
+    },
+    "edit": {
+      "title": "编辑策略",
+      "backToStrategy": "返回策略详情",
+      "nameRequired": "策略名称不能为空",
+      "notFound": "策略未找到",
+      "add": "添加",
+      "yes": "是",
+      "no": "否",
+      "saveChanges": "保存更改"
+    },
+    "detail": {
+      "backToStrategies": "返回策略列表",
+      "notFound": "策略未找到",
+      "idCopied": "策略 ID 已复制",
+      "linkCopied": "链接已复制",
+      "refresh": "刷新",
+      "tabs": {
+        "overview": "概览",
+        "config": "配置",
+        "trades": "交易",
+        "settings": "设置"
+      },
+      "actions": {
+        "edit": "编辑",
+        "copyId": "复制 ID",
+        "share": "分享"
+      },
+      "overview": {
+        "strategyType": "策略类型",
+        "symbol": "交易对",
+        "symbols": "交易标的",
+        "strategyInfo": "策略信息",
+        "summary": "策略摘要",
+        "quickStats": "快速统计",
+        "tags": "标签数",
+        "visibility": "可见性"
+      },
+      "config": {
+        "title": "配置",
+        "description": "策略参数配置",
+        "empty": "暂无配置参数",
+        "raw": "原始配置 JSON",
+        "commonParams": "通用参数",
+        "riskControls": "风控参数",
+        "maxLeverage": "最大杠杆",
+        "maxPositionRatio": "单仓最大比例",
+        "maxTotalExposure": "最大总敞口",
+        "minConfidence": "最低置信度",
+        "maxDrawdown": "最大回撤",
+        "promptPreview": "Prompt 预览",
+        "noConfig": "暂无配置参数"
+      },
+      "metadata": {
+        "title": "元数据",
+        "visibility": "可见性",
+        "category": "分类",
+        "tags": "标签",
+        "forkCount": "复刻次数",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      },
+      "settings": {
+        "edit": "编辑",
+        "editStrategy": "编辑策略信息",
+        "editHint": "修改策略名称、描述和配置",
+        "basicInfo": "基本信息",
+        "visibility": "可见性设置",
+        "currentlyPublic": "当前为公开",
+        "currentlyPrivate": "当前为私有",
+        "publicHint": "所有人都可以在市场中查看此策略",
+        "privateHint": "只有你可以查看此策略",
+        "change": "修改",
+        "dangerZone": "危险区域",
+        "deleteStrategy": "删除策略",
+        "deleteConfirm": "确定要删除此策略吗？此操作无法撤消。",
+        "deleteConfirmTitle": "确认删除策略",
+        "deleteConfirmDesc": "此操作不可撤销，策略将被永久删除。",
+        "confirmDelete": "确认删除"
+      },
+      "sidebar": {
+        "info": "策略信息",
+        "created": "创建时间",
+        "updated": "更新时间",
+        "stats": "统计数据"
+      }
+    },
+    "edit": {
+      "title": "编辑策略",
+      "backToStrategy": "返回策略详情",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置策略名称和描述",
+      "config": "策略配置",
+      "configDesc": "修改策略参数配置",
+      "visibilityAndTags": "可见性与标签",
+      "visibilityAndTagsDesc": "设置策略可见性和标签",
+      "visibility": "可见性",
+      "tags": "标签",
+      "tagPlaceholder": "输入标签",
+      "noTags": "暂无标签",
+      "nameRequired": "策略名称不能为空",
+      "noConfig": "暂无配置参数",
+      "yes": "是",
+      "no": "否",
+      "add": "添加",
+      "saveChanges": "保存更改",
+      "notFound": "策略未找到"
+    }
   },
   "settings": {
     "title": "设置",
@@ -1570,7 +1693,7 @@
   },
   "models": {
     "title": "AI 模型",
-    "subtitle": "配置和管理 AI 供应商",
+    "subtitle": "配置 AI 供应商的 API Key 和端点，为交易代理提供决策支持",
     "addProvider": "添加供应商",
     "confirmDelete": "确定要删除这个供应商吗？",
     "deleteSuccess": "供应商删除成功",
@@ -1581,10 +1704,6 @@
     "retry": "重试",
     "error": {
       "loadFailed": "加载供应商失败"
-    },
-    "info": {
-      "title": "AI 供应商配置",
-      "description": "配置您的 AI 供应商 API Key 和端点，用于 AI 交易代理的决策分析。"
     },
     "card": {
       "apiKey": "API Key",
@@ -2044,6 +2163,7 @@
       "refresh": "刷新",
       "tabs": {
         "overview": "概览",
+        "config": "配置",
         "trades": "交易",
         "settings": "设置"
       },
@@ -2095,16 +2215,61 @@
         "rsiSellSignal": "卖出信号",
         "lastCheck": "最后检查"
       },
+      "config": {
+        "title": "策略配置",
+        "description": "策略的参数配置",
+        "empty": "暂无配置参数",
+        "raw": "原始配置 JSON"
+      },
+      "metadata": {
+        "title": "元数据",
+        "visibility": "可见性",
+        "category": "分类",
+        "tags": "标签",
+        "forkCount": "被复刻次数",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      },
       "settings": {
         "title": "策略设置",
         "saveChanges": "保存更改",
+        "edit": "编辑策略",
+        "editStrategy": "编辑策略信息",
+        "editHint": "修改策略名称、描述和配置",
+        "visibility": "可见性设置",
+        "currentlyPublic": "当前为公开策略",
+        "currentlyPrivate": "当前为私有策略",
+        "publicHint": "所有人都可以在市场中查看此策略",
+        "privateHint": "只有你可以查看此策略",
         "dangerZone": "危险区域",
         "deleteStrategy": "删除策略",
         "deleteConfirm": "确定要删除此策略吗？此操作无法撤消。",
         "deleteRequireStopped": "运行中的策略需先停止才能删除",
+        "deleteConfirmTitle": "确认删除策略",
+        "deleteConfirmDesc": "此操作不可撤销，策略将被永久删除。",
         "cancel": "取消",
         "confirmDelete": "确认删除"
       }
+    },
+    "edit": {
+      "title": "编辑策略",
+      "backToStrategy": "返回策略详情",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置策略名称和描述",
+      "config": "策略配置",
+      "configDesc": "修改策略参数配置",
+      "visibilityAndTags": "可见性与标签",
+      "visibilityAndTagsDesc": "设置策略可见性和标签",
+      "visibility": "可见性",
+      "tags": "标签",
+      "tagPlaceholder": "输入标签",
+      "nameRequired": "策略名称不能为空",
+      "noConfig": "暂无配置参数",
+      "yes": "是",
+      "no": "否",
+      "add": "添加",
+      "saveChanges": "保存更改",
+      "notFound": "策略未找到"
     }
   },
   "strategyPreset": {

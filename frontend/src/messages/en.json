@@ -148,7 +148,7 @@
   },
   "agents": {
     "title": "Agents",
-    "subtitle": "Bind strategies to accounts and AI models for automated trading",
+    "subtitle": "Bind strategies to accounts and models, run independently with isolated positions",
     "createAgent": "Create Agent",
     "searchPlaceholder": "Search agents...",
     "filter": {
@@ -222,10 +222,6 @@
       "deleteRequireStopped": "Running agent must be stopped before deletion",
       "viewDetails": "View Details"
     },
-    "info": {
-      "title": "Trading Agents",
-      "description": "Agents bind strategies to AI models and exchange accounts. Each agent runs independently with isolated positions."
-    },
     "empty": {
       "title": "No agents yet",
       "description": "Create your first trading agent by selecting a strategy",
@@ -282,7 +278,12 @@
       "interval": "Decision Interval",
       "maxPosition": "Max Margin Ratio",
       "cancel": "Cancel",
-      "submit": "Create Agent"
+      "submit": "Create Agent",
+      "nameRequired": "Agent name is required",
+      "accountRequired": "Please select an exchange account",
+      "minutes": "minutes",
+      "hour": "hour",
+      "hours": "hours"
     },
     "confirmDelete": "Are you sure you want to delete this agent?",
     "wizard": {
@@ -405,9 +406,13 @@
       "changeWarningDesc": "Any changes will be applied to the next trading decision.",
       "saveChanges": "Save Changes",
       "notFound": "Agent not found",
-      "errorShortPrompt": "Trading prompt must be at least 10 characters",
       "success": "Agent updated successfully",
-      "failed": "Failed to update agent"
+      "failed": "Failed to update agent",
+      "strategyInfo": "Strategy Info",
+      "strategyName": "Strategy Name",
+      "strategyType": "Strategy Type",
+      "symbols": "Symbols",
+      "strategyModifyHint": "To modify strategy config (indicators, risk controls, prompts), go to the Strategy edit page"
     }
   },
   "backtest": {
@@ -558,16 +563,12 @@
   },
   "accounts": {
     "title": "Accounts",
-    "subtitle": "Manage your connected exchange accounts securely",
+    "subtitle": "Connect exchange accounts with encrypted credentials, testnet available",
     "addAccount": "Add Account",
     "confirmDelete": "Are you sure you want to remove this account?",
     "security": {
       "title": "Security First",
       "description": "All API credentials are encrypted end-to-end. We recommend using sub-accounts with limited permissions and IP whitelisting."
-    },
-    "info": {
-      "title": "Exchange Account Connection",
-      "description": "Connect Hyperliquid, Binance, Bybit, OKX, Bitget, KuCoin, Gate.io and more. Credentials are encrypted; use testnet to try without real funds."
     },
     "exchangeDescriptions": {
       "hyperliquid": "Decentralized perpetual exchange",
@@ -951,7 +952,105 @@
       "title": "No strategies yet",
       "searchHint": "Try adjusting your search or filters",
       "createHint": "Create your first strategy",
-      "noDescription": "No description"
+      "noDescription": "No description",
+      "noSymbol": "No symbols configured"
+    },
+    "detail": {
+      "backToStrategies": "Back to Strategies",
+      "notFound": "Strategy not found",
+      "idCopied": "Strategy ID copied",
+      "linkCopied": "Link copied",
+      "refresh": "Refresh",
+      "tabs": {
+        "overview": "Overview",
+        "config": "Configuration",
+        "trades": "Trades",
+        "settings": "Settings"
+      },
+      "actions": {
+        "edit": "Edit",
+        "copyId": "Copy ID",
+        "share": "Share"
+      },
+      "overview": {
+        "strategyInfo": "Strategy Info",
+        "strategyType": "Strategy Type",
+        "symbol": "Symbol",
+        "symbols": "Trading Symbols",
+        "summary": "Strategy Summary",
+        "quickStats": "Quick Stats",
+        "tags": "Tags",
+        "visibility": "Visibility"
+      },
+      "config": {
+        "title": "Configuration",
+        "description": "Strategy parameter configuration",
+        "empty": "No configuration parameters",
+        "raw": "Raw Config JSON",
+        "commonParams": "Common Parameters",
+        "riskControls": "Risk Controls",
+        "maxLeverage": "Max Leverage",
+        "maxPositionRatio": "Max Position Ratio",
+        "maxTotalExposure": "Max Total Exposure",
+        "minConfidence": "Min Confidence",
+        "maxDrawdown": "Max Drawdown",
+        "promptPreview": "Prompt Preview",
+        "noConfig": "No configuration parameters"
+      },
+      "metadata": {
+        "title": "Metadata",
+        "visibility": "Visibility",
+        "category": "Category",
+        "tags": "Tags",
+        "forkCount": "Fork Count",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At"
+      },
+      "settings": {
+        "edit": "Edit",
+        "editStrategy": "Edit Strategy Info",
+        "editHint": "Modify strategy name, description and configuration",
+        "basicInfo": "Basic Info",
+        "visibility": "Visibility Settings",
+        "currentlyPublic": "Currently Public",
+        "currentlyPrivate": "Currently Private",
+        "publicHint": "Everyone can view this strategy in the marketplace",
+        "privateHint": "Only you can view this strategy",
+        "change": "Change",
+        "dangerZone": "Danger Zone",
+        "deleteStrategy": "Delete Strategy",
+        "deleteConfirm": "Are you sure you want to delete this strategy? This action cannot be undone.",
+        "deleteConfirmTitle": "Confirm Delete Strategy",
+        "deleteConfirmDesc": "This action is irreversible. The strategy will be permanently deleted.",
+        "confirmDelete": "Confirm Delete"
+      },
+      "sidebar": {
+        "info": "Strategy Info",
+        "created": "Created",
+        "updated": "Updated",
+        "stats": "Statistics"
+      }
+    },
+    "edit": {
+      "title": "Edit Strategy",
+      "backToStrategy": "Back to Strategy",
+      "basicInfo": "Basic Information",
+      "basicInfoDesc": "Set strategy name and description",
+      "config": "Strategy Configuration",
+      "configDesc": "Modify strategy parameters",
+      "visibilityAndTags": "Visibility & Tags",
+      "visibilityAndTagsDesc": "Set strategy visibility and tags",
+      "visibility": "Visibility",
+      "tags": "Tags",
+      "tagPlaceholder": "Enter tag",
+      "noTags": "No tags",
+      "nameRequired": "Strategy name is required",
+      "noConfig": "No configuration parameters",
+      "yes": "Yes",
+      "no": "No",
+      "add": "Add",
+      "saveChanges": "Save Changes",
+      "notFound": "Strategy not found"
     },
     "versions": {
       "title": "Version History",
@@ -978,7 +1077,21 @@
       "updated": "Strategy updated successfully",
       "deleted": "Strategy deleted successfully"
     },
-    "retry": "Retry"
+    "retry": "Retry",
+    "create": {
+      "title": "Create Strategy",
+      "description": "Choose a strategy type and configure parameters",
+      "basicInfo": "Basic Information",
+      "parameters": "Strategy Parameters",
+      "name": "Strategy Name",
+      "namePlaceholder": "e.g., BTC Grid Strategy",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "symbol": "Trading Pair",
+      "symbolPlaceholder": "e.g., BTC",
+      "cancel": "Cancel",
+      "submit": "Create Strategy"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -1570,7 +1683,7 @@
   },
   "models": {
     "title": "Models",
-    "subtitle": "Configure and manage AI providers",
+    "subtitle": "Configure AI provider API keys and endpoints for trading agent decisions",
     "addProvider": "Add Provider",
     "confirmDelete": "Are you sure you want to delete this provider?",
     "deleteSuccess": "Provider deleted successfully",
@@ -1581,10 +1694,6 @@
     "retry": "Retry",
     "error": {
       "loadFailed": "Failed to load providers"
-    },
-    "info": {
-      "title": "AI Provider Configuration",
-      "description": "Configure your AI provider API keys and endpoints for AI trading agent decision analysis."
     },
     "card": {
       "apiKey": "API Key",

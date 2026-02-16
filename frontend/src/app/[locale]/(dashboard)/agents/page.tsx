@@ -42,7 +42,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAgents } from "@/hooks/use-agents";
 import { useToast } from "@/components/ui/toast";
@@ -127,14 +134,20 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 {agent.strategy_type && (
                   <Badge
                     variant="outline"
-                    className={cn("text-xs", getStrategyTypeColor(agent.strategy_type))}
+                    className={cn(
+                      "text-xs",
+                      getStrategyTypeColor(agent.strategy_type),
+                    )}
                   >
                     {agent.strategy_type.toUpperCase()}
                   </Badge>
                 )}
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getExecutionModeColor(agent.execution_mode))}
+                  className={cn(
+                    "text-xs",
+                    getExecutionModeColor(agent.execution_mode),
+                  )}
                 >
                   {t(`executionMode.${agent.execution_mode}`)}
                 </Badge>
@@ -154,25 +167,40 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/agents/${agent.id}`} className="flex items-center">
+                <Link
+                  href={`/agents/${agent.id}`}
+                  className="flex items-center"
+                >
                   <Eye className="w-4 h-4 mr-2" />
                   {t("actions.viewDetails")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/agents/${agent.id}/edit`} className="flex items-center">
+                <Link
+                  href={`/agents/${agent.id}/edit`}
+                  className="flex items-center"
+                >
                   <Pencil className="w-4 h-4 mr-2" />
                   {t("actions.edit")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className={["stopped", "draft"].includes(agent.status) ? "text-destructive" : "text-muted-foreground"}
+                className={
+                  ["stopped", "draft"].includes(agent.status)
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }
                 disabled={!["stopped", "draft"].includes(agent.status)}
-                onClick={() => ["stopped", "draft"].includes(agent.status) && onDelete(agent.id)}
+                onClick={() =>
+                  ["stopped", "draft"].includes(agent.status) &&
+                  onDelete(agent.id)
+                }
               >
                 {t("actions.delete")}
                 {!["stopped", "draft"].includes(agent.status) && (
-                  <span className="ml-1 text-xs">({t("actions.deleteRequireStopped")})</span>
+                  <span className="ml-1 text-xs">
+                    ({t("actions.deleteRequireStopped")})
+                  </span>
                 )}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -183,13 +211,15 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/30">
           <div>
-            <p className="text-xs text-muted-foreground">{t("stats.totalPL")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("stats.totalPL")}
+            </p>
             <p
               className={cn(
                 "font-mono font-semibold flex items-center gap-1",
                 agent.total_pnl >= 0
                   ? "text-[var(--profit)]"
-                  : "text-[var(--loss)]"
+                  : "text-[var(--loss)]",
               )}
             >
               {agent.total_pnl >= 0 ? (
@@ -201,13 +231,17 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("stats.winRate")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("stats.winRate")}
+            </p>
             <p className="font-mono font-semibold">
               {agent.win_rate.toFixed(1)}%
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("stats.totalTrades")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("stats.totalTrades")}
+            </p>
             <p className="font-mono font-semibold">{agent.total_trades}</p>
           </div>
         </div>
@@ -243,7 +277,9 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                {agent.status === "draft" ? t("actions.start") : t("actions.resume")}
+                {agent.status === "draft"
+                  ? t("actions.start")
+                  : t("actions.resume")}
               </Button>
               {agent.status === "paused" && (
                 <Button
@@ -258,7 +294,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 </Button>
               )}
             </>
-          ) : (agent.status === "error" || agent.status === "warning") ? (
+          ) : agent.status === "error" || agent.status === "warning" ? (
             <>
               <Button
                 variant="default"
@@ -297,10 +333,15 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             <DialogContent showCloseButton={false}>
               <DialogHeader>
                 <DialogTitle>{t("actions.stopConfirmTitle")}</DialogTitle>
-                <DialogDescription>{t("actions.stopConfirmDesc")}</DialogDescription>
+                <DialogDescription>
+                  {t("actions.stopConfirmDesc")}
+                </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowStopConfirm(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowStopConfirm(false)}
+                >
                   {t("actions.cancel")}
                 </Button>
                 <Button
@@ -341,10 +382,11 @@ export default function AgentsPage() {
       const { agentsApi } = await import("@/lib/api");
       await agentsApi.updateStatus(id, status);
       refresh();
-      const statusKey = status === 'active' ? 'started' : status;
+      const statusKey = status === "active" ? "started" : status;
       toast.success(t(`toast.${statusKey}`));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.updateFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.updateFailed");
       toast.error(t("toast.updateFailed"), message);
     }
   };
@@ -357,14 +399,17 @@ export default function AgentsPage() {
       refresh();
       toast.success(t("toast.deleteSuccess"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("toast.deleteFailed");
+      const message =
+        err instanceof Error ? err.message : t("toast.deleteFailed");
       toast.error(t("toast.deleteFailed"), message);
     }
   };
 
   const filteredAgents = agents.filter((a) => {
     const matchesFilter = filter === "all" || a.status === filter;
-    const matchesSearch = a.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = a.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -385,19 +430,6 @@ export default function AgentsPage() {
           </Button>
         </Link>
       </div>
-
-      {/* Info Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="flex items-center gap-4 py-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <Bot className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold">{t("info.title")}</h3>
-            <p className="text-sm text-muted-foreground">{t("info.description")}</p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       {!hasNoAgents && (

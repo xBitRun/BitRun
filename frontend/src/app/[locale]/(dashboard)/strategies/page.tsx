@@ -14,7 +14,6 @@ import {
   Bot,
   GitFork,
   Eye,
-  Pencil,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -92,7 +91,13 @@ interface StrategyCardProps {
   tType: ReturnType<typeof useTranslations>;
 }
 
-function StrategyCard({ strategy, onDelete, onToggleVisibility, t, tType }: StrategyCardProps) {
+function StrategyCard({
+  strategy,
+  onDelete,
+  onToggleVisibility,
+  t,
+  tType,
+}: StrategyCardProps) {
   const TypeIcon = getTypeIcon(strategy.type);
 
   return (
@@ -114,14 +119,18 @@ function StrategyCard({ strategy, onDelete, onToggleVisibility, t, tType }: Stra
                 </Badge>
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getVisibilityColor(strategy.visibility))}
+                  className={cn(
+                    "text-xs",
+                    getVisibilityColor(strategy.visibility),
+                  )}
                 >
                   {t(`visibility.${strategy.visibility}`)}
                 </Badge>
                 {strategy.symbols.length > 0 && (
                   <Badge variant="outline" className="text-xs">
                     {strategy.symbols.slice(0, 3).join(", ")}
-                    {strategy.symbols.length > 3 && ` +${strategy.symbols.length - 3}`}
+                    {strategy.symbols.length > 3 &&
+                      ` +${strategy.symbols.length - 3}`}
                   </Badge>
                 )}
               </div>
@@ -138,19 +147,27 @@ function StrategyCard({ strategy, onDelete, onToggleVisibility, t, tType }: Stra
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/strategies/${strategy.id}`} className="flex items-center">
+                <Link
+                  href={`/strategies/${strategy.id}`}
+                  className="flex items-center"
+                >
                   <Eye className="w-4 h-4 mr-2" />
                   {t("actions.viewDetails")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/agents/new?strategyId=${strategy.id}`} className="flex items-center">
+                <Link
+                  href={`/agents/new?strategyId=${strategy.id}`}
+                  className="flex items-center"
+                >
                   <Zap className="w-4 h-4 mr-2" />
                   {t("actions.createAgent")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => onToggleVisibility(strategy.id, strategy.visibility)}
+                onClick={() =>
+                  onToggleVisibility(strategy.id, strategy.visibility)
+                }
               >
                 {strategy.visibility === "public" ? (
                   <>
@@ -200,7 +217,10 @@ function StrategyCard({ strategy, onDelete, onToggleVisibility, t, tType }: Stra
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          <Link href={`/agents/new?strategyId=${strategy.id}`} className="flex-1">
+          <Link
+            href={`/agents/new?strategyId=${strategy.id}`}
+            className="flex-1"
+          >
             <Button variant="default" size="sm" className="w-full">
               <Zap className="w-4 h-4 mr-2" />
               {t("actions.createAgent")}
@@ -234,7 +254,8 @@ export default function StrategiesPage() {
       refresh();
       toast.success(t("toast.deleted"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("error.deleteFailed");
+      const message =
+        err instanceof Error ? err.message : t("error.deleteFailed");
       toast.error(t("error.deleteFailed"), message);
     }
   };
@@ -243,18 +264,23 @@ export default function StrategiesPage() {
     const newVisibility = current === "public" ? "private" : "public";
     try {
       const { strategiesApi } = await import("@/lib/api");
-      await strategiesApi.update(id, { visibility: newVisibility as "private" | "public" });
+      await strategiesApi.update(id, {
+        visibility: newVisibility as "private" | "public",
+      });
       refresh();
       toast.success(t("toast.updated"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("error.updateFailed");
+      const message =
+        err instanceof Error ? err.message : t("error.updateFailed");
       toast.error(t("error.updateFailed"), message);
     }
   };
 
   const filteredStrategies = strategies.filter((s) => {
     const matchesType = typeFilter === "all" || s.type === typeFilter;
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = s.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
 
