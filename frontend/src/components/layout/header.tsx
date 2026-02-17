@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import Image from "next/image";
 import { LogOut, Menu, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LanguageSwitcher } from "./language-switcher";
 import { useAuthStore } from "@/stores/auth-store";
+import { BrandedLogo } from "@/components/brand";
 
 interface HeaderProps {
   /** "dashboard" shows user menu; "landing" shows login button + logo */
@@ -58,11 +58,9 @@ export function Header({ variant = "dashboard", onMenuClick }: HeaderProps) {
       {/* Left side */}
       <div className="flex items-center gap-3">
         {isLanding ? (
-          /* Landing: BITRUN logo */
+          /* Landing: Logo from brand config */
           <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="BITRUN"
+            <BrandedLogo
               width={200}
               height={64}
               className="h-14 w-auto"
@@ -130,9 +128,13 @@ export function Header({ variant = "dashboard", onMenuClick }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.name || t("myAccount")}</p>
+                  <p className="text-sm font-medium">
+                    {user?.name || t("myAccount")}
+                  </p>
                   {user?.email && (
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user.email}
+                    </p>
                   )}
                 </div>
               </DropdownMenuLabel>

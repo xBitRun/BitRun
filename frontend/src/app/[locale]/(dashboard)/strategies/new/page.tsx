@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { useRouter, Link } from "@/i18n/navigation";
+import { useState, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter, Link } from '@/i18n/navigation';
 import {
   ArrowLeft,
   Grid3X3,
@@ -12,39 +12,39 @@ import {
   Check,
   Loader2,
   CheckCircle,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 import {
   StrategyStudioTabs,
   StrategyPresetSelector,
-} from "@/components/strategy-studio";
-import { SymbolSelector } from "@/components/symbol-selector";
-import { useStrategyStudio } from "@/hooks";
+} from '@/components/strategy-studio';
+import { SymbolSelector } from '@/components/symbol-selector';
+import { useStrategyStudio } from '@/hooks';
 import type {
   StrategyType,
   RiskProfile,
   TimeHorizon,
   StrategyStudioConfig,
-} from "@/types";
-import { getStrategyPreset, getDefaultPromptSections } from "@/types";
+} from '@/types';
+import { getStrategyPreset, getDefaultPromptSections } from '@/types';
 
 const STRATEGY_TYPES: {
   type: StrategyType;
@@ -52,30 +52,30 @@ const STRATEGY_TYPES: {
   color: string;
 }[] = [
   {
-    type: "ai",
+    type: 'ai',
     icon: Bot,
-    color: "text-purple-500 bg-purple-500/10 border-purple-500/30",
+    color: 'text-purple-500 bg-purple-500/10 border-purple-500/30',
   },
   {
-    type: "grid",
+    type: 'grid',
     icon: Grid3X3,
-    color: "text-blue-500 bg-blue-500/10 border-blue-500/30",
+    color: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
   },
   {
-    type: "dca",
+    type: 'dca',
     icon: ArrowDownUp,
-    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
+    color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
   },
   {
-    type: "rsi",
+    type: 'rsi',
     icon: Activity,
-    color: "text-violet-500 bg-violet-500/10 border-violet-500/30",
+    color: 'text-rose-500 bg-violet-500/10 border-rose-500/30',
   },
 ];
 
 export default function CreateStrategyPage() {
-  const t = useTranslations("quantStrategies");
-  const tStudio = useTranslations("agents");
+  const t = useTranslations('quantStrategies');
+  const tStudio = useTranslations('agents');
   const locale = useLocale();
   const router = useRouter();
   const toast = useToast();
@@ -87,31 +87,31 @@ export default function CreateStrategyPage() {
   const [selectedType, setSelectedType] = useState<StrategyType | null>(null);
 
   // Quant-only form state
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [symbol, setSymbol] = useState("BTC");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [symbol, setSymbol] = useState('BTC');
 
   // Grid params
-  const [gridUpperPrice, setGridUpperPrice] = useState("50000");
-  const [gridLowerPrice, setGridLowerPrice] = useState("40000");
-  const [gridCount, setGridCount] = useState("10");
-  const [gridTotalInvestment, setGridTotalInvestment] = useState("1000");
-  const [gridLeverage, setGridLeverage] = useState("1");
+  const [gridUpperPrice, setGridUpperPrice] = useState('50000');
+  const [gridLowerPrice, setGridLowerPrice] = useState('40000');
+  const [gridCount, setGridCount] = useState('10');
+  const [gridTotalInvestment, setGridTotalInvestment] = useState('1000');
+  const [gridLeverage, setGridLeverage] = useState('1');
 
   // DCA params
-  const [dcaOrderAmount, setDcaOrderAmount] = useState("100");
-  const [dcaIntervalMinutes, setDcaIntervalMinutes] = useState("60");
-  const [dcaTakeProfitPercent, setDcaTakeProfitPercent] = useState("5");
-  const [dcaTotalBudget, setDcaTotalBudget] = useState("0");
-  const [dcaMaxOrders, setDcaMaxOrders] = useState("0");
+  const [dcaOrderAmount, setDcaOrderAmount] = useState('100');
+  const [dcaIntervalMinutes, setDcaIntervalMinutes] = useState('60');
+  const [dcaTakeProfitPercent, setDcaTakeProfitPercent] = useState('5');
+  const [dcaTotalBudget, setDcaTotalBudget] = useState('0');
+  const [dcaMaxOrders, setDcaMaxOrders] = useState('0');
 
   // RSI params
-  const [rsiPeriod, setRsiPeriod] = useState("14");
-  const [rsiOverbought, setRsiOverbought] = useState("70");
-  const [rsiOversold, setRsiOversold] = useState("30");
-  const [rsiOrderAmount, setRsiOrderAmount] = useState("100");
-  const [rsiTimeframe, setRsiTimeframe] = useState("1h");
-  const [rsiLeverage, setRsiLeverage] = useState("1");
+  const [rsiPeriod, setRsiPeriod] = useState('14');
+  const [rsiOverbought, setRsiOverbought] = useState('70');
+  const [rsiOversold, setRsiOversold] = useState('30');
+  const [rsiOrderAmount, setRsiOrderAmount] = useState('100');
+  const [rsiTimeframe, setRsiTimeframe] = useState('1h');
+  const [rsiLeverage, setRsiLeverage] = useState('1');
 
   // ============ AI Strategy Studio ============
 
@@ -156,7 +156,7 @@ export default function CreateStrategyPage() {
       if (!isCustomPreset && selectedRiskProfile && selectedTimeHorizon) {
         const preset = getStrategyPreset(
           selectedRiskProfile,
-          selectedTimeHorizon,
+          selectedTimeHorizon
         );
         if (preset) {
           const defaultPromptSections = getDefaultPromptSections(locale);
@@ -170,8 +170,8 @@ export default function CreateStrategyPage() {
             JSON.stringify(newConfig.promptSections) !==
             JSON.stringify(defaultPromptSections);
           const advancedPromptChanged =
-            newConfig.promptMode === "advanced" &&
-            newConfig.advancedPrompt.trim() !== "";
+            newConfig.promptMode === 'advanced' &&
+            newConfig.advancedPrompt.trim() !== '';
 
           if (
             indicatorsChanged ||
@@ -191,15 +191,15 @@ export default function CreateStrategyPage() {
       selectedTimeHorizon,
       setStudioConfig,
       locale,
-    ],
+    ]
   );
 
-  const isAiType = selectedType === "ai";
+  const isAiType = selectedType === 'ai';
 
   // ============ Quant Config Builder ============
   const buildQuantConfig = (): Record<string, unknown> => {
     switch (selectedType) {
-      case "grid":
+      case 'grid':
         return {
           upper_price: parseFloat(gridUpperPrice),
           lower_price: parseFloat(gridLowerPrice),
@@ -207,7 +207,7 @@ export default function CreateStrategyPage() {
           total_investment: parseFloat(gridTotalInvestment),
           leverage: parseFloat(gridLeverage),
         };
-      case "dca":
+      case 'dca':
         return {
           order_amount: parseFloat(dcaOrderAmount),
           interval_minutes: parseInt(dcaIntervalMinutes),
@@ -215,7 +215,7 @@ export default function CreateStrategyPage() {
           total_budget: parseFloat(dcaTotalBudget),
           max_orders: parseInt(dcaMaxOrders),
         };
-      case "rsi":
+      case 'rsi':
         return {
           rsi_period: parseInt(rsiPeriod),
           overbought_threshold: parseFloat(rsiOverbought),
@@ -236,31 +236,31 @@ export default function CreateStrategyPage() {
 
     setIsSubmitting(true);
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { strategiesApi } = await import('@/lib/api');
       const apiData = toApiFormat();
 
       // Build config with preset info
       const configObj = apiData.config as Record<string, unknown>;
       configObj.preset = isCustomPreset
-        ? "custom"
+        ? 'custom'
         : `${selectedRiskProfile}_${selectedTimeHorizon}`;
       configObj.prompt = apiData.prompt as string;
       configObj.trading_mode = apiData.trading_mode as string;
 
       const strategy = await strategiesApi.create({
-        type: "ai",
+        type: 'ai',
         name: apiData.name as string,
         description: apiData.description as string,
         symbols: (configObj.symbols as string[]) || studioConfig.symbols,
         config: configObj,
       });
 
-      toast.success(t("toast.createSuccess"));
+      toast.success(t('toast.createSuccess'));
       router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toast.createFailed");
-      toast.error(t("toast.createFailed"), message);
+        err instanceof Error ? err.message : t('toast.createFailed');
+      toast.error(t('toast.createFailed'), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -273,7 +273,7 @@ export default function CreateStrategyPage() {
 
     setIsSubmitting(true);
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { strategiesApi } = await import('@/lib/api');
       const strategy = await strategiesApi.create({
         type: selectedType,
         name,
@@ -281,12 +281,12 @@ export default function CreateStrategyPage() {
         symbols,
         config: buildQuantConfig(),
       });
-      toast.success(t("toast.createSuccess"));
+      toast.success(t('toast.createSuccess'));
       router.push(`/agents/new?strategyId=${strategy.id}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toast.createFailed");
-      toast.error(t("toast.createFailed"), message);
+        err instanceof Error ? err.message : t('toast.createFailed');
+      toast.error(t('toast.createFailed'), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -298,13 +298,13 @@ export default function CreateStrategyPage() {
   };
 
   const isAiFormValid =
-    studioConfig.name.trim() !== "" && studioConfig.symbols.length > 0;
+    studioConfig.name.trim() !== '' && studioConfig.symbols.length > 0;
 
   return (
     <div
       className={cn(
-        "space-y-6 mx-auto",
-        isAiType && step === 1 ? "max-w-5xl" : "max-w-3xl",
+        'space-y-6 mx-auto',
+        isAiType && step === 1 ? 'max-w-5xl' : 'max-w-3xl'
       )}
     >
       {/* Header */}
@@ -316,7 +316,7 @@ export default function CreateStrategyPage() {
             if (step > 0) {
               setStep(step - 1);
             } else {
-              router.push("/strategies");
+              router.push('/strategies');
             }
           }}
         >
@@ -324,9 +324,9 @@ export default function CreateStrategyPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gradient">
-            {t("create.title")}
+            {t('create.title')}
           </h1>
-          <p className="text-muted-foreground">{t("create.description")}</p>
+          <p className="text-muted-foreground">{t('create.description')}</p>
         </div>
         {/* AI submit button in header when on step 1 */}
         {isAiType && step === 1 && (
@@ -340,7 +340,7 @@ export default function CreateStrategyPage() {
             ) : (
               <CheckCircle className="w-4 h-4 mr-2" />
             )}
-            {t("create.submit")}
+            {t('create.submit')}
           </Button>
         )}
       </div>
@@ -348,21 +348,21 @@ export default function CreateStrategyPage() {
       {/* Step 0: Select Strategy Type */}
       {step === 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("create.selectType")}</h2>
+          <h2 className="text-lg font-semibold">{t('create.selectType')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {STRATEGY_TYPES.map(({ type, icon: Icon, color }) => (
               <Card
                 key={type}
                 className={cn(
-                  "cursor-pointer transition-all hover:scale-[1.02]",
+                  'cursor-pointer transition-all hover:scale-[1.02]',
                   selectedType === type
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border/50 hover:border-primary/30",
+                    ? 'border-primary ring-2 ring-primary/20'
+                    : 'border-border/50 hover:border-primary/30'
                 )}
                 onClick={() => setSelectedType(type)}
               >
                 <CardContent className="flex flex-col items-center py-8 text-center">
-                  <div className={cn("p-4 rounded-xl mb-4 border", color)}>
+                  <div className={cn('p-4 rounded-xl mb-4 border', color)}>
                     <Icon className="w-8 h-8" />
                   </div>
                   <h3 className="font-semibold text-lg mb-2">
@@ -382,7 +382,7 @@ export default function CreateStrategyPage() {
           </div>
           <div className="flex justify-end">
             <Button onClick={() => setStep(1)} disabled={!selectedType}>
-              {t("create.next")}
+              {t('create.next')}
             </Button>
           </div>
         </div>
@@ -399,12 +399,12 @@ export default function CreateStrategyPage() {
                 <div className="space-y-2">
                   <Label htmlFor="ai-name" className="flex items-center gap-2">
                     <Bot className="w-4 h-4 text-primary" />
-                    {t("create.name")}
+                    {t('create.name')}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="ai-name"
-                    placeholder={t("create.namePlaceholder")}
+                    placeholder={t('create.namePlaceholder')}
                     value={studioConfig.name}
                     onChange={(e) =>
                       setStudioConfig({ ...studioConfig, name: e.target.value })
@@ -415,11 +415,11 @@ export default function CreateStrategyPage() {
                 {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="ai-description">
-                    {t("create.descriptionLabel")}
+                    {t('create.descriptionLabel')}
                   </Label>
                   <Input
                     id="ai-description"
-                    placeholder={t("create.descriptionPlaceholder")}
+                    placeholder={t('create.descriptionPlaceholder')}
                     value={studioConfig.description}
                     onChange={(e) =>
                       setStudioConfig({
@@ -462,7 +462,7 @@ export default function CreateStrategyPage() {
           {/* Bottom Action Buttons */}
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(0)}>
-              {t("create.back")}
+              {t('create.back')}
             </Button>
             <Button
               onClick={handleAiSubmit}
@@ -474,7 +474,7 @@ export default function CreateStrategyPage() {
               ) : (
                 <CheckCircle className="w-4 h-4 mr-2" />
               )}
-              {t("create.submit")}
+              {t('create.submit')}
             </Button>
           </div>
         </div>
@@ -485,40 +485,40 @@ export default function CreateStrategyPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t("create.basicInfo")}</CardTitle>
-              <CardDescription>{t("create.basicInfoDesc")}</CardDescription>
+              <CardTitle>{t('create.basicInfo')}</CardTitle>
+              <CardDescription>{t('create.basicInfoDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  {t("create.name")}
+                  {t('create.name')}
                   <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={t("create.namePlaceholder")}
+                  placeholder={t('create.namePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("create.descriptionLabel")}</Label>
+                <Label>{t('create.descriptionLabel')}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t("create.descriptionPlaceholder")}
+                  placeholder={t('create.descriptionPlaceholder')}
                 />
               </div>
               {/* Quant: single symbol */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  {t("create.symbol")}
+                  {t('create.symbol')}
                   <span className="text-destructive">*</span>
                 </Label>
                 <SymbolSelector
                   value={symbol}
                   onChange={(v) => setSymbol(v as string)}
                   mode="single"
-                  placeholder={t("create.symbolPlaceholder")}
+                  placeholder={t('create.symbolPlaceholder')}
                 />
               </div>
             </CardContent>
@@ -526,13 +526,13 @@ export default function CreateStrategyPage() {
 
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(0)}>
-              {t("create.back")}
+              {t('create.back')}
             </Button>
             <Button
               onClick={() => setStep(2)}
               disabled={!canProceedQuantStep1()}
             >
-              {t("create.next")}
+              {t('create.next')}
             </Button>
           </div>
         </div>
@@ -544,19 +544,19 @@ export default function CreateStrategyPage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {selectedType === "grid" && t("grid.title")}
-                {selectedType === "dca" && t("dca.title")}
-                {selectedType === "rsi" && t("rsi.title")}
+                {selectedType === 'grid' && t('grid.title')}
+                {selectedType === 'dca' && t('dca.title')}
+                {selectedType === 'rsi' && t('rsi.title')}
               </CardTitle>
-              <CardDescription>{t("create.parametersDesc")}</CardDescription>
+              <CardDescription>{t('create.parametersDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Grid Parameters */}
-              {selectedType === "grid" && (
+              {selectedType === 'grid' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("grid.upperPrice")}</Label>
+                      <Label>{t('grid.upperPrice')}</Label>
                       <Input
                         type="number"
                         value={gridUpperPrice}
@@ -564,7 +564,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("grid.lowerPrice")}</Label>
+                      <Label>{t('grid.lowerPrice')}</Label>
                       <Input
                         type="number"
                         value={gridLowerPrice}
@@ -574,7 +574,7 @@ export default function CreateStrategyPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("grid.gridCount")}</Label>
+                      <Label>{t('grid.gridCount')}</Label>
                       <Input
                         type="number"
                         value={gridCount}
@@ -582,7 +582,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("grid.totalInvestment")}</Label>
+                      <Label>{t('grid.totalInvestment')}</Label>
                       <Input
                         type="number"
                         value={gridTotalInvestment}
@@ -590,7 +590,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("grid.leverage")}</Label>
+                      <Label>{t('grid.leverage')}</Label>
                       <Input
                         type="number"
                         value={gridLeverage}
@@ -602,11 +602,11 @@ export default function CreateStrategyPage() {
               )}
 
               {/* DCA Parameters */}
-              {selectedType === "dca" && (
+              {selectedType === 'dca' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("dca.orderAmount")}</Label>
+                      <Label>{t('dca.orderAmount')}</Label>
                       <Input
                         type="number"
                         value={dcaOrderAmount}
@@ -614,7 +614,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("dca.intervalMinutes")}</Label>
+                      <Label>{t('dca.intervalMinutes')}</Label>
                       <Input
                         type="number"
                         value={dcaIntervalMinutes}
@@ -624,7 +624,7 @@ export default function CreateStrategyPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("dca.takeProfitPercent")}</Label>
+                      <Label>{t('dca.takeProfitPercent')}</Label>
                       <Input
                         type="number"
                         value={dcaTakeProfitPercent}
@@ -634,7 +634,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("dca.totalBudget")}</Label>
+                      <Label>{t('dca.totalBudget')}</Label>
                       <Input
                         type="number"
                         value={dcaTotalBudget}
@@ -642,7 +642,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("dca.maxOrders")}</Label>
+                      <Label>{t('dca.maxOrders')}</Label>
                       <Input
                         type="number"
                         value={dcaMaxOrders}
@@ -654,11 +654,11 @@ export default function CreateStrategyPage() {
               )}
 
               {/* RSI Parameters */}
-              {selectedType === "rsi" && (
+              {selectedType === 'rsi' && (
                 <>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("rsi.rsiPeriod")}</Label>
+                      <Label>{t('rsi.rsiPeriod')}</Label>
                       <Input
                         type="number"
                         value={rsiPeriod}
@@ -666,7 +666,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("rsi.overboughtThreshold")}</Label>
+                      <Label>{t('rsi.overboughtThreshold')}</Label>
                       <Input
                         type="number"
                         value={rsiOverbought}
@@ -674,7 +674,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("rsi.oversoldThreshold")}</Label>
+                      <Label>{t('rsi.oversoldThreshold')}</Label>
                       <Input
                         type="number"
                         value={rsiOversold}
@@ -684,7 +684,7 @@ export default function CreateStrategyPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>{t("rsi.orderAmount")}</Label>
+                      <Label>{t('rsi.orderAmount')}</Label>
                       <Input
                         type="number"
                         value={rsiOrderAmount}
@@ -692,7 +692,7 @@ export default function CreateStrategyPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("rsi.timeframe")}</Label>
+                      <Label>{t('rsi.timeframe')}</Label>
                       <Select
                         value={rsiTimeframe}
                         onValueChange={setRsiTimeframe}
@@ -712,7 +712,7 @@ export default function CreateStrategyPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("rsi.leverage")}</Label>
+                      <Label>{t('rsi.leverage')}</Label>
                       <Input
                         type="number"
                         value={rsiLeverage}
@@ -726,7 +726,7 @@ export default function CreateStrategyPage() {
           </Card>
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(1)}>
-              {t("create.back")}
+              {t('create.back')}
             </Button>
             <Button
               onClick={handleQuantSubmit}
@@ -736,7 +736,7 @@ export default function CreateStrategyPage() {
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
-              {t("create.submit")}
+              {t('create.submit')}
             </Button>
           </div>
         </div>

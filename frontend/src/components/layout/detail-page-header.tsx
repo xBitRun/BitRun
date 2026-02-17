@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import Link from 'next/link';
+import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface BadgeItem {
   label: string;
@@ -22,7 +22,7 @@ interface MoreMenuItem {
   label: string;
   icon?: React.ReactNode;
   onClick: () => void;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
   separatorBefore?: boolean;
 }
 
@@ -61,7 +61,7 @@ interface DetailPageHeaderProps {
  *   title="My Strategy"
  *   description="Strategy description"
  *   badges={[
- *     { label: "AI", className: "border-violet-500/30 text-violet-500" },
+ *     { label: "AI", className: "border-rose-500/30 text-rose-500" },
  *     { label: "Private", className: "border-muted-foreground/30 text-muted-foreground" },
  *   ]}
  *   primaryActions={
@@ -100,13 +100,13 @@ export function DetailPageHeader({
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-primary/10">{icon}</div>
           <div>
-            <h1 className="text-2xl font-bold">{title}</h1>
+            <h1 className="text-2xl font-bold text-gradient">{title}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {badges?.map((badge, index) => (
                 <Badge
                   key={index}
                   variant="outline"
-                  className={cn("text-xs", badge.className)}
+                  className={cn('text-xs', badge.className)}
                 >
                   {badge.label}
                 </Badge>
@@ -143,7 +143,9 @@ export function DetailPageHeader({
                     variant={item.variant}
                     onClick={item.onClick}
                   >
-                    {item.icon && <span className="w-4 h-4 mr-2">{item.icon}</span>}
+                    {item.icon && (
+                      <span className="w-4 h-4 mr-2">{item.icon}</span>
+                    )}
                     {item.label}
                   </DropdownMenuItem>
                 </div>

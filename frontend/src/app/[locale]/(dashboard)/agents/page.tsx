@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import {
   Plus,
   Play,
@@ -18,30 +18,30 @@ import {
   RotateCcw,
   Zap,
   Eye,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   ListPageSkeleton,
   ListPageError,
   ListPageEmpty,
   ListPageFilterEmpty,
-} from "@/components/list-page";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+} from '@/components/list-page';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -49,48 +49,48 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { useAgents } from "@/hooks/use-agents";
-import { useToast } from "@/components/ui/toast";
-import type { AgentResponse } from "@/lib/api";
-import type { AgentStatus } from "@/types";
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import { useAgents } from '@/hooks/use-agents';
+import { useToast } from '@/components/ui/toast';
+import type { AgentResponse } from '@/lib/api';
+import type { AgentStatus } from '@/types';
 
 function getStatusColor(status: AgentStatus) {
   switch (status) {
-    case "active":
-      return "bg-[var(--profit)]/20 text-[var(--profit)]";
-    case "paused":
-      return "bg-[var(--warning)]/20 text-[var(--warning)]";
-    case "stopped":
-      return "bg-muted text-muted-foreground";
-    case "error":
-      return "bg-[var(--loss)]/20 text-[var(--loss)]";
-    case "warning":
-      return "bg-[var(--warning)]/20 text-[var(--warning)]";
+    case 'active':
+      return 'bg-[var(--profit)]/20 text-[var(--profit)]';
+    case 'paused':
+      return 'bg-[var(--warning)]/20 text-[var(--warning)]';
+    case 'stopped':
+      return 'bg-muted text-muted-foreground';
+    case 'error':
+      return 'bg-[var(--loss)]/20 text-[var(--loss)]';
+    case 'warning':
+      return 'bg-[var(--warning)]/20 text-[var(--warning)]';
     default:
-      return "bg-muted text-muted-foreground";
+      return 'bg-muted text-muted-foreground';
   }
 }
 
 function getExecutionModeColor(mode: string) {
-  return mode === "live"
-    ? "border-emerald-500/30 text-emerald-500"
-    : "border-amber-500/30 text-amber-500";
+  return mode === 'live'
+    ? 'border-emerald-500/30 text-emerald-500'
+    : 'border-amber-500/30 text-amber-500';
 }
 
 function getStrategyTypeColor(type: string | null | undefined) {
   switch (type) {
-    case "ai":
-      return "border-violet-500/30 text-violet-500";
-    case "grid":
-      return "border-blue-500/30 text-blue-500";
-    case "dca":
-      return "border-emerald-500/30 text-emerald-500";
-    case "rsi":
-      return "border-amber-500/30 text-amber-500";
+    case 'ai':
+      return 'border-rose-500/30 text-rose-500';
+    case 'grid':
+      return 'border-blue-500/30 text-blue-500';
+    case 'dca':
+      return 'border-emerald-500/30 text-emerald-500';
+    case 'rsi':
+      return 'border-amber-500/30 text-amber-500';
     default:
-      return "border-muted-foreground/30 text-muted-foreground";
+      return 'border-muted-foreground/30 text-muted-foreground';
   }
 }
 
@@ -127,7 +127,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getStatusColor(agent.status))}
+                  className={cn('text-xs', getStatusColor(agent.status))}
                 >
                   {t(`status.${agent.status}`)}
                 </Badge>
@@ -135,8 +135,8 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-xs",
-                      getStrategyTypeColor(agent.strategy_type),
+                      'text-xs',
+                      getStrategyTypeColor(agent.strategy_type)
                     )}
                   >
                     {agent.strategy_type.toUpperCase()}
@@ -145,8 +145,8 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-xs",
-                    getExecutionModeColor(agent.execution_mode),
+                    'text-xs',
+                    getExecutionModeColor(agent.execution_mode)
                   )}
                 >
                   {t(`executionMode.${agent.execution_mode}`)}
@@ -172,7 +172,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   className="flex items-center"
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  {t("actions.viewDetails")}
+                  {t('actions.viewDetails')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -181,25 +181,25 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   className="flex items-center"
                 >
                   <Pencil className="w-4 h-4 mr-2" />
-                  {t("actions.edit")}
+                  {t('actions.edit')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className={
-                  ["stopped", "draft"].includes(agent.status)
-                    ? "text-destructive"
-                    : "text-muted-foreground"
+                  ['stopped', 'draft'].includes(agent.status)
+                    ? 'text-destructive'
+                    : 'text-muted-foreground'
                 }
-                disabled={!["stopped", "draft"].includes(agent.status)}
+                disabled={!['stopped', 'draft'].includes(agent.status)}
                 onClick={() =>
-                  ["stopped", "draft"].includes(agent.status) &&
+                  ['stopped', 'draft'].includes(agent.status) &&
                   onDelete(agent.id)
                 }
               >
-                {t("actions.delete")}
-                {!["stopped", "draft"].includes(agent.status) && (
+                {t('actions.delete')}
+                {!['stopped', 'draft'].includes(agent.status) && (
                   <span className="ml-1 text-xs">
-                    ({t("actions.deleteRequireStopped")})
+                    ({t('actions.deleteRequireStopped')})
                   </span>
                 )}
               </DropdownMenuItem>
@@ -212,14 +212,14 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
         <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/30">
           <div>
             <p className="text-xs text-muted-foreground">
-              {t("stats.totalPL")}
+              {t('stats.totalPL')}
             </p>
             <p
               className={cn(
-                "font-mono font-semibold flex items-center gap-1",
+                'font-mono font-semibold flex items-center gap-1',
                 agent.total_pnl >= 0
-                  ? "text-[var(--profit)]"
-                  : "text-[var(--loss)]",
+                  ? 'text-[var(--profit)]'
+                  : 'text-[var(--loss)]'
               )}
             >
               {agent.total_pnl >= 0 ? (
@@ -232,7 +232,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {t("stats.winRate")}
+              {t('stats.winRate')}
             </p>
             <p className="font-mono font-semibold">
               {agent.win_rate.toFixed(1)}%
@@ -240,7 +240,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {t("stats.totalTrades")}
+              {t('stats.totalTrades')}
             </p>
             <p className="font-mono font-semibold">{agent.total_trades}</p>
           </div>
@@ -248,12 +248,12 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          {agent.status === "active" ? (
+          {agent.status === 'active' ? (
             <Button
               variant="default"
               size="sm"
               className="flex-1 bg-primary/20 text-primary hover:bg-primary/30"
-              onClick={() => handleStatusChange("paused")}
+              onClick={() => handleStatusChange('paused')}
               disabled={isUpdating}
             >
               {isUpdating ? (
@@ -261,15 +261,15 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
               ) : (
                 <Pause className="w-4 h-4 mr-2" />
               )}
-              {t("actions.pause")}
+              {t('actions.pause')}
             </Button>
-          ) : agent.status === "paused" || agent.status === "draft" ? (
+          ) : agent.status === 'paused' || agent.status === 'draft' ? (
             <>
               <Button
                 variant="default"
                 size="sm"
                 className="flex-1"
-                onClick={() => handleStatusChange("active")}
+                onClick={() => handleStatusChange('active')}
                 disabled={isUpdating}
               >
                 {isUpdating ? (
@@ -277,11 +277,11 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                {agent.status === "draft"
-                  ? t("actions.start")
-                  : t("actions.resume")}
+                {agent.status === 'draft'
+                  ? t('actions.start')
+                  : t('actions.resume')}
               </Button>
-              {agent.status === "paused" && (
+              {agent.status === 'paused' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -290,17 +290,17 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   disabled={isUpdating}
                 >
                   <Square className="w-4 h-4 mr-2" />
-                  {t("actions.stop")}
+                  {t('actions.stop')}
                 </Button>
               )}
             </>
-          ) : agent.status === "error" || agent.status === "warning" ? (
+          ) : agent.status === 'error' || agent.status === 'warning' ? (
             <>
               <Button
                 variant="default"
                 size="sm"
                 className="flex-1"
-                onClick={() => handleStatusChange("active")}
+                onClick={() => handleStatusChange('active')}
                 disabled={isUpdating}
               >
                 {isUpdating ? (
@@ -308,7 +308,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                {t("actions.restart")}
+                {t('actions.restart')}
               </Button>
               <Button
                 variant="outline"
@@ -318,13 +318,13 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 disabled={isUpdating}
               >
                 <Square className="w-4 h-4 mr-2" />
-                {t("actions.stop")}
+                {t('actions.stop')}
               </Button>
             </>
           ) : null}
           <Link href={`/agents/${agent.id}`}>
             <Button variant="ghost" size="sm">
-              {t("actions.viewDetails")}
+              {t('actions.viewDetails')}
             </Button>
           </Link>
 
@@ -332,9 +332,9 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
           <Dialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
             <DialogContent showCloseButton={false}>
               <DialogHeader>
-                <DialogTitle>{t("actions.stopConfirmTitle")}</DialogTitle>
+                <DialogTitle>{t('actions.stopConfirmTitle')}</DialogTitle>
                 <DialogDescription>
-                  {t("actions.stopConfirmDesc")}
+                  {t('actions.stopConfirmDesc')}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -342,13 +342,13 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   variant="outline"
                   onClick={() => setShowStopConfirm(false)}
                 >
-                  {t("actions.cancel")}
+                  {t('actions.cancel')}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={async () => {
                     setShowStopConfirm(false);
-                    await handleStatusChange("stopped");
+                    await handleStatusChange('stopped');
                   }}
                   disabled={isUpdating}
                 >
@@ -357,7 +357,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                   ) : (
                     <Square className="w-4 h-4 mr-2" />
                   )}
-                  {t("actions.confirmStop")}
+                  {t('actions.confirmStop')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -369,9 +369,9 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
 }
 
 export default function AgentsPage() {
-  const t = useTranslations("agents");
-  const [filter, setFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const t = useTranslations('agents');
+  const [filter, setFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { agents, error, isLoading, refresh } = useAgents();
   const toast = useToast();
@@ -379,34 +379,34 @@ export default function AgentsPage() {
   // Status update handler
   const handleStatusChange = async (id: string, status: AgentStatus) => {
     try {
-      const { agentsApi } = await import("@/lib/api");
+      const { agentsApi } = await import('@/lib/api');
       await agentsApi.updateStatus(id, status);
       refresh();
-      const statusKey = status === "active" ? "started" : status;
+      const statusKey = status === 'active' ? 'started' : status;
       toast.success(t(`toast.${statusKey}`));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toast.updateFailed");
-      toast.error(t("toast.updateFailed"), message);
+        err instanceof Error ? err.message : t('toast.updateFailed');
+      toast.error(t('toast.updateFailed'), message);
     }
   };
 
   // Delete handler
   const handleDelete = async (id: string) => {
     try {
-      const { agentsApi } = await import("@/lib/api");
+      const { agentsApi } = await import('@/lib/api');
       await agentsApi.delete(id);
       refresh();
-      toast.success(t("toast.deleteSuccess"));
+      toast.success(t('toast.deleteSuccess'));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toast.deleteFailed");
-      toast.error(t("toast.deleteFailed"), message);
+        err instanceof Error ? err.message : t('toast.deleteFailed');
+      toast.error(t('toast.deleteFailed'), message);
     }
   };
 
   const filteredAgents = agents.filter((a) => {
-    const matchesFilter = filter === "all" || a.status === filter;
+    const matchesFilter = filter === 'all' || a.status === filter;
     const matchesSearch = a.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -420,13 +420,13 @@ export default function AgentsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
+          <h1 className="text-2xl font-bold text-gradient">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Link href="/agents/new">
           <Button className="glow-primary">
             <Plus className="w-4 h-4 mr-2" />
-            {t("createAgent")}
+            {t('createAgent')}
           </Button>
         </Link>
       </div>
@@ -436,7 +436,7 @@ export default function AgentsPage() {
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Input
-              placeholder={t("searchPlaceholder")}
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-muted/50"
@@ -448,11 +448,11 @@ export default function AgentsPage() {
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("filter.allStatus")}</SelectItem>
-              <SelectItem value="active">{t("filter.active")}</SelectItem>
-              <SelectItem value="paused">{t("filter.paused")}</SelectItem>
-              <SelectItem value="draft">{t("filter.draft")}</SelectItem>
-              <SelectItem value="stopped">{t("filter.stopped")}</SelectItem>
+              <SelectItem value="all">{t('filter.allStatus')}</SelectItem>
+              <SelectItem value="active">{t('filter.active')}</SelectItem>
+              <SelectItem value="paused">{t('filter.paused')}</SelectItem>
+              <SelectItem value="draft">{t('filter.draft')}</SelectItem>
+              <SelectItem value="stopped">{t('filter.stopped')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -464,9 +464,9 @@ export default function AgentsPage() {
       {/* Error */}
       {error && (
         <ListPageError
-          message={error.message || t("error.loadFailed")}
+          message={error.message || t('error.loadFailed')}
           onRetry={() => refresh()}
-          retryLabel={t("retry")}
+          retryLabel={t('retry')}
         />
       )}
 
@@ -474,9 +474,9 @@ export default function AgentsPage() {
       {hasNoAgents && (
         <ListPageEmpty
           icon={Bot}
-          title={t("empty.title")}
-          description={t("empty.description")}
-          actionLabel={t("empty.createFirst")}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          actionLabel={t('empty.createFirst')}
           actionHref="/agents/new"
           actionIcon={Plus}
         />
@@ -502,9 +502,9 @@ export default function AgentsPage() {
                     <div className="p-3 rounded-full bg-muted/30 mb-3">
                       <Plus className="w-6 h-6" />
                     </div>
-                    <p className="font-medium">{t("createAgent")}</p>
+                    <p className="font-medium">{t('createAgent')}</p>
                     <p className="text-sm text-center mt-1 text-muted-foreground">
-                      {t("empty.description")}
+                      {t('empty.description')}
                     </p>
                   </CardContent>
                 </Card>
@@ -513,8 +513,8 @@ export default function AgentsPage() {
           ) : (
             <ListPageFilterEmpty
               icon={Bot}
-              title={t("empty.title")}
-              description={t("empty.searchHint")}
+              title={t('empty.title')}
+              description={t('empty.searchHint')}
             />
           )}
         </>

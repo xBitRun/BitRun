@@ -8,9 +8,11 @@ import { FeatureCards } from "@/components/landing/feature-cards";
 import { CoreCapabilities } from "@/components/landing/core-capabilities";
 import { CapabilityShowcase } from "@/components/landing/capability-showcase";
 import { LandingFooter } from "@/components/landing/landing-footer";
+import { useTheme } from "@/lib/brand-context";
 
 export default function LandingPage() {
   const t = useTranslations("landing");
+  const theme = useTheme();
 
   return (
     <div className="landing-wrapper bg-background text-foreground">
@@ -22,7 +24,7 @@ export default function LandingPage() {
         {/* WebGL DarkVeil background */}
         <div className="dark-veil-container">
           <DarkVeil
-            hueShift={0}
+            hueShift={theme.effects?.darkVeilHueShift ?? 0}
             noiseIntensity={0}
             scanlineIntensity={0}
             speed={0.5}
@@ -38,7 +40,9 @@ export default function LandingPage() {
         <div className="landing-hero-content">
           {/* Title */}
           <h1 className="hero-animate hero-animate-delay-1 landing-title">
-            <span className="text-gradient-animated">{t("hero.titleLine1")}</span>
+            <span className="text-gradient-animated">
+              {t("hero.titleLine1")}
+            </span>
             <br />
             {t("hero.titleLine2")}
           </h1>

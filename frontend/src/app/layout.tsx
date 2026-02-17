@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { generateBrandMetadata } from "@/components/brand";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "BITRUN | AI-Powered Trading Agent",
-  description: "Prompt-driven automated trading with AI decision making",
-};
+export const metadata: Metadata = generateBrandMetadata();
 
 export default function RootLayout({
   children,

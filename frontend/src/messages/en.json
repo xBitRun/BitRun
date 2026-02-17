@@ -1,4 +1,14 @@
 {
+  "brand": {
+    "name": "BITRUN",
+    "shortName": "BITRUN",
+    "tagline": "AI-Powered Trading Agent",
+    "description": "Prompt-driven automated trading with AI decision making",
+    "copyright": "© {year} {name}. All rights reserved.",
+    "teamName": "{name} Team",
+    "madeWith": "Made with",
+    "apiNote": "{name} uses secure JWT authentication. Access tokens expire after 1 hour."
+  },
   "metadata": {
     "title": "BITRUN | AI-Powered Trading Agent",
     "description": "Prompt-driven automated trading with AI decision making"
@@ -18,7 +28,7 @@
     "confirmPasswordPlaceholder": "Enter password again",
     "loginButton": "Sign In",
     "registerButton": "Create Account",
-    "continue": "Continue",
+    "continue": "Sign In",
     "loading": "Please wait...",
     "forgotPassword": "Forgot your password?",
     "resetPassword": "Reset Your Password",

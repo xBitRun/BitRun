@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,29 +20,29 @@ import {
   Plus,
   Wallet,
   Play,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 import {
   useStrategies,
   useAccounts,
@@ -51,13 +51,13 @@ import {
   getProviderDisplayName,
   useStrategyExchangeCompatibility,
   useBoundAccounts,
-} from "@/hooks";
-import type { StrategyResponse, CreateAgentRequest } from "@/lib/api";
-import type { StrategyType, ExecutionMode } from "@/types";
+} from '@/hooks';
+import type { StrategyResponse, CreateAgentRequest } from '@/lib/api';
+import type { StrategyType, ExecutionMode } from '@/types';
 
 // ==================== Constants ====================
 
-const STEPS = ["strategy", "model", "execution", "review"] as const;
+const STEPS = ['strategy', 'model', 'execution', 'review'] as const;
 type WizardStep = (typeof STEPS)[number];
 
 const STRATEGY_TYPE_ICONS: Record<StrategyType, typeof Bot> = {
@@ -68,27 +68,27 @@ const STRATEGY_TYPE_ICONS: Record<StrategyType, typeof Bot> = {
 };
 
 const STRATEGY_TYPE_COLORS: Record<StrategyType, string> = {
-  ai: "text-purple-500 bg-purple-500/10 border-purple-500/30",
-  grid: "text-blue-500 bg-blue-500/10 border-blue-500/30",
-  dca: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
-  rsi: "text-violet-500 bg-violet-500/10 border-violet-500/30",
+  ai: 'text-purple-500 bg-purple-500/10 border-purple-500/30',
+  grid: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
+  dca: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+  rsi: 'text-rose-500 bg-violet-500/10 border-rose-500/30',
 };
 
 const INTERVAL_OPTIONS = [
-  { value: 5, labelKey: "5min" },
-  { value: 15, labelKey: "15min" },
-  { value: 30, labelKey: "30min" },
-  { value: 60, labelKey: "1hr" },
-  { value: 240, labelKey: "4hr" },
-  { value: 1440, labelKey: "24hr" },
+  { value: 5, labelKey: '5min' },
+  { value: 15, labelKey: '15min' },
+  { value: 30, labelKey: '30min' },
+  { value: 60, labelKey: '1hr' },
+  { value: 240, labelKey: '4hr' },
+  { value: 1440, labelKey: '24hr' },
 ];
 
-const TYPE_FILTERS: { value: StrategyType | "all"; labelKey: string }[] = [
-  { value: "all", labelKey: "filterAll" },
-  { value: "ai", labelKey: "filterAi" },
-  { value: "grid", labelKey: "filterGrid" },
-  { value: "dca", labelKey: "filterDca" },
-  { value: "rsi", labelKey: "filterRsi" },
+const TYPE_FILTERS: { value: StrategyType | 'all'; labelKey: string }[] = [
+  { value: 'all', labelKey: 'filterAll' },
+  { value: 'ai', labelKey: 'filterAi' },
+  { value: 'grid', labelKey: 'filterGrid' },
+  { value: 'dca', labelKey: 'filterDca' },
+  { value: 'rsi', labelKey: 'filterRsi' },
 ];
 
 // ==================== StepIndicator ====================
@@ -105,12 +105,12 @@ function StepIndicator({
   t: ReturnType<typeof useTranslations>;
 }) {
   const stepIcons = [FileText, Bot, Zap, Rocket];
-  const stepKeys: WizardStep[] = ["strategy", "model", "execution", "review"];
+  const stepKeys: WizardStep[] = ['strategy', 'model', 'execution', 'review'];
 
   // Filter out skipped steps for display
   const visibleSteps = steps.filter((_, index) => !skippedSteps.has(index));
   const visibleStepKeys = stepKeys.filter(
-    (_, index) => !skippedSteps.has(index),
+    (_, index) => !skippedSteps.has(index)
   );
   const visibleIcons = stepIcons.filter((_, index) => !skippedSteps.has(index));
 
@@ -138,12 +138,12 @@ function StepIndicator({
             <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all",
+                  'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all',
                   isActive
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : isComplete
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground",
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background text-muted-foreground'
                 )}
               >
                 {isComplete ? (
@@ -154,8 +154,8 @@ function StepIndicator({
               </div>
               <span
                 className={cn(
-                  "text-xs mt-1.5 font-medium whitespace-nowrap",
-                  isActive ? "text-primary" : "text-muted-foreground",
+                  'text-xs mt-1.5 font-medium whitespace-nowrap',
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 {t(`wizard.steps.${visibleStepKeys[index]}`)}
@@ -164,8 +164,8 @@ function StepIndicator({
             {index < visibleSteps.length - 1 && (
               <div
                 className={cn(
-                  "flex-1 h-0.5 mx-3 -mt-5",
-                  index < visibleCurrentStep ? "bg-primary" : "bg-border",
+                  'flex-1 h-0.5 mx-3 -mt-5',
+                  index < visibleCurrentStep ? 'bg-primary' : 'bg-border'
                 )}
               />
             )}
@@ -188,7 +188,7 @@ interface WizardState {
   executionMode: ExecutionMode;
   accountId: string;
   mockInitialBalance: number;
-  capitalMode: "none" | "fixed" | "percent";
+  capitalMode: 'none' | 'fixed' | 'percent';
   allocatedCapital: number;
   allocatedCapitalPercent: number;
   // Step 4
@@ -200,14 +200,14 @@ interface WizardState {
 const initialState: WizardState = {
   selectedStrategyId: null,
   selectedStrategy: null,
-  aiModel: "",
-  executionMode: "live",
-  accountId: "",
+  aiModel: '',
+  executionMode: 'live',
+  accountId: '',
   mockInitialBalance: 10000,
-  capitalMode: "none",
+  capitalMode: 'none',
   allocatedCapital: 0,
   allocatedCapitalPercent: 30,
-  agentName: "",
+  agentName: '',
   executionIntervalMinutes: 15,
   autoExecute: true,
 };
@@ -215,8 +215,8 @@ const initialState: WizardState = {
 // ==================== Main Wizard Page ====================
 
 export default function AgentWizardPage() {
-  const t = useTranslations("agents");
-  const tStrat = useTranslations("strategies");
+  const t = useTranslations('agents');
+  const tStrat = useTranslations('strategies');
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -233,7 +233,7 @@ export default function AgentWizardPage() {
   const { data: boundAccountIds = [] } = useBoundAccounts();
 
   // Is the selected strategy an AI strategy?
-  const isAiStrategy = state.selectedStrategy?.type === "ai";
+  const isAiStrategy = state.selectedStrategy?.type === 'ai';
 
   // Steps that should be skipped
   const skippedSteps = useMemo(() => {
@@ -246,7 +246,7 @@ export default function AgentWizardPage() {
 
   // URL param: auto-select strategy
   useEffect(() => {
-    const strategyId = searchParams.get("strategyId");
+    const strategyId = searchParams.get('strategyId');
     if (strategyId && strategies.length > 0 && !state.selectedStrategyId) {
       const strategy = strategies.find((s) => s.id === strategyId);
       if (strategy) {
@@ -257,7 +257,7 @@ export default function AgentWizardPage() {
           agentName: `${strategy.name} Agent`,
         }));
         // Auto-advance to next relevant step
-        const nextStep = strategy.type === "ai" ? 1 : 2;
+        const nextStep = strategy.type === 'ai' ? 1 : 2;
         setCurrentStep(nextStep);
       }
     }
@@ -290,34 +290,34 @@ export default function AgentWizardPage() {
 
     setIsSubmitting(true);
     try {
-      const { agentsApi } = await import("@/lib/api");
+      const { agentsApi } = await import('@/lib/api');
       const request: CreateAgentRequest = {
         name: state.agentName,
         strategy_id: state.selectedStrategyId,
         ai_model: isAiStrategy ? state.aiModel || undefined : undefined,
         execution_mode: state.executionMode,
         account_id:
-          state.executionMode === "live"
+          state.executionMode === 'live'
             ? state.accountId || undefined
             : undefined,
         mock_initial_balance:
-          state.executionMode === "mock" ? state.mockInitialBalance : undefined,
+          state.executionMode === 'mock' ? state.mockInitialBalance : undefined,
         allocated_capital:
-          state.capitalMode === "fixed" ? state.allocatedCapital : undefined,
+          state.capitalMode === 'fixed' ? state.allocatedCapital : undefined,
         allocated_capital_percent:
-          state.capitalMode === "percent"
+          state.capitalMode === 'percent'
             ? state.allocatedCapitalPercent / 100
             : undefined,
         execution_interval_minutes: state.executionIntervalMinutes,
         auto_execute: state.autoExecute,
       };
       const agent = await agentsApi.create(request);
-      toast.success(t("toast.created"));
+      toast.success(t('toast.created'));
       router.push(`/agents`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toast.createFailed");
-      toast.error(t("toast.createFailed"), message);
+        err instanceof Error ? err.message : t('toast.createFailed');
+      toast.error(t('toast.createFailed'), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -330,15 +330,15 @@ export default function AgentWizardPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.push("/agents")}
+          onClick={() => router.push('/agents')}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-gradient">
-            {t("wizard.title")}
+            {t('wizard.title')}
           </h1>
-          <p className="text-muted-foreground">{t("wizard.subtitle")}</p>
+          <p className="text-muted-foreground">{t('wizard.subtitle')}</p>
         </div>
       </div>
 
@@ -422,12 +422,12 @@ function StrategyPickerStep({
   tStrat: ReturnType<typeof useTranslations>;
   onNext: () => void;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<StrategyType | "all">("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<StrategyType | 'all'>('all');
 
   const filteredStrategies = useMemo(() => {
     return strategies.filter((s) => {
-      if (typeFilter !== "all" && s.type !== typeFilter) return false;
+      if (typeFilter !== 'all' && s.type !== typeFilter) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -453,10 +453,10 @@ function StrategyPickerStep({
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">
-          {t("wizard.strategyStep.title")}
+          {t('wizard.strategyStep.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t("wizard.strategyStep.subtitle")}
+          {t('wizard.strategyStep.subtitle')}
         </p>
       </div>
 
@@ -466,7 +466,7 @@ function StrategyPickerStep({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder={t("wizard.strategyStep.search")}
+            placeholder={t('wizard.strategyStep.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -475,7 +475,7 @@ function StrategyPickerStep({
           {TYPE_FILTERS.map(({ value, labelKey }) => (
             <Button
               key={value}
-              variant={typeFilter === value ? "default" : "outline"}
+              variant={typeFilter === value ? 'default' : 'outline'}
               size="sm"
               onClick={() => setTypeFilter(value)}
               className="text-xs"
@@ -496,17 +496,17 @@ function StrategyPickerStep({
           <CardContent className="flex flex-col items-center py-12 text-center">
             <FileText className="w-10 h-10 text-muted-foreground mb-3" />
             <h3 className="font-semibold text-lg mb-1">
-              {t("wizard.strategyStep.empty")}
+              {t('wizard.strategyStep.empty')}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {t("wizard.strategyStep.emptyDesc")}
+              {t('wizard.strategyStep.emptyDesc')}
             </p>
             <Button
               variant="outline"
-              onClick={() => (window.location.href = "/strategies/new")}
+              onClick={() => (window.location.href = '/strategies/new')}
             >
               <Plus className="w-4 h-4 mr-2" />
-              {t("wizard.strategyStep.createStrategy")}
+              {t('wizard.strategyStep.createStrategy')}
             </Button>
           </CardContent>
         </Card>
@@ -517,16 +517,16 @@ function StrategyPickerStep({
             const Icon =
               STRATEGY_TYPE_ICONS[strategy.type as StrategyType] || FileText;
             const colorClass =
-              STRATEGY_TYPE_COLORS[strategy.type as StrategyType] || "";
+              STRATEGY_TYPE_COLORS[strategy.type as StrategyType] || '';
 
             return (
               <Card
                 key={strategy.id}
                 className={cn(
-                  "cursor-pointer transition-all hover:border-primary/40",
+                  'cursor-pointer transition-all hover:border-primary/40',
                   isSelected
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border/50",
+                    ? 'border-primary ring-2 ring-primary/20'
+                    : 'border-border/50'
                 )}
                 onClick={() => selectStrategy(strategy)}
               >
@@ -534,7 +534,7 @@ function StrategyPickerStep({
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div
-                        className={cn("p-1.5 rounded-lg border", colorClass)}
+                        className={cn('p-1.5 rounded-lg border', colorClass)}
                       >
                         <Icon className="w-4 h-4" />
                       </div>
@@ -584,7 +584,7 @@ function StrategyPickerStep({
       {/* Navigation */}
       <div className="flex justify-end pt-2">
         <Button onClick={onNext} disabled={!state.selectedStrategyId}>
-          {t("wizard.next")}
+          {t('wizard.next')}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -631,9 +631,9 @@ function ModelSelectStep({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{t("wizard.modelStep.title")}</h2>
+        <h2 className="text-xl font-semibold">{t('wizard.modelStep.title')}</h2>
         <p className="text-muted-foreground text-sm">
-          {t("wizard.modelStep.subtitle")}
+          {t('wizard.modelStep.subtitle')}
         </p>
       </div>
 
@@ -646,17 +646,17 @@ function ModelSelectStep({
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Bot className="w-10 h-10 text-muted-foreground mb-3" />
             <h3 className="font-semibold text-lg mb-1">
-              {t("wizard.modelStep.noModels")}
+              {t('wizard.modelStep.noModels')}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {t("wizard.modelStep.noModelsDesc")}
+              {t('wizard.modelStep.noModelsDesc')}
             </p>
             <Button
               variant="outline"
-              onClick={() => (window.location.href = "/models")}
+              onClick={() => (window.location.href = '/models')}
             >
               <Plus className="w-4 h-4 mr-2" />
-              {t("wizard.modelStep.addModel")}
+              {t('wizard.modelStep.addModel')}
             </Button>
           </CardContent>
         </Card>
@@ -674,10 +674,10 @@ function ModelSelectStep({
                     <Card
                       key={model.id}
                       className={cn(
-                        "cursor-pointer transition-all hover:border-primary/40",
+                        'cursor-pointer transition-all hover:border-primary/40',
                         isSelected
-                          ? "border-primary ring-2 ring-primary/20"
-                          : "border-border/50",
+                          ? 'border-primary ring-2 ring-primary/20'
+                          : 'border-border/50'
                       )}
                       onClick={() =>
                         setState((prev) => ({ ...prev, aiModel: model.id }))
@@ -715,10 +715,10 @@ function ModelSelectStep({
       <div className="flex justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t("wizard.back")}
+          {t('wizard.back')}
         </Button>
         <Button onClick={onNext} disabled={!state.aiModel && models.length > 0}>
-          {t("wizard.next")}
+          {t('wizard.next')}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -767,8 +767,8 @@ function ExecutionModeStep({
     useStrategyExchangeCompatibility(selectedExchange, strategySymbols);
 
   const canProceed =
-    (state.executionMode === "mock" ||
-      (state.executionMode === "live" && !!state.accountId)) &&
+    (state.executionMode === 'mock' ||
+      (state.executionMode === 'live' && !!state.accountId)) &&
     isCompatible &&
     !isSelectedAccountBound;
 
@@ -776,10 +776,10 @@ function ExecutionModeStep({
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">
-          {t("wizard.executionStep.title")}
+          {t('wizard.executionStep.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t("wizard.executionStep.subtitle")}
+          {t('wizard.executionStep.subtitle')}
         </p>
       </div>
 
@@ -788,13 +788,13 @@ function ExecutionModeStep({
         {/* Live */}
         <Card
           className={cn(
-            "cursor-pointer transition-all hover:border-primary/40",
-            state.executionMode === "live"
-              ? "border-primary ring-2 ring-primary/20"
-              : "border-border/50",
+            'cursor-pointer transition-all hover:border-primary/40',
+            state.executionMode === 'live'
+              ? 'border-primary ring-2 ring-primary/20'
+              : 'border-border/50'
           )}
           onClick={() =>
-            setState((prev) => ({ ...prev, executionMode: "live" }))
+            setState((prev) => ({ ...prev, executionMode: 'live' }))
           }
         >
           <CardContent className="p-6 text-center">
@@ -802,12 +802,12 @@ function ExecutionModeStep({
               <Wallet className="w-6 h-6" />
             </div>
             <h3 className="font-semibold text-lg mb-1">
-              {t("wizard.executionStep.live")}
+              {t('wizard.executionStep.live')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {t("wizard.executionStep.liveDesc")}
+              {t('wizard.executionStep.liveDesc')}
             </p>
-            {state.executionMode === "live" && (
+            {state.executionMode === 'live' && (
               <div className="mt-3 p-1 rounded-full bg-primary text-primary-foreground inline-flex">
                 <Check className="w-4 h-4" />
               </div>
@@ -818,13 +818,13 @@ function ExecutionModeStep({
         {/* Mock */}
         <Card
           className={cn(
-            "cursor-pointer transition-all hover:border-primary/40",
-            state.executionMode === "mock"
-              ? "border-primary ring-2 ring-primary/20"
-              : "border-border/50",
+            'cursor-pointer transition-all hover:border-primary/40',
+            state.executionMode === 'mock'
+              ? 'border-primary ring-2 ring-primary/20'
+              : 'border-border/50'
           )}
           onClick={() =>
-            setState((prev) => ({ ...prev, executionMode: "mock" }))
+            setState((prev) => ({ ...prev, executionMode: 'mock' }))
           }
         >
           <CardContent className="p-6 text-center">
@@ -832,12 +832,12 @@ function ExecutionModeStep({
               <Play className="w-6 h-6" />
             </div>
             <h3 className="font-semibold text-lg mb-1">
-              {t("wizard.executionStep.mock")}
+              {t('wizard.executionStep.mock')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {t("wizard.executionStep.mockDesc")}
+              {t('wizard.executionStep.mockDesc')}
             </p>
-            {state.executionMode === "mock" && (
+            {state.executionMode === 'mock' && (
               <div className="mt-3 p-1 rounded-full bg-primary text-primary-foreground inline-flex">
                 <Check className="w-4 h-4" />
               </div>
@@ -847,7 +847,7 @@ function ExecutionModeStep({
       </div>
 
       {/* Live Mode: Account Selection */}
-      {state.executionMode === "live" && (
+      {state.executionMode === 'live' && (
         <>
           <Card>
             <CardContent className="p-4 space-y-4">
@@ -855,28 +855,28 @@ function ExecutionModeStep({
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                 <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  {t("wizard.executionStep.riskWarning")}
+                  {t('wizard.executionStep.riskWarning')}
                 </p>
               </div>
 
               {/* Account Select */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  {t("wizard.executionStep.selectAccount")}
+                  {t('wizard.executionStep.selectAccount')}
                   <span className="text-destructive">*</span>
                 </Label>
                 {accounts.length === 0 ? (
                   <div className="flex items-center justify-between p-3 rounded-lg border border-dashed">
                     <span className="text-sm text-muted-foreground">
-                      {t("wizard.executionStep.noAccounts")}
+                      {t('wizard.executionStep.noAccounts')}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => (window.location.href = "/accounts/new")}
+                      onClick={() => (window.location.href = '/accounts/new')}
                     >
                       <Plus className="w-3 h-3 mr-1" />
-                      {t("wizard.executionStep.addAccount")}
+                      {t('wizard.executionStep.addAccount')}
                     </Button>
                   </div>
                 ) : (
@@ -889,7 +889,7 @@ function ExecutionModeStep({
                     <SelectTrigger>
                       <SelectValue
                         placeholder={t(
-                          "wizard.executionStep.selectAccountPlaceholder",
+                          'wizard.executionStep.selectAccountPlaceholder'
                         )}
                       />
                     </SelectTrigger>
@@ -903,9 +903,9 @@ function ExecutionModeStep({
                             disabled={isBound}
                           >
                             {acc.name} ({acc.exchange})
-                            {acc.is_testnet && ` [${t("wizard.testnet")}]`}
+                            {acc.is_testnet && ` [${t('wizard.testnet')}]`}
                             {isBound &&
-                              ` [${t("wizard.executionStep.accountBound")}]`}
+                              ` [${t('wizard.executionStep.accountBound')}]`}
                           </SelectItem>
                         );
                       })}
@@ -920,10 +920,10 @@ function ExecutionModeStep({
                   <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                   <div className="text-xs text-destructive">
                     <p className="font-medium">
-                      {t("wizard.executionStep.accountBoundWarning")}
+                      {t('wizard.executionStep.accountBoundWarning')}
                     </p>
                     <p className="mt-1">
-                      {t("wizard.executionStep.accountBoundWarningDesc")}
+                      {t('wizard.executionStep.accountBoundWarningDesc')}
                     </p>
                   </div>
                 </div>
@@ -935,12 +935,12 @@ function ExecutionModeStep({
                   <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                   <div className="text-xs text-destructive">
                     <p className="font-medium">
-                      {t("wizard.executionStep.compatibilityWarning")}
+                      {t('wizard.executionStep.compatibilityWarning')}
                     </p>
                     <p className="mt-1">
-                      {t("wizard.executionStep.incompatibleSymbols", {
-                        symbols: incompatibleSymbols.join(", "),
-                        exchange: selectedExchange ?? "",
+                      {t('wizard.executionStep.incompatibleSymbols', {
+                        symbols: incompatibleSymbols.join(', '),
+                        exchange: selectedExchange ?? '',
                       })}
                     </p>
                   </div>
@@ -954,10 +954,10 @@ function ExecutionModeStep({
             <CardContent className="p-4 space-y-4">
               <div className="space-y-1">
                 <Label className="text-base">
-                  {t("wizard.capitalAllocation.title")}
+                  {t('wizard.capitalAllocation.title')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {t("wizard.capitalAllocation.description")}
+                  {t('wizard.capitalAllocation.description')}
                 </p>
               </div>
 
@@ -966,7 +966,7 @@ function ExecutionModeStep({
                 onValueChange={(v: string) =>
                   setState((prev) => ({
                     ...prev,
-                    capitalMode: v as "none" | "fixed" | "percent",
+                    capitalMode: v as 'none' | 'fixed' | 'percent',
                   }))
                 }
                 className="grid grid-cols-3 gap-3"
@@ -974,10 +974,10 @@ function ExecutionModeStep({
                 <Label
                   htmlFor="capital-none"
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
-                    state.capitalMode === "none"
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border/50 hover:border-primary/40",
+                    'flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center',
+                    state.capitalMode === 'none'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border/50 hover:border-primary/40'
                   )}
                 >
                   <RadioGroupItem
@@ -986,16 +986,16 @@ function ExecutionModeStep({
                     className="sr-only"
                   />
                   <span className="text-sm font-medium">
-                    {t("wizard.capitalAllocation.modeNone")}
+                    {t('wizard.capitalAllocation.modeNone')}
                   </span>
                 </Label>
                 <Label
                   htmlFor="capital-fixed"
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
-                    state.capitalMode === "fixed"
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border/50 hover:border-primary/40",
+                    'flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center',
+                    state.capitalMode === 'fixed'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border/50 hover:border-primary/40'
                   )}
                 >
                   <RadioGroupItem
@@ -1004,16 +1004,16 @@ function ExecutionModeStep({
                     className="sr-only"
                   />
                   <span className="text-sm font-medium">
-                    {t("wizard.capitalAllocation.modeFixed")}
+                    {t('wizard.capitalAllocation.modeFixed')}
                   </span>
                 </Label>
                 <Label
                   htmlFor="capital-percent"
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
-                    state.capitalMode === "percent"
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border/50 hover:border-primary/40",
+                    'flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center',
+                    state.capitalMode === 'percent'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border/50 hover:border-primary/40'
                   )}
                 >
                   <RadioGroupItem
@@ -1022,17 +1022,17 @@ function ExecutionModeStep({
                     className="sr-only"
                   />
                   <span className="text-sm font-medium">
-                    {t("wizard.capitalAllocation.modePercent")}
+                    {t('wizard.capitalAllocation.modePercent')}
                   </span>
                 </Label>
               </RadioGroup>
 
-              {state.capitalMode === "fixed" && (
+              {state.capitalMode === 'fixed' && (
                 <div className="space-y-2">
-                  <Label>{t("wizard.capitalAllocation.fixedAmount")}</Label>
+                  <Label>{t('wizard.capitalAllocation.fixedAmount')}</Label>
                   <Input
                     type="number"
-                    value={state.allocatedCapital || ""}
+                    value={state.allocatedCapital || ''}
                     onChange={(e) =>
                       setState((prev) => ({
                         ...prev,
@@ -1040,16 +1040,16 @@ function ExecutionModeStep({
                       }))
                     }
                     placeholder={t(
-                      "wizard.capitalAllocation.fixedAmountPlaceholder",
+                      'wizard.capitalAllocation.fixedAmountPlaceholder'
                     )}
                     min={0}
                   />
                 </div>
               )}
 
-              {state.capitalMode === "percent" && (
+              {state.capitalMode === 'percent' && (
                 <div className="space-y-2">
-                  <Label>{t("wizard.capitalAllocation.percentAmount")}</Label>
+                  <Label>{t('wizard.capitalAllocation.percentAmount')}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
@@ -1069,7 +1069,7 @@ function ExecutionModeStep({
                     <span className="text-sm text-muted-foreground">%</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t("wizard.capitalAllocation.percentAmountTooltip")}
+                    {t('wizard.capitalAllocation.percentAmountTooltip')}
                   </p>
                 </div>
               )}
@@ -1079,11 +1079,11 @@ function ExecutionModeStep({
       )}
 
       {/* Mock Mode: Initial Balance */}
-      {state.executionMode === "mock" && (
+      {state.executionMode === 'mock' && (
         <Card>
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
-              <Label>{t("wizard.executionStep.mockBalance")}</Label>
+              <Label>{t('wizard.executionStep.mockBalance')}</Label>
               <Input
                 type="number"
                 value={state.mockInitialBalance}
@@ -1093,7 +1093,7 @@ function ExecutionModeStep({
                     mockInitialBalance: parseFloat(e.target.value) || 10000,
                   }))
                 }
-                placeholder={t("wizard.executionStep.mockBalancePlaceholder")}
+                placeholder={t('wizard.executionStep.mockBalancePlaceholder')}
                 min={100}
               />
             </div>
@@ -1105,10 +1105,10 @@ function ExecutionModeStep({
       <div className="flex justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t("wizard.back")}
+          {t('wizard.back')}
         </Button>
         <Button onClick={onNext} disabled={!canProceed}>
-          {t("wizard.next")}
+          {t('wizard.next')}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -1148,10 +1148,10 @@ function ReviewStep({
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">
-          {t("wizard.reviewStep.title")}
+          {t('wizard.reviewStep.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t("wizard.reviewStep.subtitle")}
+          {t('wizard.reviewStep.subtitle')}
         </p>
       </div>
 
@@ -1160,7 +1160,7 @@ function ReviewStep({
         <CardContent className="p-4 space-y-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-1">
-              {t("wizard.reviewStep.agentName")}
+              {t('wizard.reviewStep.agentName')}
               <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -1168,12 +1168,12 @@ function ReviewStep({
               onChange={(e) =>
                 setState((prev) => ({ ...prev, agentName: e.target.value }))
               }
-              placeholder={t("wizard.reviewStep.agentNamePlaceholder")}
+              placeholder={t('wizard.reviewStep.agentNamePlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>{t("wizard.reviewStep.interval")}</Label>
+            <Label>{t('wizard.reviewStep.interval')}</Label>
             <Select
               value={String(state.executionIntervalMinutes)}
               onValueChange={(v) =>
@@ -1198,9 +1198,9 @@ function ReviewStep({
 
           <div className="flex items-center justify-between">
             <div>
-              <Label>{t("wizard.reviewStep.autoExecute")}</Label>
+              <Label>{t('wizard.reviewStep.autoExecute')}</Label>
               <p className="text-xs text-muted-foreground">
-                {t("wizard.reviewStep.autoExecuteDesc")}
+                {t('wizard.reviewStep.autoExecuteDesc')}
               </p>
             </div>
             <Switch
@@ -1217,35 +1217,35 @@ function ReviewStep({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            {t("wizard.reviewStep.summary")}
+            {t('wizard.reviewStep.summary')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="space-y-2.5 text-sm">
             <SummaryRow
-              label={t("wizard.reviewStep.summaryStrategy")}
-              value={state.selectedStrategy?.name || "-"}
+              label={t('wizard.reviewStep.summaryStrategy')}
+              value={state.selectedStrategy?.name || '-'}
             />
             <SummaryRow
-              label={t("wizard.reviewStep.summaryType")}
+              label={t('wizard.reviewStep.summaryType')}
               value={
                 <Badge variant="outline" className="text-xs">
-                  {state.selectedStrategy?.type?.toUpperCase() || "-"}
+                  {state.selectedStrategy?.type?.toUpperCase() || '-'}
                 </Badge>
               }
             />
             {isAiStrategy && (
               <SummaryRow
-                label={t("wizard.reviewStep.summaryModel")}
-                value={modelName || "-"}
+                label={t('wizard.reviewStep.summaryModel')}
+                value={modelName || '-'}
               />
             )}
             <SummaryRow
-              label={t("wizard.reviewStep.summaryMode")}
+              label={t('wizard.reviewStep.summaryMode')}
               value={
                 <Badge
                   variant={
-                    state.executionMode === "live" ? "default" : "secondary"
+                    state.executionMode === 'live' ? 'default' : 'secondary'
                   }
                   className="text-xs"
                 >
@@ -1253,27 +1253,27 @@ function ReviewStep({
                 </Badge>
               }
             />
-            {state.executionMode === "live" && (
+            {state.executionMode === 'live' && (
               <>
                 <SummaryRow
-                  label={t("wizard.reviewStep.summaryAccount")}
-                  value={accountName || "-"}
+                  label={t('wizard.reviewStep.summaryAccount')}
+                  value={accountName || '-'}
                 />
                 <SummaryRow
-                  label={t("wizard.reviewStep.summaryCapital")}
+                  label={t('wizard.reviewStep.summaryCapital')}
                   value={
-                    state.capitalMode === "none"
-                      ? t("wizard.reviewStep.summaryNone")
-                      : state.capitalMode === "fixed"
+                    state.capitalMode === 'none'
+                      ? t('wizard.reviewStep.summaryNone')
+                      : state.capitalMode === 'fixed'
                         ? `$${(state.allocatedCapital || 0).toLocaleString()}`
                         : `${((state.allocatedCapitalPercent || 0) * 100).toFixed(0)}%`
                   }
                 />
               </>
             )}
-            {state.executionMode === "mock" && (
+            {state.executionMode === 'mock' && (
               <SummaryRow
-                label={t("wizard.executionStep.mockBalance")}
+                label={t('wizard.executionStep.mockBalance')}
                 value={`$${state.mockInitialBalance.toLocaleString()}`}
               />
             )}
@@ -1285,7 +1285,7 @@ function ReviewStep({
       <div className="flex justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t("wizard.back")}
+          {t('wizard.back')}
         </Button>
         <Button
           onClick={onSubmit}
@@ -1298,8 +1298,8 @@ function ReviewStep({
             <Rocket className="w-4 h-4 mr-2" />
           )}
           {isSubmitting
-            ? t("wizard.reviewStep.creating")
-            : t("wizard.reviewStep.createAgent")}
+            ? t('wizard.reviewStep.creating')
+            : t('wizard.reviewStep.createAgent')}
         </Button>
       </div>
     </div>

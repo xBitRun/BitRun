@@ -237,7 +237,7 @@ function AuthPageContent() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="h-11 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-medium rounded-lg"
+          className="h-11 font-medium rounded-lg"
         >
           {isLoading ? (
             <>

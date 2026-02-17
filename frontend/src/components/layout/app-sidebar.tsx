@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import Image from "next/image";
 import {
   LayoutDashboard,
   Bot,
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
+import { BrandedLogo, LogoCompact } from "@/components/brand";
 
 const navItems = [
   {
@@ -84,22 +84,14 @@ function DesktopSidebar({
       {/* Logo */}
       <div className="flex items-center h-16 px-4 py-2 border-b border-sidebar-border">
         <Link href="/overview" className="flex items-center h-full">
-          <Image
-            src="/logo.png"
-            alt="BITRUN"
-            width={160}
-            height={48}
-            className={cn("h-full w-auto", collapsed && "hidden")}
-            priority
-          />
-          {collapsed && (
-            <Image
-              src="/logo.png"
-              alt="BITRUN"
+          {collapsed ? (
+            <LogoCompact
               width={48}
               height={48}
               className="h-full w-auto rounded-lg object-cover object-left"
             />
+          ) : (
+            <BrandedLogo width={160} height={48} priority />
           )}
         </Link>
       </div>
@@ -195,13 +187,7 @@ function MobileSidebar({
         {/* Logo */}
         <div className="flex items-center h-16 px-4 py-2 border-b border-sidebar-border">
           <Link href="/overview" className="flex items-center h-full">
-            <Image
-              src="/logo.png"
-              alt="BITRUN"
-              width={160}
-              height={48}
-              className="h-full w-auto"
-            />
+            <BrandedLogo width={160} height={48} />
           </Link>
         </div>
 

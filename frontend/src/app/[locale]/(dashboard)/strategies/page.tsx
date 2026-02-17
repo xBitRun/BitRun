@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import {
   Plus,
   MoreHorizontal,
@@ -16,46 +16,46 @@ import {
   Eye,
   Trash2,
   Zap,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   ListPageSkeleton,
   ListPageError,
   ListPageEmpty,
   ListPageFilterEmpty,
-} from "@/components/list-page";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+} from '@/components/list-page';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { useStrategies } from "@/hooks";
-import { useToast } from "@/components/ui/toast";
-import type { StrategyResponse } from "@/lib/api";
-import type { StrategyType } from "@/types";
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { useStrategies } from '@/hooks';
+import { useToast } from '@/components/ui/toast';
+import type { StrategyResponse } from '@/lib/api';
+import type { StrategyType } from '@/types';
 
 function getTypeIcon(type: string) {
   switch (type) {
-    case "ai":
+    case 'ai':
       return Bot;
-    case "grid":
+    case 'grid':
       return Grid3X3;
-    case "dca":
+    case 'dca':
       return ArrowDownUp;
-    case "rsi":
+    case 'rsi':
       return Activity;
     default:
       return LineChart;
@@ -64,23 +64,23 @@ function getTypeIcon(type: string) {
 
 function getTypeColor(type: string) {
   switch (type) {
-    case "ai":
-      return "border-violet-500/30 text-violet-500";
-    case "grid":
-      return "border-blue-500/30 text-blue-500";
-    case "dca":
-      return "border-emerald-500/30 text-emerald-500";
-    case "rsi":
-      return "border-amber-500/30 text-amber-500";
+    case 'ai':
+      return 'border-rose-500/30 text-rose-500';
+    case 'grid':
+      return 'border-blue-500/30 text-blue-500';
+    case 'dca':
+      return 'border-emerald-500/30 text-emerald-500';
+    case 'rsi':
+      return 'border-amber-500/30 text-amber-500';
     default:
-      return "";
+      return '';
   }
 }
 
 function getVisibilityColor(vis: string) {
-  return vis === "public"
-    ? "border-emerald-500/30 text-emerald-500"
-    : "border-muted-foreground/30 text-muted-foreground";
+  return vis === 'public'
+    ? 'border-emerald-500/30 text-emerald-500'
+    : 'border-muted-foreground/30 text-muted-foreground';
 }
 
 interface StrategyCardProps {
@@ -113,15 +113,15 @@ function StrategyCard({
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge
                   variant="outline"
-                  className={cn("text-xs", getTypeColor(strategy.type))}
+                  className={cn('text-xs', getTypeColor(strategy.type))}
                 >
                   {tType(strategy.type)}
                 </Badge>
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-xs",
-                    getVisibilityColor(strategy.visibility),
+                    'text-xs',
+                    getVisibilityColor(strategy.visibility)
                   )}
                 >
                   {t(`visibility.${strategy.visibility}`)}
@@ -131,14 +131,14 @@ function StrategyCard({
                     variant="outline"
                     className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
                   >
-                    {strategy.symbols.slice(0, 3).join(", ")}
+                    {strategy.symbols.slice(0, 3).join(', ')}
                     {strategy.symbols.length > 3 &&
                       ` +${strategy.symbols.length - 3}`}
                   </Badge>
                 )}
               </div>
               <p className="text-sm text-muted-foreground truncate mt-1">
-                {strategy.description || t("empty.noDescription")}
+                {strategy.description || t('empty.noDescription')}
               </p>
             </div>
           </div>
@@ -155,7 +155,7 @@ function StrategyCard({
                   className="flex items-center"
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  {t("actions.viewDetails")}
+                  {t('actions.viewDetails')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -164,7 +164,7 @@ function StrategyCard({
                   className="flex items-center"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  {t("actions.createAgent")}
+                  {t('actions.createAgent')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -172,15 +172,15 @@ function StrategyCard({
                   onToggleVisibility(strategy.id, strategy.visibility)
                 }
               >
-                {strategy.visibility === "public" ? (
+                {strategy.visibility === 'public' ? (
                   <>
                     <Eye className="w-4 h-4 mr-2" />
-                    {t("actions.makePrivate")}
+                    {t('actions.makePrivate')}
                   </>
                 ) : (
                   <>
                     <GitFork className="w-4 h-4 mr-2" />
-                    {t("actions.makePublic")}
+                    {t('actions.makePublic')}
                   </>
                 )}
               </DropdownMenuItem>
@@ -190,7 +190,7 @@ function StrategyCard({
                 onClick={() => onDelete(strategy.id)}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                {t("actions.delete")}
+                {t('actions.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -226,12 +226,12 @@ function StrategyCard({
           >
             <Button variant="default" size="sm" className="w-full">
               <Zap className="w-4 h-4 mr-2" />
-              {t("actions.createAgent")}
+              {t('actions.createAgent')}
             </Button>
           </Link>
           <Link href={`/strategies/${strategy.id}`}>
             <Button variant="ghost" size="sm">
-              {t("actions.viewDetails")}
+              {t('actions.viewDetails')}
             </Button>
           </Link>
         </div>
@@ -241,46 +241,46 @@ function StrategyCard({
 }
 
 export default function StrategiesPage() {
-  const t = useTranslations("strategies");
-  const tType = useTranslations("strategies.type");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const t = useTranslations('strategies');
+  const tType = useTranslations('strategies.type');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { strategies, error, isLoading, refresh } = useStrategies();
   const toast = useToast();
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t("confirmDelete"))) return;
+    if (!confirm(t('confirmDelete'))) return;
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { strategiesApi } = await import('@/lib/api');
       await strategiesApi.delete(id);
       refresh();
-      toast.success(t("toast.deleted"));
+      toast.success(t('toast.deleted'));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("error.deleteFailed");
-      toast.error(t("error.deleteFailed"), message);
+        err instanceof Error ? err.message : t('error.deleteFailed');
+      toast.error(t('error.deleteFailed'), message);
     }
   };
 
   const handleToggleVisibility = async (id: string, current: string) => {
-    const newVisibility = current === "public" ? "private" : "public";
+    const newVisibility = current === 'public' ? 'private' : 'public';
     try {
-      const { strategiesApi } = await import("@/lib/api");
+      const { strategiesApi } = await import('@/lib/api');
       await strategiesApi.update(id, {
-        visibility: newVisibility as "private" | "public",
+        visibility: newVisibility as 'private' | 'public',
       });
       refresh();
-      toast.success(t("toast.updated"));
+      toast.success(t('toast.updated'));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("error.updateFailed");
-      toast.error(t("error.updateFailed"), message);
+        err instanceof Error ? err.message : t('error.updateFailed');
+      toast.error(t('error.updateFailed'), message);
     }
   };
 
   const filteredStrategies = strategies.filter((s) => {
-    const matchesType = typeFilter === "all" || s.type === typeFilter;
+    const matchesType = typeFilter === 'all' || s.type === typeFilter;
     const matchesSearch = s.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -294,13 +294,13 @@ export default function StrategiesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
+          <h1 className="text-2xl font-bold text-gradient">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Link href="/strategies/new">
           <Button className="glow-primary">
             <Plus className="w-4 h-4 mr-2" />
-            {t("createStrategy")}
+            {t('createStrategy')}
           </Button>
         </Link>
       </div>
@@ -310,7 +310,7 @@ export default function StrategiesPage() {
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Input
-              placeholder={t("searchPlaceholder")}
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-muted/50"
@@ -322,11 +322,11 @@ export default function StrategiesPage() {
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
-              <SelectItem value="ai">{tType("ai")}</SelectItem>
-              <SelectItem value="grid">{tType("grid")}</SelectItem>
-              <SelectItem value="dca">{tType("dca")}</SelectItem>
-              <SelectItem value="rsi">{tType("rsi")}</SelectItem>
+              <SelectItem value="all">{t('filter.allTypes')}</SelectItem>
+              <SelectItem value="ai">{tType('ai')}</SelectItem>
+              <SelectItem value="grid">{tType('grid')}</SelectItem>
+              <SelectItem value="dca">{tType('dca')}</SelectItem>
+              <SelectItem value="rsi">{tType('rsi')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -338,9 +338,9 @@ export default function StrategiesPage() {
       {/* Error */}
       {error && (
         <ListPageError
-          message={error.message || t("error.loadFailed")}
+          message={error.message || t('error.loadFailed')}
           onRetry={() => refresh()}
-          retryLabel={t("retry")}
+          retryLabel={t('retry')}
         />
       )}
 
@@ -348,9 +348,9 @@ export default function StrategiesPage() {
       {hasNoStrategies && (
         <ListPageEmpty
           icon={LineChart}
-          title={t("empty.title")}
-          description={t("empty.createHint")}
-          actionLabel={t("createStrategy")}
+          title={t('empty.title')}
+          description={t('empty.createHint')}
+          actionLabel={t('createStrategy')}
           actionHref="/strategies/new"
           actionIcon={Plus}
         />
@@ -377,7 +377,7 @@ export default function StrategiesPage() {
                     <div className="p-3 rounded-full bg-muted/30 mb-3">
                       <Plus className="w-6 h-6" />
                     </div>
-                    <p className="font-medium">{t("createStrategy")}</p>
+                    <p className="font-medium">{t('createStrategy')}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -385,8 +385,8 @@ export default function StrategiesPage() {
           ) : (
             <ListPageFilterEmpty
               icon={LineChart}
-              title={t("empty.title")}
-              description={t("empty.searchHint")}
+              title={t('empty.title')}
+              description={t('empty.searchHint')}
             />
           )}
         </>

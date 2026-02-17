@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: Literal["development", "staging", "production"] = "development"
 
+    # Brand Configuration
+    app_tagline: str = "AI-Powered Trading Agent"
+    app_description: str = "Prompt-driven automated trading with AI decision making"
+    theme_preset: str = "bitrun"
+
     @property
     def is_debug(self) -> bool:
         """Debug mode is derived from environment (non-production = debug)."""

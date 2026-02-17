@@ -211,9 +211,9 @@
   .glow-loss {
     box-shadow: 0 0 15px oklch(0.65 0.22 25 / 0.3);
   }
-  /* Gradient text like Arkham branding */
+  /* Gradient text like Arkham branding - uses theme variables */
   .text-gradient {
-    background: linear-gradient(135deg, oklch(0.7 0.2 280), oklch(0.7 0.18 200));
+    background: linear-gradient(135deg, var(--heading-gradient-1), var(--heading-gradient-2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1443,8 +1443,8 @@
 
 .cta-gradient-button {
   display: inline-block;
-  background: white;
-  border: 1px solid white;
+  background: var(--primary-foreground);
+  border: 1px solid var(--primary-foreground);
   color: var(--primary);
   padding: 0.6rem 1.8rem;
   font-size: 1rem;
@@ -1457,9 +1457,9 @@
 }
 
 .cta-gradient-button:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in oklch, var(--primary-foreground) 90%, transparent);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px color-mix(in oklch, var(--primary-foreground) 15%, transparent);
 }
 
 @media (max-width: 480px) {

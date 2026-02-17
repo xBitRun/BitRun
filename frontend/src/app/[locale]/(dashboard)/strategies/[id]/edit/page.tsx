@@ -4,15 +4,7 @@ import { use, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Loader2,
-  Save,
-  X,
-  Plus,
-  Globe,
-  Lock,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save, X, Plus, Globe, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,7 +132,9 @@ export default function StrategyEditPage({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{t("edit.title")}</h1>
+          <h1 className="text-2xl font-bold text-gradient">
+            {t("edit.title")}
+          </h1>
           <p className="text-muted-foreground">{t("edit.backToStrategy")}</p>
         </div>
       </div>
@@ -234,9 +228,7 @@ export default function StrategyEditPage({
             >
               <div className="flex items-center gap-2 mb-1">
                 <Lock className="w-4 h-4" />
-                <span className="font-medium">
-                  {t("visibility.private")}
-                </span>
+                <span className="font-medium">{t("visibility.private")}</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 {t("detail.settings.privateHint")}
@@ -253,9 +245,7 @@ export default function StrategyEditPage({
             >
               <div className="flex items-center gap-2 mb-1">
                 <Globe className="w-4 h-4" />
-                <span className="font-medium">
-                  {t("visibility.public")}
-                </span>
+                <span className="font-medium">{t("visibility.public")}</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 {t("detail.settings.publicHint")}
@@ -311,9 +301,7 @@ export default function StrategyEditPage({
       {/* Actions */}
       <div className="flex items-center justify-between pt-4">
         <Button variant="outline" asChild>
-          <Link href={`/strategies/${id}`}>
-            {t("edit.backToStrategy")}
-          </Link>
+          <Link href={`/strategies/${id}`}>{t("edit.backToStrategy")}</Link>
         </Button>
         <Button onClick={handleSubmit} disabled={isUpdating}>
           {isUpdating ? (

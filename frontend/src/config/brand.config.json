@@ -1,0 +1,38 @@
+{
+  "$schema": "./brand.schema.json",
+  "id": "QEMind",
+  "version": "1.0.0",
+
+  "identity": {
+    "name": "QuantExchangeMind",
+    "shortName": "QEMind",
+    "tagline": "AI-Powered Trading Agent",
+    "description": "Prompt-driven automated trading with AI decision making"
+  },
+
+  "assets": {
+    "logo": {
+      "default": "",
+      "compact": "",
+      "icon": ""
+    },
+    "favicon": "/logo.png"
+  },
+
+  "theme": {
+    "preset": "binance",
+    "overrides": {}
+  },
+
+  "legal": {
+    "copyrightHolder": "QuantExchangeMind",
+    "termsUrl": "/terms",
+    "privacyUrl": "/privacy"
+  },
+
+  "links": {
+    "homepage": "https://qemind.dev",
+    "documentation": "https://docs.qemind.dev",
+    "support": "https://support.qemind.dev"
+  }
+}

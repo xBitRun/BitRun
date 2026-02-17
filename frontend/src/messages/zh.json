@@ -1,4 +1,14 @@
 {
+  "brand": {
+    "name": "BITRUN",
+    "shortName": "BITRUN",
+    "tagline": "AI 智能交易代理",
+    "description": "基于提示词驱动的 AI 自动化交易系统",
+    "copyright": "© {year} {name}. 保留所有权利。",
+    "teamName": "{name} 团队",
+    "madeWith": "用心打造",
+    "apiNote": "{name} 使用安全的 JWT 认证。访问令牌 1 小时后过期。"
+  },
   "metadata": {
     "title": "BITRUN | AI 智能交易代理",
     "description": "基于提示词驱动的 AI 自动化交易系统"
@@ -18,7 +28,7 @@
     "confirmPasswordPlaceholder": "再次输入密码",
     "loginButton": "登录",
     "registerButton": "创建账户",
-    "continue": "继续",
+    "continue": "登录",
     "loading": "请稍候...",
     "forgotPassword": "忘记密码？",
     "resetPassword": "重置密码",
@@ -2524,10 +2534,10 @@
       "button": "立即开始"
     },
     "footer": {
-      "copyright": "\u00a9 {year} BITRUN. 保留所有权利。",
+      "copyright": "\u00a9 {year} QEMind. 保留所有权利。",
       "madeWith": "平台由",
       "by": "倾力打造",
-      "teamName": "BITRUN 团队"
+      "teamName": "QEMind 团队"
     }
   }
 }
