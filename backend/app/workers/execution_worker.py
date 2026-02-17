@@ -162,6 +162,15 @@ class ExecutionWorker:
                 self._running = False
                 return
 
+            # Create agent position service
+            from ..services.redis_service import get_redis_service
+            from ..services.agent_position_service import AgentPositionService
+            try:
+                redis_service = await get_redis_service()
+            except Exception:
+                redis_service = None
+            position_service = AgentPositionService(db=session, redis=redis_service)
+
             # Create strategy engine with db_session for decision persistence
             # AI client is created by StrategyEngine based on strategy's ai_model
             engine = StrategyEngine(
@@ -169,6 +178,7 @@ class ExecutionWorker:
                 trader=self.trader,
                 ai_client=self.ai_client,  # May be None, engine creates based on strategy config
                 db_session=session,  # Pass session for decision persistence
+                position_service=position_service,
             )
 
             # Run decision cycle (decision is saved inside run_cycle)
@@ -682,27 +692,107 @@ class WorkerManager:
     async def _monitor_loop(self) -> None:
         """Monitor workers and sync with database (legacy mode only)"""
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
         from ..db.models import AgentDB
 
         while self._running:
             try:
                 await asyncio.sleep(60)  # Check every minute
 
-                # Sync with database - query active agents
                 async with AsyncSessionLocal() as session:
-                    stmt = select(AgentDB.strategy_id).where(AgentDB.status == "active")
+                    account_repo = AccountRepository(session)
+
+                    # Load full agent data to support starting new workers
+                    stmt = (
+                        select(AgentDB)
+                        .where(AgentDB.status == "active")
+                        .options(
+                            selectinload(AgentDB.strategy),
+                            selectinload(AgentDB.account),
+                        )
+                    )
                     result = await session.execute(stmt)
-                    active_strategy_ids = {str(row[0]) for row in result.fetchall()}
+                    active_agents = result.scalars().all()
+                    active_strategy_ids = {
+                        str(agent.strategy_id) for agent in active_agents
+                        if agent.strategy_id
+                    }
 
                     # Stop workers for deactivated agents
                     for strategy_id in list(self._workers.keys()):
                         if strategy_id not in active_strategy_ids:
                             await self.stop_strategy(strategy_id)
 
+                    # Start workers for newly active agents (matching QuantWorkerManager pattern)
+                    current_worker_ids = set(self._workers.keys())
+                    for agent in active_agents:
+                        if not agent.strategy_id:
+                            continue
+                        strategy_id = str(agent.strategy_id)
+                        if strategy_id not in current_worker_ids:
+                            await self._start_worker_for_agent(agent, account_repo)
+                            # Brief delay to avoid overwhelming exchange APIs
+                            await asyncio.sleep(1)
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Monitor error: {e}")
+
+    async def _start_worker_for_agent(
+        self,
+        agent: "AgentDB",
+        account_repo: AccountRepository,
+    ) -> None:
+        """Start a worker for a single agent if not already running.
+
+        This mirrors the logic from _load_active_strategies() but for a single agent.
+        """
+        strategy = agent.strategy
+        if not strategy:
+            logger.warning(f"Agent {agent.id} has no strategy, skipping")
+            return
+
+        # Handle Mock mode - no account needed
+        if agent.execution_mode == "mock":
+            success = await self.start_strategy(
+                str(strategy.id),
+                credentials=None,
+                account=None,
+            )
+            if success:
+                logger.info(f"Monitor started worker for mock agent {agent.id}, strategy {strategy.id}")
+            else:
+                logger.error(f"Failed to start worker for mock agent {agent.id}")
+            return
+
+        # Live mode - requires account
+        if not agent.account_id:
+            logger.warning(f"Agent {agent.id} is live mode but has no account, skipping")
+            return
+
+        account = agent.account
+        if not account:
+            logger.warning(f"Account not found for agent {agent.id}, skipping")
+            return
+
+        credentials = await account_repo.get_decrypted_credentials(
+            agent.account_id,
+            agent.user_id,
+        )
+        if not credentials:
+            logger.warning(f"Failed to get credentials for agent {agent.id}, skipping")
+            return
+
+        success = await self.start_strategy(
+            str(strategy.id),
+            credentials=credentials,
+            account=account,
+        )
+        if success:
+            logger.info(f"Monitor started worker for agent {agent.id}, strategy {strategy.id}")
+        else:
+            logger.error(f"Failed to start worker for agent {agent.id}")
 
     def get_worker_status(self, strategy_id: str) -> Optional[dict]:
         """Get status of a worker"""

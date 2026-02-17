@@ -206,7 +206,7 @@ const initialState: WizardState = {
   allocatedCapital: 0,
   allocatedCapitalPercent: 30,
   agentName: "",
-  executionIntervalMinutes: 60,
+  executionIntervalMinutes: 15,
   autoExecute: true,
 };
 

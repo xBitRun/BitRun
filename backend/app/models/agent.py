@@ -63,7 +63,7 @@ class Agent(BaseModel):
     allocated_capital_percent: Optional[float] = None
 
     # Execution config
-    execution_interval_minutes: int = Field(default=30)
+    execution_interval_minutes: int = Field(default=15)
     auto_execute: bool = Field(default=True)
 
     # Quant runtime state
@@ -125,10 +125,10 @@ class AgentCreate(BaseModel):
 
     # Execution config
     execution_interval_minutes: int = Field(
-        default=30,
+        default=15,
         ge=1,
         le=43200,
-        description="Execution interval in minutes"
+        description="Execution intervals in minutes"
     )
     auto_execute: bool = Field(
         default=True,

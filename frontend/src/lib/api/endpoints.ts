@@ -340,6 +340,7 @@ export interface AgentResponse {
   strategy_id: string;
   strategy_type?: string | null;
   strategy_name?: string | null;
+  strategy_symbols?: string[];
 
   // AI model
   ai_model?: string | null;

@@ -462,7 +462,7 @@ class AgentDB(Base):
 
     # Execution configuration
     execution_interval_minutes: Mapped[int] = mapped_column(
-        Integer, default=30
+        Integer, default=15
     )
     auto_execute: Mapped[bool] = mapped_column(Boolean, default=True)
 
