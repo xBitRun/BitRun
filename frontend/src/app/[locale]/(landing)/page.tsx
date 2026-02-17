@@ -3,11 +3,13 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Header } from "@/components/layout/header";
-import { DarkVeil } from "@/components/landing/dark-veil";
-import { FeatureCards } from "@/components/landing/feature-cards";
-import { CoreCapabilities } from "@/components/landing/core-capabilities";
-import { CapabilityShowcase } from "@/components/landing/capability-showcase";
-import { LandingFooter } from "@/components/landing/landing-footer";
+import {
+  DarkVeilBackground,
+  FeatureCards,
+  CoreCapabilities,
+  CapabilityShowcase,
+  LandingFooter,
+} from "@/components/landing";
 import { useTheme } from "@/lib/brand-context";
 
 export default function LandingPage() {
@@ -22,20 +24,7 @@ export default function LandingPage() {
       {/* ── Hero Section ── */}
       <section className="relative">
         {/* WebGL DarkVeil background */}
-        <div className="dark-veil-container">
-          <DarkVeil
-            hueShift={theme.effects?.darkVeilHueShift ?? 0}
-            noiseIntensity={0}
-            scanlineIntensity={0}
-            speed={0.5}
-            scanlineFrequency={0}
-            warpAmount={0}
-            resolutionScale={1}
-          />
-        </div>
-
-        {/* Gradient blur overlay */}
-        <div className="landing-gradient-blur" aria-hidden="true" />
+        <DarkVeilBackground hueShift={theme.effects?.darkVeilHueShift ?? 0} />
 
         <div className="landing-hero-content">
           {/* Title */}

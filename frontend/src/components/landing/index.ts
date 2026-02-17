@@ -1,4 +1,5 @@
 export { DarkVeil } from "./dark-veil";
+export { DarkVeilBackground } from "./dark-veil-background";
 export { FeatureCards } from "./feature-cards";
 export { CoreCapabilities } from "./core-capabilities";
 export { Marquee } from "./marquee";
