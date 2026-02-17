@@ -18,6 +18,7 @@ from ..db.database import close_db, init_db
 from ..services.redis_service import close_redis, get_redis_service
 from ..traders.exchange_pool import ExchangePool
 from .routes import accounts, agents, auth, backtest, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
+from .routes.backtest import records_router as backtest_records_router
 from ..monitoring.middleware import setup_prometheus_middleware
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.sentry import init_sentry
@@ -227,6 +228,7 @@ def create_app() -> FastAPI:
     app.include_router(agents.router, prefix="/api/v1")
     app.include_router(decisions.router, prefix="/api/v1")
     app.include_router(backtest.router, prefix="/api/v1")
+    app.include_router(backtest_records_router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
     app.include_router(data.router, prefix="/api/v1")
     app.include_router(models.router, prefix="/api/v1")
@@ -248,6 +250,7 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api", include_in_schema=False)
         app.include_router(decisions.router, prefix="/api", include_in_schema=False)
         app.include_router(backtest.router, prefix="/api", include_in_schema=False)
+        app.include_router(backtest_records_router, prefix="/api", include_in_schema=False)
         app.include_router(dashboard.router, prefix="/api", include_in_schema=False)
         app.include_router(data.router, prefix="/api", include_in_schema=False)
         app.include_router(models.router, prefix="/api", include_in_schema=False)

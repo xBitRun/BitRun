@@ -60,6 +60,10 @@ export {
   useRunBacktest,
   useQuickBacktest,
   useBacktestSymbols,
+  useBacktests,
+  useBacktest,
+  useCreateBacktest,
+  useDeleteBacktest,
 } from "./use-backtest";
 
 // Dashboard hooks

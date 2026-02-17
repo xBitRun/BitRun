@@ -90,6 +90,10 @@ class UserDB(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    backtest_results: Mapped[list["BacktestResultDB"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"
@@ -825,6 +829,89 @@ class DecisionRecordDB(Base):
 
     def __repr__(self) -> str:
         return f"<DecisionRecord {self.id} at {self.timestamp}>"
+
+
+# =============================================================================
+# Backtest Results - Persisted backtest records
+# =============================================================================
+
+class BacktestResultDB(Base):
+    """
+    Persisted backtest result for history and comparison.
+
+    Stores complete backtest results including configuration snapshot,
+    performance metrics, equity curve, and trade history. Allows users
+    to review past backtests and compare strategy performance over time.
+    """
+    __tablename__ = "backtest_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    strategy_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("strategies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Configuration snapshot (at backtest time)
+    strategy_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    symbols: Mapped[list] = mapped_column(JSON, default=list)
+    exchange: Mapped[str] = mapped_column(String(50), nullable=False, default="hyperliquid")
+    initial_balance: Mapped[float] = mapped_column(Float, nullable=False)
+    timeframe: Mapped[str] = mapped_column(String(10), default="1h")
+    use_ai: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Time range
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    # Core metrics
+    final_balance: Mapped[float] = mapped_column(Float, nullable=False)
+    total_return_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    total_trades: Mapped[int] = mapped_column(Integer, default=0)
+    winning_trades: Mapped[int] = mapped_column(Integer, default=0)
+    losing_trades: Mapped[int] = mapped_column(Integer, default=0)
+    win_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    profit_factor: Mapped[float] = mapped_column(Float, default=0.0)
+    max_drawdown_percent: Mapped[float] = mapped_column(Float, default=0.0)
+    sharpe_ratio: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sortino_ratio: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    calmar_ratio: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_fees: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Full result data (JSON for efficient storage)
+    equity_curve: Mapped[list] = mapped_column(JSON, default=list)
+    drawdown_curve: Mapped[list] = mapped_column(JSON, default=list)
+    trades: Mapped[list] = mapped_column(JSON, default=list)
+    monthly_returns: Mapped[list] = mapped_column(JSON, default=list)
+    trade_statistics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    symbol_breakdown: Mapped[list] = mapped_column(JSON, default=list)
+    analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="backtest_results")
+    strategy: Mapped[Optional["StrategyDB"]] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<BacktestResult {self.strategy_name} {self.total_return_percent:.2f}%>"
 
 
 # =============================================================================

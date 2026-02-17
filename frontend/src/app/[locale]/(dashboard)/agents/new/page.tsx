@@ -105,13 +105,31 @@ function StepIndicator({
   const stepIcons = [FileText, Bot, Zap, Rocket];
   const stepKeys: WizardStep[] = ["strategy", "model", "execution", "review"];
 
+  // Filter out skipped steps for display
+  const visibleSteps = steps.filter((_, index) => !skippedSteps.has(index));
+  const visibleStepKeys = stepKeys.filter(
+    (_, index) => !skippedSteps.has(index),
+  );
+  const visibleIcons = stepIcons.filter((_, index) => !skippedSteps.has(index));
+
+  // Map current step index to visible index
+  const visibleCurrentStep = (() => {
+    let visibleIndex = 0;
+    for (let i = 0; i <= currentStep; i++) {
+      if (!skippedSteps.has(i)) {
+        if (i === currentStep) return visibleIndex;
+        visibleIndex++;
+      }
+    }
+    return visibleIndex;
+  })();
+
   return (
     <div className="flex items-center justify-between mb-8">
-      {steps.map((step, index) => {
-        const Icon = stepIcons[index];
-        const isActive = index === currentStep;
-        const isComplete = index < currentStep;
-        const isSkipped = skippedSteps.has(index);
+      {visibleSteps.map((step, index) => {
+        const Icon = visibleIcons[index];
+        const isActive = index === visibleCurrentStep;
+        const isComplete = index < visibleCurrentStep;
 
         return (
           <div key={step} className="flex items-center flex-1 last:flex-none">
@@ -123,12 +141,10 @@ function StepIndicator({
                     ? "border-primary bg-primary text-primary-foreground"
                     : isComplete
                       ? "border-primary bg-primary/10 text-primary"
-                      : isSkipped
-                        ? "border-muted-foreground/30 bg-muted text-muted-foreground"
-                        : "border-border bg-background text-muted-foreground",
+                      : "border-border bg-background text-muted-foreground",
                 )}
               >
-                {isComplete || isSkipped ? (
+                {isComplete ? (
                   <Check className="w-4 h-4" />
                 ) : (
                   <Icon className="w-4 h-4" />
@@ -140,14 +156,14 @@ function StepIndicator({
                   isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                {t(`wizard.steps.${stepKeys[index]}`)}
+                {t(`wizard.steps.${visibleStepKeys[index]}`)}
               </span>
             </div>
-            {index < steps.length - 1 && (
+            {index < visibleSteps.length - 1 && (
               <div
                 className={cn(
                   "flex-1 h-0.5 mx-3 -mt-5",
-                  index < currentStep ? "bg-primary" : "bg-border",
+                  index < visibleCurrentStep ? "bg-primary" : "bg-border",
                 )}
               />
             )}

@@ -440,6 +440,41 @@
     "results": "Backtest Results",
     "noResults": "No backtest results yet",
     "noResultsHint": "Run a backtest to see performance metrics",
+    "list": {
+      "title": "Backtest Records",
+      "subtitle": "View historical backtest records and results",
+      "empty": "No backtest records",
+      "emptyHint": "Run your first backtest to validate your strategy",
+      "runNew": "Run New Backtest",
+      "viewDetails": "View Details",
+      "delete": "Delete Record",
+      "confirmDelete": "Are you sure you want to delete this backtest record?",
+      "confirmDeleteDescription": "This action cannot be undone. The backtest record will be permanently deleted.",
+      "cancel": "Cancel",
+      "deleteSuccess": "Deleted successfully",
+      "deleteFailed": "Delete failed",
+      "return": "Return",
+      "winRate": "Win Rate",
+      "maxDrawdown": "Max Drawdown",
+      "trades": "Trades",
+      "totalRecords": "{count} records total"
+    },
+    "run": {
+      "title": "Run New Backtest",
+      "subtitle": "Configure parameters and run strategy backtest",
+      "selectStrategy": "Select Strategy",
+      "selectStrategyPlaceholder": "Choose a strategy to backtest",
+      "runButton": "Run Backtest"
+    },
+    "detail": {
+      "title": "Backtest Details",
+      "backToList": "Back to List",
+      "delete": "Delete",
+      "confirmDelete": "Are you sure you want to delete this backtest record?",
+      "deleteSuccess": "Deleted successfully",
+      "deleteFailed": "Delete failed",
+      "notFound": "Backtest record not found"
+    },
     "metrics": {
       "totalReturn": "Total Return",
       "maxDrawdown": "Max Drawdown",
@@ -1193,8 +1228,34 @@
     "tabs": {
       "overview": "Overview",
       "decisions": "Decisions",
+      "positions": "Positions",
       "performance": "Performance",
       "settings": "Settings"
+    },
+    "positions": {
+      "title": "Current Positions",
+      "empty": "No Positions",
+      "emptyDesc": "This agent has no positions at the moment",
+      "columns": {
+        "symbol": "Symbol",
+        "side": "Side",
+        "size": "Size",
+        "sizeUsd": "Notional Value",
+        "entryPrice": "Entry Price",
+        "leverage": "Leverage",
+        "realizedPnl": "Realized PnL",
+        "status": "Status",
+        "openedAt": "Opened At"
+      },
+      "side": {
+        "long": "Long",
+        "short": "Short"
+      },
+      "status": {
+        "pending": "Pending",
+        "open": "Open",
+        "closed": "Closed"
+      }
     },
     "toast": {
       "started": "Agent started",

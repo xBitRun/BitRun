@@ -911,7 +911,58 @@ export const backtestApi = {
         params: { exchange },
       },
     ),
+
+  // Persisted backtest records
+  list: (limit: number = 20, offset: number = 0) =>
+    api.get<BacktestListResponse>("/backtests", {
+      params: { limit, offset },
+    }),
+
+  get: (id: string) => api.get<BacktestDetailResponse>(`/backtests/${id}`),
+
+  create: (data: BacktestRequest) =>
+    api.post<BacktestDetailResponse>("/backtests", data),
+
+  delete: (id: string) => api.delete<void>(`/backtests/${id}`),
 };
+
+// Backtest list item
+export interface BacktestListItem {
+  id: string;
+  strategy_name: string;
+  symbols: string[];
+  exchange: string;
+  start_date: string;
+  end_date: string;
+  initial_balance: number;
+  final_balance: number;
+  total_return_percent: number;
+  total_trades: number;
+  win_rate: number;
+  max_drawdown_percent: number;
+  sharpe_ratio?: number;
+  created_at: string;
+}
+
+export interface BacktestListResponse {
+  items: BacktestListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// Full backtest detail (extends BacktestResponse with id and timestamps)
+export interface BacktestDetailResponse extends BacktestResponse {
+  id: string;
+  strategy_id?: string;
+  symbols: string[];
+  exchange: string;
+  use_ai: boolean;
+  timeframe: string;
+  sortino_ratio?: number;
+  calmar_ratio?: number;
+  created_at: string;
+}
 
 // ==================== Dashboard ====================
 

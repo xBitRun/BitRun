@@ -440,6 +440,41 @@
     "results": "回测结果",
     "noResults": "暂无回测结果",
     "noResultsHint": "运行回测以查看性能指标",
+    "list": {
+      "title": "回测记录",
+      "subtitle": "查看历史回测记录和结果",
+      "empty": "暂无回测记录",
+      "emptyHint": "运行第一次回测来检验你的策略表现",
+      "runNew": "运行新回测",
+      "viewDetails": "查看详情",
+      "delete": "删除记录",
+      "confirmDelete": "确定要删除这条回测记录吗？",
+      "confirmDeleteDescription": "此操作不可撤销，回测记录将被永久删除。",
+      "cancel": "取消",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "return": "收益率",
+      "winRate": "胜率",
+      "maxDrawdown": "最大回撤",
+      "trades": "交易数",
+      "totalRecords": "共 {count} 条记录"
+    },
+    "run": {
+      "title": "运行新回测",
+      "subtitle": "配置参数并运行策略回测",
+      "selectStrategy": "选择策略",
+      "selectStrategyPlaceholder": "选择要回测的策略",
+      "runButton": "运行回测"
+    },
+    "detail": {
+      "title": "回测详情",
+      "backToList": "返回列表",
+      "delete": "删除",
+      "confirmDelete": "确定要删除这条回测记录吗？",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "notFound": "未找到回测记录"
+    },
     "metrics": {
       "totalReturn": "总收益",
       "maxDrawdown": "最大回撤",
@@ -1203,8 +1238,34 @@
     "tabs": {
       "overview": "概览",
       "decisions": "决策",
+      "positions": "持仓",
       "performance": "性能",
       "settings": "设置"
+    },
+    "positions": {
+      "title": "当前持仓",
+      "empty": "暂无持仓",
+      "emptyDesc": "该代理当前没有持仓",
+      "columns": {
+        "symbol": "币种",
+        "side": "方向",
+        "size": "数量",
+        "sizeUsd": "名义价值",
+        "entryPrice": "入场价",
+        "leverage": "杠杆",
+        "realizedPnl": "已实现盈亏",
+        "status": "状态",
+        "openedAt": "开仓时间"
+      },
+      "side": {
+        "long": "做多",
+        "short": "做空"
+      },
+      "status": {
+        "pending": "待开仓",
+        "open": "持仓中",
+        "closed": "已平仓"
+      }
     },
     "toast": {
       "started": "代理已启动",

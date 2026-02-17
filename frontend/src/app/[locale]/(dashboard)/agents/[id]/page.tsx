@@ -78,14 +78,17 @@ import {
   groupModelsByProvider,
   getProviderDisplayName,
 } from "@/hooks";
-import { useAgent, useUpdateAgentStatus } from "@/hooks/use-agents";
+import {
+  useAgent,
+  useUpdateAgentStatus,
+  useAgentPositions,
+} from "@/hooks/use-agents";
 import {
   useAgentDecisions,
   useAgentDecisionStats,
 } from "@/hooks/use-decisions";
 import { agentsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { TradingViewChart } from "@/components/charts/tradingview-chart";
 import type { AgentStatus } from "@/types";
 
 // Backward compat alias used throughout this file
@@ -130,6 +133,191 @@ function getActionColor(action: string) {
   }
 }
 
+// Positions Tab
+function PositionsTab({
+  agentId,
+  t,
+}: {
+  agentId: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const { data: positions, isLoading, error } = useAgentPositions(agentId);
+
+  // Filter to show only open and pending positions
+  const activePositions = positions?.filter(
+    (p) => p.status === "open" || p.status === "pending",
+  );
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "open":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[var(--profit)]/10 text-[var(--profit)] border-[var(--profit)]/30"
+          >
+            {t("positions.status.open")}
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30"
+          >
+            {t("positions.status.pending")}
+          </Badge>
+        );
+      case "closed":
+        return (
+          <Badge variant="outline" className="bg-muted text-muted-foreground">
+            {t("positions.status.closed")}
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getSideBadge = (side: string) => {
+    if (side === "long") {
+      return (
+        <Badge className="bg-[var(--profit)]/20 text-[var(--profit)]">
+          {t("positions.side.long")}
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-[var(--loss)]/20 text-[var(--loss)]">
+        {t("positions.side.short")}
+      </Badge>
+    );
+  };
+
+  const formatPrice = (price: number) => {
+    if (price >= 1000)
+      return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (price >= 1) return `$${price.toFixed(2)}`;
+    return `$${price.toFixed(6)}`;
+  };
+
+  const formatPnl = (pnl: number) => {
+    const isPositive = pnl >= 0;
+    return (
+      <span
+        className={isPositive ? "text-[var(--profit)]" : "text-[var(--loss)]"}
+      >
+        {isPositive ? "+" : ""}${pnl.toFixed(2)}
+      </span>
+    );
+  };
+
+  const formatTime = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    return date.toLocaleString();
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">{t("positions.empty")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("positions.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!activePositions || activePositions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Target className="w-10 h-10 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">{t("positions.empty")}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("positions.emptyDesc")}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("positions.columns.symbol")}</TableHead>
+                    <TableHead>{t("positions.columns.side")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("positions.columns.size")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("positions.columns.sizeUsd")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("positions.columns.entryPrice")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("positions.columns.leverage")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("positions.columns.realizedPnl")}
+                    </TableHead>
+                    <TableHead>{t("positions.columns.status")}</TableHead>
+                    <TableHead>{t("positions.columns.openedAt")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activePositions.map((position) => (
+                    <TableRow key={position.id}>
+                      <TableCell className="font-medium">
+                        {position.symbol}
+                      </TableCell>
+                      <TableCell>{getSideBadge(position.side)}</TableCell>
+                      <TableCell className="text-right">
+                        {position.size.toFixed(4)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPrice(position.size_usd)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPrice(position.entry_price)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {position.leverage}x
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPnl(position.realized_pnl)}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(position.status)}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatTime(position.opened_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // Overview Tab
 function OverviewTab({
   agent,
@@ -143,7 +331,6 @@ function OverviewTab({
   const hasTradeData = (agent.total_trades ?? 0) > 0;
   const config = agent.config as Record<string, unknown>;
   const symbols = (config?.symbols as string[]) || [];
-  const [selectedSymbol, setSelectedSymbol] = useState(symbols[0] || "BTC");
 
   // --- Trade execution list: state, data fetching, pagination ---
   const TRADES_PAGE_SIZE = 10;
@@ -259,182 +446,150 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      {/* Chart + Strategy Info Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-        {/* TradingView Chart */}
-        <Card className="bg-card/50 border-border/50 overflow-hidden min-h-[500px] flex flex-col">
-          {/* Symbol selector bar */}
-          {symbols.length > 1 && (
-            <div className="flex items-center gap-2 px-4 pt-3 pb-0">
-              {symbols.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSelectedSymbol(s)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-xs font-mono font-medium transition-colors",
-                    selectedSymbol === s
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {s}/USDT
-                </button>
-              ))}
+      {/* Strategy Info + Profit Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Strategy Details */}
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {t("overview.strategyInfo")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {t("overview.symbols")}
+              </span>
+              <div className="flex gap-1 flex-wrap justify-end">
+                {symbols.map((s) => (
+                  <Badge
+                    key={s}
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                  >
+                    {s}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          )}
-          <CardContent className="p-0 flex-1">
-            <TradingViewChart
-              symbol={`BINANCE:${selectedSymbol}USDT`}
-              interval="60"
-            />
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {t("overview.tradingMode")}
+              </span>
+              <span className="font-medium">
+                {t(
+                  `tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`,
+                )}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {t("overview.aiModel")}
+              </span>
+              <span
+                className="font-medium text-xs truncate max-w-[150px]"
+                title={agent.ai_model || ""}
+              >
+                {agent.ai_model
+                  ? agent.ai_model.includes(":")
+                    ? agent.ai_model.split(":").slice(1).join(":")
+                    : agent.ai_model
+                  : "-"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {t("overview.executionInterval")}
+              </span>
+              <span className="font-mono text-xs">
+                {t("overview.everyMinutes", {
+                  minutes: agent.execution_interval_minutes,
+                })}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-border/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("overview.createdAt")}
+                </span>
+                <span className="text-xs">
+                  {agent.created_at
+                    ? new Date(agent.created_at).toLocaleDateString()
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("overview.lastRun")}
+                </span>
+                <span className="text-xs">
+                  {agent.last_run_at
+                    ? new Date(agent.last_run_at).toLocaleString()
+                    : t("overview.never")}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Strategy Info Sidebar */}
-        <div className="space-y-4">
-          {/* Strategy Details */}
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {t("overview.strategyInfo")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("overview.symbols")}
-                </span>
-                <div className="flex gap-1 flex-wrap justify-end">
-                  {symbols.map((s) => (
-                    <Badge
-                      key={s}
-                      variant="outline"
-                      className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("overview.tradingMode")}
-                </span>
-                <span className="font-medium">
-                  {t(
-                    `tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`,
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("overview.aiModel")}
-                </span>
+        {/* Profit Summary */}
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {t("overview.profitSummary")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {t("overview.totalPnl")}
+              </span>
+              {hasTradeData ? (
                 <span
-                  className="font-medium text-xs truncate max-w-[150px]"
-                  title={agent.ai_model || ""}
+                  className={cn(
+                    "font-mono font-bold",
+                    (agent.total_pnl ?? 0) >= 0
+                      ? "text-[var(--profit)]"
+                      : "text-[var(--loss)]",
+                  )}
                 >
-                  {agent.ai_model
-                    ? agent.ai_model.includes(":")
-                      ? agent.ai_model.split(":").slice(1).join(":")
-                      : agent.ai_model
-                    : "-"}
+                  {(agent.total_pnl ?? 0) >= 0 ? "+" : ""}$
+                  {Math.abs(agent.total_pnl ?? 0).toLocaleString()}
                 </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("overview.executionInterval")}
+              ) : (
+                <span className="font-mono text-muted-foreground">
+                  {t("overview.noData")}
                 </span>
-                <span className="font-mono text-xs">
-                  {t("overview.everyMinutes", {
-                    minutes: agent.execution_interval_minutes,
-                  })}
-                </span>
-              </div>
-              <div className="pt-2 border-t border-border/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    {t("overview.createdAt")}
-                  </span>
-                  <span className="text-xs">
-                    {agent.created_at
-                      ? new Date(agent.created_at).toLocaleDateString()
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    {t("overview.lastRun")}
-                  </span>
-                  <span className="text-xs">
-                    {agent.last_run_at
-                      ? new Date(agent.last_run_at).toLocaleString()
-                      : t("overview.never")}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Profit Summary */}
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {t("overview.profitSummary")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t("overview.totalPnl")}
-                </span>
-                {hasTradeData ? (
-                  <span
-                    className={cn(
-                      "font-mono font-bold",
-                      (agent.total_pnl ?? 0) >= 0
-                        ? "text-[var(--profit)]"
-                        : "text-[var(--loss)]",
-                    )}
-                  >
-                    {(agent.total_pnl ?? 0) >= 0 ? "+" : ""}$
-                    {Math.abs(agent.total_pnl ?? 0).toLocaleString()}
-                  </span>
-                ) : (
-                  <span className="font-mono text-muted-foreground">
-                    {t("overview.noData")}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t("overview.winRate")}
-                </span>
-                <span className="font-mono font-medium">
-                  {hasTradeData ? `${(agent.win_rate ?? 0).toFixed(1)}%` : "-"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t("overview.totalTrades")}
-                </span>
-                <span className="font-mono font-medium">
-                  {agent.total_trades ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t("overview.maxDrawdown")}
-                </span>
-                <span className="font-mono font-medium text-[var(--loss)]">
-                  {hasTradeData
-                    ? `-${(agent.max_drawdown ?? 0).toFixed(2)}%`
-                    : "-"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {t("overview.winRate")}
+              </span>
+              <span className="font-mono font-medium">
+                {hasTradeData ? `${(agent.win_rate ?? 0).toFixed(1)}%` : "-"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {t("overview.totalTrades")}
+              </span>
+              <span className="font-mono font-medium">
+                {agent.total_trades ?? 0}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {t("overview.maxDrawdown")}
+              </span>
+              <span className="font-mono font-medium text-[var(--loss)]">
+                {hasTradeData
+                  ? `-${(agent.max_drawdown ?? 0).toFixed(2)}%`
+                  : "-"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Trade Execution List */}
@@ -1537,7 +1692,11 @@ function DecisionsTab({
                       {/* Chain of Thought - Enhanced Timeline View */}
                       <ChainOfThoughtView
                         content={decision.chain_of_thought}
-                        titleKey={decision.ai_model?.startsWith("quant:") ? "executionReasoning" : "chainOfThought"}
+                        titleKey={
+                          decision.ai_model?.startsWith("quant:")
+                            ? "executionReasoning"
+                            : "chainOfThought"
+                        }
                       />
 
                       {/* Trading Decisions */}
@@ -2264,7 +2423,7 @@ export default function AgentDetailPage() {
   // URL query params for deep linking: ?tab=decisions&decision=<id>
   const tabParam = searchParams.get("tab");
   const decisionParam = searchParams.get("decision");
-  const validTabs = ["overview", "decisions", "settings"];
+  const validTabs = ["overview", "decisions", "positions", "settings"];
   const initialTab =
     tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -2454,6 +2613,7 @@ export default function AgentDetailPage() {
         <TabsList className="bg-muted/50">
           <TabsTrigger value="overview">{t("tabs.overview")}</TabsTrigger>
           <TabsTrigger value="decisions">{t("tabs.decisions")}</TabsTrigger>
+          <TabsTrigger value="positions">{t("tabs.positions")}</TabsTrigger>
           <TabsTrigger value="settings">{t("tabs.settings")}</TabsTrigger>
         </TabsList>
 
@@ -2471,6 +2631,10 @@ export default function AgentDetailPage() {
             agentStatus={agent.status}
             highlightDecisionId={decisionParam ?? undefined}
           />
+        </TabsContent>
+
+        <TabsContent value="positions" className="mt-6">
+          <PositionsTab agentId={agentId} t={t} />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6">

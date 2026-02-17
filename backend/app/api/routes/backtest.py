@@ -23,6 +23,7 @@ from ...core.errors import (
     create_http_exception,
     internal_error,
 )
+from ...db.repositories.backtest import BacktestRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...models.strategy import StrategyConfig
 
@@ -469,3 +470,388 @@ async def get_available_symbols(
             internal_error=e,
             log_error=False,  # Already logged above
         )
+
+
+# =============================================================================
+# Persisted Backtest Records API
+# =============================================================================
+
+# Create a new router for /backtests (plural) to avoid conflict with /backtest
+records_router = APIRouter(prefix="/backtests", tags=["backtest"])
+
+
+class BacktestListItem(BaseModel):
+    """List item for backtest results"""
+    id: UUID
+    strategy_name: str
+    symbols: list[str]
+    exchange: str
+    start_date: datetime
+    end_date: datetime
+    initial_balance: float
+    final_balance: float
+    total_return_percent: float
+    total_trades: int
+    win_rate: float
+    max_drawdown_percent: float
+    sharpe_ratio: Optional[float] = None
+    created_at: datetime
+
+
+class BacktestListResponse(BaseModel):
+    """Paginated backtest list"""
+    items: list[BacktestListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class BacktestDetailResponse(BacktestResponse):
+    """Full backtest result with id and timestamps"""
+    id: UUID
+    strategy_id: Optional[UUID] = None
+    use_ai: bool = False
+    timeframe: str = "1h"
+    sortino_ratio: Optional[float] = None
+    calmar_ratio: Optional[float] = None
+    created_at: datetime
+
+
+def _build_list_item(record) -> BacktestListItem:
+    """Convert BacktestResultDB to list item."""
+    return BacktestListItem(
+        id=record.id,
+        strategy_name=record.strategy_name,
+        symbols=record.symbols or [],
+        exchange=record.exchange,
+        start_date=record.start_date,
+        end_date=record.end_date,
+        initial_balance=record.initial_balance,
+        final_balance=record.final_balance,
+        total_return_percent=record.total_return_percent,
+        total_trades=record.total_trades,
+        win_rate=record.win_rate,
+        max_drawdown_percent=record.max_drawdown_percent,
+        sharpe_ratio=record.sharpe_ratio,
+        created_at=record.created_at,
+    )
+
+
+def _build_detail_response(record) -> BacktestDetailResponse:
+    """Convert BacktestResultDB to detail response."""
+    limit = settings.backtest_equity_curve_limit
+    trades_limit = settings.backtest_trades_limit
+
+    # Build trades
+    trades_data = record.trades or []
+    trades_to_return = trades_data[-trades_limit:] if len(trades_data) > trades_limit else trades_data
+    trade_records = [
+        TradeRecord(
+            symbol=t.get("symbol", ""),
+            side=t.get("side", ""),
+            size=t.get("size", 0),
+            entry_price=t.get("entry_price", 0),
+            exit_price=t.get("exit_price", 0),
+            leverage=t.get("leverage", 1),
+            pnl=round(t.get("pnl", 0), 2),
+            pnl_percent=round(t.get("pnl_percent", 0), 2),
+            opened_at=t.get("opened_at"),
+            closed_at=t.get("closed_at"),
+            duration_minutes=round(t.get("duration_minutes", 0), 1),
+            exit_reason=t.get("exit_reason", ""),
+        )
+        for t in trades_to_return
+    ]
+
+    # Build trade statistics
+    ts = record.trade_statistics or {}
+    trade_statistics = TradeStatistics(
+        average_win=round(ts.get("average_win", 0), 2),
+        average_loss=round(ts.get("average_loss", 0), 2),
+        largest_win=round(ts.get("largest_win", 0), 2),
+        largest_loss=round(ts.get("largest_loss", 0), 2),
+        gross_profit=round(ts.get("gross_profit", 0), 2),
+        gross_loss=round(ts.get("gross_loss", 0), 2),
+        avg_holding_hours=ts.get("avg_holding_hours", 0),
+        max_consecutive_wins=ts.get("max_consecutive_wins", 0),
+        max_consecutive_losses=ts.get("max_consecutive_losses", 0),
+        expectancy=ts.get("expectancy", 0),
+        recovery_factor=ts.get("recovery_factor"),
+        sortino_ratio=ts.get("sortino_ratio"),
+        calmar_ratio=ts.get("calmar_ratio"),
+        long_stats=SideStats(**ts.get("long_stats", {})),
+        short_stats=SideStats(**ts.get("short_stats", {})),
+    ) if ts else None
+
+    # Build monthly returns
+    monthly_returns = [
+        MonthlyReturn(**m) for m in (record.monthly_returns or [])
+    ]
+
+    # Build symbol breakdown
+    symbol_breakdown = [
+        SymbolBreakdown(**s) for s in (record.symbol_breakdown or [])
+    ]
+
+    # Build analysis
+    analysis = None
+    if record.analysis:
+        analysis = BacktestAnalysis(
+            strengths=record.analysis.get("strengths", []),
+            weaknesses=record.analysis.get("weaknesses", []),
+            recommendations=record.analysis.get("recommendations", []),
+        )
+
+    return BacktestDetailResponse(
+        id=record.id,
+        strategy_id=record.strategy_id,
+        strategy_name=record.strategy_name,
+        use_ai=record.use_ai,
+        timeframe=record.timeframe,
+        start_date=record.start_date,
+        end_date=record.end_date,
+        initial_balance=record.initial_balance,
+        final_balance=record.final_balance,
+        total_return_percent=record.total_return_percent,
+        total_trades=record.total_trades,
+        winning_trades=record.winning_trades,
+        losing_trades=record.losing_trades,
+        win_rate=record.win_rate,
+        profit_factor=record.profit_factor,
+        max_drawdown_percent=record.max_drawdown_percent,
+        sharpe_ratio=record.sharpe_ratio,
+        sortino_ratio=record.sortino_ratio,
+        calmar_ratio=record.calmar_ratio,
+        total_fees=record.total_fees,
+        equity_curve=(record.equity_curve or [])[:limit],
+        trades=trade_records,
+        drawdown_curve=(record.drawdown_curve or [])[:limit],
+        monthly_returns=monthly_returns,
+        trade_statistics=trade_statistics,
+        symbol_breakdown=symbol_breakdown,
+        analysis=analysis,
+        created_at=record.created_at,
+    )
+
+
+@records_router.get("", response_model=BacktestListResponse)
+async def list_backtests(
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _rate_limit: RateLimitApiDep = None,
+):
+    """
+    List persisted backtest results for the current user.
+    """
+    repo = BacktestRepository(db)
+    records = await repo.get_by_user(UUID(user_id), limit=limit, offset=offset)
+    total = await repo.count_by_user(UUID(user_id))
+
+    return BacktestListResponse(
+        items=[_build_list_item(r) for r in records],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@records_router.post("", response_model=BacktestDetailResponse)
+async def create_backtest(
+    request: BacktestRequest,
+    db: DbSessionDep,
+    crypto: CryptoDep,
+    user_id: CurrentUserDep,
+    _rate_limit: RateLimitApiDep = None,
+):
+    """
+    Run backtest and save the result.
+
+    This runs the backtest and persists the result to the database.
+    """
+    # Get strategy
+    strategy_repo = StrategyRepository(db)
+    strategy = await strategy_repo.get_by_id(request.strategy_id, user_id)
+
+    if not strategy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found"
+        )
+
+    # Resolve AI client from DB when use_ai
+    ai_client = None
+    analysis_ai_client = None
+    if request.use_ai:
+        model_id = strategy.ai_model
+        if not model_id:
+            raise create_http_exception(
+                ErrorCode.VALIDATION_ERROR,
+                user_message="Strategy has no AI model configured. Edit the strategy and select an AI model.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        api_key, base_url = await resolve_provider_credentials(
+            db, crypto, UUID(user_id), model_id
+        )
+        if not api_key and "custom" not in (model_id.split(":")[0] if ":" in model_id else "").lower():
+            raise create_http_exception(
+                ErrorCode.VALIDATION_ERROR,
+                user_message="No API key configured for the selected AI model. Configure the provider in Models / Providers.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        kwargs = {"api_key": api_key or ""}
+        if base_url:
+            kwargs["base_url"] = base_url
+        ai_client = get_ai_client(model_id, **kwargs)
+
+    # Resolve AI client for analysis
+    if strategy.ai_model:
+        try:
+            model_id = strategy.ai_model
+            api_key, base_url = await resolve_provider_credentials(
+                db, crypto, UUID(user_id), model_id
+            )
+            if api_key or "custom" in (model_id.split(":")[0] if ":" in model_id else "").lower():
+                kwargs = {"api_key": api_key or ""}
+                if base_url:
+                    kwargs["base_url"] = base_url
+                analysis_ai_client = get_ai_client(model_id, **kwargs)
+        except Exception as e:
+            logger.warning(f"Failed to initialize analysis AI client: {e}")
+
+    try:
+        # Initialize data provider
+        data_provider = DataProvider(exchange=request.exchange)
+        await data_provider.initialize()
+
+        # Load data
+        config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        symbols = request.symbols or config.symbols
+        await data_provider.load_data(
+            symbols=symbols,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            timeframe=request.timeframe,
+        )
+
+        # Run backtest
+        engine = BacktestEngine(
+            strategy=strategy,
+            initial_balance=request.initial_balance,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            data_provider=data_provider,
+            use_ai=request.use_ai,
+            ai_client=ai_client,
+            analysis_ai_client=analysis_ai_client,
+        )
+
+        result = await engine.run()
+        await engine.cleanup()
+
+        # Persist result
+        backtest_repo = BacktestRepository(db)
+        record = await backtest_repo.create(
+            user_id=UUID(user_id),
+            strategy_id=strategy.id,
+            strategy_name=result.strategy_name,
+            symbols=symbols,
+            exchange=request.exchange,
+            initial_balance=result.initial_balance,
+            timeframe=request.timeframe,
+            use_ai=request.use_ai,
+            start_date=result.start_date,
+            end_date=result.end_date,
+            final_balance=result.final_balance,
+            total_return_percent=result.total_return_percent,
+            total_trades=result.total_trades,
+            winning_trades=result.winning_trades,
+            losing_trades=result.losing_trades,
+            win_rate=result.win_rate,
+            profit_factor=result.profit_factor,
+            max_drawdown_percent=result.max_drawdown_percent,
+            sharpe_ratio=result.sharpe_ratio,
+            sortino_ratio=result.sortino_ratio,
+            calmar_ratio=result.calmar_ratio,
+            total_fees=result.total_fees,
+            equity_curve=result.equity_curve,
+            drawdown_curve=result.drawdown_curve,
+            trades=[
+                {
+                    "symbol": t.symbol,
+                    "side": t.side,
+                    "size": t.size,
+                    "entry_price": t.entry_price,
+                    "exit_price": t.exit_price,
+                    "leverage": t.leverage,
+                    "pnl": t.pnl,
+                    "pnl_percent": t.pnl_percent,
+                    "opened_at": t.opened_at.isoformat() if t.opened_at else None,
+                    "closed_at": t.closed_at.isoformat() if t.closed_at else None,
+                    "duration_minutes": t.duration_minutes,
+                    "exit_reason": t.exit_reason,
+                }
+                for t in result.trades
+            ],
+            monthly_returns=result.monthly_returns or [],
+            trade_statistics=result.trade_statistics,
+            symbol_breakdown=result.symbol_breakdown or [],
+            analysis={
+                "strengths": result.analysis.strengths if result.analysis else [],
+                "weaknesses": result.analysis.weaknesses if result.analysis else [],
+                "recommendations": result.analysis.recommendations if result.analysis else [],
+            } if result.analysis else None,
+        )
+
+        return _build_detail_response(record)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Backtest failed for strategy {request.strategy_id}: {e}", exc_info=True)
+        raise backtest_failed_error(e)
+
+
+@records_router.get("/{backtest_id}", response_model=BacktestDetailResponse)
+async def get_backtest(
+    backtest_id: UUID,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    _rate_limit: RateLimitApiDep = None,
+):
+    """
+    Get a persisted backtest result by ID.
+    """
+    repo = BacktestRepository(db)
+    record = await repo.get_by_id(backtest_id, UUID(user_id))
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Backtest result not found"
+        )
+
+    return _build_detail_response(record)
+
+
+@records_router.delete("/{backtest_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_backtest(
+    backtest_id: UUID,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    _rate_limit: RateLimitApiDep = None,
+):
+    """
+    Delete a persisted backtest result.
+    """
+    repo = BacktestRepository(db)
+    deleted = await repo.delete(backtest_id, UUID(user_id))
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Backtest result not found"
+        )
+
+    return None
