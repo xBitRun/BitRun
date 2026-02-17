@@ -1243,6 +1243,7 @@
         "sizeUsd": "Notional Value",
         "entryPrice": "Entry Price",
         "leverage": "Leverage",
+        "margin": "Margin",
         "realizedPnl": "Realized PnL",
         "status": "Status",
         "openedAt": "Opened At"
@@ -1255,6 +1256,12 @@
         "pending": "Pending",
         "open": "Open",
         "closed": "Closed"
+      },
+      "accountSummary": {
+        "equity": "Equity",
+        "availableBalance": "Available Balance",
+        "unrealizedPnl": "Unrealized PnL",
+        "marginUsed": "Margin Used"
       }
     },
     "toast": {

@@ -82,6 +82,7 @@ import {
   useAgent,
   useUpdateAgentStatus,
   useAgentPositions,
+  useAgentAccountState,
 } from "@/hooks/use-agents";
 import {
   useAgentDecisions,
@@ -142,6 +143,7 @@ function PositionsTab({
   t: ReturnType<typeof useTranslations>;
 }) {
   const { data: positions, isLoading, error } = useAgentPositions(agentId);
+  const { data: accountState } = useAgentAccountState(agentId);
 
   // Filter to show only open and pending positions
   const activePositions = positions?.filter(
@@ -241,6 +243,70 @@ function PositionsTab({
 
   return (
     <div className="space-y-6">
+      {/* Account Summary Cards */}
+      {accountState && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground mb-1">
+                {t("positions.accountSummary.equity")}
+              </div>
+              <div className="text-2xl font-bold">
+                $
+                {accountState.equity.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground mb-1">
+                {t("positions.accountSummary.availableBalance")}
+              </div>
+              <div className="text-2xl font-bold">
+                $
+                {accountState.available_balance.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground mb-1">
+                {t("positions.accountSummary.unrealizedPnl")}
+              </div>
+              <div
+                className={`text-2xl font-bold ${accountState.total_unrealized_pnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"}`}
+              >
+                {accountState.total_unrealized_pnl >= 0 ? "+" : ""}$
+                {accountState.total_unrealized_pnl.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground mb-1">
+                {t("positions.accountSummary.marginUsed")}
+              </div>
+              <div className="text-2xl font-bold">
+                $
+                {accountState.total_margin_used.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("positions.title")}</CardTitle>
@@ -274,6 +340,9 @@ function PositionsTab({
                       {t("positions.columns.leverage")}
                     </TableHead>
                     <TableHead className="text-right">
+                      {t("positions.columns.margin")}
+                    </TableHead>
+                    <TableHead className="text-right">
                       {t("positions.columns.realizedPnl")}
                     </TableHead>
                     <TableHead>{t("positions.columns.status")}</TableHead>
@@ -298,6 +367,9 @@ function PositionsTab({
                       </TableCell>
                       <TableCell className="text-right">
                         {position.leverage}x
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPrice(position.size_usd / position.leverage)}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatPnl(position.realized_pnl)}

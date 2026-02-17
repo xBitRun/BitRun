@@ -104,6 +104,18 @@ class AgentPositionResponse(BaseModel):
     closed_at: Optional[str] = None
 
 
+class AgentAccountStateResponse(BaseModel):
+    """Agent account state response for positions tab"""
+    equity: float = Field(description="Total account equity")
+    available_balance: float = Field(description="Available balance for new positions")
+    total_unrealized_pnl: float = Field(description="Total unrealized profit/loss")
+    total_margin_used: float = Field(description="Total margin used by open positions")
+    realized_pnl: float = 0.0
+    close_price: Optional[float] = None
+    opened_at: Optional[str] = None
+    closed_at: Optional[str] = None
+
+
 # ==================== Routes ====================
 
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
@@ -528,6 +540,81 @@ async def get_agent_positions(
         )
         for p in positions
     ]
+
+
+@router.get("/{agent_id}/account-state", response_model=AgentAccountStateResponse)
+async def get_agent_account_state(
+    agent_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """Get agent's virtual account state including equity and balance."""
+    # Get agent and verify ownership
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    from ...services.agent_position_service import AgentPositionService
+    ps = AgentPositionService(db=db)
+
+    # Get current prices if agent has a real account
+    current_prices: Optional[dict[str, float]] = None
+    account_equity: Optional[float] = None
+
+    if agent.account_id and agent.execution_mode != "mock":
+        try:
+            from ...db.repositories.account import AccountRepository
+            from ...traders.ccxt_trader import create_trader_from_account
+
+            account_repo = AccountRepository(db)
+            account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
+            if account:
+                from ...core.config import settings
+                from cryptography.fernet import Fernet
+
+                cipher = Fernet(settings.ENCRYPTION_KEY.encode())
+                credentials = {
+                    k: cipher.decrypt(v.encode()).decode()
+                    for k, v in account.credentials.items()
+                }
+                trader = create_trader_from_account(account, credentials)
+                await trader.initialize()
+                state = await trader.get_account_state()
+                account_equity = state.equity
+
+                # Get current prices for open positions
+                positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
+                if positions:
+                    symbols = list({p.symbol for p in positions})
+                    tickers = await trader.fetch_tickers(symbols)
+                    current_prices = {s: t.get("last") for s, t in tickers.items() if t.get("last")}
+        except Exception as e:
+            logger.warning(f"Failed to get real account state for agent {agent_id}: {e}")
+
+    # Get agent account state
+    state = await ps.get_agent_account_state(
+        agent_id=uuid.UUID(agent_id),
+        agent=agent,
+        current_prices=current_prices,
+        account_equity=account_equity,
+    )
+
+    # Calculate total margin used
+    total_margin_used = sum(
+        pos.size_usd / max(pos.leverage, 1)
+        for pos in state.positions
+    )
+
+    return AgentAccountStateResponse(
+        equity=state.equity,
+        available_balance=state.available_balance,
+        total_unrealized_pnl=state.total_unrealized_pnl,
+        total_margin_used=total_margin_used,
+    )
 
 
 @router.post("/{agent_id}/trigger")

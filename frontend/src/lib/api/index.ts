@@ -40,6 +40,7 @@ export type {
   AgentStatusRequest,
   AgentResponse,
   AgentPositionResponse,
+  AgentAccountStateResponse,
   // Accounts
   CreateAccountRequest,
   AccountResponse,

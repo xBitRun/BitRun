@@ -401,6 +401,13 @@ export interface AgentPositionResponse {
   closed_at?: string | null;
 }
 
+export interface AgentAccountStateResponse {
+  equity: number;
+  available_balance: number;
+  total_unrealized_pnl: number;
+  total_margin_used: number;
+}
+
 export const agentsApi = {
   list: (params?: {
     status_filter?: AgentStatus;
@@ -445,6 +452,9 @@ export const agentsApi = {
 
   getPositions: (id: string) =>
     api.get<AgentPositionResponse[]>(`/agents/${id}/positions`),
+
+  getAccountState: (id: string) =>
+    api.get<AgentAccountStateResponse>(`/agents/${id}/account-state`),
 
   trigger: (id: string) =>
     api.post<TriggerExecutionResponse>(`/agents/${id}/trigger`),

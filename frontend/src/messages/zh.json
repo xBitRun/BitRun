@@ -1253,6 +1253,7 @@
         "sizeUsd": "名义价值",
         "entryPrice": "入场价",
         "leverage": "杠杆",
+        "margin": "保证金",
         "realizedPnl": "已实现盈亏",
         "status": "状态",
         "openedAt": "开仓时间"
@@ -1265,6 +1266,12 @@
         "pending": "待开仓",
         "open": "持仓中",
         "closed": "已平仓"
+      },
+      "accountSummary": {
+        "equity": "账户权益",
+        "availableBalance": "可用余额",
+        "unrealizedPnl": "未实现盈亏",
+        "marginUsed": "已用保证金"
       }
     },
     "toast": {

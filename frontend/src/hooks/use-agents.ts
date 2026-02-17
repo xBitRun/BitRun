@@ -5,19 +5,20 @@
  * Agent = Strategy + AI Model + Account/Mock.
  */
 
-import useSWR from 'swr';
-import useSWRMutation from 'swr/mutation';
-import { agentsApi, ApiError } from '@/lib/api';
+import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { agentsApi, ApiError } from "@/lib/api";
 import type {
   AgentResponse,
   AgentPositionResponse,
+  AgentAccountStateResponse,
   CreateAgentRequest,
   UpdateAgentRequest,
-} from '@/lib/api';
-import type { AgentStatus, StrategyType } from '@/types';
+} from "@/lib/api";
+import type { AgentStatus, StrategyType } from "@/types";
 
 // Keys
-const AGENTS_KEY = '/agents';
+const AGENTS_KEY = "/agents";
 const agentKey = (id: string) => `/agents/${id}`;
 const agentPositionsKey = (id: string) => `/agents/${id}/positions`;
 
@@ -25,7 +26,10 @@ const agentPositionsKey = (id: string) => `/agents/${id}/positions`;
  * Fetch all agents.
  * Treats 404 as empty list (graceful degradation when backend route is unavailable).
  */
-export function useAgents(params?: { status_filter?: AgentStatus; strategy_type?: StrategyType }) {
+export function useAgents(params?: {
+  status_filter?: AgentStatus;
+  strategy_type?: StrategyType;
+}) {
   const key = params ? [AGENTS_KEY, params] : AGENTS_KEY;
   const swr = useSWR<AgentResponse[]>(
     key,
@@ -42,7 +46,7 @@ export function useAgents(params?: { status_filter?: AgentStatus; strategy_type?
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
-    }
+    },
   );
   return {
     ...swr,
@@ -60,7 +64,7 @@ export function useAgent(id: string | null) {
     () => agentsApi.get(id!),
     {
       revalidateOnFocus: false,
-    }
+    },
   );
 }
 
@@ -72,7 +76,7 @@ export function useCreateAgent() {
     AGENTS_KEY,
     async (_, { arg }) => {
       return agentsApi.create(arg);
-    }
+    },
   );
 }
 
@@ -84,7 +88,7 @@ export function useUpdateAgent(id: string) {
     agentKey(id),
     async (_, { arg }) => {
       return agentsApi.update(id, arg);
-    }
+    },
   );
 }
 
@@ -92,12 +96,9 @@ export function useUpdateAgent(id: string) {
  * Delete agent mutation
  */
 export function useDeleteAgent(id: string) {
-  return useSWRMutation<void, Error, string>(
-    agentKey(id),
-    async () => {
-      return agentsApi.delete(id);
-    }
-  );
+  return useSWRMutation<void, Error, string>(agentKey(id), async () => {
+    return agentsApi.delete(id);
+  });
 }
 
 /**
@@ -108,7 +109,7 @@ export function useUpdateAgentStatus(id: string) {
     agentKey(id),
     async (_, { arg }) => {
       return agentsApi.updateStatus(id, arg);
-    }
+    },
   );
 }
 
@@ -116,12 +117,9 @@ export function useUpdateAgentStatus(id: string) {
  * Trigger agent execution manually
  */
 export function useTriggerAgent(id: string) {
-  return useSWRMutation(
-    agentKey(id),
-    async () => {
-      return agentsApi.trigger(id);
-    }
-  );
+  return useSWRMutation(agentKey(id), async () => {
+    return agentsApi.trigger(id);
+  });
 }
 
 /**
@@ -134,7 +132,23 @@ export function useAgentPositions(agentId: string | null) {
     {
       revalidateOnFocus: false,
       refreshInterval: 30000, // refresh every 30s for positions
-    }
+    },
+  );
+}
+
+/**
+ * Fetch agent account state (equity, balance, pnl)
+ */
+const agentAccountStateKey = (id: string) => `/agents/${id}/account-state`;
+
+export function useAgentAccountState(agentId: string | null) {
+  return useSWR<AgentAccountStateResponse>(
+    agentId ? agentAccountStateKey(agentId) : null,
+    () => agentsApi.getAccountState(agentId!),
+    {
+      revalidateOnFocus: false,
+      refreshInterval: 30000, // refresh every 30s
+    },
   );
 }
 
@@ -143,5 +157,5 @@ export function useAgentPositions(agentId: string | null) {
  */
 export function useActiveAgentsCount() {
   const { agents } = useAgents();
-  return agents.filter(a => a.status === 'active').length;
+  return agents.filter((a) => a.status === "active").length;
 }
