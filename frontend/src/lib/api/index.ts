@@ -12,7 +12,6 @@ export {
   decisionsApi,
   backtestApi,
   dashboardApi,
-  competitionApi,
   systemApi,
   healthApi,
   modelsApi,
@@ -82,12 +81,6 @@ export type {
   QuantStrategyApiResponse,
   // Workers
   TriggerExecutionResponse,
-  // Competition
-  LeaderboardEntry,
-  CompetitionStats,
-  LeaderboardResponse,
-  StrategyRankingEntry,
-  StrategyRankingResponse,
   // System
   OutboundIPResponse,
   // Data

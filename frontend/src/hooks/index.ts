@@ -98,9 +98,6 @@ export {
 // Strategy Studio hook
 export { useStrategyStudio, apiResponseToConfig } from "./use-strategy-studio";
 
-// Competition hooks
-export { useLeaderboard, useStrategyRanking } from "./use-competition";
-
 // System hooks
 export { useOutboundIP } from "./use-system";
 

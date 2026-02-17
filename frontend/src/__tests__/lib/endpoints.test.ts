@@ -16,7 +16,6 @@ import {
   modelsApi,
   providersApi,
   agentsApi,
-  competitionApi,
   systemApi,
 } from "@/lib/api/endpoints";
 
@@ -66,7 +65,7 @@ describe("authApi", () => {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: expect.stringContaining("username=test%40example.com"),
-      })
+      }),
     );
   });
 
@@ -85,7 +84,7 @@ describe("authApi", () => {
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     await expect(
-      authApi.login({ email: "test@example.com", password: "wrong" })
+      authApi.login({ email: "test@example.com", password: "wrong" }),
     ).rejects.toThrow();
   });
 
@@ -100,7 +99,7 @@ describe("authApi", () => {
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     await expect(
-      authApi.login({ email: "test@example.com", password: "wrong" })
+      authApi.login({ email: "test@example.com", password: "wrong" }),
     ).rejects.toThrow();
   });
 
@@ -115,7 +114,7 @@ describe("authApi", () => {
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     await expect(
-      authApi.login({ email: "test@example.com", password: "password" })
+      authApi.login({ email: "test@example.com", password: "password" }),
     ).rejects.toThrow();
   });
 
@@ -138,7 +137,7 @@ describe("authApi", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("http://localhost:8000/api/v1/auth/login"),
-      expect.any(Object)
+      expect.any(Object),
     );
 
     if (originalEnv) {
@@ -148,11 +147,18 @@ describe("authApi", () => {
 
   it("register should POST to /auth/register with skipAuth", async () => {
     const data = { email: "a@b.com", password: "pw", name: "Test" };
-    mockedApi.post.mockResolvedValue({ id: "1", email: "a@b.com", name: "Test", is_active: true });
+    mockedApi.post.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      name: "Test",
+      is_active: true,
+    });
 
     await authApi.register(data);
 
-    expect(mockedApi.post).toHaveBeenCalledWith("/auth/register", data, { skipAuth: true });
+    expect(mockedApi.post).toHaveBeenCalledWith("/auth/register", data, {
+      skipAuth: true,
+    });
   });
 
   it("logout should POST to /auth/logout", async () => {
@@ -164,7 +170,12 @@ describe("authApi", () => {
   });
 
   it("me should GET /auth/me", async () => {
-    mockedApi.get.mockResolvedValue({ id: "1", email: "a@b.com", name: "Test", is_active: true });
+    mockedApi.get.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      name: "Test",
+      is_active: true,
+    });
 
     await authApi.me();
 
@@ -172,29 +183,44 @@ describe("authApi", () => {
   });
 
   it("refresh should POST to /auth/refresh with skipAuth", async () => {
-    mockedApi.post.mockResolvedValue({ access_token: "t", refresh_token: "r", token_type: "bearer", expires_in: 3600 });
+    mockedApi.post.mockResolvedValue({
+      access_token: "t",
+      refresh_token: "r",
+      token_type: "bearer",
+      expires_in: 3600,
+    });
 
     await authApi.refresh("refresh-tok");
 
     expect(mockedApi.post).toHaveBeenCalledWith(
       "/auth/refresh",
       { refresh_token: "refresh-tok" },
-      { skipAuth: true }
+      { skipAuth: true },
     );
   });
 
   it("updateProfile should PUT to /auth/profile", async () => {
-    mockedApi.put.mockResolvedValue({ id: "1", email: "a@b.com", name: "New", is_active: true });
+    mockedApi.put.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      name: "New",
+      is_active: true,
+    });
 
     await authApi.updateProfile({ name: "New" });
 
-    expect(mockedApi.put).toHaveBeenCalledWith("/auth/profile", { name: "New" });
+    expect(mockedApi.put).toHaveBeenCalledWith("/auth/profile", {
+      name: "New",
+    });
   });
 
   it("changePassword should POST to /auth/change-password", async () => {
     mockedApi.post.mockResolvedValue({ message: "ok" });
 
-    await authApi.changePassword({ current_password: "old", new_password: "new" });
+    await authApi.changePassword({
+      current_password: "old",
+      new_password: "new",
+    });
 
     expect(mockedApi.post).toHaveBeenCalledWith("/auth/change-password", {
       current_password: "old",
@@ -219,7 +245,13 @@ describe("strategiesApi", () => {
   });
 
   it("create should POST /strategies", async () => {
-    const data = { name: "Test", prompt: "p", trading_mode: "aggressive" as const, symbols: ["BTC"], account_id: "a1" };
+    const data = {
+      name: "Test",
+      prompt: "p",
+      trading_mode: "aggressive" as const,
+      symbols: ["BTC"],
+      account_id: "a1",
+    };
     mockedApi.post.mockResolvedValue({ id: "s1" });
     await strategiesApi.create(data);
     expect(mockedApi.post).toHaveBeenCalledWith("/strategies", data);
@@ -228,7 +260,9 @@ describe("strategiesApi", () => {
   it("update should PATCH /strategies/:id", async () => {
     mockedApi.patch.mockResolvedValue({ id: "s1" });
     await strategiesApi.update("s1", { name: "Updated" });
-    expect(mockedApi.patch).toHaveBeenCalledWith("/strategies/s1", { name: "Updated" });
+    expect(mockedApi.patch).toHaveBeenCalledWith("/strategies/s1", {
+      name: "Updated",
+    });
   });
 
   it("delete should DELETE /strategies/:id", async () => {
@@ -239,9 +273,16 @@ describe("strategiesApi", () => {
 
   it("previewPrompt should POST /strategies/preview-prompt", async () => {
     const data = { prompt: "test" };
-    mockedApi.post.mockResolvedValue({ system_prompt: "", estimated_tokens: 0, sections: {} });
+    mockedApi.post.mockResolvedValue({
+      system_prompt: "",
+      estimated_tokens: 0,
+      sections: {},
+    });
     await strategiesApi.previewPrompt(data);
-    expect(mockedApi.post).toHaveBeenCalledWith("/strategies/preview-prompt", data);
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      "/strategies/preview-prompt",
+      data,
+    );
   });
 });
 
@@ -251,12 +292,17 @@ describe("quantStrategiesApi", () => {
   it("list should delegate to agentsApi (GET /agents)", async () => {
     mockedApi.get.mockResolvedValue([]);
     await quantStrategiesApi.list();
-    expect(mockedApi.get).toHaveBeenCalledWith(expect.stringContaining("/agents"));
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      expect.stringContaining("/agents"),
+    );
   });
 
   it("list should pass query params through to agents endpoint", async () => {
     mockedApi.get.mockResolvedValue([]);
-    await quantStrategiesApi.list({ status_filter: "active", strategy_type: "grid" });
+    await quantStrategiesApi.list({
+      status_filter: "active",
+      strategy_type: "grid",
+    });
     const url = mockedApi.get.mock.calls[0][0];
     expect(url).toContain("/agents");
     expect(url).toContain("status_filter=active");
@@ -276,12 +322,14 @@ describe("quantStrategiesApi", () => {
   });
 
   it("create should throw deprecation error", async () => {
-    expect(() => quantStrategiesApi.create({
-      name: "Grid Strategy",
-      strategy_type: "grid",
-      symbol: "BTC",
-      config: { upper_price: 50000, lower_price: 40000 },
-    })).toThrow("deprecated");
+    expect(() =>
+      quantStrategiesApi.create({
+        name: "Grid Strategy",
+        strategy_type: "grid",
+        symbol: "BTC",
+        config: { upper_price: 50000, lower_price: 40000 },
+      }),
+    ).toThrow("deprecated");
   });
 
   it("update should delegate to agentsApi (PATCH /agents/:id)", async () => {
@@ -327,7 +375,11 @@ describe("accountsApi", () => {
   });
 
   it("create should POST /accounts", async () => {
-    const data = { name: "Main", exchange: "binance" as const, is_testnet: false };
+    const data = {
+      name: "Main",
+      exchange: "binance" as const,
+      is_testnet: false,
+    };
     mockedApi.post.mockResolvedValue({ id: "a1" });
     await accountsApi.create(data);
     expect(mockedApi.post).toHaveBeenCalledWith("/accounts", data);
@@ -371,13 +423,17 @@ describe("decisionsApi", () => {
   it("listRecent should GET /decisions/recent with limit param", async () => {
     mockedApi.get.mockResolvedValue([]);
     await decisionsApi.listRecent(10);
-    expect(mockedApi.get).toHaveBeenCalledWith("/decisions/recent", { params: { limit: 10 } });
+    expect(mockedApi.get).toHaveBeenCalledWith("/decisions/recent", {
+      params: { limit: 10 },
+    });
   });
 
   it("listRecent should use default limit when not provided", async () => {
     mockedApi.get.mockResolvedValue([]);
     await decisionsApi.listRecent();
-    expect(mockedApi.get).toHaveBeenCalledWith("/decisions/recent", { params: { limit: 20 } });
+    expect(mockedApi.get).toHaveBeenCalledWith("/decisions/recent", {
+      params: { limit: 20 },
+    });
   });
 
   it("listByStrategy should include offset and execution_filter", async () => {
@@ -392,7 +448,12 @@ describe("decisionsApi", () => {
     mockedApi.get.mockResolvedValue([]);
     await decisionsApi.listByStrategy("s1", 5, 10, "all", "open_long");
     expect(mockedApi.get).toHaveBeenCalledWith("/decisions/strategy/s1", {
-      params: { limit: 5, offset: 10, execution_filter: "all", action: "open_long" },
+      params: {
+        limit: 5,
+        offset: 10,
+        execution_filter: "all",
+        action: "open_long",
+      },
     });
   });
 
@@ -569,7 +630,9 @@ describe("modelsApi", () => {
   it("list should GET /models with optional provider param", async () => {
     mockedApi.get.mockResolvedValue([]);
     await modelsApi.list("deepseek");
-    expect(mockedApi.get).toHaveBeenCalledWith("/models", { params: { provider: "deepseek" } });
+    expect(mockedApi.get).toHaveBeenCalledWith("/models", {
+      params: { provider: "deepseek" },
+    });
   });
 
   it("list without provider should pass empty params", async () => {
@@ -579,9 +642,15 @@ describe("modelsApi", () => {
   });
 
   it("test should POST /models/test", async () => {
-    mockedApi.post.mockResolvedValue({ model_id: "m1", success: true, message: "ok" });
+    mockedApi.post.mockResolvedValue({
+      model_id: "m1",
+      success: true,
+      message: "ok",
+    });
     await modelsApi.test({ model_id: "deepseek:chat" });
-    expect(mockedApi.post).toHaveBeenCalledWith("/models/test", { model_id: "deepseek:chat" });
+    expect(mockedApi.post).toHaveBeenCalledWith("/models/test", {
+      model_id: "deepseek:chat",
+    });
   });
 
   it("get should GET /models/:id with encoded modelId", async () => {
@@ -593,7 +662,9 @@ describe("modelsApi", () => {
   it("get should encode special characters in modelId", async () => {
     mockedApi.get.mockResolvedValue({ id: "m1" });
     await modelsApi.get("provider/model@version");
-    expect(mockedApi.get).toHaveBeenCalledWith("/models/provider%2Fmodel%40version");
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      "/models/provider%2Fmodel%40version",
+    );
   });
 });
 
@@ -607,7 +678,11 @@ describe("providersApi", () => {
   });
 
   it("create should POST /providers", async () => {
-    const data = { provider_type: "openai", name: "My OpenAI", api_key: "sk-xxx" };
+    const data = {
+      provider_type: "openai",
+      name: "My OpenAI",
+      api_key: "sk-xxx",
+    };
     mockedApi.post.mockResolvedValue({ id: "p1" });
     await providersApi.create(data);
     expect(mockedApi.post).toHaveBeenCalledWith("/providers", data);
@@ -616,7 +691,9 @@ describe("providersApi", () => {
   it("update should PATCH /providers/:id", async () => {
     mockedApi.patch.mockResolvedValue({ id: "p1" });
     await providersApi.update("p1", { name: "Renamed" });
-    expect(mockedApi.patch).toHaveBeenCalledWith("/providers/p1", { name: "Renamed" });
+    expect(mockedApi.patch).toHaveBeenCalledWith("/providers/p1", {
+      name: "Renamed",
+    });
   });
 
   it("delete should DELETE /providers/:id", async () => {
@@ -628,14 +705,18 @@ describe("providersApi", () => {
   it("test should POST /providers/:id/test", async () => {
     mockedApi.post.mockResolvedValue({ success: true, message: "ok" });
     await providersApi.test("p1", "sk-key");
-    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", { api_key: "sk-key" });
+    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", {
+      api_key: "sk-key",
+    });
   });
 
   it("replaceModels should PUT /providers/:id/models", async () => {
     const models = [{ id: "m1", name: "Model 1" }];
     mockedApi.put.mockResolvedValue(models);
     await providersApi.replaceModels("p1", models);
-    expect(mockedApi.put).toHaveBeenCalledWith("/providers/p1/models", { models });
+    expect(mockedApi.put).toHaveBeenCalledWith("/providers/p1/models", {
+      models,
+    });
   });
 
   it("listPresets should GET /providers/presets", async () => {
@@ -660,25 +741,34 @@ describe("providersApi", () => {
     const modelData = { id: "m1", name: "Model 1" };
     mockedApi.post.mockResolvedValue(modelData);
     await providersApi.addModel("p1", modelData);
-    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/models", modelData);
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      "/providers/p1/models",
+      modelData,
+    );
   });
 
   it("deleteModel should DELETE /providers/:id/models/:modelId", async () => {
     mockedApi.delete.mockResolvedValue(undefined);
     await providersApi.deleteModel("p1", "model:1");
-    expect(mockedApi.delete).toHaveBeenCalledWith("/providers/p1/models/model%3A1");
+    expect(mockedApi.delete).toHaveBeenCalledWith(
+      "/providers/p1/models/model%3A1",
+    );
   });
 
   it("test should POST /providers/:id/test with optional apiKey", async () => {
     mockedApi.post.mockResolvedValue({ success: true, message: "ok" });
     await providersApi.test("p1", "sk-key");
-    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", { api_key: "sk-key" });
+    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", {
+      api_key: "sk-key",
+    });
   });
 
   it("test should POST /providers/:id/test without apiKey", async () => {
     mockedApi.post.mockResolvedValue({ success: true, message: "ok" });
     await providersApi.test("p1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", { api_key: undefined });
+    expect(mockedApi.post).toHaveBeenCalledWith("/providers/p1/test", {
+      api_key: undefined,
+    });
   });
 });
 
@@ -693,8 +783,13 @@ describe("agentsApi", () => {
 
   it("list should pass filter params", async () => {
     mockedApi.get.mockResolvedValue([]);
-    await agentsApi.list({ status_filter: "active", strategy_type: "momentum" });
-    expect(mockedApi.get).toHaveBeenCalledWith("/agents?status_filter=active&strategy_type=momentum");
+    await agentsApi.list({
+      status_filter: "active",
+      strategy_type: "momentum",
+    });
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      "/agents?status_filter=active&strategy_type=momentum",
+    );
   });
 
   it("get should GET /agents/:id", async () => {
@@ -717,7 +812,9 @@ describe("agentsApi", () => {
   it("update should PATCH /agents/:id", async () => {
     mockedApi.patch.mockResolvedValue({ id: "a1" });
     await agentsApi.update("a1", { name: "Updated" });
-    expect(mockedApi.patch).toHaveBeenCalledWith("/agents/a1", { name: "Updated" });
+    expect(mockedApi.patch).toHaveBeenCalledWith("/agents/a1", {
+      name: "Updated",
+    });
   });
 
   it("delete should DELETE /agents/:id", async () => {
@@ -738,13 +835,17 @@ describe("agentsApi", () => {
   it("activate should POST /agents/:id/status with active", async () => {
     mockedApi.post.mockResolvedValue({ id: "a1", status: "active" });
     await agentsApi.activate("a1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", { status: "active" });
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", {
+      status: "active",
+    });
   });
 
   it("pause should POST /agents/:id/status with paused", async () => {
     mockedApi.post.mockResolvedValue({ id: "a1", status: "paused" });
     await agentsApi.pause("a1");
-    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", { status: "paused" });
+    expect(mockedApi.post).toHaveBeenCalledWith("/agents/a1/status", {
+      status: "paused",
+    });
   });
 
   it("stop should POST /agents/:id/status with stopped", async () => {
@@ -769,58 +870,35 @@ describe("agentsApi", () => {
   });
 });
 
-// ==================== Competition ====================
-
-describe("competitionApi", () => {
-  it("getLeaderboard should GET /competition/leaderboard", async () => {
-    mockedApi.get.mockResolvedValue({ leaderboard: [], stats: null });
-    await competitionApi.getLeaderboard();
-    expect(mockedApi.get).toHaveBeenCalledWith("/competition/leaderboard");
-  });
-
-  it("getLeaderboard should pass sort params", async () => {
-    mockedApi.get.mockResolvedValue({ leaderboard: [], stats: null });
-    await competitionApi.getLeaderboard("total_pnl", "desc");
-    expect(mockedApi.get).toHaveBeenCalledWith("/competition/leaderboard?sort_by=total_pnl&order=desc");
-  });
-
-  it("getStrategyRanking should GET /competition/strategy-ranking", async () => {
-    mockedApi.get.mockResolvedValue({ rankings: [], total: 0 });
-    await competitionApi.getStrategyRanking();
-    expect(mockedApi.get).toHaveBeenCalledWith("/competition/strategy-ranking");
-  });
-
-  it("getStrategyRanking should pass filter params", async () => {
-    mockedApi.get.mockResolvedValue({ rankings: [], total: 0 });
-    await competitionApi.getStrategyRanking({
-      sort_by: "avg_pnl",
-      type_filter: "momentum",
-      limit: 10,
-      offset: 20,
-    });
-    expect(mockedApi.get).toHaveBeenCalledWith(
-      "/competition/strategy-ranking?sort_by=avg_pnl&type_filter=momentum&limit=10&offset=20"
-    );
-  });
-});
-
 // ==================== System ====================
 
 describe("systemApi", () => {
   it("getOutboundIP should GET /system/outbound-ip", async () => {
-    mockedApi.get.mockResolvedValue({ ip: "1.2.3.4", source: "aws", cached: false });
+    mockedApi.get.mockResolvedValue({
+      ip: "1.2.3.4",
+      source: "aws",
+      cached: false,
+    });
     await systemApi.getOutboundIP();
     expect(mockedApi.get).toHaveBeenCalledWith("/system/outbound-ip");
   });
 
   it("getOutboundIP should return cached response", async () => {
-    mockedApi.get.mockResolvedValue({ ip: "1.2.3.4", source: "cache", cached: true });
+    mockedApi.get.mockResolvedValue({
+      ip: "1.2.3.4",
+      source: "cache",
+      cached: true,
+    });
     const result = await systemApi.getOutboundIP();
     expect(result.cached).toBe(true);
   });
 
   it("getOutboundIP should handle null IP", async () => {
-    mockedApi.get.mockResolvedValue({ ip: null, source: "error", cached: false });
+    mockedApi.get.mockResolvedValue({
+      ip: null,
+      source: "error",
+      cached: false,
+    });
     const result = await systemApi.getOutboundIP();
     expect(result.ip).toBeNull();
   });

@@ -52,9 +52,8 @@
     "agents": "交易代理",
     "marketplace": "策略市场",
     "accounts": "交易账户",
-    "models": "AI 模型",
-    "competition": "AI 竞技场",
-    "backtest": "回测",
+    "models": "模型服务",
+    "backtest": "历史回测",
     "settings": "设置",
     "collapse": "收起"
   },
@@ -2343,54 +2342,6 @@
     "resetToPreset": "重新应用模板",
     "presetActive": "当前预设",
     "customized": "参数已自定义调整"
-  },
-  "competition": {
-    "title": "AI 竞技场",
-    "subtitle": "实时对比 AI 交易代理表现",
-    "leaderboard": "排行榜",
-    "refresh": "刷新",
-    "stats": {
-      "totalStrategies": "总代理数",
-      "activeStrategies": "活跃代理",
-      "bestPerformer": "最佳表现",
-      "avgWinRate": "平均胜率",
-      "totalTrades": "总交易数",
-      "bestPnl": "最高盈亏",
-      "worstPnl": "最低盈亏"
-    },
-    "table": {
-      "rank": "#",
-      "name": "代理",
-      "status": "状态",
-      "model": "AI 模型",
-      "totalPnl": "总盈亏",
-      "pnlPercent": "收益率",
-      "winRate": "胜率",
-      "trades": "交易数",
-      "maxDrawdown": "最大回撤",
-      "actions": "操作"
-    },
-    "sortBy": {
-      "total_pnl": "总盈亏",
-      "win_rate": "胜率",
-      "total_trades": "交易数",
-      "max_drawdown": "最大回撤"
-    },
-    "empty": {
-      "title": "暂无代理",
-      "description": "创建交易代理后，将在此展示竞赛排行",
-      "createFirst": "创建代理"
-    },
-    "viewDetails": "查看详情",
-    "filter": {
-      "all": "全部",
-      "active": "运行中",
-      "paused": "已暂停"
-    },
-    "chart": {
-      "title": "盈亏对比",
-      "noData": "暂无数据"
-    }
   },
   "landing": {
     "nav": {

@@ -52,9 +52,8 @@
     "agents": "Agents",
     "marketplace": "Marketplace",
     "accounts": "Accounts",
-    "models": "Models",
-    "competition": "Arena",
-    "backtest": "Backtest",
+    "models": "Model Services",
+    "backtest": "Historical Backtest",
     "settings": "Settings",
     "collapse": "Collapse"
   },
@@ -2287,54 +2286,6 @@
     "resetToPreset": "Reapply Preset",
     "presetActive": "Active Preset",
     "customized": "Parameters have been customized"
-  },
-  "competition": {
-    "title": "Arena",
-    "subtitle": "Compare AI agent performance in real-time",
-    "leaderboard": "Leaderboard",
-    "refresh": "Refresh",
-    "stats": {
-      "totalStrategies": "Total Agents",
-      "activeStrategies": "Active Agents",
-      "bestPerformer": "Best Performer",
-      "avgWinRate": "Avg Win Rate",
-      "totalTrades": "Total Trades",
-      "bestPnl": "Best P/L",
-      "worstPnl": "Worst P/L"
-    },
-    "table": {
-      "rank": "#",
-      "name": "Agent",
-      "status": "Status",
-      "model": "AI Model",
-      "totalPnl": "Total P/L",
-      "pnlPercent": "ROI %",
-      "winRate": "Win Rate",
-      "trades": "Trades",
-      "maxDrawdown": "Max DD",
-      "actions": "Actions"
-    },
-    "sortBy": {
-      "total_pnl": "Total P/L",
-      "win_rate": "Win Rate",
-      "total_trades": "Total Trades",
-      "max_drawdown": "Max Drawdown"
-    },
-    "empty": {
-      "title": "No agents yet",
-      "description": "Create trading agents to see them compete here",
-      "createFirst": "Create Agent"
-    },
-    "viewDetails": "View Details",
-    "filter": {
-      "all": "All",
-      "active": "Active",
-      "paused": "Paused"
-    },
-    "chart": {
-      "title": "P&L Comparison",
-      "noData": "No data to display"
-    }
   },
   "landing": {
     "nav": {

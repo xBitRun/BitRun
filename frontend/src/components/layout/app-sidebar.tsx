@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Menu,
   Cpu,
-  Trophy,
   Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,9 +47,9 @@ const navItems = [
     icon: Bot,
   },
   {
-    titleKey: "competition",
-    href: "/competition",
-    icon: Trophy,
+    titleKey: "backtest",
+    href: "/backtest",
+    icon: FlaskConical,
   },
   {
     titleKey: "accounts",
@@ -61,11 +60,6 @@ const navItems = [
     titleKey: "models",
     href: "/models",
     icon: Cpu,
-  },
-  {
-    titleKey: "backtest",
-    href: "/backtest",
-    icon: FlaskConical,
   },
 ] as const;
 
