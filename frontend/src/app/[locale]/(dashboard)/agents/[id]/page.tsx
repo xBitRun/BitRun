@@ -32,6 +32,8 @@ import {
   Code,
   Copy,
   Check,
+  Wallet,
+  CircleDot,
 } from "lucide-react";
 import {
   Card,
@@ -343,6 +345,9 @@ function PositionsTab({
                       {t("positions.columns.margin")}
                     </TableHead>
                     <TableHead className="text-right">
+                      {t("positions.columns.unrealizedPnl")}
+                    </TableHead>
+                    <TableHead className="text-right">
                       {t("positions.columns.realizedPnl")}
                     </TableHead>
                     <TableHead>{t("positions.columns.status")}</TableHead>
@@ -370,6 +375,11 @@ function PositionsTab({
                       </TableCell>
                       <TableCell className="text-right">
                         {formatPrice(position.size_usd / position.leverage)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {position.unrealized_pnl != null
+                          ? formatPnl(position.unrealized_pnl)
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatPnl(position.realized_pnl)}
@@ -2243,6 +2253,22 @@ export default function AgentDetailPage() {
             label: t(`status.${agent.status}`),
             className: getStatusColor(agent.status),
           },
+          {
+            label: t(`executionMode.${agent.execution_mode}`),
+            className:
+              agent.execution_mode === "live"
+                ? "bg-[var(--profit)]/15 text-[var(--profit)] border-[var(--profit)]/30"
+                : "bg-muted/50 text-muted-foreground border-border/50",
+          },
+          ...(agent.execution_mode === "live" && agent.account_name
+            ? [
+                {
+                  label: agent.account_name,
+                  className:
+                    "bg-muted/30 text-muted-foreground border-border/30",
+                },
+              ]
+            : []),
         ]}
         primaryActions={
           <div className="flex items-center gap-2">

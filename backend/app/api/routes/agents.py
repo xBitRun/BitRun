@@ -54,6 +54,8 @@ class AgentResponse(BaseModel):
     # Execution mode
     execution_mode: str
     account_id: Optional[str] = None
+    account_name: Optional[str] = None  # populated from exchange_account.name
+    account_exchange: Optional[str] = None  # populated from exchange_account.exchange
     mock_initial_balance: Optional[float] = None
 
     # Capital allocation
@@ -102,6 +104,10 @@ class AgentPositionResponse(BaseModel):
     close_price: Optional[float] = None
     opened_at: Optional[str] = None
     closed_at: Optional[str] = None
+    # Real-time fields (populated in live mode from exchange)
+    mark_price: Optional[float] = None
+    unrealized_pnl: Optional[float] = None
+    unrealized_pnl_percent: Optional[float] = None
 
 
 class AgentAccountStateResponse(BaseModel):
@@ -172,6 +178,16 @@ async def create_agent(
         account_uuid = uuid.UUID(data.account_id)
 
     agent_repo = AgentRepository(db)
+
+    # Check account uniqueness for live mode (one account per agent)
+    if data.execution_mode == ExecutionMode.LIVE and account_uuid:
+        existing_agent = await agent_repo.get_live_agent_by_account_id(account_uuid)
+        if existing_agent:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"This exchange account is already bound to agent '{existing_agent.name}'. "
+                f"Each account can only be bound to one agent."
+            )
     agent = await agent_repo.create(
         user_id=uuid.UUID(user_id),
         name=data.name,
@@ -187,7 +203,9 @@ async def create_agent(
     )
 
     # Eagerly load strategy for response
-    agent = await agent_repo.get_by_id(agent.id, include_strategy=True)
+    agent = await agent_repo.get_by_id(
+        agent.id, include_strategy=True, include_account=True
+    )
 
     return _agent_to_response(agent)
 
@@ -215,9 +233,25 @@ async def list_agents(
         execution_mode=execution_mode,
         limit=limit,
         offset=offset,
+        include_account=True,
     )
 
     return [_agent_to_response(a) for a in agents]
+
+
+@router.get("/bound-accounts", response_model=list[str])
+async def get_bound_accounts(
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Get all exchange account IDs that are bound to active/live agents.
+
+    Used by frontend to show which accounts are already in use when creating a new agent.
+    """
+    agent_repo = AgentRepository(db)
+    bound_ids = await agent_repo.get_bound_account_ids(uuid.UUID(user_id))
+    return [str(account_id) for account_id in bound_ids]
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -232,6 +266,7 @@ async def get_agent(
         uuid.UUID(agent_id),
         uuid.UUID(user_id),
         include_strategy=True,
+        include_account=True,
     )
 
     if not agent:
@@ -303,7 +338,9 @@ async def update_agent(
             detail="Agent not found"
         )
 
-    agent = await agent_repo.get_by_id(agent.id, include_strategy=True)
+    agent = await agent_repo.get_by_id(
+        agent.id, include_strategy=True, include_account=True
+    )
     return _agent_to_response(agent)
 
 
@@ -493,6 +530,7 @@ async def update_agent_status(
         uuid.UUID(agent_id),
         uuid.UUID(user_id),
         include_strategy=True,
+        include_account=True,
     )
     return _agent_to_response(agent)
 
@@ -504,7 +542,11 @@ async def get_agent_positions(
     user_id: CurrentUserDep,
     status_filter: Optional[str] = None,
 ):
-    """Get positions for a specific agent (isolated from other agents)."""
+    """Get positions for a specific agent (isolated from other agents).
+
+    For live mode agents, fetches real-time position data from the exchange
+    and merges with local position records.
+    """
     # Verify ownership
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
@@ -521,15 +563,60 @@ async def get_agent_positions(
         status_filter=status_filter,
     )
 
-    return [
-        AgentPositionResponse(
+    # For live mode, fetch real-time data from exchange
+    exchange_positions: dict[str, dict] = {}  # key: "{symbol}_{side}"
+    if agent.account_id and agent.execution_mode == "live":
+        try:
+            from ...db.repositories.account import AccountRepository
+            from ...traders.ccxt_trader import create_trader_from_account
+
+            account_repo = AccountRepository(db)
+            account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
+            if account:
+                from ...core.config import get_settings
+                from cryptography.fernet import Fernet
+
+                settings = get_settings()
+                cipher = Fernet(settings.data_encryption_key.encode())
+                credentials = {
+                    k: cipher.decrypt(v.encode()).decode()
+                    for k, v in account.credentials.items()
+                }
+                trader = create_trader_from_account(account, credentials)
+                await trader.initialize()
+                try:
+                    # Fetch positions from exchange
+                    raw_positions = await trader.get_positions()
+                    # Index by symbol+side for matching
+                    for pos in raw_positions:
+                        key = f"{pos.symbol}_{pos.side}"
+                        exchange_positions[key] = {
+                            "mark_price": pos.mark_price,
+                            "unrealized_pnl": pos.unrealized_pnl,
+                            "unrealized_pnl_percent": pos.unrealized_pnl_percent,
+                            "size": pos.size,
+                            "size_usd": pos.size_usd,
+                        }
+                finally:
+                    await trader.close()
+        except Exception as e:
+            logger.warning(f"Failed to fetch exchange positions for agent {agent_id}: {e}")
+
+    # Build response, merging exchange data for live mode
+    result = []
+    for p in positions:
+        # Try to get real-time data from exchange
+        key = f"{p.symbol}_{p.side}"
+        exchange_data = exchange_positions.get(key, {})
+
+        response = AgentPositionResponse(
             id=str(p.id),
             agent_id=str(p.agent_id),
             account_id=str(p.account_id) if p.account_id else None,
             symbol=p.symbol,
             side=p.side,
-            size=p.size,
-            size_usd=p.size_usd,
+            size=exchange_data.get("size", p.size),
+            size_usd=exchange_data.get("size_usd", p.size_usd),
             entry_price=p.entry_price,
             leverage=p.leverage,
             status=p.status,
@@ -537,9 +624,14 @@ async def get_agent_positions(
             close_price=p.close_price,
             opened_at=p.opened_at.isoformat() if p.opened_at else None,
             closed_at=p.closed_at.isoformat() if p.closed_at else None,
+            # Real-time fields from exchange (only in live mode)
+            mark_price=exchange_data.get("mark_price"),
+            unrealized_pnl=exchange_data.get("unrealized_pnl"),
+            unrealized_pnl_percent=exchange_data.get("unrealized_pnl_percent"),
         )
-        for p in positions
-    ]
+        result.append(response)
+
+    return result
 
 
 @router.get("/{agent_id}/account-state", response_model=AgentAccountStateResponse)
@@ -548,7 +640,11 @@ async def get_agent_account_state(
     db: DbSessionDep,
     user_id: CurrentUserDep,
 ):
-    """Get agent's virtual account state including equity and balance."""
+    """Get agent's account state including equity and balance.
+
+    For live mode: Returns real exchange account state (filtered to this agent's positions).
+    For mock mode: Returns virtual account state based on mock balance.
+    """
     # Get agent and verify ownership
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
@@ -561,41 +657,97 @@ async def get_agent_account_state(
     from ...services.agent_position_service import AgentPositionService
     ps = AgentPositionService(db=db)
 
-    # Get current prices if agent has a real account
+    # For live mode with exchange account, get real data from exchange
+    if agent.account_id and agent.execution_mode == "live":
+        try:
+            from ...db.repositories.account import AccountRepository
+            from ...traders.ccxt_trader import create_trader_from_account
+
+            account_repo = AccountRepository(db)
+            credentials = await account_repo.get_decrypted_credentials(
+                agent.account_id, uuid.UUID(user_id)
+            )
+            if credentials:
+                account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
+                trader = create_trader_from_account(account, credentials)
+                await trader.initialize()
+                try:
+                    # Get real account state from exchange
+                    exchange_state = await trader.get_account_state()
+
+                    # Get agent's open positions to calculate filtered metrics
+                    agent_positions = await ps.get_agent_positions(
+                        uuid.UUID(agent_id), status_filter="open"
+                    )
+
+                    # Build symbol+side set for this agent's positions
+                    agent_position_keys = {
+                        f"{p.symbol}_{p.side}" for p in agent_positions
+                    }
+
+                    # Get exchange positions and filter to this agent's
+                    exchange_positions = await trader.get_positions()
+                    filtered_positions = [
+                        pos for pos in exchange_positions
+                        if f"{pos.symbol}_{pos.side}" in agent_position_keys
+                    ]
+
+                    # Calculate totals from filtered positions
+                    total_unrealized_pnl = sum(
+                        pos.unrealized_pnl for pos in filtered_positions
+                    )
+                    total_margin_used = sum(
+                        pos.size_usd / max(pos.leverage, 1)
+                        for pos in filtered_positions
+                    )
+
+                    # Use real exchange equity
+                    return AgentAccountStateResponse(
+                        equity=exchange_state.equity,
+                        available_balance=exchange_state.available_balance,
+                        total_unrealized_pnl=total_unrealized_pnl,
+                        total_margin_used=total_margin_used,
+                    )
+                finally:
+                    await trader.close()
+        except Exception as e:
+            logger.warning(f"Failed to get real account state for agent {agent_id}: {e}")
+            # Fall through to virtual calculation on error
+
+    # Mock mode or live mode fallback: calculate virtual account state
     current_prices: Optional[dict[str, float]] = None
     account_equity: Optional[float] = None
 
+    # Get current prices for unrealized P&L calculation (optional for mock)
     if agent.account_id and agent.execution_mode != "mock":
         try:
             from ...db.repositories.account import AccountRepository
             from ...traders.ccxt_trader import create_trader_from_account
 
             account_repo = AccountRepository(db)
-            account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
-            if account:
-                from ...core.config import settings
-                from cryptography.fernet import Fernet
-
-                cipher = Fernet(settings.ENCRYPTION_KEY.encode())
-                credentials = {
-                    k: cipher.decrypt(v.encode()).decode()
-                    for k, v in account.credentials.items()
-                }
+            credentials = await account_repo.get_decrypted_credentials(
+                agent.account_id, uuid.UUID(user_id)
+            )
+            if credentials:
+                account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
                 trader = create_trader_from_account(account, credentials)
                 await trader.initialize()
-                state = await trader.get_account_state()
-                account_equity = state.equity
+                try:
+                    state = await trader.get_account_state()
+                    account_equity = state.equity
 
-                # Get current prices for open positions
-                positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
-                if positions:
-                    symbols = list({p.symbol for p in positions})
-                    tickers = await trader.fetch_tickers(symbols)
-                    current_prices = {s: t.get("last") for s, t in tickers.items() if t.get("last")}
+                    # Get current prices for open positions
+                    positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
+                    if positions:
+                        symbols = list({p.symbol for p in positions})
+                        tickers = await trader.fetch_tickers(symbols)
+                        current_prices = {s: t.get("last") for s, t in tickers.items() if t.get("last")}
+                finally:
+                    await trader.close()
         except Exception as e:
-            logger.warning(f"Failed to get real account state for agent {agent_id}: {e}")
+            logger.warning(f"Failed to get prices for agent {agent_id}: {e}")
 
-    # Get agent account state
+    # Get agent account state (virtual calculation)
     state = await ps.get_agent_account_state(
         agent_id=uuid.UUID(agent_id),
         agent=agent,
@@ -916,6 +1068,7 @@ async def delete_agent(
 def _agent_to_response(agent) -> AgentResponse:
     """Convert agent DB model to response"""
     strategy = getattr(agent, "strategy", None)
+    account = getattr(agent, "account", None)
 
     return AgentResponse(
         id=str(agent.id),
@@ -928,6 +1081,8 @@ def _agent_to_response(agent) -> AgentResponse:
         ai_model=agent.ai_model,
         execution_mode=agent.execution_mode,
         account_id=str(agent.account_id) if agent.account_id else None,
+        account_name=account.name if account else None,
+        account_exchange=account.exchange if account else None,
         mock_initial_balance=agent.mock_initial_balance,
         allocated_capital=agent.allocated_capital,
         allocated_capital_percent=agent.allocated_capital_percent,

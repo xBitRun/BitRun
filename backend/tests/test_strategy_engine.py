@@ -488,6 +488,152 @@ class TestStrategyEngine:
         assert result["success"] is False
         assert "Unexpected internal error" in result["error"]
 
+    @pytest.mark.asyncio
+    async def test_close_action_recalculates_realized_pnl_from_db(
+        self, mock_agent, mock_trader
+    ):
+        """
+        Test that close action recalculates realized_pnl from DB when
+        account.positions has stale state (unrealized_pnl = 0).
+
+        This tests the fix for the issue where mock mode trading execution
+        was missing PnL values because the unrealized_pnl was 0 from stale
+        MockTrader state.
+        """
+        from app.traders.base import OrderResult
+        from app.models.agent import AgentAccountState, AgentPosition
+
+        # Set up a close_long decision
+        close_response = {
+            "chain_of_thought": "Taking profit on BTC position",
+            "market_assessment": "Price reached target",
+            "decisions": [
+                {
+                    "symbol": "BTC",
+                    "action": "close_long",
+                    "leverage": 5,
+                    "position_size_usd": 5000,
+                    "confidence": 80,
+                    "reasoning": "Take profit at 55k"
+                }
+            ],
+            "overall_confidence": 80
+        }
+
+        mock_ai_client = AsyncMock()
+        ai_response = MagicMock()
+        ai_response.content = json.dumps(close_response)
+        ai_response.tokens_used = 100
+        mock_ai_client.generate = AsyncMock(return_value=ai_response)
+
+        # Account state with stale unrealized_pnl = 0 (simulating MockTrader state issue)
+        stale_account = AccountState(
+            equity=10000.0,
+            available_balance=8000.0,
+            total_margin_used=2000.0,
+            unrealized_pnl=0.0,  # Stale - should be positive
+            positions=[
+                Position(
+                    symbol="BTC",
+                    side="long",
+                    size=0.1,
+                    size_usd=5000.0,
+                    entry_price=50000.0,
+                    mark_price=50000.0,  # Same as entry, so unrealized_pnl = 0
+                    unrealized_pnl=0.0,  # Stale state
+                    unrealized_pnl_percent=0.0,
+                    leverage=5,
+                ),
+            ],
+        )
+        mock_trader.get_account_state = AsyncMock(return_value=stale_account)
+
+        # Mock market data returning current price (higher than entry)
+        mock_trader.get_market_data = AsyncMock(return_value=MarketData(
+            symbol="BTC",
+            mid_price=55000.0,  # 10% higher than entry
+            bid_price=54990.0,
+            ask_price=55010.0,
+            volume_24h=1000000000.0,
+            timestamp=datetime.now(UTC),
+        ))
+
+        # Mock successful close position
+        mock_trader.close_position = AsyncMock(return_value=OrderResult(
+            success=True,
+            order_id="test-order-123",
+            filled_size=0.1,
+            filled_price=55000.0,
+            status="filled",
+        ))
+
+        # Mock position service with DB position record
+        mock_position_service = AsyncMock()
+        mock_db_position = MagicMock()
+        mock_db_position.symbol = "BTC"
+        mock_db_position.side = "long"
+        mock_db_position.size = 0.1
+        mock_db_position.entry_price = 50000.0
+        mock_db_position.leverage = 5
+        mock_db_position.size_usd = 5000.0
+        mock_position_service.get_agent_position_for_symbol = AsyncMock(
+            return_value=mock_db_position
+        )
+
+        # Mock get_agent_account_state to return an AgentAccountState
+        agent_account_state = AgentAccountState(
+            agent_id=str(mock_agent.id),
+            positions=[
+                AgentPosition(
+                    id="test-pos-id",
+                    agent_id=str(mock_agent.id),
+                    symbol="BTC",
+                    side="long",
+                    size=0.1,
+                    size_usd=5000.0,
+                    entry_price=50000.0,
+                    leverage=5,
+                    status="open",
+                    realized_pnl=0.0,
+                )
+            ],
+            equity=10000.0,
+            available_balance=8000.0,
+            total_unrealized_pnl=0.0,  # Will be recalculated with current price
+        )
+        mock_position_service.get_agent_account_state = AsyncMock(
+            return_value=agent_account_state
+        )
+
+        engine = StrategyEngine(
+            agent=mock_agent,
+            trader=mock_trader,
+            ai_client=mock_ai_client,
+            db_session=None,
+            auto_execute=True,
+            use_enhanced_context=False,
+        )
+        engine.position_service = mock_position_service
+
+        result = await engine.run_cycle()
+
+        assert result["success"] is True
+        executed = result.get("executed", [])
+        assert len(executed) >= 1
+
+        btc_exec = next((e for e in executed if e["symbol"] == "BTC"), None)
+        assert btc_exec is not None
+        assert btc_exec["executed"] is True
+
+        # The key assertion: realized_pnl should be recalculated
+        # Entry: 50000, Current: 55000, Size: 0.1
+        # unrealized_pnl = (55000 - 50000) * 0.1 = 500
+        assert "realized_pnl" in btc_exec
+        assert btc_exec["realized_pnl"] == 500.0
+
+        # Verify the position service was called to get DB position
+        mock_position_service.get_agent_position_for_symbol.assert_called()
+
 
 class TestStrategyEnginePromptBuilding:
     """Tests for prompt building in strategy engine."""

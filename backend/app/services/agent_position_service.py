@@ -178,6 +178,9 @@ class AgentPositionService:
             else:
                 # Fallback to default if account_equity not provided
                 base_capital = 10000.0 * agent.allocated_capital_percent
+        elif account_equity is not None and account_equity > 0:
+            # Live mode without allocation config: use real exchange equity
+            base_capital = account_equity
         else:
             base_capital = 10000.0
 

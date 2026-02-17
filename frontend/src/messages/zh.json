@@ -336,7 +336,10 @@
         "mockBalancePlaceholder": "10000",
         "riskWarning": "实盘交易涉及真实资金，请从保守设置开始。",
         "compatibilityWarning": "策略与交易所不兼容",
-        "incompatibleSymbols": "交易对 {symbols} 的结算货币与 {exchange} 不匹配，请选择其他账户或修改策略。"
+        "incompatibleSymbols": "交易对 {symbols} 的结算货币与 {exchange} 不匹配，请选择其他账户或修改策略。",
+        "accountBound": "已绑定",
+        "accountBoundWarning": "账户已被其他策略使用",
+        "accountBoundWarningDesc": "该交易所账户已绑定到其他策略。每个账户只能绑定一个代理。"
       },
       "reviewStep": {
         "title": "确认并启动",
@@ -358,6 +361,26 @@
         "summaryNone": "不限制",
         "createAgent": "创建代理",
         "creating": "创建中..."
+      },
+      "capitalAllocation": {
+        "title": "资金分配",
+        "description": "为该代理分配独立的资金额度，防止多代理间相互干扰",
+        "modeNone": "不限制",
+        "modeFixed": "固定金额",
+        "modePercent": "账户百分比",
+        "fixedAmount": "分配金额 (USDT)",
+        "fixedAmountPlaceholder": "输入金额，如 5000",
+        "percentAmount": "分配比例",
+        "percentAmountTooltip": "占账户权益的百分比，如 30% 表示使用账户 30% 的资金"
+      },
+      "testnet": "测试网",
+      "interval": {
+        "5min": "5 分钟",
+        "15min": "15 分钟",
+        "30min": "30 分钟",
+        "1hr": "1 小时",
+        "4hr": "4 小时",
+        "24hr": "24 小时"
       }
     },
     "edit": {
@@ -1223,6 +1246,10 @@
       "error": "错误",
       "draft": "草稿"
     },
+    "executionMode": {
+      "live": "实盘交易",
+      "mock": "模拟交易"
+    },
     "actions": {
       "start": "启动",
       "pause": "暂停",
@@ -1254,6 +1281,7 @@
         "entryPrice": "入场价",
         "leverage": "杠杆",
         "margin": "保证金",
+        "unrealizedPnl": "未实现盈亏",
         "realizedPnl": "已实现盈亏",
         "status": "状态",
         "openedAt": "开仓时间"

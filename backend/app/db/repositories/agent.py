@@ -60,6 +60,7 @@ class AgentRepository:
         user_id: Optional[uuid.UUID] = None,
         include_strategy: bool = False,
         include_decisions: bool = False,
+        include_account: bool = False,
     ) -> Optional[AgentDB]:
         """Get agent by ID with optional eager loading."""
         query = select(AgentDB).where(AgentDB.id == agent_id)
@@ -69,6 +70,8 @@ class AgentRepository:
             query = query.options(selectinload(AgentDB.strategy))
         if include_decisions:
             query = query.options(selectinload(AgentDB.decisions))
+        if include_account:
+            query = query.options(selectinload(AgentDB.account))
 
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
@@ -81,6 +84,7 @@ class AgentRepository:
         execution_mode: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
+        include_account: bool = False,
     ) -> list[AgentDB]:
         """
         Get all agents for a user.
@@ -92,6 +96,8 @@ class AgentRepository:
             .where(AgentDB.user_id == user_id)
             .options(selectinload(AgentDB.strategy))
         )
+        if include_account:
+            query = query.options(selectinload(AgentDB.account))
         if status:
             query = query.where(AgentDB.status == status)
         if execution_mode:
@@ -223,3 +229,48 @@ class AgentRepository:
         await self.session.delete(agent)
         await self.session.flush()
         return True
+
+    async def get_live_agent_by_account_id(
+        self,
+        account_id: uuid.UUID,
+        exclude_agent_id: Optional[uuid.UUID] = None,
+    ) -> Optional[AgentDB]:
+        """
+        Get active/live agent bound to a specific account.
+
+        Used to prevent multiple agents from binding to the same exchange account.
+
+        Args:
+            account_id: The exchange account ID to check
+            exclude_agent_id: Optional agent ID to exclude from the check (for updates)
+
+        Returns:
+            The agent bound to this account, or None if no binding exists
+        """
+        query = (
+            select(AgentDB)
+            .where(AgentDB.account_id == account_id)
+            .where(AgentDB.execution_mode == "live")
+            .where(AgentDB.status.in_(["active", "draft", "paused"]))
+        )
+        if exclude_agent_id:
+            query = query.where(AgentDB.id != exclude_agent_id)
+
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_bound_account_ids(self, user_id: uuid.UUID) -> set[uuid.UUID]:
+        """
+        Get all account IDs that are bound to active/live agents for a user.
+
+        Used by frontend to show which accounts are already in use.
+        """
+        query = (
+            select(AgentDB.account_id)
+            .where(AgentDB.user_id == user_id)
+            .where(AgentDB.account_id.isnot(None))
+            .where(AgentDB.execution_mode == "live")
+            .where(AgentDB.status.in_(["active", "draft", "paused"]))
+        )
+        result = await self.session.execute(query)
+        return {row[0] for row in result.all()}

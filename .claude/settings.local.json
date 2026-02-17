@@ -17,7 +17,8 @@
       "mcp__firecrawl__firecrawl_search",
       "mcp__firecrawl__firecrawl_scrape",
       "mcp__filesystem__create_directory",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(docker compose exec:*)"
     ]
   }
 }

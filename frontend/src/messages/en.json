@@ -336,7 +336,10 @@
         "mockBalancePlaceholder": "10000",
         "riskWarning": "Live trading involves real funds. Start with conservative settings.",
         "compatibilityWarning": "Strategy Incompatible with Exchange",
-        "incompatibleSymbols": "Symbols {symbols} have settlement currency mismatch with {exchange}. Please select a different account or modify the strategy."
+        "incompatibleSymbols": "Symbols {symbols} have settlement currency mismatch with {exchange}. Please select a different account or modify the strategy.",
+        "accountBound": "Bound",
+        "accountBoundWarning": "Account Already in Use",
+        "accountBoundWarningDesc": "This exchange account is already bound to another strategy. Each account can only be bound to one agent."
       },
       "reviewStep": {
         "title": "Review & Launch",
@@ -358,6 +361,26 @@
         "summaryNone": "No limit",
         "createAgent": "Create Agent",
         "creating": "Creating..."
+      },
+      "capitalAllocation": {
+        "title": "Capital Allocation",
+        "description": "Assign a dedicated capital budget to this agent to prevent interference between agents",
+        "modeNone": "No Limit",
+        "modeFixed": "Fixed Amount",
+        "modePercent": "Account Percentage",
+        "fixedAmount": "Allocated Amount (USDT)",
+        "fixedAmountPlaceholder": "Enter amount, e.g. 5000",
+        "percentAmount": "Allocation Percentage",
+        "percentAmountTooltip": "Percentage of account equity, e.g. 30% means using 30% of account funds"
+      },
+      "testnet": "Testnet",
+      "interval": {
+        "5min": "5 min",
+        "15min": "15 min",
+        "30min": "30 min",
+        "1hr": "1 hr",
+        "4hr": "4 hr",
+        "24hr": "24 hr"
       }
     },
     "edit": {
@@ -1213,6 +1236,10 @@
       "error": "Error",
       "draft": "Draft"
     },
+    "executionMode": {
+      "live": "Live Trading",
+      "mock": "Paper Trading"
+    },
     "actions": {
       "start": "Start",
       "pause": "Pause",
@@ -1244,6 +1271,7 @@
         "entryPrice": "Entry Price",
         "leverage": "Leverage",
         "margin": "Margin",
+        "unrealizedPnl": "Unrealized PnL",
         "realizedPnl": "Realized PnL",
         "status": "Status",
         "openedAt": "Opened At"

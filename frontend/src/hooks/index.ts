@@ -29,6 +29,7 @@ export {
   useTriggerAgent,
   useAgentPositions,
   useActiveAgentsCount,
+  useBoundAccounts,
 } from "./use-agents";
 
 // Account hooks

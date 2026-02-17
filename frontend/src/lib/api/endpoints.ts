@@ -348,6 +348,8 @@ export interface AgentResponse {
   // Execution mode
   execution_mode: ExecutionMode;
   account_id?: string | null;
+  account_name?: string | null;
+  account_exchange?: string | null;
   mock_initial_balance?: number | null;
 
   // Capital allocation
@@ -399,6 +401,10 @@ export interface AgentPositionResponse {
   close_price?: number | null;
   opened_at?: string | null;
   closed_at?: string | null;
+  // Real-time fields (populated in live mode from exchange)
+  mark_price?: number | null;
+  unrealized_pnl?: number | null;
+  unrealized_pnl_percent?: number | null;
 }
 
 export interface AgentAccountStateResponse {
@@ -458,6 +464,9 @@ export const agentsApi = {
 
   trigger: (id: string) =>
     api.post<TriggerExecutionResponse>(`/agents/${id}/trigger`),
+
+  /** Get all exchange account IDs that are bound to active/live agents */
+  getBoundAccounts: () => api.get<string[]>("/agents/bound-accounts"),
 };
 
 // ==================== Quant Strategies (DEPRECATED - use strategiesApi + agentsApi) ====================

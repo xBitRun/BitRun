@@ -159,3 +159,20 @@ export function useActiveAgentsCount() {
   const { agents } = useAgents();
   return agents.filter((a) => a.status === "active").length;
 }
+
+/**
+ * Fetch bound account IDs (accounts already bound to active/live agents)
+ * Used in agent creation form to show which accounts are in use
+ */
+const BOUND_ACCOUNTS_KEY = "/agents/bound-accounts";
+
+export function useBoundAccounts() {
+  return useSWR<string[]>(
+    BOUND_ACCOUNTS_KEY,
+    () => agentsApi.getBoundAccounts(),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
+    },
+  );
+}

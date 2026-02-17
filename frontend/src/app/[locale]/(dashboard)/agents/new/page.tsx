@@ -40,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -49,6 +50,7 @@ import {
   groupModelsByProvider,
   getProviderDisplayName,
   useStrategyExchangeCompatibility,
+  useBoundAccounts,
 } from "@/hooks";
 import type { StrategyResponse, CreateAgentRequest } from "@/lib/api";
 import type { StrategyType, ExecutionMode } from "@/types";
@@ -73,12 +75,12 @@ const STRATEGY_TYPE_COLORS: Record<StrategyType, string> = {
 };
 
 const INTERVAL_OPTIONS = [
-  { value: 5, label: "5 min" },
-  { value: 15, label: "15 min" },
-  { value: 30, label: "30 min" },
-  { value: 60, label: "1 hr" },
-  { value: 240, label: "4 hr" },
-  { value: 1440, label: "24 hr" },
+  { value: 5, labelKey: "5min" },
+  { value: 15, labelKey: "15min" },
+  { value: 30, labelKey: "30min" },
+  { value: 60, labelKey: "1hr" },
+  { value: 240, labelKey: "4hr" },
+  { value: 1440, labelKey: "24hr" },
 ];
 
 const TYPE_FILTERS: { value: StrategyType | "all"; labelKey: string }[] = [
@@ -228,6 +230,7 @@ export default function AgentWizardPage() {
   const { data: accounts } = useAccounts();
   const { models, isLoading: modelsLoading } = useUserModels();
   const groupedModels = groupModelsByProvider(models);
+  const { data: boundAccountIds = [] } = useBoundAccounts();
 
   // Is the selected strategy an AI strategy?
   const isAiStrategy = state.selectedStrategy?.type === "ai";
@@ -376,6 +379,7 @@ export default function AgentWizardPage() {
           state={state}
           setState={setState}
           accounts={accounts ?? []}
+          boundAccountIds={boundAccountIds}
           strategySymbols={state.selectedStrategy?.symbols}
           t={t}
           onNext={goNext}
@@ -735,6 +739,7 @@ function ExecutionModeStep({
   state,
   setState,
   accounts,
+  boundAccountIds,
   strategySymbols,
   t,
   onNext,
@@ -743,6 +748,7 @@ function ExecutionModeStep({
   state: WizardState;
   setState: React.Dispatch<React.SetStateAction<WizardState>>;
   accounts: AccountInfo[];
+  boundAccountIds: string[];
   strategySymbols?: string[];
   t: ReturnType<typeof useTranslations>;
   onNext: () => void;
@@ -752,6 +758,10 @@ function ExecutionModeStep({
   const selectedAccount = accounts.find((a) => a.id === state.accountId);
   const selectedExchange = selectedAccount?.exchange;
 
+  // Check if selected account is already bound
+  const isSelectedAccountBound =
+    !!state.accountId && boundAccountIds.includes(state.accountId);
+
   // Check strategy-exchange compatibility
   const { isCompatible, incompatibleSymbols } =
     useStrategyExchangeCompatibility(selectedExchange, strategySymbols);
@@ -759,7 +769,8 @@ function ExecutionModeStep({
   const canProceed =
     (state.executionMode === "mock" ||
       (state.executionMode === "live" && !!state.accountId)) &&
-    isCompatible;
+    isCompatible &&
+    !isSelectedAccountBound;
 
   return (
     <div className="space-y-4">
@@ -837,81 +848,234 @@ function ExecutionModeStep({
 
       {/* Live Mode: Account Selection */}
       {state.executionMode === "live" && (
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            {/* Risk Warning */}
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                {t("wizard.executionStep.riskWarning")}
-              </p>
-            </div>
-
-            {/* Account Select */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                {t("wizard.executionStep.selectAccount")}
-                <span className="text-destructive">*</span>
-              </Label>
-              {accounts.length === 0 ? (
-                <div className="flex items-center justify-between p-3 rounded-lg border border-dashed">
-                  <span className="text-sm text-muted-foreground">
-                    {t("wizard.executionStep.noAccounts")}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => (window.location.href = "/accounts/new")}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    {t("wizard.executionStep.addAccount")}
-                  </Button>
-                </div>
-              ) : (
-                <Select
-                  value={state.accountId}
-                  onValueChange={(v) =>
-                    setState((prev) => ({ ...prev, accountId: v }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={t(
-                        "wizard.executionStep.selectAccountPlaceholder",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} ({acc.exchange})
-                        {acc.is_testnet && " [Testnet]"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Compatibility Warning */}
-            {selectedAccount && !isCompatible && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                <div className="text-xs text-destructive">
-                  <p className="font-medium">
-                    {t("wizard.executionStep.compatibilityWarning")}
-                  </p>
-                  <p className="mt-1">
-                    {t("wizard.executionStep.incompatibleSymbols", {
-                      symbols: incompatibleSymbols.join(", "),
-                      exchange: selectedExchange ?? "",
-                    })}
-                  </p>
-                </div>
+        <>
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              {/* Risk Warning */}
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {t("wizard.executionStep.riskWarning")}
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Account Select */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  {t("wizard.executionStep.selectAccount")}
+                  <span className="text-destructive">*</span>
+                </Label>
+                {accounts.length === 0 ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-dashed">
+                    <span className="text-sm text-muted-foreground">
+                      {t("wizard.executionStep.noAccounts")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => (window.location.href = "/accounts/new")}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {t("wizard.executionStep.addAccount")}
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={state.accountId}
+                    onValueChange={(v) =>
+                      setState((prev) => ({ ...prev, accountId: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t(
+                          "wizard.executionStep.selectAccountPlaceholder",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((acc) => {
+                        const isBound = boundAccountIds.includes(acc.id);
+                        return (
+                          <SelectItem
+                            key={acc.id}
+                            value={acc.id}
+                            disabled={isBound}
+                          >
+                            {acc.name} ({acc.exchange})
+                            {acc.is_testnet && ` [${t("wizard.testnet")}]`}
+                            {isBound &&
+                              ` [${t("wizard.executionStep.accountBound")}]`}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Account Already Bound Warning */}
+              {isSelectedAccountBound && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <div className="text-xs text-destructive">
+                    <p className="font-medium">
+                      {t("wizard.executionStep.accountBoundWarning")}
+                    </p>
+                    <p className="mt-1">
+                      {t("wizard.executionStep.accountBoundWarningDesc")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Compatibility Warning */}
+              {selectedAccount && !isCompatible && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <div className="text-xs text-destructive">
+                    <p className="font-medium">
+                      {t("wizard.executionStep.compatibilityWarning")}
+                    </p>
+                    <p className="mt-1">
+                      {t("wizard.executionStep.incompatibleSymbols", {
+                        symbols: incompatibleSymbols.join(", "),
+                        exchange: selectedExchange ?? "",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Capital Allocation for Live Mode */}
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="space-y-1">
+                <Label className="text-base">
+                  {t("wizard.capitalAllocation.title")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("wizard.capitalAllocation.description")}
+                </p>
+              </div>
+
+              <RadioGroup
+                value={state.capitalMode}
+                onValueChange={(v: string) =>
+                  setState((prev) => ({
+                    ...prev,
+                    capitalMode: v as "none" | "fixed" | "percent",
+                  }))
+                }
+                className="grid grid-cols-3 gap-3"
+              >
+                <Label
+                  htmlFor="capital-none"
+                  className={cn(
+                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
+                    state.capitalMode === "none"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/50 hover:border-primary/40",
+                  )}
+                >
+                  <RadioGroupItem
+                    value="none"
+                    id="capital-none"
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">
+                    {t("wizard.capitalAllocation.modeNone")}
+                  </span>
+                </Label>
+                <Label
+                  htmlFor="capital-fixed"
+                  className={cn(
+                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
+                    state.capitalMode === "fixed"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/50 hover:border-primary/40",
+                  )}
+                >
+                  <RadioGroupItem
+                    value="fixed"
+                    id="capital-fixed"
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">
+                    {t("wizard.capitalAllocation.modeFixed")}
+                  </span>
+                </Label>
+                <Label
+                  htmlFor="capital-percent"
+                  className={cn(
+                    "flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all text-center",
+                    state.capitalMode === "percent"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/50 hover:border-primary/40",
+                  )}
+                >
+                  <RadioGroupItem
+                    value="percent"
+                    id="capital-percent"
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">
+                    {t("wizard.capitalAllocation.modePercent")}
+                  </span>
+                </Label>
+              </RadioGroup>
+
+              {state.capitalMode === "fixed" && (
+                <div className="space-y-2">
+                  <Label>{t("wizard.capitalAllocation.fixedAmount")}</Label>
+                  <Input
+                    type="number"
+                    value={state.allocatedCapital || ""}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        allocatedCapital: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    placeholder={t(
+                      "wizard.capitalAllocation.fixedAmountPlaceholder",
+                    )}
+                    min={0}
+                  />
+                </div>
+              )}
+
+              {state.capitalMode === "percent" && (
+                <div className="space-y-2">
+                  <Label>{t("wizard.capitalAllocation.percentAmount")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={(state.allocatedCapitalPercent || 0) * 100}
+                      onChange={(e) =>
+                        setState((prev) => ({
+                          ...prev,
+                          allocatedCapitalPercent:
+                            (parseFloat(e.target.value) || 0) / 100,
+                        }))
+                      }
+                      placeholder="30"
+                      min={0}
+                      max={100}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("wizard.capitalAllocation.percentAmountTooltip")}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Mock Mode: Initial Balance */}
@@ -1025,7 +1189,7 @@ function ReviewStep({
               <SelectContent>
                 {INTERVAL_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={String(opt.value)}>
-                    {opt.label}
+                    {t(`wizard.interval.${opt.labelKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1090,10 +1254,22 @@ function ReviewStep({
               }
             />
             {state.executionMode === "live" && (
-              <SummaryRow
-                label={t("wizard.reviewStep.summaryAccount")}
-                value={accountName || "-"}
-              />
+              <>
+                <SummaryRow
+                  label={t("wizard.reviewStep.summaryAccount")}
+                  value={accountName || "-"}
+                />
+                <SummaryRow
+                  label={t("wizard.reviewStep.summaryCapital")}
+                  value={
+                    state.capitalMode === "none"
+                      ? t("wizard.reviewStep.summaryNone")
+                      : state.capitalMode === "fixed"
+                        ? `$${(state.allocatedCapital || 0).toLocaleString()}`
+                        : `${((state.allocatedCapitalPercent || 0) * 100).toFixed(0)}%`
+                  }
+                />
+              </>
             )}
             {state.executionMode === "mock" && (
               <SummaryRow
