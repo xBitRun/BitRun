@@ -28,6 +28,7 @@ import {
   Trash2,
   XCircle,
   Zap,
+  ExternalLink,
   RotateCcw,
   Code,
   Copy,
@@ -532,9 +533,24 @@ function OverviewTab({
         {/* Strategy Details */}
         <Card className="bg-card/50 border-border/50">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {t("overview.strategyInfo")}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
+                {t("overview.strategyInfo")}
+              </CardTitle>
+              {agent.strategy_id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  asChild
+                >
+                  <Link href={`/strategies/${agent.strategy_id}`}>
+                    {t("overview.viewStrategy")}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">

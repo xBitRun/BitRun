@@ -127,7 +127,10 @@ function StrategyCard({
                   {t(`visibility.${strategy.visibility}`)}
                 </Badge>
                 {strategy.symbols.length > 0 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                  >
                     {strategy.symbols.slice(0, 3).join(", ")}
                     {strategy.symbols.length > 3 &&
                       ` +${strategy.symbols.length - 3}`}

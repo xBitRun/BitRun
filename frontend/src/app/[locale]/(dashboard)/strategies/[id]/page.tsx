@@ -94,13 +94,77 @@ function getVisibilityColor(visibility: string) {
     : "border-muted-foreground/30 text-muted-foreground";
 }
 
-// Config value renderer
-function renderConfigValue(value: unknown): string {
+// Config value renderer - supports JSON object formatting
+function renderConfigValue(value: unknown): React.ReactNode {
   if (value === null || value === undefined) return "-";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "boolean") return value ? "是" : "否";
   if (typeof value === "number") return value.toLocaleString();
-  if (Array.isArray(value)) return value.join(", ");
+  if (Array.isArray(value)) {
+    return (
+      <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded">
+        {JSON.stringify(value)}
+      </code>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded block max-w-xs overflow-auto whitespace-pre">
+        {JSON.stringify(value, null, 2)}
+      </code>
+    );
+  }
   return String(value);
+}
+
+// Config key label map for Chinese translation
+const configKeyLabels: Record<string, string> = {
+  // AI 策略参数
+  prompt: "提示词",
+  trading_mode: "交易模式",
+  language: "语言",
+  prompt_mode: "提示词模式",
+  custom_prompt: "自定义提示词",
+  advanced_prompt: "高级提示词",
+  prompt_sections: "提示词分段",
+  debate_enabled: "辩论模式",
+  debate_models: "辩论模型",
+  debate_consensus_mode: "共识模式",
+  debate_min_participants: "最少参与者",
+  symbols: "交易对",
+  timeframes: "时间周期",
+  indicators: "技术指标",
+  // 网格策略参数
+  upper_price: "价格上限",
+  lower_price: "价格下限",
+  grid_count: "网格数量",
+  total_investment: "总投入金额",
+  leverage: "杠杆",
+  // DCA 策略参数
+  order_amount: "下单金额",
+  interval_minutes: "下单间隔",
+  take_profit_percent: "止盈百分比",
+  total_budget: "总预算",
+  max_orders: "最大下单次数",
+  // RSI 策略参数
+  rsi_period: "RSI 周期",
+  overbought_threshold: "超买阈值",
+  oversold_threshold: "超卖阈值",
+  timeframe: "时间周期",
+  // 风控参数
+  max_leverage: "最大杠杆",
+  max_position_ratio: "单仓最大保证金比例",
+  max_total_exposure: "最大总敞口",
+  min_risk_reward_ratio: "最小风险回报比",
+  max_drawdown_percent: "最大回撤",
+  min_confidence: "最低置信度",
+  default_sl_atr_multiplier: "默认止损 (ATR)",
+  default_tp_atr_multiplier: "默认止盈 (ATR)",
+  max_sl_percent: "最大止损百分比",
+};
+
+// Get translated config key label
+function getConfigKeyLabel(key: string): string {
+  return configKeyLabels[key] || key.replace(/_/g, " ");
 }
 
 // Format date
@@ -271,8 +335,8 @@ export default function StrategyDetailPage({
                       strategy.symbols.map((symbol) => (
                         <Badge
                           key={symbol}
-                          variant="secondary"
-                          className="font-mono"
+                          variant="outline"
+                          className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
                         >
                           {symbol}
                         </Badge>
@@ -359,7 +423,7 @@ export default function StrategyDetailPage({
             {/* Config Tab */}
             <TabsContent value="config" className="space-y-4">
               <>
-                {/* Common Parameters */}
+                {/* Common Parameters - Filter out prompt for AI strategies (shown separately) */}
                 {hasCommonParams && (
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader className="pb-3">
@@ -370,16 +434,19 @@ export default function StrategyDetailPage({
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {Object.entries(config)
-                          .filter(([key]) => key !== "riskControls")
+                          .filter(
+                            ([key]) =>
+                              key !== "riskControls" && key !== "prompt",
+                          )
                           .map(([key, value]) => (
                             <div
                               key={key}
-                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
                             >
-                              <span className="text-muted-foreground text-sm capitalize">
-                                {key.replace(/_/g, " ")}
+                              <span className="text-muted-foreground text-sm shrink-0">
+                                {getConfigKeyLabel(key)}
                               </span>
-                              <span className="font-mono text-sm">
+                              <span className="font-mono text-sm text-right">
                                 {renderConfigValue(value)}
                               </span>
                             </div>
@@ -389,7 +456,7 @@ export default function StrategyDetailPage({
                   </Card>
                 )}
 
-                {/* Prompt Preview (AI Strategy) */}
+                {/* Prompt Preview (AI Strategy Only) */}
                 {strategy.type === "ai" && config.prompt && (
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader className="pb-3">
@@ -406,6 +473,37 @@ export default function StrategyDetailPage({
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Risk Controls (if exists) */}
+                {config.riskControls &&
+                  typeof config.riskControls === "object" && (
+                    <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">
+                          {t("detail.config.riskControls")}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {Object.entries(
+                            config.riskControls as Record<string, unknown>,
+                          ).map(([key, value]) => (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
+                            >
+                              <span className="text-muted-foreground text-sm shrink-0">
+                                {getConfigKeyLabel(key)}
+                              </span>
+                              <span className="font-mono text-sm text-right">
+                                {renderConfigValue(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* No config message */}
                 {Object.keys(config).length === 0 && (

@@ -500,13 +500,20 @@ export default function EditAgentPage() {
                 </span>
                 <div className="flex gap-1 flex-wrap justify-end">
                   {strategy?.symbols?.slice(0, 3).map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs">
+                    <Badge
+                      key={s}
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                    >
                       {s}
                     </Badge>
                   ))}
                   {(strategy?.symbols?.length ?? 0) > 3 &&
                     strategy?.symbols && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge
+                        variant="outline"
+                        className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
+                      >
                         +{strategy.symbols.length - 3}
                       </Badge>
                     )}

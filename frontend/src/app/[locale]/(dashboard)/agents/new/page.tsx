@@ -562,14 +562,14 @@ function StrategyPickerStep({
                     {strategy.symbols.slice(0, 4).map((sym) => (
                       <Badge
                         key={sym}
-                        variant="secondary"
-                        className="text-[10px]"
+                        variant="outline"
+                        className="bg-primary/10 text-primary border-primary/30 font-mono text-xs py-0"
                       >
                         {sym}
                       </Badge>
                     ))}
                     {strategy.symbols.length > 4 && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         +{strategy.symbols.length - 4}
                       </span>
                     )}
