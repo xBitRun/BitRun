@@ -136,6 +136,7 @@ export {
   useAccountAgents,
   useEquityCurve,
   useAccountPnL,
+  useSyncAccount,
 } from "./use-analytics";
 export type {
   UseAgentPnLOptions,

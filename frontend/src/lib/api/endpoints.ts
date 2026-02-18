@@ -1469,4 +1469,18 @@ export const analyticsApi = {
    */
   getAccountPnL: (accountId: string) =>
     api.get<AccountPnLSummary>(`/analytics/accounts/${accountId}/pnl`),
+
+  /**
+   * Sync account snapshot with real-time data from exchange.
+   * Creates/updates today's snapshot for immediate P&L visibility.
+   */
+  syncAccount: (accountId: string) =>
+    api.post<SyncSnapshotResponse>(`/analytics/accounts/${accountId}/sync`),
 };
+
+export interface SyncSnapshotResponse {
+  success: boolean;
+  message: string;
+  equity?: number;
+  daily_pnl?: number;
+}

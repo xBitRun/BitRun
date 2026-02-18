@@ -10,17 +10,20 @@ import {
   Activity,
   BarChart3,
   RefreshCw,
+  CloudDownload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import {
   useAccounts,
   useAccountPnL,
   useEquityCurve,
   useAccountAgents,
+  useSyncAccount,
 } from "@/hooks";
 import {
   EquityCurveChart,
@@ -43,11 +46,18 @@ function formatCurrency(value: number): string {
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
   const router = useRouter();
+  const { success, error } = useToast();
 
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    null,
+  );
 
-  const { accounts, isLoading: isLoadingAccounts, refresh: refreshAccounts } = useAccounts();
+  const {
+    accounts,
+    isLoading: isLoadingAccounts,
+    refresh: refreshAccounts,
+  } = useAccounts();
 
   // Auto-select first connected account
   const activeAccountId = useMemo(() => {
@@ -56,13 +66,44 @@ export default function AnalyticsPage() {
     return connectedAccount?.id ?? null;
   }, [accounts, selectedAccountId]);
 
-  const { data: accountPnL, isLoading: isLoadingPnL } = useAccountPnL(activeAccountId);
-  const { dataPoints, isLoading: isLoadingCurve } = useEquityCurve(activeAccountId, {
+  const {
+    data: accountPnL,
+    isLoading: isLoadingPnL,
+    mutate: mutatePnL,
+  } = useAccountPnL(activeAccountId);
+  const {
+    dataPoints,
+    isLoading: isLoadingCurve,
+    mutate: mutateCurve,
+  } = useEquityCurve(activeAccountId, {
     granularity: "day",
   });
-  const { agents, isLoading: isLoadingAgents } = useAccountAgents(activeAccountId);
+  const {
+    agents,
+    isLoading: isLoadingAgents,
+    mutate: mutateAgents,
+  } = useAccountAgents(activeAccountId);
 
-  const isLoading = isLoadingAccounts || isLoadingPnL || isLoadingCurve || isLoadingAgents;
+  const { sync: syncAccount, isSyncing } = useSyncAccount(activeAccountId);
+
+  const isLoading =
+    isLoadingAccounts || isLoadingPnL || isLoadingCurve || isLoadingAgents;
+
+  // Sync real-time data from exchange
+  const handleSync = async () => {
+    if (!activeAccountId) return;
+
+    const result = await syncAccount();
+    if (result?.success) {
+      success(t("sync.success"));
+      // Refresh all data after sync
+      mutatePnL();
+      mutateCurve();
+      mutateAgents();
+    } else {
+      error(t("sync.error"));
+    }
+  };
 
   // Calculate total equity across all accounts
   const totalEquity = useMemo(() => {
@@ -83,11 +124,21 @@ export default function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleSync}
+            disabled={isLoading || isSyncing || !activeAccountId}
+          >
+            <CloudDownload
+              className={cn("w-4 h-4 mr-2", isSyncing && "animate-pulse")}
+            />
+            {t("sync.button")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => refreshAccounts()}
             disabled={isLoading}
           >
-            <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
-            刷新
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
           </Button>
         </div>
       </div>
@@ -121,20 +172,21 @@ export default function AnalyticsPage() {
       )}
 
       {/* No Connected Accounts */}
-      {!isLoadingAccounts && accounts.filter((a) => a.is_connected).length === 0 && (
-        <Card className="bg-card/50">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Wallet className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">暂无已连接的账户</p>
-            <p className="text-muted-foreground text-sm mb-4">
-              请先连接一个交易所账户以查看收益分析
-            </p>
-            <Button onClick={() => router.push("/accounts/new")}>
-              添加账户
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {!isLoadingAccounts &&
+        accounts.filter((a) => a.is_connected).length === 0 && (
+          <Card className="bg-card/50">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Wallet className="w-12 h-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium mb-2">暂无已连接的账户</p>
+              <p className="text-muted-foreground text-sm mb-4">
+                请先连接一个交易所账户以查看收益分析
+              </p>
+              <Button onClick={() => router.push("/accounts/new")}>
+                添加账户
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Analytics Content */}
       {activeAccountId && (
@@ -172,7 +224,9 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               <Card className="bg-card/50">
                 <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground">{t("metrics.winRate")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("metrics.winRate")}
+                  </p>
                   <p className="text-xl font-bold font-mono">
                     {accountPnL.win_rate.toFixed(1)}%
                   </p>
@@ -180,7 +234,9 @@ export default function AnalyticsPage() {
               </Card>
               <Card className="bg-card/50">
                 <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground">{t("metrics.profitFactor")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("metrics.profitFactor")}
+                  </p>
                   <p className="text-xl font-bold font-mono">
                     {accountPnL.profit_factor.toFixed(2)}
                   </p>
@@ -188,7 +244,9 @@ export default function AnalyticsPage() {
               </Card>
               <Card className="bg-card/50">
                 <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground">{t("metrics.totalTrades")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("metrics.totalTrades")}
+                  </p>
                   <p className="text-xl font-bold font-mono">
                     {accountPnL.total_trades}
                   </p>
@@ -197,7 +255,9 @@ export default function AnalyticsPage() {
               {accountPnL.max_drawdown_percent !== null && (
                 <Card className="bg-card/50">
                   <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">{t("metrics.maxDrawdown")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("metrics.maxDrawdown")}
+                    </p>
                     <p className="text-xl font-bold font-mono text-[var(--loss)]">
                       -{accountPnL.max_drawdown_percent.toFixed(1)}%
                     </p>
@@ -207,7 +267,9 @@ export default function AnalyticsPage() {
               {accountPnL.sharpe_ratio !== null && (
                 <Card className="bg-card/50">
                   <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">{t("metrics.sharpeRatio")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("metrics.sharpeRatio")}
+                    </p>
                     <p className="text-xl font-bold font-mono">
                       {accountPnL.sharpe_ratio.toFixed(2)}
                     </p>

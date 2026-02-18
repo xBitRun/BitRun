@@ -1,5 +1,6 @@
 """Analytics routes for P&L and performance analysis."""
 
+import logging
 import uuid
 from datetime import date, timedelta
 from typing import Optional
@@ -8,7 +9,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
+from ...db.repositories.account import AccountRepository
 from ...services.pnl_service import PnLService
+from ...traders.base import TradeError
+from ...traders import create_trader_from_account
+from ...utils.error_handling import exchange_api_error, exchange_connection_error, sanitize_error_message
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -317,3 +324,114 @@ async def get_account_pnl(
         max_drawdown_percent=None,
         sharpe_ratio=None,
     )
+
+
+class SyncSnapshotResponse(BaseModel):
+    """Response for sync snapshot operation"""
+    success: bool
+    message: str
+    equity: Optional[float] = None
+    daily_pnl: Optional[float] = None
+
+
+@router.post("/accounts/{account_id}/sync", response_model=SyncSnapshotResponse)
+async def sync_account_snapshot(
+    account_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Sync account snapshot with real-time data from exchange.
+
+    Fetches current balance from the exchange and creates/updates
+    today's snapshot for immediate P&L visibility.
+    """
+    account_uuid = uuid.UUID(account_id)
+    user_uuid = uuid.UUID(user_id)
+
+    repo = AccountRepository(db)
+
+    # Get account info
+    account = await repo.get_by_id(account_uuid, user_uuid)
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Account {account_id} not found"
+        )
+
+    if not account.is_connected:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account is not connected. Please test connection first."
+        )
+
+    # Get decrypted credentials
+    credentials = await repo.get_decrypted_credentials(account_uuid, user_uuid)
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to decrypt account credentials"
+        )
+
+    trader = None
+    try:
+        # Create trader instance
+        trader = create_trader_from_account(account, credentials)
+        await trader.initialize()
+
+        # Get real-time account state
+        account_state = await trader.get_account_state()
+
+        # Build position summary for snapshot
+        position_summary = [
+            {
+                "symbol": pos.symbol,
+                "side": pos.side,
+                "size": pos.size,
+                "unrealized_pnl": pos.unrealized_pnl,
+            }
+            for pos in account_state.positions
+        ]
+
+        # Create snapshot
+        pnl_service = PnLService(db)
+        snapshot = await pnl_service.create_account_snapshot(
+            account_id=account_uuid,
+            equity=account_state.equity,
+            available_balance=account_state.available_balance,
+            unrealized_pnl=account_state.unrealized_pnl,
+            margin_used=account_state.total_margin_used,
+            open_positions=len(account_state.positions),
+            position_summary=position_summary,
+            source="manual",
+        )
+
+        await db.commit()
+
+        return SyncSnapshotResponse(
+            success=True,
+            message=f"Snapshot synced successfully for {account.exchange}",
+            equity=account_state.equity,
+            daily_pnl=snapshot.daily_pnl,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    except TradeError as e:
+        logger.warning(f"Exchange error syncing snapshot for account {account_id}: {e.message}")
+        raise exchange_api_error(e, operation="sync snapshot")
+
+    except Exception as e:
+        logger.error(f"Unexpected error syncing snapshot for account {account_id}: {e}", exc_info=True)
+        raise exchange_connection_error(e, exchange=account.exchange)
+
+    finally:
+        if trader:
+            try:
+                await trader.close()
+            except Exception:
+                pass

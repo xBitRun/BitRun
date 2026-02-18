@@ -50,6 +50,7 @@
     "accounts": "Accounts",
     "models": "Model Services",
     "backtest": "Historical Backtest",
+    "analytics": "P&L Analytics",
     "settings": "Settings",
     "collapse": "Collapse"
   },
@@ -2615,6 +2616,11 @@
     },
     "monthlyReturns": {
       "title": "Monthly Returns"
+    },
+    "sync": {
+      "button": "Sync Live Data",
+      "success": "Data synced successfully",
+      "error": "Failed to sync data"
     }
   }
 }

@@ -13,6 +13,7 @@ import {
   Menu,
   Cpu,
   Store,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,11 @@ const navItems = [
     titleKey: "backtest",
     href: "/backtest",
     icon: FlaskConical,
+  },
+  {
+    titleKey: "analytics",
+    href: "/analytics",
+    icon: TrendingUp,
   },
   {
     titleKey: "accounts",

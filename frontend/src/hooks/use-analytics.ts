@@ -4,8 +4,9 @@
  * SWR hooks for P&L and performance analytics data.
  */
 
+import { useState, useCallback } from "react";
 import useSWR from "swr";
-import { analyticsApi } from "@/lib/api/endpoints";
+import { analyticsApi, type SyncSnapshotResponse } from "@/lib/api/endpoints";
 
 // ==================== Agent P&L ====================
 
@@ -74,7 +75,9 @@ export function useEquityCurve(
   options?: UseEquityCurveOptions,
 ) {
   const { data, error, isLoading, mutate } = useSWR(
-    accountId ? [`/analytics/accounts/${accountId}/equity-curve`, options] : null,
+    accountId
+      ? [`/analytics/accounts/${accountId}/equity-curve`, options]
+      : null,
     () => analyticsApi.getEquityCurve(accountId!, options),
     {
       revalidateOnFocus: false,
@@ -110,5 +113,35 @@ export function useAccountPnL(accountId: string | null | undefined) {
     error,
     isLoading,
     mutate,
+  };
+}
+
+// ==================== Sync Account Snapshot ====================
+
+export function useSyncAccount(accountId: string | null | undefined) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<Error | null>(null);
+
+  const sync = useCallback(async (): Promise<SyncSnapshotResponse | null> => {
+    if (!accountId) return null;
+
+    setIsSyncing(true);
+    setSyncError(null);
+
+    try {
+      const result = await analyticsApi.syncAccount(accountId);
+      return result;
+    } catch (err) {
+      setSyncError(err instanceof Error ? err : new Error("Sync failed"));
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [accountId]);
+
+  return {
+    sync,
+    isSyncing,
+    syncError,
   };
 }
