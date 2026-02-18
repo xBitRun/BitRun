@@ -12,22 +12,18 @@ class BrandResponse(BaseModel):
     """Public brand information for frontend consumption"""
 
     name: str
-    short_name: str
     tagline: str
     description: str
-    theme_preset: str
 
     model_config = {"from_attributes": True}
 
 
 @router.get("", response_model=BrandResponse)
 async def get_brand_info() -> BrandResponse:
-    """Get public brand configuration"""
+    """Get public brand configuration (identity only, UI branding handled by frontend)"""
     settings = get_settings()
     return BrandResponse(
-        name=settings.app_name,
-        short_name=settings.app_name,
-        tagline=settings.app_tagline,
-        description=settings.app_description,
-        theme_preset=settings.theme_preset,
+        name=settings.brand_name,
+        tagline=settings.brand_tagline,
+        description=settings.brand_description,
     )

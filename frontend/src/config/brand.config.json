@@ -1,11 +1,11 @@
 {
   "$schema": "./brand.schema.json",
-  "id": "QEMind",
+  "id": "BITRUN",
   "version": "1.0.0",
 
   "identity": {
-    "name": "QuantExchangeMind",
-    "shortName": "QEMind",
+    "name": "BITRUN",
+    "shortName": "BITRUN",
     "tagline": "AI-Powered Trading Agent",
     "description": "Prompt-driven automated trading with AI decision making"
   },
@@ -25,14 +25,14 @@
   },
 
   "legal": {
-    "copyrightHolder": "QuantExchangeMind",
+    "copyrightHolder": "BITRUN",
     "termsUrl": "/terms",
     "privacyUrl": "/privacy"
   },
 
   "links": {
-    "homepage": "https://qemind.dev",
-    "documentation": "https://docs.qemind.dev",
-    "support": "https://support.qemind.dev"
+    "homepage": "https://bitrun.ai",
+    "documentation": "https://docs.bitrun.ai",
+    "support": "https://support.bitrun.ai"
   }
 }

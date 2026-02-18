@@ -1,18 +1,4 @@
 {
-  "brand": {
-    "name": "BITRUN",
-    "shortName": "BITRUN",
-    "tagline": "AI 智能交易代理",
-    "description": "基于提示词驱动的 AI 自动化交易系统",
-    "copyright": "© {year} {name}. 保留所有权利。",
-    "teamName": "{name} 团队",
-    "madeWith": "用心打造",
-    "apiNote": "{name} 使用安全的 JWT 认证。访问令牌 1 小时后过期。"
-  },
-  "metadata": {
-    "title": "BITRUN | AI 智能交易代理",
-    "description": "基于提示词驱动的 AI 自动化交易系统"
-  },
   "auth": {
     "welcome": "欢迎回来",
     "description": "请登录以继续。",
@@ -1238,7 +1224,6 @@
     },
     "appearance": {
       "title": "外观",
-      "description": "自定义 BITRUN 的外观",
       "theme": "主题",
       "light": "浅色",
       "dark": "深色",
@@ -1769,7 +1754,7 @@
       "updatePassword": "更新密码",
       "apiAccess": "API 访问",
       "apiAccessDescription": "API 访问和安全信息",
-      "apiNote": "BITRUN 使用安全的 JWT 认证。访问令牌 1 小时后过期。",
+      "apiNote": "{brandName} 使用安全的 JWT 认证。访问令牌 1 小时后过期。",
       "exchangeKeysNote": "交易所 API 密钥使用 AES-256-GCM 加密安全存储。您可以在账户页面管理交易所账户。"
     },
     "password": {
@@ -2534,10 +2519,10 @@
       "button": "立即开始"
     },
     "footer": {
-      "copyright": "\u00a9 {year} QEMind. 保留所有权利。",
+      "copyright": "© {year} {brandName}. 保留所有权利。",
       "madeWith": "平台由",
       "by": "倾力打造",
-      "teamName": "QEMind 团队"
+      "teamName": "{brandName} 团队"
     }
   }
 }

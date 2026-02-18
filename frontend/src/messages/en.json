@@ -1,18 +1,4 @@
 {
-  "brand": {
-    "name": "BITRUN",
-    "shortName": "BITRUN",
-    "tagline": "AI-Powered Trading Agent",
-    "description": "Prompt-driven automated trading with AI decision making",
-    "copyright": "© {year} {name}. All rights reserved.",
-    "teamName": "{name} Team",
-    "madeWith": "Made with",
-    "apiNote": "{name} uses secure JWT authentication. Access tokens expire after 1 hour."
-  },
-  "metadata": {
-    "title": "BITRUN | AI-Powered Trading Agent",
-    "description": "Prompt-driven automated trading with AI decision making"
-  },
   "auth": {
     "welcome": "Welcome back",
     "description": "Please log in to continue.",
@@ -1228,7 +1214,6 @@
     },
     "appearance": {
       "title": "Appearance",
-      "description": "Customize how BITRUN looks",
       "theme": "Theme",
       "light": "Light",
       "dark": "Dark",
@@ -1759,7 +1744,7 @@
       "updatePassword": "Update Password",
       "apiAccess": "API Access",
       "apiAccessDescription": "Information about API access and security",
-      "apiNote": "BITRUN uses secure JWT authentication. Access tokens expire after 1 hour.",
+      "apiNote": "{brandName} uses secure JWT authentication. Access tokens expire after 1 hour.",
       "exchangeKeysNote": "Exchange API keys are encrypted with AES-256-GCM and stored securely. You can manage your exchange accounts in the Accounts page."
     },
     "password": {
@@ -2478,10 +2463,10 @@
       "button": "Get Started"
     },
     "footer": {
-      "copyright": "\u00a9 {year} BITRUN. All rights reserved.",
+      "copyright": "© {year} {brandName}. All rights reserved.",
       "madeWith": "A platform built with",
       "by": "by",
-      "teamName": "BITRUN Team"
+      "teamName": "{brandName} Team"
     }
   }
 }

@@ -151,14 +151,15 @@ class AccountRepository:
     ) -> Optional[dict]:
         """
         Get decrypted credentials for an account.
-        
+
         Returns dict with api_key, api_secret, private_key, passphrase
         (only non-null values are included).
         """
         account = await self.get_by_id(account_id, user_id)
         if not account:
+            logger.debug(f"[DEBUG] Account not found: {account_id}")
             return None
-        
+
         try:
             credentials = {}
             if account.encrypted_api_key:
@@ -169,6 +170,13 @@ class AccountRepository:
                 credentials["private_key"] = self.crypto.decrypt(account.encrypted_private_key)
             if account.encrypted_passphrase:
                 credentials["passphrase"] = self.crypto.decrypt(account.encrypted_passphrase)
+
+            # Debug logging: print decrypted values (masked)
+            logger.debug(f"[DEBUG] Decrypted credentials for account {account_id}:")
+            for key, value in credentials.items():
+                masked = self._mask_credential(value)
+                logger.debug(f"[DEBUG]   {key}: {masked}")
+
             return credentials
         except Exception as e:
             logger.error(
@@ -176,6 +184,15 @@ class AccountRepository:
                 "This may indicate data corruption or encryption key rotation."
             )
             return None
+
+    @staticmethod
+    def _mask_credential(value: str) -> str:
+        """Mask credential for safe logging (show first 4 and last 4 chars)"""
+        if not value:
+            return "(empty)"
+        if len(value) <= 8:
+            return f"{value[:2]}***{value[-2:]}" if len(value) >= 4 else "***"
+        return f"{value[:4]}...{value[-4:]}"
     
     async def delete(
         self,

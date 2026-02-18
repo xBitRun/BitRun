@@ -28,10 +28,11 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: Literal["development", "staging", "production"] = "development"
 
-    # Brand Configuration
-    app_tagline: str = "AI-Powered Trading Agent"
-    app_description: str = "Prompt-driven automated trading with AI decision making"
-    theme_preset: str = "bitrun"
+    # Brand Configuration (for backend notifications/emails)
+    # Full branding (logo, theme, links) is handled by frontend env vars
+    brand_name: str = "BITRUN"
+    brand_tagline: str = "AI-Powered Trading Agent"
+    brand_description: str = "Prompt-driven automated trading with AI decision making"
 
     @property
     def is_debug(self) -> bool:
