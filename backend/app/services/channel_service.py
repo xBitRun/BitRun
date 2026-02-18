@@ -14,6 +14,7 @@ from ..db.models import (
     ChannelTransactionDB,
     UserDB,
     WalletTransactionDB,
+    RechargeOrderDB,
 )
 
 
@@ -353,8 +354,8 @@ class ChannelService:
             - total_channels: Total channels
             - active_channels: Active channels
             - total_users: Total users
-            - total_revenue: Total revenue
-            - total_commission: Total commission paid
+            - total_revenue: Total revenue (from completed recharge orders)
+            - total_commission: Total commission paid to channels
             - platform_revenue: Revenue after commission
         """
         # Count channels
@@ -367,16 +368,29 @@ class ChannelService:
         )
         total_users = users_result.scalar() or 0
 
-        # Sum channel statistics
-        stats_result = await self.session.execute(
-            select(
-                func.sum(ChannelDB.total_revenue).label("total_revenue"),
-                func.sum(ChannelDB.total_commission).label("total_commission"),
+        # Get total revenue from completed recharge orders
+        # This includes all recharge income, regardless of channel
+        revenue_query = select(
+            func.sum(RechargeOrderDB.amount).label("total_revenue")
+        ).where(RechargeOrderDB.status == "completed")
+
+        if start_date:
+            revenue_query = revenue_query.where(
+                RechargeOrderDB.completed_at >= start_date
             )
+        if end_date:
+            revenue_query = revenue_query.where(
+                RechargeOrderDB.completed_at <= end_date
+            )
+
+        revenue_result = await self.session.execute(revenue_query)
+        total_revenue = revenue_result.scalar() or 0.0
+
+        # Get total commission paid to channels
+        commission_result = await self.session.execute(
+            select(func.sum(ChannelDB.total_commission).label("total_commission"))
         )
-        row = stats_result.one()
-        total_revenue = row.total_revenue or 0.0
-        total_commission = row.total_commission or 0.0
+        total_commission = commission_result.scalar() or 0.0
 
         return {
             "total_channels": total_channels,

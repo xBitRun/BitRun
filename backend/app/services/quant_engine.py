@@ -294,6 +294,7 @@ class GridEngine(QuantEngineBase):
     async def run_cycle(self) -> dict:
         trades_executed = 0
         pnl_change = 0.0
+        total_size_usd = 0.0  # Track total position size for this cycle
 
         try:
             upper_price = self.config["upper_price"]
@@ -364,6 +365,7 @@ class GridEngine(QuantEngineBase):
                         if open_result.success:
                             filled_buys.add(level_key)
                             trades_executed += 1
+                            total_size_usd += size_usd  # Track total size
                             self.runtime_state["total_invested"] += size_usd
                             logger.info(
                                 f"Grid {self.agent_id}: BUY at grid level {level} "
@@ -382,6 +384,7 @@ class GridEngine(QuantEngineBase):
                         if close_result.success:
                             filled_sells.add(level_key)
                             trades_executed += 1
+                            total_size_usd += size_usd  # Track total size
                             profit = size_usd * (grid_step / level) if level > 0 else 0
                             pnl_change += profit
                             self.runtime_state["total_returned"] += size_usd + profit
@@ -402,6 +405,7 @@ class GridEngine(QuantEngineBase):
                 "success": True,
                 "trades_executed": trades_executed,
                 "pnl_change": pnl_change,
+                "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"Grid check: price={current_price:.2f}, trades={trades_executed}",
             }
@@ -412,6 +416,7 @@ class GridEngine(QuantEngineBase):
                 "success": False,
                 "trades_executed": 0,
                 "pnl_change": 0.0,
+                "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
             }
@@ -435,6 +440,7 @@ class DCAEngine(QuantEngineBase):
     async def run_cycle(self) -> dict:
         trades_executed = 0
         pnl_change = 0.0
+        total_size_usd = 0.0  # Track total position size for this cycle
 
         try:
             order_amount = self.config["order_amount"]
@@ -472,6 +478,7 @@ class DCAEngine(QuantEngineBase):
                             raise TradeError("Close position failed")
                         pnl_change = sell_value - total_invested
                         trades_executed += 1
+                        total_size_usd += sell_value  # Track total size
                         logger.info(
                             f"DCA {self.agent_id}: TAKE PROFIT at {current_price:.2f} "
                             f"(avg_cost: {avg_cost:.2f}, pnl: ${pnl_change:.2f}, "
@@ -486,6 +493,7 @@ class DCAEngine(QuantEngineBase):
                             "success": True,
                             "trades_executed": trades_executed,
                             "pnl_change": pnl_change,
+                            "total_size_usd": total_size_usd,
                             "updated_state": self.runtime_state,
                             "message": f"Take profit: +{current_pnl_pct:.1f}%, P/L: ${pnl_change:.2f}",
                         }
@@ -541,6 +549,7 @@ class DCAEngine(QuantEngineBase):
                 if not open_result.success:
                     raise TradeError("Open position failed or symbol conflict")
                 trades_executed += 1
+                total_size_usd += order_amount  # Track total size
 
                 # Use actual fill data when available
                 actual_price = open_result.filled_price or current_price
@@ -571,6 +580,7 @@ class DCAEngine(QuantEngineBase):
                 "success": True,
                 "trades_executed": trades_executed,
                 "pnl_change": pnl_change,
+                "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"DCA cycle: price={current_price:.2f}, orders={orders_placed + trades_executed}",
             }
@@ -581,6 +591,7 @@ class DCAEngine(QuantEngineBase):
                 "success": False,
                 "trades_executed": 0,
                 "pnl_change": 0.0,
+                "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
             }
@@ -605,6 +616,7 @@ class RSIEngine(QuantEngineBase):
     async def run_cycle(self) -> dict:
         trades_executed = 0
         pnl_change = 0.0
+        total_size_usd = 0.0  # Track total position size for this cycle
 
         try:
             rsi_period = self.config.get("rsi_period", 14)
@@ -678,6 +690,7 @@ class RSIEngine(QuantEngineBase):
                     )
                     if open_result.success:
                         trades_executed += 1
+                        total_size_usd += order_amount  # Track total size
                         actual_entry = open_result.filled_price or current_price
                         self.runtime_state["has_position"] = True
                         self.runtime_state["entry_price"] = actual_entry
@@ -700,6 +713,7 @@ class RSIEngine(QuantEngineBase):
                     close_result = await self._close_with_isolation()
                     if close_result.success:
                         trades_executed += 1
+                        total_size_usd += position_size  # Track total size
                         actual_close = close_result.filled_price or current_price
 
                         # Calculate P/L using actual fill prices
@@ -725,6 +739,7 @@ class RSIEngine(QuantEngineBase):
                 "success": True,
                 "trades_executed": trades_executed,
                 "pnl_change": pnl_change,
+                "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"RSI={rsi_value:.1f}, price={current_price:.2f}, trades={trades_executed}",
             }
@@ -735,6 +750,7 @@ class RSIEngine(QuantEngineBase):
                 "success": False,
                 "trades_executed": 0,
                 "pnl_change": 0.0,
+                "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
             }

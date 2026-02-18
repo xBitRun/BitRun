@@ -271,6 +271,7 @@ class QuantExecutionWorker:
                 decision_repo = DecisionRepository(session)
                 trades_executed = result.get("trades_executed", 0)
                 pnl_change = result.get("pnl_change", 0.0)
+                total_size_usd = result.get("total_size_usd", 0.0)
                 message = result.get("message", "")
                 success = result.get("success", False)
 
@@ -307,7 +308,7 @@ class QuantExecutionWorker:
                         "confidence": 100,
                         "reasoning": action_desc,
                         "leverage": leverage,
-                        "position_size_usd": 0,
+                        "position_size_usd": total_size_usd,
                         "risk_usd": 0,
                     }],
                     overall_confidence=100,
