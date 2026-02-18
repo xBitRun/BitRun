@@ -151,6 +151,7 @@ export {
   useInviteInfo,
   useRechargeOrders,
   useCreateRechargeOrder,
+  useAdminRechargeOrders,
 } from "./use-wallet";
 
 // Channel hooks

@@ -14,6 +14,7 @@ import {
   TransactionSummaryResponse,
   InviteInfoResponse,
   RechargeOrderResponse,
+  RechargeOrderListResponse,
 } from "@/lib/api/endpoints";
 
 // ==================== Wallet Keys ====================
@@ -144,4 +145,36 @@ export function useCreateRechargeOrder() {
   >(RECHARGE_ORDERS_KEY, async (_, { arg }) => {
     return rechargeApi.createOrder(arg);
   });
+}
+
+// ==================== Admin Recharge Hooks ====================
+
+const ADMIN_RECHARGE_ORDERS_KEY = "/recharge/admin/orders";
+
+/**
+ * Get all recharge orders (admin only).
+ */
+export function useAdminRechargeOrders(params?: {
+  status?: string;
+  user_id?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const key = params
+    ? [ADMIN_RECHARGE_ORDERS_KEY, params]
+    : ADMIN_RECHARGE_ORDERS_KEY;
+
+  const swr = useSWR<RechargeOrderListResponse[]>(key, async () => {
+    return rechargeApi.adminListOrders(params);
+  });
+
+  return {
+    ...swr,
+    orders: swr.data ?? [],
+    isLoading: swr.isLoading,
+    error: swr.error,
+    refresh: swr.mutate,
+  };
 }

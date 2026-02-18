@@ -46,7 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRechargeOrders } from "@/hooks";
+import { useRechargeOrders, useAdminRechargeOrders } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { format } from "date-fns";
 import { zhCN, enUS } from "date-fns/locale";
@@ -117,13 +117,16 @@ export default function AdminRechargePage() {
   const [isConfirming, setIsConfirming] = useState(false);
 
   // Data hooks
-  const { orders, isLoading, refresh } = useRechargeOrders({ limit: 100 });
+  const { orders, isLoading, refresh } = useAdminRechargeOrders({ limit: 100 });
 
   // Filter orders
   const filteredOrders = orders.filter((order) => {
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
-      order.order_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.user_id.toLowerCase().includes(searchQuery.toLowerCase());
+      order.order_no.toLowerCase().includes(searchLower) ||
+      order.user_id.toLowerCase().includes(searchLower) ||
+      (order.user_email?.toLowerCase().includes(searchLower) ?? false) ||
+      (order.user_name?.toLowerCase().includes(searchLower) ?? false);
     const matchesStatus =
       statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -297,8 +300,16 @@ export default function AdminRechargePage() {
                       <TableCell className="font-mono text-sm">
                         {order.order_no}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {order.user_id.slice(0, 8)}...
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">
+                            {order.user_name || order.user_email || "-"}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {order.user_email ||
+                              `${order.user_id.slice(0, 8)}...`}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div>
