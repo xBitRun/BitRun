@@ -333,9 +333,13 @@
         "riskWarning": "实盘交易涉及真实资金，请从保守设置开始。",
         "compatibilityWarning": "策略与交易所不兼容",
         "incompatibleSymbols": "交易对 {symbols} 的结算货币与 {exchange} 不匹配，请选择其他账户或修改策略。",
-        "accountBound": "已绑定",
-        "accountBoundWarning": "账户已被其他策略使用",
-        "accountBoundWarningDesc": "该交易所账户已绑定到其他策略。每个账户只能绑定一个代理。"
+        "allocated": "已分配",
+        "alreadyAllocated": "该账户已被其他代理使用",
+        "alreadyAllocatedDesc": "已分配 {percent}% 给 {agents} 个代理，剩余 {remaining}% 可用",
+        "fullyAllocated": "账户资金已全部分配",
+        "fullyAllocatedDesc": "该账户 100% 资金已分配给其他代理，请选择其他账户或调整现有代理的资金分配。",
+        "allocationExceeded": "分配比例超出可用额度",
+        "allocationExceededDesc": "请求分配 {requested}%，但仅剩 {available}% 可用"
       },
       "reviewStep": {
         "title": "确认并启动",
@@ -367,7 +371,10 @@
         "fixedAmount": "分配金额 (USDT)",
         "fixedAmountPlaceholder": "输入金额，如 5000",
         "percentAmount": "分配比例",
-        "percentAmountTooltip": "占账户权益的百分比，如 30% 表示使用账户 30% 的资金"
+        "percentAmountTooltip": "占账户权益的百分比，如 30% 表示使用账户 30% 的资金",
+        "modeRestriction": "账户资金分配模式已锁定",
+        "modeRestrictionDesc": "该账户已有代理使用「{mode}」模式，新代理需保持一致或选择「不限制」",
+        "modeDisabled": "不可用"
       },
       "testnet": "测试网",
       "interval": {
@@ -428,6 +435,7 @@
       "notFound": "未找到代理",
       "success": "代理更新成功",
       "failed": "更新代理失败",
+      "failedToUpdate": "更新代理失败",
       "strategyInfo": "策略信息",
       "strategyName": "策略名称",
       "strategyType": "策略类型",
@@ -522,6 +530,7 @@
     },
     "tabs": {
       "overview": "概览",
+      "trades": "交易",
       "tradeAnalysis": "交易分析",
       "timeAnalysis": "时间分析",
       "symbolBreakdown": "品种分析",
@@ -855,6 +864,7 @@
     "details": {
       "marketAssessment": "市场评估",
       "chainOfThought": "思维链",
+      "executionReasoning": "执行推理",
       "steps": "步",
       "expandAll": "展开更多 ({count} 步)",
       "collapseAll": "收起",
@@ -877,13 +887,20 @@
       "reason": "原因",
       "status": "状态",
       "noRecords": "无执行记录"
+    },
+    "error": {
+      "loadFailed": "加载决策失败"
     }
   },
   "time": {
     "justNow": "刚刚",
     "minutesAgo": "{count} 分钟前",
     "hoursAgo": "{count} 小时前",
-    "daysAgo": "{count} 天前"
+    "daysAgo": "{count} 天前",
+    "m_ago": "{count}分钟前",
+    "h_ago": "{count}小时前",
+    "d_ago": "{count}天前",
+    "live": "在线"
   },
   "charts": {
     "decisionTimeline": {
@@ -1037,6 +1054,47 @@
       "deleted": "策略删除成功"
     },
     "retry": "重试",
+    "configKeys": {
+      "prompt": "提示词",
+      "trading_mode": "交易模式",
+      "language": "语言",
+      "prompt_mode": "提示词模式",
+      "custom_prompt": "自定义提示词",
+      "advanced_prompt": "高级提示词",
+      "prompt_sections": "提示词分段",
+      "debate_enabled": "辩论模式",
+      "debate_models": "辩论模型",
+      "debate_consensus_mode": "共识模式",
+      "debate_min_participants": "最少参与者",
+      "symbols": "交易对",
+      "timeframes": "时间周期",
+      "indicators": "技术指标",
+      "upper_price": "价格上限",
+      "lower_price": "价格下限",
+      "grid_count": "网格数量",
+      "total_investment": "总投入金额",
+      "leverage": "杠杆",
+      "order_amount": "下单金额",
+      "interval_minutes": "下单间隔",
+      "take_profit_percent": "止盈百分比",
+      "total_budget": "总预算",
+      "max_orders": "最大下单次数",
+      "rsi_period": "RSI 周期",
+      "overbought_threshold": "超买阈值",
+      "oversold_threshold": "超卖阈值",
+      "timeframe": "时间周期",
+      "max_leverage": "最大杠杆",
+      "max_position_ratio": "单仓最大保证金比例",
+      "max_total_exposure": "最大总敞口",
+      "min_risk_reward_ratio": "最小风险回报比",
+      "max_drawdown_percent": "最大回撤",
+      "min_confidence": "最低置信度",
+      "default_sl_atr_multiplier": "默认止损 (ATR)",
+      "default_tp_atr_multiplier": "默认止盈 (ATR)",
+      "max_sl_percent": "最大止损百分比",
+      "yes": "是",
+      "no": "否"
+    },
     "create": {
       "title": "创建策略",
       "description": "选择策略类型并配置参数",
@@ -1305,7 +1363,9 @@
       "stopped": "代理已停止",
       "updateFailed": "更新代理失败",
       "runNowSuccess": "手动执行已触发",
-      "runNowFailed": "手动执行失败"
+      "runNowFailed": "手动执行失败",
+      "failedToUpdateSettings": "更新设置失败",
+      "failedToDeleteAgent": "删除代理失败"
     },
     "tradingModeValue": {
       "conservative": "保守型",
@@ -1675,6 +1735,17 @@
       "launching": "启动中...",
       "modifyConfig": "修改配置",
       "skipForNow": "暂不启动"
+    },
+    "toast": {
+      "failedToCreateAccount": "创建账户失败",
+      "failedToCreateAgent": "创建代理失败"
+    },
+    "steps": {
+      "welcome": "欢迎",
+      "account": "账户",
+      "agent": "代理",
+      "risk": "风控",
+      "launch": "启动"
     }
   },
   "language": {
@@ -1710,7 +1781,11 @@
     "twoFactorDescription": "为您的账户添加额外的安全保护",
     "twoFactorComingSoon": "双因素认证即将推出",
     "cancel": "取消",
-    "save": "保存"
+    "save": "保存",
+    "toast": {
+      "failedToUpdateProfile": "更新个人资料失败",
+      "failedToChangePassword": "修改密码失败"
+    }
   },
   "settings": {
     "title": "设置",
@@ -1801,7 +1876,12 @@
     "updateError": "更新供应商失败",
     "retry": "重试",
     "error": {
-      "loadFailed": "加载供应商失败"
+      "loadFailed": "加载供应商失败",
+      "failedToAddProvider": "添加供应商失败",
+      "failedToDeleteProvider": "删除供应商失败",
+      "failedToUpdateProvider": "更新供应商失败",
+      "failedToAddModel": "添加模型失败",
+      "failedToDeleteModel": "删除模型失败"
     },
     "card": {
       "apiKey": "API Key",
@@ -2525,6 +2605,72 @@
       "madeWith": "平台由",
       "by": "倾力打造",
       "teamName": "{brandName} 团队"
+    }
+  },
+  "analytics": {
+    "title": "收益分析",
+    "subtitle": "查看账户和策略的盈亏收益情况",
+    "overview": "收益概览",
+    "equityCurve": {
+      "title": "权益曲线",
+      "noData": "暂无数据",
+      "timeRange": {
+        "7d": "7天",
+        "30d": "30天",
+        "90d": "90天",
+        "1y": "1年",
+        "all": "全部"
+      }
+    },
+    "pnl": {
+      "total": "总盈亏",
+      "daily": "今日盈亏",
+      "weekly": "本周盈亏",
+      "monthly": "本月盈亏"
+    },
+    "metrics": {
+      "winRate": "胜率",
+      "profitFactor": "盈亏比",
+      "maxDrawdown": "最大回撤",
+      "sharpeRatio": "夏普比率",
+      "totalTrades": "总交易次数",
+      "winningTrades": "盈利次数",
+      "losingTrades": "亏损次数",
+      "avgWin": "平均盈利",
+      "avgLoss": "平均亏损",
+      "totalFees": "总手续费"
+    },
+    "agents": {
+      "title": "策略运行情况",
+      "noData": "暂无策略运行记录",
+      "columns": {
+        "name": "策略名称",
+        "status": "状态",
+        "totalPnl": "总盈亏",
+        "dailyPnl": "今日盈亏",
+        "winRate": "胜率",
+        "trades": "交易次数",
+        "positions": "持仓"
+      }
+    },
+    "trades": {
+      "title": "交易记录",
+      "noData": "暂无交易记录",
+      "pagination": "共 {total} 条，第 {current}/{pages} 页",
+      "columns": {
+        "symbol": "交易对",
+        "side": "方向",
+        "entry": "入场价",
+        "exit": "出场价",
+        "size": "仓位",
+        "pnl": "盈亏",
+        "duration": "时长",
+        "exitReason": "平仓原因",
+        "time": "时间"
+      }
+    },
+    "monthlyReturns": {
+      "title": "月度收益"
     }
   }
 }

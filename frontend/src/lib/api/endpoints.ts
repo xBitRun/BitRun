@@ -414,6 +414,13 @@ export interface AgentAccountStateResponse {
   total_margin_used: number;
 }
 
+export interface BoundAccountInfo {
+  account_id: string;
+  total_percent: number;
+  agent_count: number;
+  allocation_mode?: "percent" | "fixed" | null;
+}
+
 export const agentsApi = {
   list: (params?: {
     status_filter?: AgentStatus;
@@ -465,8 +472,9 @@ export const agentsApi = {
   trigger: (id: string) =>
     api.post<TriggerExecutionResponse>(`/agents/${id}/trigger`),
 
-  /** Get all exchange account IDs that are bound to active/live agents */
-  getBoundAccounts: () => api.get<string[]>("/agents/bound-accounts"),
+  /** Get allocation info for bound accounts */
+  getBoundAccounts: () =>
+    api.get<Record<string, BoundAccountInfo>>("/agents/bound-accounts"),
 };
 
 // ==================== Quant Strategies (DEPRECATED - use strategiesApi + agentsApi) ====================
@@ -1315,4 +1323,150 @@ export const dataApi = {
     api.get<ExchangesForAssetResponse>(
       `/data/exchanges/for-asset/${assetType}`,
     ),
+};
+
+// ==================== Analytics ====================
+
+export interface PnLTradeRecord {
+  id: string;
+  symbol: string;
+  side: string;
+  entry_price: number;
+  exit_price: number | null;
+  size: number;
+  size_usd: number;
+  leverage: number;
+  realized_pnl: number;
+  fees: number;
+  opened_at: string;
+  closed_at: string;
+  duration_minutes: number;
+  exit_reason: string | null;
+}
+
+export interface AgentPnLSummary {
+  total_pnl: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number;
+  avg_win: number;
+  avg_loss: number;
+  profit_factor: number;
+  total_fees: number;
+}
+
+export interface AgentPnLResponse {
+  agent_id: string;
+  agent_name: string;
+  summary: AgentPnLSummary;
+  trades: PnLTradeRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AgentPerformance {
+  agent_id: string;
+  agent_name: string;
+  strategy_name: string;
+  strategy_type: string;
+  status: string;
+  total_pnl: number;
+  daily_pnl: number;
+  win_rate: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  max_drawdown: number;
+  open_positions: number;
+}
+
+export interface AccountAgentsResponse {
+  account_id: string;
+  agents: AgentPerformance[];
+  total: number;
+}
+
+export interface EquityDataPoint {
+  date: string;
+  equity: number;
+  daily_pnl: number;
+  daily_pnl_percent: number;
+  cumulative_pnl: number;
+  cumulative_pnl_percent: number;
+}
+
+export interface EquityCurveResponse {
+  account_id: string;
+  start_date: string;
+  end_date: string;
+  granularity: string;
+  data_points: EquityDataPoint[];
+}
+
+export interface AccountPnLSummary {
+  account_id: string;
+  account_name: string;
+  exchange: string;
+  current_equity: number;
+  total_pnl: number;
+  total_pnl_percent: number;
+  daily_pnl: number;
+  daily_pnl_percent: number;
+  weekly_pnl: number;
+  weekly_pnl_percent: number;
+  monthly_pnl: number;
+  monthly_pnl_percent: number;
+  win_rate: number;
+  total_trades: number;
+  profit_factor: number;
+  max_drawdown_percent: number | null;
+  sharpe_ratio: number | null;
+}
+
+export const analyticsApi = {
+  /**
+   * Get P&L details for a specific agent.
+   */
+  getAgentPnL: (
+    agentId: string,
+    params?: {
+      start_date?: string;
+      end_date?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ) =>
+    api.get<AgentPnLResponse>(`/analytics/agents/${agentId}/pnl`, {
+      params,
+    }),
+
+  /**
+   * Get performance metrics for all agents on an account.
+   */
+  getAccountAgents: (accountId: string) =>
+    api.get<AccountAgentsResponse>(`/analytics/accounts/${accountId}/agents`),
+
+  /**
+   * Get equity curve data for an account.
+   */
+  getEquityCurve: (
+    accountId: string,
+    params?: {
+      start_date?: string;
+      end_date?: string;
+      granularity?: "day" | "week" | "month";
+    },
+  ) =>
+    api.get<EquityCurveResponse>(
+      `/analytics/accounts/${accountId}/equity-curve`,
+      { params },
+    ),
+
+  /**
+   * Get P&L summary for an account.
+   */
+  getAccountPnL: (accountId: string) =>
+    api.get<AccountPnLSummary>(`/analytics/accounts/${accountId}/pnl`),
 };

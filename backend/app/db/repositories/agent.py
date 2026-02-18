@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -274,3 +274,94 @@ class AgentRepository:
         )
         result = await self.session.execute(query)
         return {row[0] for row in result.all()}
+
+    async def get_account_allocated_percent(
+        self,
+        account_id: uuid.UUID,
+        exclude_agent_id: Optional[uuid.UUID] = None,
+    ) -> float:
+        """
+        Get the sum of allocated_capital_percent for all live agents on an account.
+
+        Only considers agents with percentage allocation (not fixed amount).
+
+        Args:
+            account_id: The exchange account ID
+            exclude_agent_id: Optional agent ID to exclude (for updates)
+
+        Returns:
+            Sum of allocated_capital_percent (0.0 to 1.0+)
+        """
+        query = (
+            select(func.coalesce(func.sum(AgentDB.allocated_capital_percent), 0.0))
+            .where(AgentDB.account_id == account_id)
+            .where(AgentDB.execution_mode == "live")
+            .where(AgentDB.status.in_(["active", "draft", "paused"]))
+            .where(AgentDB.allocated_capital_percent.isnot(None))
+        )
+        if exclude_agent_id:
+            query = query.where(AgentDB.id != exclude_agent_id)
+
+        result = await self.session.execute(query)
+        return float(result.scalar() or 0.0)
+
+    async def get_account_allocation_summary(
+        self,
+        account_id: uuid.UUID,
+    ) -> dict:
+        """
+        Get capital allocation summary for an account.
+
+        Returns:
+            {
+                "total_percent": float,
+                "allocation_mode": "percent" | "fixed" | None,
+                "agents": [
+                    {
+                        "id": str,
+                        "name": str,
+                        "allocated_capital_percent": float | None,
+                        "allocated_capital": float | None,
+                    }
+                ]
+            }
+        """
+        query = (
+            select(AgentDB)
+            .where(AgentDB.account_id == account_id)
+            .where(AgentDB.execution_mode == "live")
+            .where(AgentDB.status.in_(["active", "draft", "paused"]))
+        )
+        result = await self.session.execute(query)
+        agents = list(result.scalars().all())
+
+        total_percent = sum(
+            a.allocated_capital_percent or 0.0
+            for a in agents
+            if a.allocated_capital_percent is not None
+        )
+
+        # Determine allocation mode from existing agents
+        has_percent = any(a.allocated_capital_percent is not None for a in agents)
+        has_fixed = any(a.allocated_capital is not None for a in agents)
+
+        if has_percent and not has_fixed:
+            allocation_mode = "percent"
+        elif has_fixed and not has_percent:
+            allocation_mode = "fixed"
+        else:
+            allocation_mode = None  # Mixed or neither
+
+        return {
+            "total_percent": total_percent,
+            "allocation_mode": allocation_mode,
+            "agents": [
+                {
+                    "id": str(a.id),
+                    "name": a.name,
+                    "allocated_capital_percent": a.allocated_capital_percent,
+                    "allocated_capital": a.allocated_capital,
+                }
+                for a in agents
+            ],
+        }

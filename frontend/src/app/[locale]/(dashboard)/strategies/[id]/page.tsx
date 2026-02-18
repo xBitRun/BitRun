@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { use, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
-import Link from 'next/link';
+import { use, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   Grid3X3,
@@ -25,16 +26,16 @@ import {
   FileText,
   Clock,
   Users,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -42,31 +43,31 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
-import { useStrategy, useDeleteStrategy, useStrategyVersions } from '@/hooks';
-import { useToast } from '@/components/ui/toast';
-import { DetailPageHeader } from '@/components/layout';
-import type { StrategyType } from '@/types';
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { useStrategy, useDeleteStrategy, useStrategyVersions } from "@/hooks";
+import { useToast } from "@/components/ui/toast";
+import { DetailPageHeader } from "@/components/layout";
+import type { StrategyType } from "@/types";
 
 function getTypeIcon(type: StrategyType) {
   switch (type) {
-    case 'ai':
+    case "ai":
       return Bot;
-    case 'grid':
+    case "grid":
       return Grid3X3;
-    case 'dca':
+    case "dca":
       return ArrowDownUp;
-    case 'rsi':
+    case "rsi":
       return Activity;
     default:
       return LineChart;
@@ -75,106 +76,92 @@ function getTypeIcon(type: StrategyType) {
 
 function getTypeColor(type: StrategyType) {
   switch (type) {
-    case 'ai':
-      return 'border-rose-500/30 text-rose-500';
-    case 'grid':
-      return 'border-blue-500/30 text-blue-500';
-    case 'dca':
-      return 'border-emerald-500/30 text-emerald-500';
-    case 'rsi':
-      return 'border-amber-500/30 text-amber-500';
+    case "ai":
+      return "border-rose-500/30 text-rose-500";
+    case "grid":
+      return "border-blue-500/30 text-blue-500";
+    case "dca":
+      return "border-emerald-500/30 text-emerald-500";
+    case "rsi":
+      return "border-amber-500/30 text-amber-500";
     default:
-      return '';
+      return "";
   }
 }
 
 function getVisibilityColor(visibility: string) {
-  return visibility === 'public'
-    ? 'border-emerald-500/30 text-emerald-500'
-    : 'border-muted-foreground/30 text-muted-foreground';
+  return visibility === "public"
+    ? "border-emerald-500/30 text-emerald-500"
+    : "border-muted-foreground/30 text-muted-foreground";
 }
 
-// Config value renderer - supports JSON object formatting
-function renderConfigValue(value: unknown): React.ReactNode {
-  if (value === null || value === undefined) return '-';
-  if (typeof value === 'boolean') return value ? '是' : '否';
-  if (typeof value === 'number') return value.toLocaleString();
-  if (Array.isArray(value)) {
-    return (
-      <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded">
-        {JSON.stringify(value)}
-      </code>
-    );
-  }
-  if (typeof value === 'object') {
-    return (
-      <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded block max-w-xs overflow-auto whitespace-pre">
-        {JSON.stringify(value, null, 2)}
-      </code>
-    );
-  }
-  return String(value);
-}
-
-// Config key label map for Chinese translation
-const configKeyLabels: Record<string, string> = {
+// Config key labels - translation keys for i18n
+const configKeyTranslationKeys: Record<string, string> = {
   // AI 策略参数
-  prompt: '提示词',
-  trading_mode: '交易模式',
-  language: '语言',
-  prompt_mode: '提示词模式',
-  custom_prompt: '自定义提示词',
-  advanced_prompt: '高级提示词',
-  prompt_sections: '提示词分段',
-  debate_enabled: '辩论模式',
-  debate_models: '辩论模型',
-  debate_consensus_mode: '共识模式',
-  debate_min_participants: '最少参与者',
-  symbols: '交易对',
-  timeframes: '时间周期',
-  indicators: '技术指标',
+  prompt: "prompt",
+  trading_mode: "trading_mode",
+  language: "language",
+  prompt_mode: "prompt_mode",
+  custom_prompt: "custom_prompt",
+  advanced_prompt: "advanced_prompt",
+  prompt_sections: "prompt_sections",
+  debate_enabled: "debate_enabled",
+  debate_models: "debate_models",
+  debate_consensus_mode: "debate_consensus_mode",
+  debate_min_participants: "debate_min_participants",
+  symbols: "symbols",
+  timeframes: "timeframes",
+  indicators: "indicators",
   // 网格策略参数
-  upper_price: '价格上限',
-  lower_price: '价格下限',
-  grid_count: '网格数量',
-  total_investment: '总投入金额',
-  leverage: '杠杆',
+  upper_price: "upper_price",
+  lower_price: "lower_price",
+  grid_count: "grid_count",
+  total_investment: "total_investment",
+  leverage: "leverage",
   // DCA 策略参数
-  order_amount: '下单金额',
-  interval_minutes: '下单间隔',
-  take_profit_percent: '止盈百分比',
-  total_budget: '总预算',
-  max_orders: '最大下单次数',
+  order_amount: "order_amount",
+  interval_minutes: "interval_minutes",
+  take_profit_percent: "take_profit_percent",
+  total_budget: "total_budget",
+  max_orders: "max_orders",
   // RSI 策略参数
-  rsi_period: 'RSI 周期',
-  overbought_threshold: '超买阈值',
-  oversold_threshold: '超卖阈值',
-  timeframe: '时间周期',
+  rsi_period: "rsi_period",
+  overbought_threshold: "overbought_threshold",
+  oversold_threshold: "oversold_threshold",
+  timeframe: "timeframe",
   // 风控参数
-  max_leverage: '最大杠杆',
-  max_position_ratio: '单仓最大保证金比例',
-  max_total_exposure: '最大总敞口',
-  min_risk_reward_ratio: '最小风险回报比',
-  max_drawdown_percent: '最大回撤',
-  min_confidence: '最低置信度',
-  default_sl_atr_multiplier: '默认止损 (ATR)',
-  default_tp_atr_multiplier: '默认止盈 (ATR)',
-  max_sl_percent: '最大止损百分比',
+  max_leverage: "max_leverage",
+  max_position_ratio: "max_position_ratio",
+  max_total_exposure: "max_total_exposure",
+  min_risk_reward_ratio: "min_risk_reward_ratio",
+  max_drawdown_percent: "max_drawdown_percent",
+  min_confidence: "min_confidence",
+  default_sl_atr_multiplier: "default_sl_atr_multiplier",
+  default_tp_atr_multiplier: "default_tp_atr_multiplier",
+  max_sl_percent: "max_sl_percent",
 };
 
 // Get translated config key label
-function getConfigKeyLabel(key: string): string {
-  return configKeyLabels[key] || key.replace(/_/g, ' ');
+function getConfigKeyLabel(
+  key: string,
+  t: ReturnType<typeof useTranslations<"strategies.configKeys">>,
+): string {
+  const translationKey = configKeyTranslationKeys[key];
+  if (translationKey) {
+    return t(translationKey);
+  }
+  return key.replace(/_/g, " ");
 }
 
 // Format date
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+function formatDate(dateString: string, locale: string): string {
+  const localeCode = locale === "zh" ? "zh-CN" : "en-US";
+  return new Date(dateString).toLocaleDateString(localeCode, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -184,8 +171,10 @@ export default function StrategyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const t = useTranslations('strategies');
-  const tType = useTranslations('strategies.type');
+  const t = useTranslations("strategies");
+  const tConfigKeys = useTranslations("strategies.configKeys");
+  const tType = useTranslations("strategies.type");
+  const locale = useLocale();
   const router = useRouter();
   const toast = useToast();
 
@@ -195,31 +184,54 @@ export default function StrategyDetailPage({
   const { data: versions } = useStrategyVersions(id);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Config value renderer - supports JSON object formatting
+  const renderConfigValue = (value: unknown): React.ReactNode => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "boolean")
+      return value ? tConfigKeys("yes") : tConfigKeys("no");
+    if (typeof value === "number") return value.toLocaleString();
+    if (Array.isArray(value)) {
+      return (
+        <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded">
+          {JSON.stringify(value)}
+        </code>
+      );
+    }
+    if (typeof value === "object") {
+      return (
+        <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded block max-w-xs overflow-auto whitespace-pre">
+          {JSON.stringify(value, null, 2)}
+        </code>
+      );
+    }
+    return String(value);
+  };
 
   const handleDelete = async () => {
     try {
       await deleteStrategy();
-      toast.success(t('toast.deleted'));
-      router.push('/strategies');
+      toast.success(t("toast.deleted"));
+      router.push("/strategies");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t('error.deleteFailed');
-      toast.error(t('error.deleteFailed'), message);
+        err instanceof Error ? err.message : t("error.deleteFailed");
+      toast.error(t("error.deleteFailed"), message);
     }
   };
 
   const handleCopyId = () => {
     if (strategy) {
       navigator.clipboard.writeText(strategy.id);
-      toast.success(t('detail.idCopied'));
+      toast.success(t("detail.idCopied"));
     }
   };
 
   const handleShare = () => {
-    if (strategy && typeof window !== 'undefined') {
+    if (strategy && typeof window !== "undefined") {
       navigator.clipboard.writeText(window.location.href);
-      toast.success(t('detail.linkCopied'));
+      toast.success(t("detail.linkCopied"));
     }
   };
 
@@ -234,13 +246,13 @@ export default function StrategyDetailPage({
   if (error || !strategy) {
     return (
       <div className="space-y-4 max-w-3xl mx-auto">
-        <Button variant="ghost" onClick={() => router.push('/strategies')}>
+        <Button variant="ghost" onClick={() => router.push("/strategies")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('detail.backToStrategies')}
+          {t("detail.backToStrategies")}
         </Button>
         <Card className="bg-card/50">
           <CardContent className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">{t('detail.notFound')}</p>
+            <p className="text-muted-foreground">{t("detail.notFound")}</p>
           </CardContent>
         </Card>
       </div>
@@ -249,7 +261,7 @@ export default function StrategyDetailPage({
 
   const config = strategy.config || {};
   const hasCommonParams: boolean =
-    Object.keys(config).filter((k) => k !== 'riskControls').length > 0;
+    Object.keys(config).filter((k) => k !== "riskControls").length > 0;
   const IconComponent = getTypeIcon(strategy.type);
 
   return (
@@ -275,25 +287,25 @@ export default function StrategyDetailPage({
             <Button variant="outline" asChild>
               <Link href={`/strategies/${strategy.id}/edit`}>
                 <Pencil className="w-4 h-4 mr-2" />
-                {t('detail.actions.edit')}
+                {t("detail.actions.edit")}
               </Link>
             </Button>
             <Button asChild>
               <Link href={`/agents/new?strategyId=${strategy.id}`}>
                 <Zap className="w-4 h-4 mr-2" />
-                {t('actions.createAgent')}
+                {t("actions.createAgent")}
               </Link>
             </Button>
           </>
         }
         moreMenuItems={[
           {
-            label: t('detail.actions.copyId'),
+            label: t("detail.actions.copyId"),
             icon: <Copy className="w-4 h-4" />,
             onClick: handleCopyId,
           },
           {
-            label: t('detail.actions.share'),
+            label: t("detail.actions.share"),
             icon: <Share2 className="w-4 h-4" />,
             onClick: handleShare,
           },
@@ -308,15 +320,15 @@ export default function StrategyDetailPage({
             <TabsList className="mb-4">
               <TabsTrigger value="overview">
                 <BarChart3 className="w-4 h-4 mr-1.5" />
-                {t('detail.tabs.overview')}
+                {t("detail.tabs.overview")}
               </TabsTrigger>
               <TabsTrigger value="config">
                 <Settings className="w-4 h-4 mr-1.5" />
-                {t('detail.tabs.config')}
+                {t("detail.tabs.config")}
               </TabsTrigger>
               <TabsTrigger value="settings">
                 <FileText className="w-4 h-4 mr-1.5" />
-                {t('detail.tabs.settings')}
+                {t("detail.tabs.settings")}
               </TabsTrigger>
             </TabsList>
 
@@ -326,7 +338,7 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {t('detail.overview.symbols')}
+                    {t("detail.overview.symbols")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -343,7 +355,7 @@ export default function StrategyDetailPage({
                       ))
                     ) : (
                       <span className="text-muted-foreground text-sm">
-                        {t('empty.noSymbol')}
+                        {t("empty.noSymbol")}
                       </span>
                     )}
                   </div>
@@ -354,20 +366,20 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {t('detail.overview.summary')}
+                    {t("detail.overview.summary")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <p className="text-muted-foreground text-sm">
-                        {t('detail.overview.strategyType')}
+                        {t("detail.overview.strategyType")}
                       </p>
                       <p className="font-medium">{tType(strategy.type)}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-muted-foreground text-sm">
-                        {t('detail.overview.visibility')}
+                        {t("detail.overview.visibility")}
                       </p>
                       <p className="font-medium">
                         {t(`visibility.${strategy.visibility}`)}
@@ -388,7 +400,7 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {t('detail.overview.quickStats')}
+                    {t("detail.overview.quickStats")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -397,7 +409,7 @@ export default function StrategyDetailPage({
                       <Users className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <p className="text-muted-foreground text-xs">
-                          {t('stats.forkCount')}
+                          {t("stats.forkCount")}
                         </p>
                         <p className="font-semibold text-lg">
                           {strategy.fork_count}
@@ -408,7 +420,7 @@ export default function StrategyDetailPage({
                       <TagIcon className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <p className="text-muted-foreground text-xs">
-                          {t('detail.overview.tags')}
+                          {t("detail.overview.tags")}
                         </p>
                         <p className="font-semibold text-lg">
                           {strategy.tags.length}
@@ -428,7 +440,7 @@ export default function StrategyDetailPage({
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">
-                        {t('detail.config.commonParams')}
+                        {t("detail.config.commonParams")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -436,7 +448,7 @@ export default function StrategyDetailPage({
                         {Object.entries(config)
                           .filter(
                             ([key]) =>
-                              key !== 'riskControls' && key !== 'prompt'
+                              key !== "riskControls" && key !== "prompt",
                           )
                           .map(([key, value]) => (
                             <div
@@ -444,7 +456,7 @@ export default function StrategyDetailPage({
                               className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
                             >
                               <span className="text-muted-foreground text-sm shrink-0">
-                                {getConfigKeyLabel(key)}
+                                {getConfigKeyLabel(key, tConfigKeys)}
                               </span>
                               <span className="font-mono text-sm text-right">
                                 {renderConfigValue(value)}
@@ -457,11 +469,11 @@ export default function StrategyDetailPage({
                 )}
 
                 {/* Prompt Preview (AI Strategy Only) */}
-                {strategy.type === 'ai' && config.prompt && (
+                {strategy.type === "ai" && config.prompt && (
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">
-                        {t('detail.config.promptPreview')}
+                        {t("detail.config.promptPreview")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -476,24 +488,24 @@ export default function StrategyDetailPage({
 
                 {/* Risk Controls (if exists) */}
                 {config.riskControls &&
-                  typeof config.riskControls === 'object' && (
+                  typeof config.riskControls === "object" && (
                     <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">
-                          {t('detail.config.riskControls')}
+                          {t("detail.config.riskControls")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {Object.entries(
-                            config.riskControls as Record<string, unknown>
+                            config.riskControls as Record<string, unknown>,
                           ).map(([key, value]) => (
                             <div
                               key={key}
                               className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
                             >
                               <span className="text-muted-foreground text-sm shrink-0">
-                                {getConfigKeyLabel(key)}
+                                {getConfigKeyLabel(key, tConfigKeys)}
                               </span>
                               <span className="font-mono text-sm text-right">
                                 {renderConfigValue(value)}
@@ -510,7 +522,7 @@ export default function StrategyDetailPage({
                   <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                     <CardContent className="flex items-center justify-center py-12">
                       <p className="text-muted-foreground">
-                        {t('detail.config.noConfig')}
+                        {t("detail.config.noConfig")}
                       </p>
                     </CardContent>
                   </Card>
@@ -524,7 +536,7 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {t('detail.settings.basicInfo')}
+                    {t("detail.settings.basicInfo")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -533,13 +545,13 @@ export default function StrategyDetailPage({
                       <div className="space-y-1">
                         <p className="font-medium">{strategy.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {strategy.description || t('empty.noDescription')}
+                          {strategy.description || t("empty.noDescription")}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/strategies/${strategy.id}/edit`}>
                           <Pencil className="w-3 h-3 mr-1.5" />
-                          {t('detail.settings.edit')}
+                          {t("detail.settings.edit")}
                         </Link>
                       </Button>
                     </div>
@@ -551,7 +563,7 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {t('detail.settings.visibility')}
+                    {t("detail.settings.visibility")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -560,21 +572,21 @@ export default function StrategyDetailPage({
                       <Badge
                         variant="outline"
                         className={cn(
-                          'text-xs',
-                          getVisibilityColor(strategy.visibility)
+                          "text-xs",
+                          getVisibilityColor(strategy.visibility),
                         )}
                       >
                         {t(`visibility.${strategy.visibility}`)}
                       </Badge>
                       <p className="text-sm text-muted-foreground">
-                        {strategy.visibility === 'public'
-                          ? t('detail.settings.publicHint')
-                          : t('detail.settings.privateHint')}
+                        {strategy.visibility === "public"
+                          ? t("detail.settings.publicHint")
+                          : t("detail.settings.privateHint")}
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/strategies/${strategy.id}/edit`}>
-                        {t('detail.settings.change')}
+                        {t("detail.settings.change")}
                       </Link>
                     </Button>
                   </div>
@@ -586,7 +598,7 @@ export default function StrategyDetailPage({
                 <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">
-                      {t('versions.title')}
+                      {t("versions.title")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -601,7 +613,7 @@ export default function StrategyDetailPage({
                               v{version.version}
                             </span>
                             <span className="text-sm text-muted-foreground">
-                              {formatDate(version.created_at)}
+                              {formatDate(version.created_at, locale)}
                             </span>
                           </div>
                           {version.change_note && (
@@ -620,10 +632,10 @@ export default function StrategyDetailPage({
               <Card className="bg-card/50 border-[var(--loss)]/30">
                 <CardHeader>
                   <CardTitle className="text-lg text-[var(--loss)]">
-                    {t('detail.settings.dangerZone')}
+                    {t("detail.settings.dangerZone")}
                   </CardTitle>
                   <CardDescription>
-                    {t('detail.settings.deleteConfirm')}
+                    {t("detail.settings.deleteConfirm")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -634,7 +646,7 @@ export default function StrategyDetailPage({
                     disabled={isDeleting}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {t('detail.settings.deleteStrategy')}
+                    {t("detail.settings.deleteStrategy")}
                   </Button>
                 </CardContent>
               </Card>
@@ -649,26 +661,26 @@ export default function StrategyDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
-                {t('detail.sidebar.info')}
+                {t("detail.sidebar.info")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  {t('detail.sidebar.created')}
+                  {t("detail.sidebar.created")}
                 </span>
                 <span className="font-mono">
-                  {formatDate(strategy.created_at)}
+                  {formatDate(strategy.created_at, locale)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {t('detail.sidebar.updated')}
+                  {t("detail.sidebar.updated")}
                 </span>
                 <span className="font-mono">
-                  {formatDate(strategy.updated_at)}
+                  {formatDate(strategy.updated_at, locale)}
                 </span>
               </div>
             </CardContent>
@@ -679,19 +691,19 @@ export default function StrategyDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                {t('detail.sidebar.stats')}
+                {t("detail.sidebar.stats")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {t('stats.forkCount')}
+                  {t("stats.forkCount")}
                 </span>
                 <span className="font-semibold">{strategy.fork_count}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {t('stats.agentCount')}
+                  {t("stats.agentCount")}
                 </span>
                 <span className="font-semibold">-</span>
               </div>
@@ -704,9 +716,9 @@ export default function StrategyDetailPage({
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>{t('detail.settings.deleteConfirmTitle')}</DialogTitle>
+            <DialogTitle>{t("detail.settings.deleteConfirmTitle")}</DialogTitle>
             <DialogDescription>
-              {t('detail.settings.deleteConfirmDesc')}
+              {t("detail.settings.deleteConfirmDesc")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -714,7 +726,7 @@ export default function StrategyDetailPage({
               variant="outline"
               onClick={() => setShowDeleteConfirm(false)}
             >
-              {t('actions.cancel')}
+              {t("actions.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -729,7 +741,7 @@ export default function StrategyDetailPage({
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
-              {t('detail.settings.confirmDelete')}
+              {t("detail.settings.confirmDelete")}
             </Button>
           </DialogFooter>
         </DialogContent>

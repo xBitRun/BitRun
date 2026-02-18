@@ -145,7 +145,7 @@ export default function EditAgentPage() {
       router.push(`/agents/${agent.id}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to update agent";
+        err instanceof Error ? err.message : tEdit("failedToUpdate");
       setSubmitError(message);
       toast.error(tEdit("failed"), message);
     } finally {

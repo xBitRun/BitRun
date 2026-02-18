@@ -569,6 +569,129 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
 
 # ==================== Position Reconciliation ====================
 
+async def create_daily_snapshots(ctx: dict) -> dict[str, Any]:
+    """
+    Create daily snapshots for all active accounts and agents.
+
+    This task runs at UTC midnight to capture equity and performance
+    metrics for historical tracking and P&L analysis.
+
+    Returns:
+        Dict with snapshot creation results
+    """
+    logger.info("Starting daily snapshot creation...")
+
+    result = {
+        "accounts_snapshotted": 0,
+        "agents_snapshotted": 0,
+        "errors": 0,
+    }
+
+    try:
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+            from ..db.models import AgentDB, ExchangeAccountDB
+            from ..services.pnl_service import PnLService
+
+            pnl_service = PnLService(session)
+
+            # Get all connected accounts
+            accounts_stmt = select(ExchangeAccountDB).where(
+                ExchangeAccountDB.is_connected == True
+            )
+            accounts_result = await session.execute(accounts_stmt)
+            accounts = accounts_result.scalars().all()
+
+            # Create snapshots for each account
+            for account in accounts:
+                try:
+                    # Get account balance from exchange
+                    account_repo = AccountRepository(session)
+                    credentials = await account_repo.get_decrypted_credentials(
+                        account.id, account.user_id
+                    )
+
+                    if credentials:
+                        trader = None
+                        try:
+                            trader = create_trader_from_account(account, credentials)
+                            await trader.initialize()
+                            state = await trader.get_account_state()
+
+                            # Get open positions
+                            positions = await trader.get_positions()
+                            position_summary = [
+                                {
+                                    "symbol": p.symbol,
+                                    "side": p.side,
+                                    "size": p.size,
+                                    "unrealized_pnl": p.unrealized_pnl,
+                                }
+                                for p in positions
+                            ]
+
+                            await pnl_service.create_account_snapshot(
+                                account_id=account.id,
+                                equity=state.equity,
+                                available_balance=state.available_balance,
+                                unrealized_pnl=state.unrealized_pnl,
+                                margin_used=state.total_margin_used,
+                                open_positions=len(positions),
+                                position_summary=position_summary,
+                                source="scheduled",
+                            )
+                            result["accounts_snapshotted"] += 1
+
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to create snapshot for account {account.id}: {e}"
+                            )
+                            result["errors"] += 1
+                        finally:
+                            if trader:
+                                try:
+                                    await trader.close()
+                                except Exception:
+                                    pass
+
+                except Exception as e:
+                    logger.exception(f"Error creating snapshot for account {account.id}")
+                    result["errors"] += 1
+
+            # Get all active agents
+            agents_stmt = (
+                select(AgentDB)
+                .where(AgentDB.status == "active")
+                .options(selectinload(AgentDB.strategy))
+            )
+            agents_result = await session.execute(agents_stmt)
+            agents = agents_result.scalars().all()
+
+            # Create snapshots for each agent
+            for agent in agents:
+                try:
+                    await pnl_service.create_agent_snapshot(
+                        agent_id=agent.id,
+                        source="scheduled",
+                    )
+                    result["agents_snapshotted"] += 1
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to create snapshot for agent {agent.id}: {e}"
+                    )
+                    result["errors"] += 1
+
+            await session.commit()
+
+    except Exception as e:
+        logger.exception(f"Daily snapshot creation failed: {e}")
+        result["error"] = str(e)
+
+    logger.info(f"Daily snapshot creation complete: {result}")
+    return result
+
+
 async def reconcile_positions(ctx: dict) -> dict[str, Any]:
     """
     Periodic reconciliation: compare DB position records with exchange state.
@@ -735,6 +858,12 @@ def get_worker_settings() -> dict:
                 "cron": "*/2 * * * *",  # Every 2 minutes
                 "unique": True,
             },
+            # Create daily snapshots at UTC midnight
+            {
+                "coroutine": create_daily_snapshots,
+                "cron": "0 0 * * *",  # Every day at 00:00 UTC
+                "unique": True,
+            },
         ],
     }
 
@@ -749,6 +878,7 @@ class WorkerSettings:
         stop_strategy_execution,
         sync_active_strategies,
         reconcile_positions,
+        create_daily_snapshots,
     ]
     
     on_startup = startup

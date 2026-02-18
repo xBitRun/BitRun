@@ -627,7 +627,7 @@ export default function ModelsPage() {
       toast.success(t("deleteSuccess"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete provider";
+        err instanceof Error ? err.message : t("error.failedToDeleteProvider");
       toast.error(t("deleteError"), message);
     }
   };
@@ -653,7 +653,7 @@ export default function ModelsPage() {
       refresh();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to update provider";
+        err instanceof Error ? err.message : t("error.failedToUpdateProvider");
       toast.error(t("updateError"), message);
     }
   };
@@ -708,7 +708,7 @@ export default function ModelsPage() {
       toast.success(t("customModel.success"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to add model";
+        err instanceof Error ? err.message : t("error.failedToAddModel");
       toast.error(t("customModel.error"), message);
       throw err;
     }
@@ -720,7 +720,7 @@ export default function ModelsPage() {
       toast.success(t("modelList.deleteSuccess"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete model";
+        err instanceof Error ? err.message : t("error.failedToDeleteModel");
       toast.error(t("modelList.deleteFailed"), message);
     }
   };

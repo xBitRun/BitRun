@@ -68,7 +68,11 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
       setShowPasswordChange(false);
       setPasswordError(null);
       setPasswordSuccess(false);
-      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswords({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
     }
   }, [open]);
 
@@ -91,7 +95,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         onOpenChange(false);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update profile";
+      const message =
+        err instanceof Error ? err.message : t("toast.failedToUpdateProfile");
       setSaveError(message);
     } finally {
       setIsSaving(false);
@@ -120,13 +125,18 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         new_password: passwords.newPassword,
       });
       setPasswordSuccess(true);
-      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswords({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setTimeout(() => {
         setShowPasswordChange(false);
         setPasswordSuccess(false);
       }, 2000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to change password";
+      const message =
+        err instanceof Error ? err.message : t("toast.failedToChangePassword");
       setPasswordError(message);
     } finally {
       setIsChangingPassword(false);
@@ -159,7 +169,9 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 <Input
                   id="profile-name"
                   value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, name: e.target.value })
+                  }
                   placeholder={t("namePlaceholder")}
                 />
               </div>
@@ -172,7 +184,9 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                   disabled
                   className="bg-muted/50"
                 />
-                <p className="text-xs text-muted-foreground">{t("emailReadonly")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("emailReadonly")}
+                </p>
               </div>
             </div>
 
@@ -208,21 +222,34 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
             ) : (
               <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border/30">
                 <div className="space-y-2">
-                  <Label htmlFor="current-password">{t("currentPassword")}</Label>
+                  <Label htmlFor="current-password">
+                    {t("currentPassword")}
+                  </Label>
                   <div className="relative">
                     <Input
                       id="current-password"
                       type={showCurrentPassword ? "text" : "password"}
                       value={passwords.currentPassword}
-                      onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswords({
+                          ...passwords,
+                          currentPassword: e.target.value,
+                        })
+                      }
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showCurrentPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -234,7 +261,12 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                       id="new-password"
                       type={showNewPassword ? "text" : "password"}
                       value={passwords.newPassword}
-                      onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswords({
+                          ...passwords,
+                          newPassword: e.target.value,
+                        })
+                      }
                       placeholder="••••••••"
                     />
                     <button
@@ -242,19 +274,32 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                       onClick={() => setShowNewPassword(!showNewPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showNewPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">{t("passwordRequirements")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("passwordRequirements")}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">{t("confirmPassword")}</Label>
+                  <Label htmlFor="confirm-password">
+                    {t("confirmPassword")}
+                  </Label>
                   <Input
                     id="confirm-password"
                     type={showNewPassword ? "text" : "password"}
                     value={passwords.confirmPassword}
-                    onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPasswords({
+                        ...passwords,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                     placeholder="••••••••"
                   />
                 </div>
@@ -285,7 +330,12 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                   <Button
                     size="sm"
                     onClick={handleChangePassword}
-                    disabled={isChangingPassword || !passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword}
+                    disabled={
+                      isChangingPassword ||
+                      !passwords.currentPassword ||
+                      !passwords.newPassword ||
+                      !passwords.confirmPassword
+                    }
                   >
                     {isChangingPassword ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -311,7 +361,9 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 disabled
               />
             </div>
-            <p className="text-xs text-muted-foreground">{t("twoFactorComingSoon")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("twoFactorComingSoon")}
+            </p>
           </div>
         </div>
 

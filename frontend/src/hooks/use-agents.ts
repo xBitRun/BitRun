@@ -12,6 +12,7 @@ import type {
   AgentResponse,
   AgentPositionResponse,
   AgentAccountStateResponse,
+  BoundAccountInfo,
   CreateAgentRequest,
   UpdateAgentRequest,
 } from "@/lib/api";
@@ -161,13 +162,13 @@ export function useActiveAgentsCount() {
 }
 
 /**
- * Fetch bound account IDs (accounts already bound to active/live agents)
- * Used in agent creation form to show which accounts are in use
+ * Fetch bound account allocation info
+ * Returns account IDs mapped to allocation summary (total percent and agent count)
  */
 const BOUND_ACCOUNTS_KEY = "/agents/bound-accounts";
 
 export function useBoundAccounts() {
-  return useSWR<string[]>(
+  return useSWR<Record<string, BoundAccountInfo>>(
     BOUND_ACCOUNTS_KEY,
     () => agentsApi.getBoundAccounts(),
     {

@@ -1946,7 +1946,7 @@ function SettingsTab({
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to update settings";
+        err instanceof Error ? err.message : t("toast.failedToUpdateSettings");
       setSaveError(message);
     } finally {
       setIsSaving(false);
@@ -1960,7 +1960,7 @@ function SettingsTab({
       window.location.href = "/agents";
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete agent";
+        err instanceof Error ? err.message : t("toast.failedToDeleteAgent");
       setSaveError(message);
       setIsDeleting(false);
       setShowDeleteConfirm(false);

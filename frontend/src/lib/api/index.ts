@@ -41,6 +41,7 @@ export type {
   AgentResponse,
   AgentPositionResponse,
   AgentAccountStateResponse,
+  BoundAccountInfo,
   // Accounts
   CreateAccountRequest,
   AccountResponse,
@@ -62,6 +63,7 @@ export type {
   BacktestListResponse,
   BacktestDetailResponse,
   TradeRecord,
+  PnLTradeRecord,
   TradeStatistics,
   SideStats,
   MonthlyReturn,

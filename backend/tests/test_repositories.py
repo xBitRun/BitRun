@@ -1701,6 +1701,190 @@ class TestAgentRepository:
         result = agent.get_effective_capital(account_equity=20000.0)
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_empty(
+        self, db_session: AsyncSession, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent returns 0.0 for account with no agents"""
+        repo = AgentRepository(db_session)
+
+        result = await repo.get_account_allocated_percent(test_account.id)
+
+        assert result == 0.0
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_single_agent(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent with single agent using percentage"""
+        repo = AgentRepository(db_session)
+
+        await repo.create(
+            user_id=test_user.id, name="Agent 1",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,  # 30%
+        )
+        await db_session.commit()
+
+        result = await repo.get_account_allocated_percent(test_account.id)
+
+        assert result == 0.3
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_multiple_agents(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent sums multiple agents correctly"""
+        repo = AgentRepository(db_session)
+
+        await repo.create(
+            user_id=test_user.id, name="Agent 1",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,  # 30%
+        )
+        await repo.create(
+            user_id=test_user.id, name="Agent 2",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.25,  # 25%
+        )
+        await db_session.commit()
+
+        result = await repo.get_account_allocated_percent(test_account.id)
+
+        assert result == 0.55  # 30% + 25% = 55%
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_exclude_self(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent excludes specified agent (for updates)"""
+        repo = AgentRepository(db_session)
+
+        agent1 = await repo.create(
+            user_id=test_user.id, name="Agent 1",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,  # 30%
+        )
+        await repo.create(
+            user_id=test_user.id, name="Agent 2",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.25,  # 25%
+        )
+        await db_session.commit()
+
+        # Exclude agent1 - should only return agent2's allocation
+        result = await repo.get_account_allocated_percent(
+            test_account.id, exclude_agent_id=agent1.id
+        )
+
+        assert result == 0.25  # Only agent2's 25%
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_ignores_fixed(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent ignores fixed amount allocations"""
+        repo = AgentRepository(db_session)
+
+        # Percentage allocation
+        await repo.create(
+            user_id=test_user.id, name="Agent Percent",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,  # 30%
+        )
+        # Fixed amount allocation (should be ignored)
+        await repo.create(
+            user_id=test_user.id, name="Agent Fixed",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital=5000.0,  # Fixed $5000
+        )
+        await db_session.commit()
+
+        result = await repo.get_account_allocated_percent(test_account.id)
+
+        assert result == 0.3  # Only percent agent counted
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocated_percent_ignores_stopped(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocated percent ignores stopped agents"""
+        repo = AgentRepository(db_session)
+
+        agent_active = await repo.create(
+            user_id=test_user.id, name="Active Agent",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,
+        )
+        await repo.update_status(agent_active.id, "active")
+
+        agent_stopped = await repo.create(
+            user_id=test_user.id, name="Stopped Agent",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.5,
+        )
+        await repo.update_status(agent_stopped.id, "stopped")
+        await db_session.commit()
+
+        result = await repo.get_account_allocated_percent(test_account.id)
+
+        assert result == 0.3  # Only active agent counted
+
+    @pytest.mark.asyncio
+    async def test_get_account_allocation_summary(
+        self, db_session: AsyncSession, test_user: UserDB,
+        test_strategy: StrategyDB, test_account: ExchangeAccountDB
+    ):
+        """Test allocation summary returns correct structure"""
+        repo = AgentRepository(db_session)
+
+        await repo.create(
+            user_id=test_user.id, name="Agent 1",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital_percent=0.3,
+        )
+        await repo.create(
+            user_id=test_user.id, name="Agent 2",
+            strategy_id=test_strategy.id,
+            execution_mode="live",
+            account_id=test_account.id,
+            allocated_capital=5000.0,
+        )
+        await db_session.commit()
+
+        summary = await repo.get_account_allocation_summary(test_account.id)
+
+        assert summary["total_percent"] == 0.3
+        assert len(summary["agents"]) == 2
+        agent_names = {a["name"] for a in summary["agents"]}
+        assert "Agent 1" in agent_names
+        assert "Agent 2" in agent_names
+
 
 # ============================================================================
 # StrategyRepository Extended Tests – Marketplace & Versioning

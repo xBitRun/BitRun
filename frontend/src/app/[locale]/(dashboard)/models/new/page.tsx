@@ -110,7 +110,7 @@ export default function NewProviderPage() {
       router.push("/models");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to add provider";
+        err instanceof Error ? err.message : t("error.failedToAddProvider");
       setSubmitError(message);
       toast.error(t("dialog.error"), message);
     } finally {

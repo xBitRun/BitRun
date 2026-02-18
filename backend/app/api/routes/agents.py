@@ -122,6 +122,17 @@ class AgentAccountStateResponse(BaseModel):
     closed_at: Optional[str] = None
 
 
+class BoundAccountInfo(BaseModel):
+    """Info about an account bound to agents"""
+    account_id: str = Field(description="Exchange account ID")
+    total_percent: float = Field(description="Total percentage allocated (0.0 to 1.0+)")
+    agent_count: int = Field(description="Number of agents using this account")
+    allocation_mode: Optional[str] = Field(
+        default=None,
+        description="Current allocation mode: 'percent', 'fixed', or None if no allocation set"
+    )
+
+
 # ==================== Routes ====================
 
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
@@ -179,15 +190,17 @@ async def create_agent(
 
     agent_repo = AgentRepository(db)
 
-    # Check account uniqueness for live mode (one account per agent)
+    # Validate capital allocation for live mode
     if data.execution_mode == ExecutionMode.LIVE and account_uuid:
-        existing_agent = await agent_repo.get_live_agent_by_account_id(account_uuid)
-        if existing_agent:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"This exchange account is already bound to agent '{existing_agent.name}'. "
-                f"Each account can only be bound to one agent."
-            )
+        if data.allocated_capital_percent is not None:
+            total_percent = await agent_repo.get_account_allocated_percent(account_uuid)
+            new_total = total_percent + data.allocated_capital_percent
+            if new_total > 1.0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Capital allocation exceeds 100%. "
+                    f"Current: {total_percent*100:.1f}%, Requested: {data.allocated_capital_percent*100:.1f}%"
+                )
     agent = await agent_repo.create(
         user_id=uuid.UUID(user_id),
         name=data.name,
@@ -239,19 +252,30 @@ async def list_agents(
     return [_agent_to_response(a) for a in agents]
 
 
-@router.get("/bound-accounts", response_model=list[str])
+@router.get("/bound-accounts", response_model=dict[str, BoundAccountInfo])
 async def get_bound_accounts(
     db: DbSessionDep,
     user_id: CurrentUserDep,
 ):
     """
-    Get all exchange account IDs that are bound to active/live agents.
+    Get allocation info for all exchange accounts that have live agents.
 
-    Used by frontend to show which accounts are already in use when creating a new agent.
+    Returns account IDs mapped to their allocation summary (total percent, agent count, and allocation mode).
     """
     agent_repo = AgentRepository(db)
     bound_ids = await agent_repo.get_bound_account_ids(uuid.UUID(user_id))
-    return [str(account_id) for account_id in bound_ids]
+
+    result = {}
+    for account_id in bound_ids:
+        summary = await agent_repo.get_account_allocation_summary(account_id)
+        result[str(account_id)] = BoundAccountInfo(
+            account_id=str(account_id),
+            total_percent=summary["total_percent"],
+            agent_count=len(summary["agents"]),
+            allocation_mode=summary.get("allocation_mode"),
+        )
+
+    return result
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -321,6 +345,24 @@ async def update_agent(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot change capital allocation while agent has open positions."
             )
+
+    # Validate capital allocation percentage doesn't exceed 100%
+    if "allocated_capital_percent" in update_data and update_data["allocated_capital_percent"] is not None:
+        # Get current agent to determine account_id
+        current_agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+        if current_agent and current_agent.account_id:
+            total_percent = await agent_repo.get_account_allocated_percent(
+                account_id=current_agent.account_id,
+                exclude_agent_id=uuid.UUID(agent_id),
+            )
+            new_total = total_percent + update_data["allocated_capital_percent"]
+            if new_total > 1.0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Capital allocation would exceed 100%. "
+                    f"Current (other agents): {total_percent*100:.1f}%, "
+                    f"Requested: {update_data['allocated_capital_percent']*100:.1f}%"
+                )
 
     # Convert enums
     if "execution_mode" in update_data and update_data["execution_mode"]:

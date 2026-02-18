@@ -129,3 +129,15 @@ export {
   useDeleteQuantStrategy,
   useUpdateQuantStrategyStatus,
 } from "./use-quant-strategies";
+
+// Analytics hooks
+export {
+  useAgentPnL,
+  useAccountAgents,
+  useEquityCurve,
+  useAccountPnL,
+} from "./use-analytics";
+export type {
+  UseAgentPnLOptions,
+  UseEquityCurveOptions,
+} from "./use-analytics";

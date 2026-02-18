@@ -147,7 +147,7 @@ export default function DecisionsPage() {
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="w-5 h-5 text-destructive" />
             <p className="text-destructive">
-              {error.message || "Failed to load decisions"}
+              {error.message || t("error.loadFailed")}
             </p>
             <Button variant="outline" size="sm" onClick={() => mutate()}>
               {t("retry")}
@@ -277,7 +277,11 @@ export default function DecisionsPage() {
                       {/* Chain of Thought - Enhanced Timeline View */}
                       <ChainOfThought
                         content={decision.chain_of_thought}
-                        titleKey={decision.ai_model?.startsWith("quant:") ? "executionReasoning" : "chainOfThought"}
+                        titleKey={
+                          decision.ai_model?.startsWith("quant:")
+                            ? "executionReasoning"
+                            : "chainOfThought"
+                        }
                       />
 
                       {/* Trading Decisions */}

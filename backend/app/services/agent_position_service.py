@@ -24,7 +24,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Literal, Optional
 
-from sqlalchemy import and_, func, select, update, delete
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,9 @@ from ..db.models import AgentDB, AgentPositionDB
 from ..models.agent import AgentAccountState, AgentPosition
 from ..services.redis_service import RedisService
 from ..traders.base import AccountState, Position
+
+# Import PnLService lazily to avoid circular import
+# from ..services.pnl_service import PnLService
 
 logger = logging.getLogger(__name__)
 
@@ -418,9 +421,30 @@ class AgentPositionService:
         position_id: uuid.UUID,
         close_price: float = 0.0,
         realized_pnl: float = 0.0,
+        fees: float = 0.0,
+        exit_reason: str = None,
     ) -> None:
-        """Mark a position record as closed."""
-        stmt = (
+        """
+        Mark a position record as closed and record P&L.
+
+        Args:
+            position_id: The position UUID
+            close_price: Price at which position was closed
+            realized_pnl: Realized P&L from the trade
+            fees: Trading fees
+            exit_reason: Reason for exit (take_profit, stop_loss, signal, manual)
+        """
+        # Get the position first
+        stmt = select(AgentPositionDB).where(AgentPositionDB.id == position_id)
+        result = await self.db.execute(stmt)
+        position = result.scalars().first()
+
+        if not position:
+            logger.warning(f"Position {position_id} not found for closing")
+            return
+
+        # Update position status
+        update_stmt = (
             update(AgentPositionDB)
             .where(AgentPositionDB.id == position_id)
             .values(
@@ -430,8 +454,27 @@ class AgentPositionService:
                 closed_at=datetime.now(UTC),
             )
         )
-        await self.db.execute(stmt)
+        await self.db.execute(update_stmt)
         await self.db.flush()
+
+        # Record P&L (lazy import to avoid circular dependency)
+        try:
+            from ..services.pnl_service import PnLService
+            pnl_service = PnLService(self.db)
+            await pnl_service.record_pnl_from_position(
+                position=position,
+                close_price=close_price,
+                realized_pnl=realized_pnl,
+                fees=fees,
+                exit_reason=exit_reason,
+            )
+            logger.debug(
+                f"Recorded P&L for position {position_id}: "
+                f"pnl={realized_pnl:.2f} fees={fees:.2f}"
+            )
+        except Exception as e:
+            # Don't fail the close if P&L recording fails
+            logger.error(f"Failed to record P&L for position {position_id}: {e}")
 
     # ------------------------------------------------------------------
     # Query helpers

@@ -17,7 +17,7 @@ from ..core.config import get_settings
 from ..db.database import close_db, init_db
 from ..services.redis_service import close_redis, get_redis_service
 from ..traders.exchange_pool import ExchangePool
-from .routes import accounts, agents, auth, backtest, brand, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
+from .routes import accounts, agents, analytics, auth, backtest, brand, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
 from .routes.backtest import records_router as backtest_records_router
 from ..monitoring.middleware import setup_prometheus_middleware
 from ..monitoring.metrics import get_metrics_collector
@@ -239,7 +239,8 @@ def create_app() -> FastAPI:
     app.include_router(workers.router, prefix="/api/v1")
     app.include_router(ws.router, prefix="/api/v1")
     app.include_router(brand.router, prefix="/api/v1")
-    
+    app.include_router(analytics.router, prefix="/api/v1")
+
     # ==================== Legacy Routes (backward compatibility) ====================
     # Legacy /api routes are only available in development/staging for migration.
     # In production, only /api/v1 is served to reduce attack surface.

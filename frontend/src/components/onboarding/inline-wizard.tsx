@@ -79,13 +79,19 @@ const initialState: OnboardingState = {
 };
 
 // Progress indicator component - horizontal stepper
-function StepIndicator({ currentStep }: { currentStep: number }) {
+function StepIndicator({
+  currentStep,
+  t,
+}: {
+  currentStep: number;
+  t: ReturnType<typeof useTranslations<"onboarding">>;
+}) {
   const steps = [
-    { icon: Zap, label: "Welcome" },
-    { icon: Wallet, label: "Account" },
-    { icon: Bot, label: "Agent" },
-    { icon: Shield, label: "Risk" },
-    { icon: Rocket, label: "Launch" },
+    { icon: Zap, labelKey: "welcome" },
+    { icon: Wallet, labelKey: "account" },
+    { icon: Bot, labelKey: "agent" },
+    { icon: Shield, labelKey: "risk" },
+    { icon: Rocket, labelKey: "launch" },
   ];
 
   return (
@@ -120,7 +126,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                   isCurrent ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                {step.label}
+                {t(`steps.${step.labelKey}`)}
               </span>
             </div>
             {index < steps.length - 1 && (
@@ -865,7 +871,9 @@ export function InlineOnboardingWizard({
       setAccountId(account.id);
       handleNext();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create account");
+      setError(
+        err instanceof Error ? err.message : t("toast.failedToCreateAccount"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -911,7 +919,9 @@ export function InlineOnboardingWizard({
       setAccountId(null);
       onComplete?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create agent");
+      setError(
+        err instanceof Error ? err.message : t("toast.failedToCreateAgent"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -926,7 +936,7 @@ export function InlineOnboardingWizard({
 
   return (
     <div className="space-y-6">
-      <StepIndicator currentStep={step} />
+      <StepIndicator currentStep={step} t={t} />
 
       {step === 0 && <WelcomeStep t={t} onNext={handleNext} />}
       {step === 1 && (

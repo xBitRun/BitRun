@@ -94,6 +94,18 @@ class UserDB(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    pnl_records: Mapped[list["PnlRecordDB"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    daily_account_snapshots: Mapped[list["DailyAccountSnapshotDB"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    daily_agent_snapshots: Mapped[list["DailyAgentSnapshotDB"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"
@@ -922,3 +934,243 @@ class BacktestResultDB(Base):
 # Quant strategy runtime state now lives on AgentDB.
 # This alias keeps legacy imports working during migration.
 QuantStrategyDB = AgentDB
+
+
+# =============================================================================
+# P&L Records - Trade-level profit/loss tracking
+# =============================================================================
+
+class PnlRecordDB(Base):
+    """
+    P&L record for tracking individual trade profit/loss.
+
+    Records are created when positions are closed, enabling detailed
+    trade history and performance analysis. Each record captures
+    the complete trade context including entry/exit prices, duration,
+    and realized P&L.
+    """
+    __tablename__ = "pnl_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    position_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agent_positions.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Trade details
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    side: Mapped[str] = mapped_column(String(10), nullable=False)  # 'long' | 'short'
+    realized_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    fees: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Price and size
+    entry_price: Mapped[float] = mapped_column(Float, nullable=False)
+    exit_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    size: Mapped[float] = mapped_column(Float, nullable=False)
+    size_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    leverage: Mapped[int] = mapped_column(Integer, default=1)
+
+    # Timing
+    opened_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False
+    )
+    closed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    exit_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Metadata
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="pnl_records")
+    agent: Mapped["AgentDB"] = relationship()
+    account: Mapped[Optional["ExchangeAccountDB"]] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<PnlRecord {self.symbol} {self.side} pnl={self.realized_pnl}>"
+
+
+# =============================================================================
+# Daily Snapshots - Historical equity and performance tracking
+# =============================================================================
+
+class DailyAccountSnapshotDB(Base):
+    """
+    Daily snapshot of account equity and positions.
+
+    Created once per day (UTC midnight) for each active account.
+    Enables historical equity curve visualization and period-based
+    P&L analysis. Used for calculating daily/weekly/monthly returns.
+    """
+    __tablename__ = "daily_account_snapshots"
+    __table_args__ = (
+        Index(
+            "uq_daily_account_snapshots_account_date",
+            "account_id",
+            "snapshot_date",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("exchange_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    snapshot_date: Mapped[datetime] = mapped_column(
+        nullable=False,
+        index=True
+    )  # Date (UTC midnight)
+
+    # Equity components
+    equity: Mapped[float] = mapped_column(Float, nullable=False)
+    available_balance: Mapped[float] = mapped_column(Float, nullable=False)
+    unrealized_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    margin_used: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Daily P&L (computed from previous snapshot)
+    daily_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    daily_pnl_percent: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Position summary at snapshot time
+    open_positions: Mapped[int] = mapped_column(Integer, default=0)
+    position_summary: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Metadata
+    snapshot_source: Mapped[str] = mapped_column(
+        String(20),
+        default="scheduled"
+    )  # 'scheduled', 'manual', 'trade'
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="daily_account_snapshots")
+    account: Mapped["ExchangeAccountDB"] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<DailyAccountSnapshot account={self.account_id} date={self.snapshot_date}>"
+
+
+class DailyAgentSnapshotDB(Base):
+    """
+    Daily snapshot of agent performance metrics.
+
+    Created once per day (UTC midnight) for each active agent.
+    Tracks cumulative and daily performance metrics enabling
+    historical performance analysis and comparison.
+    """
+    __tablename__ = "daily_agent_snapshots"
+    __table_args__ = (
+        Index(
+            "uq_daily_agent_snapshots_agent_date",
+            "agent_id",
+            "snapshot_date",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    snapshot_date: Mapped[datetime] = mapped_column(
+        nullable=False,
+        index=True
+    )  # Date (UTC midnight)
+
+    # Cumulative metrics (at snapshot time)
+    total_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    total_trades: Mapped[int] = mapped_column(Integer, default=0)
+    winning_trades: Mapped[int] = mapped_column(Integer, default=0)
+    losing_trades: Mapped[int] = mapped_column(Integer, default=0)
+    max_drawdown: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Daily metrics (changes since last snapshot)
+    daily_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    daily_trades: Mapped[int] = mapped_column(Integer, default=0)
+    daily_winning: Mapped[int] = mapped_column(Integer, default=0)
+    daily_losing: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Virtual equity (for mock agents)
+    virtual_equity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="daily_agent_snapshots")
+    agent: Mapped["AgentDB"] = relationship()
+    account: Mapped[Optional["ExchangeAccountDB"]] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<DailyAgentSnapshot agent={self.agent_id} date={self.snapshot_date}>"

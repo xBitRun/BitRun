@@ -333,9 +333,13 @@
         "riskWarning": "Live trading involves real funds. Start with conservative settings.",
         "compatibilityWarning": "Strategy Incompatible with Exchange",
         "incompatibleSymbols": "Symbols {symbols} have settlement currency mismatch with {exchange}. Please select a different account or modify the strategy.",
-        "accountBound": "Bound",
-        "accountBoundWarning": "Account Already in Use",
-        "accountBoundWarningDesc": "This exchange account is already bound to another strategy. Each account can only be bound to one agent."
+        "allocated": "allocated",
+        "alreadyAllocated": "Account already in use",
+        "alreadyAllocatedDesc": "{percent}% allocated to {agents} agent(s), {remaining}% remaining",
+        "fullyAllocated": "Account fully allocated",
+        "fullyAllocatedDesc": "This account has 100% capital allocated to other agents. Please select another account or adjust existing allocations.",
+        "allocationExceeded": "Allocation exceeds available",
+        "allocationExceededDesc": "Requested {requested}% but only {available}% available"
       },
       "reviewStep": {
         "title": "Review & Launch",
@@ -367,7 +371,10 @@
         "fixedAmount": "Allocated Amount (USDT)",
         "fixedAmountPlaceholder": "Enter amount, e.g. 5000",
         "percentAmount": "Allocation Percentage",
-        "percentAmountTooltip": "Percentage of account equity, e.g. 30% means using 30% of account funds"
+        "percentAmountTooltip": "Percentage of account equity, e.g. 30% means using 30% of account funds",
+        "modeRestriction": "Account allocation mode locked",
+        "modeRestrictionDesc": "This account has agents using \"{mode}\" mode. New agents must use the same mode or select \"No Limit\"",
+        "modeDisabled": "Unavailable"
       },
       "testnet": "Testnet",
       "interval": {
@@ -428,6 +435,7 @@
       "notFound": "Agent not found",
       "success": "Agent updated successfully",
       "failed": "Failed to update agent",
+      "failedToUpdate": "Failed to update agent",
       "strategyInfo": "Strategy Info",
       "strategyName": "Strategy Name",
       "strategyType": "Strategy Type",
@@ -522,6 +530,7 @@
     },
     "tabs": {
       "overview": "Overview",
+      "trades": "Trades",
       "tradeAnalysis": "Trade Analysis",
       "timeAnalysis": "Time Analysis",
       "symbolBreakdown": "Symbol Breakdown",
@@ -855,6 +864,7 @@
     "details": {
       "marketAssessment": "Market Assessment",
       "chainOfThought": "Chain of Thought",
+      "executionReasoning": "Execution Reasoning",
       "steps": "steps",
       "expandAll": "Show {count} more steps",
       "collapseAll": "Collapse",
@@ -877,13 +887,20 @@
       "reason": "Reason",
       "status": "Status",
       "noRecords": "No execution records"
+    },
+    "error": {
+      "loadFailed": "Failed to load decisions"
     }
   },
   "time": {
     "justNow": "just now",
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "daysAgo": "{count}d ago",
+    "m_ago": "{count}m ago",
+    "h_ago": "{count}h ago",
+    "d_ago": "{count}d ago",
+    "live": "Live"
   },
   "charts": {
     "decisionTimeline": {
@@ -1134,6 +1151,47 @@
       "deleted": "Strategy deleted successfully"
     },
     "retry": "Retry",
+    "configKeys": {
+      "prompt": "Prompt",
+      "trading_mode": "Trading Mode",
+      "language": "Language",
+      "prompt_mode": "Prompt Mode",
+      "custom_prompt": "Custom Prompt",
+      "advanced_prompt": "Advanced Prompt",
+      "prompt_sections": "Prompt Sections",
+      "debate_enabled": "Debate Mode",
+      "debate_models": "Debate Models",
+      "debate_consensus_mode": "Consensus Mode",
+      "debate_min_participants": "Min Participants",
+      "symbols": "Symbols",
+      "timeframes": "Timeframes",
+      "indicators": "Indicators",
+      "upper_price": "Upper Price",
+      "lower_price": "Lower Price",
+      "grid_count": "Grid Count",
+      "total_investment": "Total Investment",
+      "leverage": "Leverage",
+      "order_amount": "Order Amount",
+      "interval_minutes": "Interval (min)",
+      "take_profit_percent": "Take Profit %",
+      "total_budget": "Total Budget",
+      "max_orders": "Max Orders",
+      "rsi_period": "RSI Period",
+      "overbought_threshold": "Overbought Threshold",
+      "oversold_threshold": "Oversold Threshold",
+      "timeframe": "Timeframe",
+      "max_leverage": "Max Leverage",
+      "max_position_ratio": "Max Position Ratio",
+      "max_total_exposure": "Max Total Exposure",
+      "min_risk_reward_ratio": "Min Risk/Reward Ratio",
+      "max_drawdown_percent": "Max Drawdown %",
+      "min_confidence": "Min Confidence",
+      "default_sl_atr_multiplier": "Default SL (ATR)",
+      "default_tp_atr_multiplier": "Default TP (ATR)",
+      "max_sl_percent": "Max SL %",
+      "yes": "Yes",
+      "no": "No"
+    },
     "create": {
       "title": "Create Strategy",
       "description": "Choose a strategy type and configure parameters",
@@ -1295,7 +1353,9 @@
       "stopped": "Agent stopped",
       "updateFailed": "Failed to update agent",
       "runNowSuccess": "Manual execution triggered",
-      "runNowFailed": "Manual execution failed"
+      "runNowFailed": "Manual execution failed",
+      "failedToUpdateSettings": "Failed to update settings",
+      "failedToDeleteAgent": "Failed to delete agent"
     },
     "tradingModeValue": {
       "conservative": "Conservative",
@@ -1665,6 +1725,17 @@
       "launching": "Launching...",
       "modifyConfig": "Modify Config",
       "skipForNow": "Skip for Now"
+    },
+    "toast": {
+      "failedToCreateAccount": "Failed to create account",
+      "failedToCreateAgent": "Failed to create agent"
+    },
+    "steps": {
+      "welcome": "Welcome",
+      "account": "Account",
+      "agent": "Agent",
+      "risk": "Risk",
+      "launch": "Launch"
     }
   },
   "language": {
@@ -1700,7 +1771,11 @@
     "twoFactorDescription": "Add an extra layer of security to your account",
     "twoFactorComingSoon": "Two-factor authentication coming soon",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "toast": {
+      "failedToUpdateProfile": "Failed to update profile",
+      "failedToChangePassword": "Failed to change password"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -1791,7 +1866,12 @@
     "updateError": "Failed to update provider",
     "retry": "Retry",
     "error": {
-      "loadFailed": "Failed to load providers"
+      "loadFailed": "Failed to load providers",
+      "failedToAddProvider": "Failed to add provider",
+      "failedToDeleteProvider": "Failed to delete provider",
+      "failedToUpdateProvider": "Failed to update provider",
+      "failedToAddModel": "Failed to add model",
+      "failedToDeleteModel": "Failed to delete model"
     },
     "card": {
       "apiKey": "API Key",
@@ -2469,6 +2549,72 @@
       "madeWith": "A platform built with",
       "by": "by",
       "teamName": "{brandName} Team"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "View P&L and performance for accounts and strategies",
+    "overview": "Overview",
+    "equityCurve": {
+      "title": "Equity Curve",
+      "noData": "No data available",
+      "timeRange": {
+        "7d": "7 Days",
+        "30d": "30 Days",
+        "90d": "90 Days",
+        "1y": "1 Year",
+        "all": "All Time"
+      }
+    },
+    "pnl": {
+      "total": "Total P&L",
+      "daily": "Daily P&L",
+      "weekly": "Weekly P&L",
+      "monthly": "Monthly P&L"
+    },
+    "metrics": {
+      "winRate": "Win Rate",
+      "profitFactor": "Profit Factor",
+      "maxDrawdown": "Max Drawdown",
+      "sharpeRatio": "Sharpe Ratio",
+      "totalTrades": "Total Trades",
+      "winningTrades": "Winning Trades",
+      "losingTrades": "Losing Trades",
+      "avgWin": "Avg Win",
+      "avgLoss": "Avg Loss",
+      "totalFees": "Total Fees"
+    },
+    "agents": {
+      "title": "Agent Performance",
+      "noData": "No agent activity yet",
+      "columns": {
+        "name": "Agent Name",
+        "status": "Status",
+        "totalPnl": "Total P&L",
+        "dailyPnl": "Daily P&L",
+        "winRate": "Win Rate",
+        "trades": "Trades",
+        "positions": "Positions"
+      }
+    },
+    "trades": {
+      "title": "Trade History",
+      "noData": "No trades yet",
+      "pagination": "{total} trades, page {current}/{pages}",
+      "columns": {
+        "symbol": "Symbol",
+        "side": "Side",
+        "entry": "Entry",
+        "exit": "Exit",
+        "size": "Size",
+        "pnl": "P&L",
+        "duration": "Duration",
+        "exitReason": "Exit Reason",
+        "time": "Time"
+      }
+    },
+    "monthlyReturns": {
+      "title": "Monthly Returns"
     }
   }
 }
