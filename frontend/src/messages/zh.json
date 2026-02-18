@@ -2555,7 +2555,7 @@
     "subtitle": "查看账户和策略的盈亏收益情况",
     "overview": "收益概览",
     "equityCurve": {
-      "title": "权益曲线",
+      "title": "账户收益明细",
       "noData": "暂无数据",
       "timeRange": {
         "7d": "7天",

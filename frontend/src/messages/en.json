@@ -2509,7 +2509,7 @@
     "subtitle": "View P&L and performance for accounts and strategies",
     "overview": "Overview",
     "equityCurve": {
-      "title": "Equity Curve",
+      "title": "Account P&L Details",
       "noData": "No data available",
       "timeRange": {
         "7d": "7 Days",
