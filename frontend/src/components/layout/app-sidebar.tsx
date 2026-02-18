@@ -14,9 +14,7 @@ import {
   Cpu,
   Store,
   TrendingUp,
-  Gift,
   Building2,
-  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +27,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { BrandedLogo, LogoCompact } from "@/components/brand";
+import { useAuthStore } from "@/stores/auth-store";
 
 const navItems = [
   {
@@ -71,37 +70,19 @@ const navItems = [
     href: "/models",
     icon: Cpu,
   },
-] as const;
-
-// Wallet section
-const walletNavItems = [
   {
     titleKey: "wallet",
     href: "/wallet",
     icon: Wallet,
   },
-  {
-    titleKey: "invite",
-    href: "/invite",
-    icon: Gift,
-  },
 ] as const;
 
-// Channel admin section
-const channelNavItems = [
-  {
-    titleKey: "channel",
-    href: "/channel",
-    icon: Building2,
-  },
-] as const;
-
-// Platform admin section
+// Platform admin section (only for platform_admin)
 const adminNavItems = [
   {
     titleKey: "admin.channels",
     href: "/admin/channels",
-    icon: Shield,
+    icon: Building2,
   },
   {
     titleKey: "admin.recharge",
@@ -178,6 +159,10 @@ function DesktopSidebar({
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
+
+  // Only platform_admin can see admin menu
+  const showAdminNav = user?.role === "platform_admin";
 
   return (
     <aside
@@ -206,20 +191,16 @@ function DesktopSidebar({
         {/* Main Navigation */}
         {renderNavItems(navItems, pathname, t, collapsed)}
 
-        {/* Divider */}
-        {!collapsed && <div className="my-3 border-t border-sidebar-border" />}
-
-        {/* Wallet Section */}
-        {renderNavItems(walletNavItems, pathname, t, collapsed)}
-
-        {/* Divider */}
-        {!collapsed && <div className="my-3 border-t border-sidebar-border" />}
-
-        {/* Channel Admin Section */}
-        {renderNavItems(channelNavItems, pathname, t, collapsed)}
-
-        {/* Platform Admin Section */}
-        {renderNavItems(adminNavItems, pathname, t, collapsed)}
+        {/* Platform Admin Section - only for platform_admin */}
+        {showAdminNav && (
+          <>
+            {/* Divider */}
+            {!collapsed && (
+              <div className="my-3 border-t border-sidebar-border" />
+            )}
+            {renderNavItems(adminNavItems, pathname, t, collapsed)}
+          </>
+        )}
       </nav>
 
       {/* Collapse Toggle */}
@@ -257,6 +238,10 @@ function MobileSidebar({
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
+
+  // Only platform_admin can see admin menu
+  const showAdminNav = user?.role === "platform_admin";
 
   // Close sidebar when route changes
   useEffect(() => {
@@ -304,20 +289,14 @@ function MobileSidebar({
           {/* Main Navigation */}
           {renderMobileNavItems(navItems)}
 
-          {/* Divider */}
-          <div className="my-3 border-t border-sidebar-border" />
-
-          {/* Wallet Section */}
-          {renderMobileNavItems(walletNavItems)}
-
-          {/* Divider */}
-          <div className="my-3 border-t border-sidebar-border" />
-
-          {/* Channel Admin Section */}
-          {renderMobileNavItems(channelNavItems)}
-
-          {/* Platform Admin Section */}
-          {renderMobileNavItems(adminNavItems)}
+          {/* Platform Admin Section - only for platform_admin */}
+          {showAdminNav && (
+            <>
+              {/* Divider */}
+              <div className="my-3 border-t border-sidebar-border" />
+              {renderMobileNavItems(adminNavItems)}
+            </>
+          )}
         </nav>
       </SheetContent>
     </Sheet>

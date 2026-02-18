@@ -474,3 +474,145 @@ async def get_my_channel_statistics(
     )
 
     return ChannelStatisticsResponse(**stats)
+
+
+# ==================== Platform Admin - User Management ====================
+
+class AdminUserResponse(BaseModel):
+    """Admin user response with channel info"""
+    id: str
+    email: str
+    name: str
+    role: str
+    channel_id: Optional[str] = None
+    channel_name: Optional[str] = None
+    channel_code: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+
+
+class AdminUserListResponse(BaseModel):
+    """Paginated user list response"""
+    users: List[AdminUserResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("/admin/users", response_model=AdminUserListResponse)
+async def list_all_users(
+    db: DbSessionDep,
+    admin_user = PlatformAdminDep,
+    search: Optional[str] = Query(None, description="Search by email or name"),
+    role: Optional[str] = Query(None, description="Filter by role"),
+    channel_id: Optional[str] = Query(None, description="Filter by channel ID"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """
+    List all users with channel info (platform admin only).
+
+    Used for user management in admin panel.
+    """
+    from sqlalchemy import select, func, or_
+    from ...db.models import UserDB, ChannelDB
+
+    # Build query
+    query = select(UserDB)
+
+    # Apply filters
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                UserDB.email.ilike(search_term),
+                UserDB.name.ilike(search_term),
+            )
+        )
+
+    if role:
+        query = query.where(UserDB.role == role)
+
+    if channel_id:
+        query = query.where(UserDB.channel_id == uuid.UUID(channel_id))
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Get paginated results
+    query = query.order_by(UserDB.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    # Get channel info for each user
+    user_responses = []
+    for user in users:
+        channel_name = None
+        channel_code = None
+        if user.channel_id:
+            channel = await db.get(ChannelDB, user.channel_id)
+            if channel:
+                channel_name = channel.name
+                channel_code = channel.code
+
+        user_responses.append(
+            AdminUserResponse(
+                id=str(user.id),
+                email=user.email,
+                name=user.name,
+                role=user.role,
+                channel_id=str(user.channel_id) if user.channel_id else None,
+                channel_name=channel_name,
+                channel_code=channel_code,
+                is_active=user.is_active,
+                created_at=user.created_at,
+            )
+        )
+
+    return AdminUserListResponse(
+        users=user_responses,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.put("/admin/users/{user_id}/channel")
+async def set_user_channel(
+    user_id: str,
+    channel_id: Optional[str] = None,
+    db: DbSessionDep = None,
+    admin_user = PlatformAdminDep,
+):
+    """
+    Set or remove user's channel (platform admin only).
+
+    Set channel_id to null to remove user from channel.
+    """
+    from ...db.models import UserDB, ChannelDB
+
+    # Get user
+    user = await db.get(UserDB, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Update channel
+    if channel_id:
+        channel = await db.get(ChannelDB, uuid.UUID(channel_id))
+        if not channel:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Channel not found"
+            )
+        user.channel_id = uuid.UUID(channel_id)
+    else:
+        user.channel_id = None
+
+    await db.commit()
+
+    return {"message": "User channel updated", "channel_id": channel_id}

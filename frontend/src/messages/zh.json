@@ -6,6 +6,8 @@
     "register": "注册",
     "name": "用户名",
     "namePlaceholder": "输入您的用户名",
+    "inviteCode": "邀请码",
+    "inviteCodePlaceholder": "输入邀请码",
     "email": "邮箱",
     "emailPlaceholder": "输入您的邮箱",
     "password": "密码",
@@ -31,6 +33,7 @@
       "invalidEmail": "请输入有效的邮箱地址",
       "passwordLength": "密码至少需要 8 个字符",
       "nameRequired": "请输入用户名",
+      "inviteCodeRequired": "请输入邀请码",
       "passwordMismatch": "两次输入的密码不一致",
       "AUTH_INVALID_CREDENTIALS": "邮箱或密码错误，剩余 {remaining} 次尝试机会",
       "AUTH_INVALID_CREDENTIALS_GENERIC": "邮箱或密码错误",
@@ -2682,7 +2685,17 @@
       "invited": "已邀请用户",
       "share": "分享邀请码",
       "copied": "邀请码已复制",
-      "description": "分享您的邀请码，邀请新用户注册"
+      "description": "分享渠道邀请码，邀请新用户注册",
+      "channelCode": "渠道邀请码",
+      "channelCodeDescription": "分享此邀请码邀请新用户加入您的渠道",
+      "noChannel": "无渠道信息",
+      "noChannelDescription": "您尚未加入任何渠道，无法分享邀请码",
+      "howItWorks": "邀请规则",
+      "howItWorksDescription": "了解邀请机制",
+      "step1": "分享渠道邀请码给朋友",
+      "step2": "朋友注册时填写邀请码",
+      "step3": "注册成功后，朋友将加入您的渠道",
+      "note": "注意：邀请码由渠道统一管理，所有通过此码注册的用户都将归属于同一渠道"
     }
   },
   "channel": {
@@ -2756,18 +2769,36 @@
   "admin": {
     "channels": {
       "title": "渠道管理",
-      "description": "创建和管理渠道商",
+      "description": "管理邀请码和用户",
       "create": "创建渠道",
+      "createInviteCode": "创建邀请码",
       "edit": "编辑渠道",
       "list": "渠道列表",
       "noChannels": "暂无渠道",
-      "noResults": "未找到匹配的渠道",
-      "searchPlaceholder": "搜索渠道名称或代码...",
-      "createSuccess": "渠道创建成功",
+      "noInviteCodes": "暂无邀请码",
+      "noResults": "未找到匹配的结果",
+      "noUsers": "暂无用户",
+      "searchPlaceholder": "搜索用户邮箱或名称...",
+      "createSuccess": "邀请码创建成功",
       "statusUpdateSuccess": "状态更新成功",
+      "copied": "已复制到剪贴板",
       "commissionRate": "佣金比例",
       "code": "渠道代码",
       "createdAt": "创建时间",
+      "totalUsers": "用户总数",
+      "totalInviteCodes": "邀请码数量",
+      "activeChannels": "活跃渠道",
+      "inviteCodes": "邀请码列表",
+      "inviteCodesDescription": "所有可用的邀请码，用于用户注册",
+      "allUsers": "用户列表",
+      "allUsersDescription": "系统中所有注册用户",
+      "filterByRole": "按角色筛选",
+      "allRoles": "全部角色",
+      "role": {
+        "user": "普通用户",
+        "channelAdmin": "渠道管理员",
+        "platformAdmin": "平台管理员"
+      },
       "table": {
         "name": "名称",
         "code": "代码",
@@ -2776,7 +2807,10 @@
         "users": "用户数",
         "revenue": "收入",
         "contact": "联系方式",
-        "createdAt": "创建时间"
+        "createdAt": "创建时间",
+        "email": "邮箱",
+        "role": "角色",
+        "channel": "所属渠道"
       },
       "status": {
         "active": "活跃",
@@ -2788,14 +2822,16 @@
         "description": "填写渠道信息创建新的渠道商",
         "name": "渠道名称",
         "namePlaceholder": "输入渠道名称",
-        "code": "渠道代码",
-        "codePlaceholder": "例如: PARTNER001",
+        "code": "邀请码",
+        "codePlaceholder": "例如: ABC123",
+        "codeHint": "3-6 个大写字母或数字，用于用户注册",
         "commissionRate": "佣金比例",
         "commissionRateHint": "0.3 表示 30%",
         "contactName": "联系人",
         "contactEmail": "联系邮箱",
         "contactPhone": "联系电话"
       },
+      "createInviteCodeDescription": "创建新的邀请码，用户注册时使用此码将归属于该渠道",
       "statusDialog": {
         "title": "更改渠道状态",
         "description": "选择新的渠道状态"

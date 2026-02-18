@@ -1,8 +1,6 @@
 """Invite service for invitation code management"""
 
 import uuid
-import secrets
-import string
 from typing import Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,103 +12,51 @@ from ..core.security import hash_password
 
 class InviteService:
     """
-    Service for invitation code generation and validation.
+    Service for invitation code validation.
 
-    Invitation Code Format:
-    - Channel code prefix (3-6 chars) + random suffix (6 chars)
-    - Example: ABC123XYZ (ABC = channel code, 123XYZ = random)
-
-    For users without a channel (direct platform users):
-    - PLT prefix + random suffix
+    Simplified model:
+    - Only channels have invite codes
+    - Users register using channel invite codes
+    - Users do NOT have their own invite codes
+    - Users cannot invite other users (no referral rewards)
     """
-
-    # Prefix for platform-direct users (no channel)
-    PLATFORM_PREFIX = "PLT"
-
-    # Length of random suffix
-    SUFFIX_LENGTH = 6
 
     def __init__(self, session: AsyncSession):
         self.session = session
         self.user_repo = UserRepository(session)
         self.channel_repo = ChannelRepository(session)
 
-    def _generate_random_suffix(self) -> str:
-        """Generate a random alphanumeric suffix"""
-        chars = string.ascii_uppercase + string.digits
-        return ''.join(secrets.choice(chars) for _ in range(self.SUFFIX_LENGTH))
-
-    async def generate_invite_code(
-        self,
-        channel_code: Optional[str] = None,
-    ) -> str:
-        """
-        Generate a unique invitation code.
-
-        Args:
-            channel_code: Optional channel code prefix
-
-        Returns:
-            Unique invitation code
-        """
-        prefix = (channel_code or self.PLATFORM_PREFIX).upper()
-
-        # Generate unique code (retry if collision)
-        max_attempts = 10
-        for _ in range(max_attempts):
-            suffix = self._generate_random_suffix()
-            code = f"{prefix}{suffix}"
-
-            # Check if code already exists
-            existing = await self.user_repo.get_by_invite_code(code)
-            if not existing:
-                return code
-
-        # Fallback with timestamp if too many collisions
-        import time
-        timestamp = int(time.time()) % 100000
-        return f"{prefix}{timestamp}{self._generate_random_suffix()[:3]}"
-
     async def validate_invite_code(
         self,
         invite_code: str,
-    ) -> Tuple[bool, Optional[UserDB], Optional[ChannelDB]]:
+    ) -> Tuple[bool, Optional[ChannelDB]]:
         """
         Validate an invitation code.
+
+        Only validates channel invite codes (no user invite codes).
 
         Args:
             invite_code: The invitation code to validate
 
         Returns:
-            Tuple of (is_valid, referrer_user, channel)
-            - is_valid: True if code is valid
-            - referrer_user: The user who owns this invite code (if user invite)
-            - channel: The channel this code belongs to (if channel code)
+            Tuple of (is_valid, channel)
+            - is_valid: True if code is a valid channel code
+            - channel: The channel this code belongs to
         """
         if not invite_code:
-            return False, None, None
+            return False, None
 
         code = invite_code.upper()
 
-        # First, try to find a user with this invite code
-        referrer = await self.user_repo.get_by_invite_code(code)
-        if referrer:
-            # Get the channel from referrer
-            channel = None
-            if referrer.channel_id:
-                channel = await self.channel_repo.get_by_id(referrer.channel_id)
-            return True, referrer, channel
-
-        # If no user found, check if it's a channel code directly
-        # Extract potential channel code prefix (first 3-6 characters)
+        # Check if it's a channel code directly
+        # Channel codes are 3-6 characters
         for prefix_len in range(6, 2, -1):
             potential_prefix = code[:prefix_len]
             channel = await self.channel_repo.get_by_code(potential_prefix)
             if channel:
-                # This is a direct channel invite
-                return True, None, channel
+                return True, channel
 
-        return False, None, None
+        return False, None
 
     async def create_user_with_invite(
         self,
@@ -126,35 +72,36 @@ class InviteService:
             email: User email
             password: User password
             name: User display name
-            invite_code: Invitation code (required)
+            invite_code: Channel invitation code (required)
 
         Returns:
             Tuple of (user, error_message)
             - user: Created user or None on failure
             - error_message: Error description or None on success
         """
-        # Validate invite code
-        is_valid, referrer, channel = await self.validate_invite_code(invite_code)
+        # Validate invite code (only channel codes)
+        is_valid, channel = await self.validate_invite_code(invite_code)
         if not is_valid:
             return None, "Invalid invitation code"
+
+        # Check if invite code has already been used (one code per user)
+        existing_user_count = await self.channel_repo.count_channel_users(channel.id)
+        if existing_user_count > 0:
+            return None, "Invitation code has already been used"
 
         # Check if email already exists
         existing = await self.user_repo.get_by_email(email)
         if existing:
             return None, "Email already registered"
 
-        # Generate user's own invite code
-        channel_code = channel.code if channel else None
-        user_invite_code = await self.generate_invite_code(channel_code)
-
-        # Create user
+        # Create user (no invite_code, no referrer_id)
         user = UserDB(
             email=email.lower(),
             password_hash=hash_password(password),
             name=name,
-            invite_code=user_invite_code,
-            referrer_id=referrer.id if referrer else None,
-            channel_id=channel.id if channel else None,
+            invite_code=None,  # Users don't have invite codes
+            referrer_id=None,  # No referral tracking
+            channel_id=channel.id,
             role="user",
         )
         self.session.add(user)
@@ -175,26 +122,26 @@ class InviteService:
         Get invitation information for a user.
 
         Returns dict with:
-        - invite_code: User's invite code
-        - referrer: Referrer user info (if any)
-        - channel: Channel info (if any)
-        - total_invited: Count of users invited by this user
+        - invite_code: Always None (users don't have invite codes)
+        - referrer_id: Always None (no referral tracking)
+        - channel_id: Channel the user belongs to (if any)
+        - total_invited: Always 0 (users can't invite)
+        - channel_code: Channel's invite code (for sharing)
         """
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             return None
 
-        # Count invited users
-        from sqlalchemy import select, func
-        from ..db.models import UserDB as UserModel
-        result = await self.session.execute(
-            select(func.count(UserModel.id)).where(UserModel.referrer_id == user_id)
-        )
-        total_invited = result.scalar() or 0
+        # Get channel info if user belongs to one
+        channel_code = None
+        if user.channel_id:
+            channel = await self.channel_repo.get_by_id(user.channel_id)
+            channel_code = channel.code if channel else None
 
         return {
-            "invite_code": user.invite_code,
-            "referrer_id": user.referrer_id,
+            "invite_code": None,  # Users don't have invite codes
+            "referrer_id": None,  # No referral tracking
             "channel_id": user.channel_id,
-            "total_invited": total_invited,
+            "total_invited": 0,  # Users can't invite
+            "channel_code": channel_code,  # Channel code for sharing
         }

@@ -51,6 +51,7 @@ function AuthPageContent() {
     email: "",
     password: "",
     confirmPassword: "",
+    inviteCode: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -98,7 +99,13 @@ function AuthPageContent() {
     setMode(mode === "login" ? "register" : "login");
     setFormError(null);
     clearError();
-    setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      inviteCode: "",
+    });
   };
 
   const validateForm = () => {
@@ -117,6 +124,10 @@ function AuthPageContent() {
     if (mode === "register") {
       if (!formData.name) {
         setFormError(t("errors.nameRequired"));
+        return false;
+      }
+      if (!formData.inviteCode) {
+        setFormError(t("errors.inviteCodeRequired"));
         return false;
       }
       if (formData.password !== formData.confirmPassword) {
@@ -138,6 +149,7 @@ function AuthPageContent() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          invite_code: formData.inviteCode,
         });
       }
       router.push(callbackUrl);
@@ -177,6 +189,20 @@ function AuthPageContent() {
             type="text"
             placeholder={t("name")}
             value={formData.name}
+            onChange={handleInputChange}
+            disabled={isLoading}
+            autoComplete="off"
+            className="h-11 bg-white/3 border-white/10 text-white placeholder:text-white/40 rounded-lg focus:border-white/20 focus:ring-0"
+          />
+        )}
+
+        {/* Invite Code - only for register */}
+        {!isLogin && (
+          <Input
+            name="inviteCode"
+            type="text"
+            placeholder={t("inviteCode")}
+            value={formData.inviteCode}
             onChange={handleInputChange}
             disabled={isLoading}
             autoComplete="off"

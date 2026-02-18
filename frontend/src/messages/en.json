@@ -6,6 +6,8 @@
     "register": "Register",
     "name": "Name",
     "namePlaceholder": "Enter your name",
+    "inviteCode": "Invite Code",
+    "inviteCodePlaceholder": "Enter invite code",
     "email": "Email",
     "emailPlaceholder": "Enter your email",
     "password": "Password",
@@ -31,6 +33,7 @@
       "invalidEmail": "Please enter a valid email address",
       "passwordLength": "Password must be at least 8 characters",
       "nameRequired": "Please enter your name",
+      "inviteCodeRequired": "Please enter an invite code",
       "passwordMismatch": "Passwords do not match",
       "AUTH_INVALID_CREDENTIALS": "Invalid email or password. {remaining} attempts remaining.",
       "AUTH_INVALID_CREDENTIALS_GENERIC": "Invalid email or password",
@@ -2636,7 +2639,17 @@
       "invited": "Users Invited",
       "share": "Share Invite Code",
       "copied": "Invite code copied",
-      "description": "Share your invite code to invite new users"
+      "description": "Share your channel invite code to invite new users",
+      "channelCode": "Channel Invite Code",
+      "channelCodeDescription": "Share this code to invite new users to your channel",
+      "noChannel": "No Channel Information",
+      "noChannelDescription": "You are not part of any channel and cannot share invite codes",
+      "howItWorks": "How It Works",
+      "howItWorksDescription": "Learn about the invitation process",
+      "step1": "Share the channel invite code with friends",
+      "step2": "Friends enter the code during registration",
+      "step3": "After registration, friends join your channel",
+      "note": "Note: Invite codes are managed by the channel. All users registered with this code belong to the same channel"
     }
   },
   "channel": {
@@ -2710,18 +2723,36 @@
   "admin": {
     "channels": {
       "title": "Channel Management",
-      "description": "Create and manage channel partners",
+      "description": "Manage invite codes and users",
       "create": "Create Channel",
+      "createInviteCode": "Create Invite Code",
       "edit": "Edit Channel",
       "list": "Channel List",
       "noChannels": "No channels",
-      "noResults": "No matching channels found",
-      "searchPlaceholder": "Search by name or code...",
-      "createSuccess": "Channel created successfully",
+      "noInviteCodes": "No invite codes",
+      "noResults": "No matching results found",
+      "noUsers": "No users",
+      "searchPlaceholder": "Search by email or name...",
+      "createSuccess": "Invite code created successfully",
       "statusUpdateSuccess": "Status updated successfully",
+      "copied": "Copied to clipboard",
       "commissionRate": "Commission Rate",
       "code": "Channel Code",
       "createdAt": "Created At",
+      "totalUsers": "Total Users",
+      "totalInviteCodes": "Invite Codes",
+      "activeChannels": "Active Channels",
+      "inviteCodes": "Invite Codes",
+      "inviteCodesDescription": "All available invite codes for user registration",
+      "allUsers": "All Users",
+      "allUsersDescription": "All registered users in the system",
+      "filterByRole": "Filter by role",
+      "allRoles": "All Roles",
+      "role": {
+        "user": "User",
+        "channelAdmin": "Channel Admin",
+        "platformAdmin": "Platform Admin"
+      },
       "table": {
         "name": "Name",
         "code": "Code",
@@ -2730,7 +2761,10 @@
         "users": "Users",
         "revenue": "Revenue",
         "contact": "Contact",
-        "createdAt": "Created"
+        "createdAt": "Created",
+        "email": "Email",
+        "role": "Role",
+        "channel": "Channel"
       },
       "status": {
         "active": "Active",
@@ -2742,14 +2776,16 @@
         "description": "Fill in the details to create a new channel partner",
         "name": "Channel Name",
         "namePlaceholder": "Enter channel name",
-        "code": "Channel Code",
-        "codePlaceholder": "e.g., PARTNER001",
+        "code": "Invite Code",
+        "codePlaceholder": "e.g., ABC123",
+        "codeHint": "3-6 uppercase letters or numbers, used for user registration",
         "commissionRate": "Commission Rate",
         "commissionRateHint": "0.3 means 30%",
         "contactName": "Contact Name",
         "contactEmail": "Contact Email",
         "contactPhone": "Contact Phone"
       },
+      "createInviteCodeDescription": "Create a new invite code. Users registering with this code will belong to this channel",
       "statusDialog": {
         "title": "Change Channel Status",
         "description": "Select the new status for this channel"

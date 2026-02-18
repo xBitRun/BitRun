@@ -6,11 +6,10 @@ import {
   Gift,
   Copy,
   Check,
-  Users,
   Share2,
   Loader2,
   Link2,
-  Mail,
+  Building2,
 } from "lucide-react";
 import {
   Card,
@@ -37,9 +36,12 @@ export default function InvitePage() {
   // Copy state
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
-  // Generate invite link
-  const inviteLink = inviteInfo?.invite_code
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?invite=${inviteInfo.invite_code}`
+  // Use channel code instead of user's invite code
+  const shareCode = inviteInfo?.channel_code;
+
+  // Generate invite link using channel code
+  const inviteLink = shareCode
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?invite=${shareCode}`
     : "";
 
   // Copy to clipboard
@@ -52,18 +54,21 @@ export default function InvitePage() {
 
   // Share via Web Share API
   const handleShare = async () => {
-    if (navigator.share && inviteInfo?.invite_code) {
+    if (navigator.share && shareCode) {
       try {
         await navigator.share({
           title: `${shortName} 邀请注册`,
-          text: `使用我的邀请码 ${inviteInfo.invite_code} 注册 ${shortName}`,
+          text: `使用邀请码 ${shareCode} 注册 ${shortName}`,
           url: inviteLink,
         });
-      } catch (err) {
+      } catch {
         // User cancelled or share failed
       }
     }
   };
+
+  // No channel - show message
+  const hasChannel = !!inviteInfo?.channel_id;
 
   return (
     <div className="space-y-6">
@@ -79,6 +84,19 @@ export default function InvitePage() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
+      ) : !hasChannel ? (
+        // No channel - user cannot share invite
+        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+          <CardContent className="py-12 text-center">
+            <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {t("invite.noChannel")}
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              {t("invite.noChannelDescription")}
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Invite Code Card */}
@@ -86,27 +104,25 @@ export default function InvitePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Gift className="w-5 h-5" />
-                {t("invite.myCode")}
+                {t("invite.channelCode")}
               </CardTitle>
-              <CardDescription>{t("invite.description")}</CardDescription>
+              <CardDescription>{t("invite.channelCodeDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Invite Code Display */}
               <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
                 <p className="text-sm text-muted-foreground mb-2">
-                  {t("invite.myCode")}
+                  {t("invite.channelCode")}
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-3xl font-mono font-bold tracking-wider">
-                    {inviteInfo?.invite_code || "-"}
+                    {shareCode || "-"}
                   </p>
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() =>
-                      handleCopy("code", inviteInfo?.invite_code || "")
-                    }
-                    disabled={!inviteInfo?.invite_code}
+                    onClick={() => handleCopy("code", shareCode || "")}
+                    disabled={!shareCode}
                   >
                     {copied === "code" ? (
                       <Check className="w-4 h-4 text-green-500" />
@@ -118,7 +134,7 @@ export default function InvitePage() {
               </div>
 
               {/* Invite Link */}
-              {inviteInfo?.invite_code && (
+              {shareCode && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">{t("invite.share")}</p>
                   <div className="flex gap-2">
@@ -148,7 +164,7 @@ export default function InvitePage() {
                   variant="outline"
                   className="w-full"
                   onClick={handleShare}
-                  disabled={!inviteInfo?.invite_code}
+                  disabled={!shareCode}
                 >
                   <Share2 className="w-4 h-4 mr-2" />
                   {t("invite.share")}
@@ -157,63 +173,37 @@ export default function InvitePage() {
             </CardContent>
           </Card>
 
-          {/* Stats Card */}
+          {/* Info Card */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                {t("invite.invited")}
+                <Building2 className="w-5 h-5" />
+                {t("invite.howItWorks")}
               </CardTitle>
-              <CardDescription>通过您的邀请码注册的用户统计</CardDescription>
+              <CardDescription>{t("invite.howItWorksDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Total Invited */}
-              <div className="p-6 rounded-xl bg-muted/30 text-center">
-                <p className="text-sm text-muted-foreground mb-2">
-                  {t("invite.invited")}
-                </p>
-                <p className="text-4xl font-bold">
-                  {inviteInfo?.total_invited ?? 0}
-                </p>
-              </div>
-
-              {/* Referrer Info */}
-              {inviteInfo?.referrer_id && (
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {t("invite.referrer")}
-                  </p>
-                  <p className="font-mono text-sm">{inviteInfo.referrer_id}</p>
-                </div>
-              )}
-
-              {/* Channel Info */}
-              {inviteInfo?.channel_id && (
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {t("invite.channel")}
-                  </p>
-                  <p className="font-mono text-sm">{inviteInfo.channel_id}</p>
-                </div>
-              )}
-
               {/* How it works */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <h4 className="font-medium">邀请规则</h4>
+              <div className="space-y-3">
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li className="flex items-start gap-2">
-                    <span className="text-primary">1.</span>
-                    分享您的邀请码给朋友
+                    <span className="text-primary font-bold">1.</span>
+                    {t("invite.step1")}
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary">2.</span>
-                    朋友注册时填写您的邀请码
+                    <span className="text-primary font-bold">2.</span>
+                    {t("invite.step2")}
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary">3.</span>
-                    注册成功后，您和您的朋友都可能获得奖励
+                    <span className="text-primary font-bold">3.</span>
+                    {t("invite.step3")}
                   </li>
                 </ul>
+              </div>
+
+              {/* Note */}
+              <div className="p-4 rounded-lg bg-muted/30 text-sm text-muted-foreground">
+                {t("invite.note")}
               </div>
             </CardContent>
           </Card>

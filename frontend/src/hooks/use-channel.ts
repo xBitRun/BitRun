@@ -14,6 +14,7 @@ import {
   ChannelUserResponse,
   ChannelStatisticsResponse,
   ChannelAccountingOverview,
+  AdminUserListResponse,
 } from "@/lib/api/endpoints";
 
 // ==================== Channel Keys ====================
@@ -24,6 +25,7 @@ const MY_CHANNEL_USERS_KEY = "/channels/me/users";
 const MY_CHANNEL_WALLET_KEY = "/channels/me/wallet";
 const MY_CHANNEL_STATS_KEY = "/channels/me/statistics";
 const MY_CHANNEL_ACCOUNTING_KEY = "/accounting/channels/me/overview";
+const ADMIN_USERS_KEY = "/channels/admin/users";
 
 // ==================== Channel Admin Hooks ====================
 
@@ -219,5 +221,45 @@ export function useUpdateChannelStatus() {
     { channelId: string; status: "active" | "suspended" | "closed" }
   >(CHANNELS_KEY, async (_, { arg }) => {
     return channelsApi.updateStatus(arg.channelId, arg.status);
+  });
+}
+
+/**
+ * List all users with channel info (platform admin only).
+ */
+export function useAdminUsers(params?: {
+  search?: string;
+  role?: string;
+  channel_id?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const key = params ? [ADMIN_USERS_KEY, params] : ADMIN_USERS_KEY;
+
+  const swr = useSWR<AdminUserListResponse>(key, async () => {
+    return channelsApi.listAllUsers(params);
+  });
+
+  return {
+    ...swr,
+    users: swr.data?.users ?? [],
+    total: swr.data?.total ?? 0,
+    isLoading: swr.isLoading,
+    error: swr.error,
+    refresh: swr.mutate,
+  };
+}
+
+/**
+ * Set user's channel (platform admin only).
+ */
+export function useSetUserChannel() {
+  return useSWRMutation<
+    { message: string; channel_id: string | null },
+    Error,
+    string,
+    { userId: string; channelId: string | null }
+  >(ADMIN_USERS_KEY, async (_, { arg }) => {
+    return channelsApi.setUserChannel(arg.userId, arg.channelId);
   });
 }

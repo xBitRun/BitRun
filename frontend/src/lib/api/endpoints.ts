@@ -41,13 +41,18 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string; // Backend uses 'name', not 'username'
+  invite_code: string; // Required for registration
 }
+
+export type UserRole = "user" | "channel_admin" | "platform_admin";
 
 export interface UserResponse {
   id: string;
   email: string;
   name: string;
   is_active: boolean;
+  role: UserRole;
+  channel_id?: string | null;
 }
 
 export interface TokenResponse {
@@ -1515,10 +1520,11 @@ export interface TransactionSummaryResponse {
 }
 
 export interface InviteInfoResponse {
-  invite_code: string | null;
-  referrer_id: string | null;
+  invite_code: string | null; // Always null (users don't have codes)
+  referrer_id: string | null; // Always null (no referral tracking)
   channel_id: string | null;
-  total_invited: number;
+  total_invited: number; // Always 0 (users can't invite)
+  channel_code: string | null; // Channel's invite code for sharing
 }
 
 export const walletsApi = {
@@ -1653,6 +1659,26 @@ export interface ChannelStatisticsResponse {
   frozen_balance: number;
 }
 
+// Admin user with channel info
+export interface AdminUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  channel_id: string | null;
+  channel_name: string | null;
+  channel_code: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminUserListResponse {
+  users: AdminUserResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const channelsApi = {
   // Platform Admin
   create: (data: {
@@ -1698,6 +1724,20 @@ export const channelsApi = {
 
   getMyStatistics: (params?: { start_date?: string; end_date?: string }) =>
     api.get<ChannelStatisticsResponse>("/channels/me/statistics", { params }),
+
+  // Platform Admin - User Management
+  listAllUsers: (params?: {
+    search?: string;
+    role?: string;
+    channel_id?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get<AdminUserListResponse>("/channels/admin/users", { params }),
+
+  setUserChannel: (userId: string, channelId: string | null) =>
+    api.put<{ message: string; channel_id: string | null }>(
+      `/channels/admin/users/${userId}/channel?channel_id=${channelId || ""}`,
+    ),
 };
 
 // ==================== Accounting Types ====================

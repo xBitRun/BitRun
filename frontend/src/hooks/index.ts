@@ -165,4 +165,6 @@ export {
   useCreateChannel,
   useUpdateChannel,
   useUpdateChannelStatus,
+  useAdminUsers,
+  useSetUserChannel,
 } from "./use-channel";
