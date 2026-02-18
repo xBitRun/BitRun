@@ -33,7 +33,7 @@ jest.mock("@/types", () => ({
   ...jest.requireActual("@/types"),
   getStrategyPreset: (riskProfile: string, timeHorizon: string) => {
     // Return mock preset values for testing
-    if (riskProfile === "conservative" && timeHorizon === "long") {
+    if (riskProfile === "conservative" && timeHorizon === "position") {
       return {
         values: {
           riskControls: {
@@ -45,7 +45,7 @@ jest.mock("@/types", () => ({
         },
       };
     }
-    if (riskProfile === "aggressive" && timeHorizon === "short") {
+    if (riskProfile === "aggressive" && timeHorizon === "scalp") {
       return {
         values: {
           riskControls: {
@@ -317,7 +317,7 @@ describe("RiskControlsPanel", () => {
         onChange={onChange}
         tradingMode="conservative"
         riskProfile="conservative"
-        timeHorizon="long"
+        timeHorizon="position"
       />
     );
 
@@ -346,7 +346,7 @@ describe("RiskControlsPanel", () => {
         onChange={onChange}
         tradingMode="conservative"
         riskProfile="conservative"
-        timeHorizon="long"
+        timeHorizon="position"
       />
     );
 
@@ -363,7 +363,7 @@ describe("RiskControlsPanel", () => {
         onChange={onChange}
         tradingMode="conservative"
         riskProfile="conservative"
-        timeHorizon="long"
+        timeHorizon="position"
       />
     );
 

@@ -43,8 +43,10 @@ const createWrapper = () => {
 
 // Mock data
 const mockWallet = {
+  user_id: "user-1",
   balance: 1000.0,
   frozen_balance: 100.0,
+  total_balance: 1100.0,
   total_recharged: 2000.0,
   total_consumed: 900.0,
 };
@@ -52,21 +54,25 @@ const mockWallet = {
 const mockTransactions = [
   {
     id: "tx-1",
-    type: "recharge",
+    type: "recharge" as const,
     amount: 100.0,
     balance_before: 0.0,
     balance_after: 100.0,
     reference_type: "recharge_order",
+    reference_id: "order-1",
+    commission_info: null,
     description: "Recharge",
     created_at: "2024-01-01T00:00:00Z",
   },
   {
     id: "tx-2",
-    type: "consume",
+    type: "consume" as const,
     amount: 50.0,
     balance_before: 100.0,
     balance_after: 50.0,
     reference_type: "strategy_subscription",
+    reference_id: "sub-1",
+    commission_info: null,
     description: "Consumption",
     created_at: "2024-01-02T00:00:00Z",
   },
@@ -75,24 +81,34 @@ const mockTransactions = [
 const mockSummary = {
   recharge: 100.0,
   consume: 50.0,
+  refund: 0.0,
   gift: 10.0,
+  adjustment: 0.0,
 };
 
 const mockInviteInfo = {
-  invite_code: "ABC123XYZ",
+  invite_code: null,
   referrer_id: null,
   channel_id: null,
-  total_invited: 5,
+  total_invited: 0,
+  channel_code: "ABC123XYZ",
 };
 
 const mockOrders = [
   {
     id: "order-1",
+    user_id: "user-1",
     order_no: "R202401010001",
     amount: 100.0,
     bonus_amount: 10.0,
-    status: "completed",
+    total_amount: 110.0,
+    payment_method: "alipay",
+    status: "completed" as const,
+    paid_at: "2024-01-01T00:05:00Z",
+    completed_at: "2024-01-01T00:10:00Z",
+    note: null,
     created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:10:00Z",
   },
 ];
 
@@ -336,11 +352,18 @@ describe("useCreateRechargeOrder", () => {
   it("should create recharge order", async () => {
     const newOrder = {
       id: "new-order",
+      user_id: "user-1",
       order_no: "R202401010002",
       amount: 200.0,
       bonus_amount: 20.0,
-      status: "pending",
+      total_amount: 220.0,
+      payment_method: "alipay",
+      status: "pending" as const,
+      paid_at: null,
+      completed_at: null,
+      note: null,
       created_at: "2024-01-03T00:00:00Z",
+      updated_at: "2024-01-03T00:00:00Z",
     };
     mockedRechargeApi.createOrder.mockResolvedValue(newOrder);
 
@@ -365,11 +388,18 @@ describe("useCreateRechargeOrder", () => {
   it("should create order without bonus", async () => {
     const newOrder = {
       id: "new-order",
+      user_id: "user-1",
       order_no: "R202401010003",
       amount: 100.0,
       bonus_amount: 0.0,
-      status: "pending",
+      total_amount: 100.0,
+      payment_method: "alipay",
+      status: "pending" as const,
+      paid_at: null,
+      completed_at: null,
+      note: null,
       created_at: "2024-01-03T00:00:00Z",
+      updated_at: "2024-01-03T00:00:00Z",
     };
     mockedRechargeApi.createOrder.mockResolvedValue(newOrder);
 
@@ -403,11 +433,18 @@ describe("useCreateRechargeOrder", () => {
     let resolvePromise: (value: typeof newOrder) => void;
     const newOrder = {
       id: "new-order",
+      user_id: "user-1",
       order_no: "R202401010004",
       amount: 100.0,
       bonus_amount: 0.0,
-      status: "pending",
+      total_amount: 100.0,
+      payment_method: "alipay",
+      status: "pending" as const,
+      paid_at: null,
+      completed_at: null,
+      note: null,
       created_at: "2024-01-03T00:00:00Z",
+      updated_at: "2024-01-03T00:00:00Z",
     };
     mockedRechargeApi.createOrder.mockReturnValue(
       new Promise((resolve) => {

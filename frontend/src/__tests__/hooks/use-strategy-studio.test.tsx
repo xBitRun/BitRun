@@ -534,6 +534,9 @@ describe("useStrategyStudio - update helpers", () => {
       minRiskRewardRatio: 1.5,
       maxDrawdownPercent: 0.2,
       minConfidence: 70,
+      defaultSlAtrMultiplier: 1.5,
+      defaultTpAtrMultiplier: 3.0,
+      maxSlPercent: 5,
     };
 
     act(() => {

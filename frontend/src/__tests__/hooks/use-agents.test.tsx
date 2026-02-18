@@ -57,8 +57,8 @@ const mockAgents = [
     user_id: "user-1",
     name: "BTC Agent",
     strategy_id: "strategy-1",
-    strategy_type: "momentum",
-    strategy_name: "BTC Momentum",
+    strategy_type: "dca" as const,
+    strategy_name: "BTC DCA",
     ai_model: "deepseek:chat",
     execution_mode: "live" as const,
     account_id: "account-1",
@@ -119,8 +119,8 @@ const mockAgents = [
     user_id: "user-1",
     name: "SOL Agent",
     strategy_id: "strategy-3",
-    strategy_type: "momentum",
-    strategy_name: "SOL Momentum",
+    strategy_type: "dca" as const,
+    strategy_name: "SOL DCA",
     ai_model: null,
     execution_mode: "live" as const,
     account_id: "account-2",
@@ -189,7 +189,7 @@ describe("useAgents", () => {
     mockedAgentsApi.list.mockResolvedValue(mockAgents);
 
     const { result } = renderHook(
-      () => useAgents({ status_filter: "active", strategy_type: "momentum" }),
+      () => useAgents({ status_filter: "active", strategy_type: "dca" as const }),
       { wrapper: createWrapper() }
     );
 
@@ -197,7 +197,7 @@ describe("useAgents", () => {
 
     expect(mockedAgentsApi.list).toHaveBeenCalledWith({
       status_filter: "active",
-      strategy_type: "momentum",
+      strategy_type: "dca",
     });
   });
 

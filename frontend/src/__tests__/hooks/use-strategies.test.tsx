@@ -57,67 +57,67 @@ const createWrapper = () => {
 const mockStrategies = [
   {
     id: "strategy-1",
+    user_id: "user-1",
+    type: "ai" as const,
     name: "BTC Momentum",
     description: "BTC momentum trading",
-    prompt: "Trade BTC based on momentum indicators",
-    status: "active" as const,
-    trading_mode: "conservative",
-    account_id: "account-1",
+    symbols: ["BTCUSDT"],
     config: {
       execution_interval_minutes: 30,
       max_positions: 3,
-      symbols: ["BTC"],
     },
-    total_pnl: 1000,
-    total_trades: 50,
-    winning_trades: 30,
-    losing_trades: 20,
-    win_rate: 60,
-    max_drawdown: 5,
+    visibility: "private" as const,
+    category: "momentum",
+    tags: ["btc", "momentum"],
+    forked_from: null,
+    fork_count: 0,
+    author_name: null,
+    is_paid: false,
+    pricing_model: "free" as const,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   },
   {
     id: "strategy-2",
+    user_id: "user-1",
+    type: "grid" as const,
     name: "ETH Grid",
     description: "ETH grid trading",
-    prompt: "Trade ETH with grid strategy",
-    status: "draft" as const,
-    trading_mode: "aggressive",
-    account_id: null,
+    symbols: ["ETHUSDT"],
     config: {
       execution_interval_minutes: 60,
       max_positions: 5,
-      symbols: ["ETH"],
     },
-    total_pnl: 0,
-    total_trades: 0,
-    winning_trades: 0,
-    losing_trades: 0,
-    win_rate: 0,
-    max_drawdown: 0,
+    visibility: "public" as const,
+    category: "grid",
+    tags: ["eth", "grid"],
+    forked_from: null,
+    fork_count: 5,
+    author_name: "Test User",
+    is_paid: false,
+    pricing_model: "free" as const,
     created_at: "2024-01-02T00:00:00Z",
     updated_at: "2024-01-02T00:00:00Z",
   },
   {
     id: "strategy-3",
+    user_id: "user-1",
+    type: "dca" as const,
     name: "Multi Coin",
     description: "Multi coin strategy",
-    prompt: "Diversified trading across multiple coins",
-    status: "active" as const,
-    trading_mode: "balanced",
-    account_id: "account-2",
+    symbols: ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
     config: {
       execution_interval_minutes: 15,
       max_positions: 10,
-      symbols: ["BTC", "ETH", "SOL"],
     },
-    total_pnl: 500,
-    total_trades: 100,
-    winning_trades: 55,
-    losing_trades: 45,
-    win_rate: 55,
-    max_drawdown: 8,
+    visibility: "private" as const,
+    category: "dca",
+    tags: ["multi", "dca"],
+    forked_from: null,
+    fork_count: 0,
+    author_name: null,
+    is_paid: false,
+    pricing_model: "free" as const,
     created_at: "2024-01-03T00:00:00Z",
     updated_at: "2024-01-03T00:00:00Z",
   },
@@ -204,8 +204,8 @@ describe("useStrategy", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data?.name).toBe("BTC Momentum");
-    expect(result.current.data?.status).toBe("active");
-    expect(result.current.data?.total_pnl).toBe(1000);
+    expect(result.current.data?.type).toBe("ai");
+    expect(result.current.data?.visibility).toBe("private");
   });
 });
 
@@ -223,11 +223,12 @@ describe("useCreateStrategy", () => {
     });
 
     const response = await result.current.trigger({
+      type: "ai" as const,
       name: "New Strategy",
-      prompt: "Test prompt for new strategy",
-      trading_mode: "conservative",
-      symbols: ["BTC"],
-      account_id: "account-1",
+      description: "Test description",
+      symbols: ["BTCUSDT"],
+      config: { test: true },
+      visibility: "private" as const,
     });
 
     expect(mockedStrategiesApi.create).toHaveBeenCalled();
@@ -243,11 +244,11 @@ describe("useCreateStrategy", () => {
 
     await expect(
       result.current.trigger({
+        type: "ai" as const,
         name: "New Strategy",
-        prompt: "Test prompt",
-        trading_mode: "conservative",
-        symbols: ["BTC"],
-        account_id: "account-1",
+        description: "Test description",
+        symbols: ["BTCUSDT"],
+        config: { test: true },
       })
     ).rejects.toThrow("Creation failed");
   });
@@ -260,11 +261,10 @@ describe("useCreateStrategy", () => {
     });
 
     const createData = {
+      type: "ai" as const,
       name: "Test Strategy",
-      prompt: "Test prompt",
-      trading_mode: "aggressive" as const,
-      symbols: ["BTC", "ETH"],
-      account_id: "account-1",
+      description: "Test description",
+      symbols: ["BTCUSDT", "ETHUSDT"],
       config: {
         execution_interval_minutes: 45,
       },
@@ -430,7 +430,7 @@ describe("useMarketplaceStrategies", () => {
     mockedStrategiesApi.marketplace.mockResolvedValue(mockMarketplaceResponse);
 
     const params = {
-      type_filter: "momentum" as const,
+      type_filter: "dca" as const,
       category: "trend",
       search: "btc",
       sort_by: "popular" as const,

@@ -40,6 +40,7 @@ const createWrapper = () => {
 // Mock data
 const mockDecision = {
   id: "decision-1",
+  agent_id: "agent-1",
   strategy_id: "strategy-1",
   timestamp: "2024-01-15T10:00:00Z",
   chain_of_thought: "BTC showing strong momentum...",
@@ -102,6 +103,8 @@ const mockStats = {
   executed_decisions: 75,
   average_confidence: 78.5,
   average_latency_ms: 2100,
+  total_tokens: 150000,
+  action_counts: { open_long: 30, close_long: 20, hold: 50 },
 };
 
 describe("useRecentDecisions", () => {

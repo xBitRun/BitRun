@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,12 @@ export function EquityCurveTable({
   const t = useTranslations("analytics.equityCurve");
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Handle time range change and reset pagination in event handler
+  const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
+    setCurrentPage(1); // Reset to first page when time range changes
+    onTimeRangeChange(newRange);
+  }, [onTimeRangeChange]);
+
   // Sort data by date descending (newest first)
   const sortedData = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -78,11 +84,6 @@ export function EquityCurveTable({
     const start = (currentPage - 1) * pageSize;
     return sortedData.slice(start, start + pageSize);
   }, [sortedData, currentPage, pageSize]);
-
-  // Reset to first page when data changes
-  useMemo(() => {
-    setCurrentPage(1);
-  }, [timeRange]);
 
   if (isLoading) {
     return (
@@ -108,7 +109,7 @@ export function EquityCurveTable({
         <CardTitle className="text-lg">{title ?? t("title")}</CardTitle>
         <TimeRangeSelector
           value={timeRange}
-          onChange={onTimeRangeChange}
+          onChange={handleTimeRangeChange}
         />
       </CardHeader>
       <CardContent>

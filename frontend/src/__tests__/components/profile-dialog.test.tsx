@@ -20,7 +20,7 @@ const mockUseAuthStore = jest.fn(() => ({
 }));
 
 jest.mock("@/stores/auth-store", () => ({
-  useAuthStore: (...args: unknown[]) => mockUseAuthStore(...args),
+  useAuthStore: () => mockUseAuthStore(),
 }));
 
 // Mock API
@@ -366,7 +366,7 @@ describe("ProfileDialog", () => {
 
   it("should handle user being null", () => {
     mockUseAuthStore.mockReturnValue({
-      user: null,
+      user: null as unknown as { id: string; email: string; name: string },
       checkAuth: jest.fn().mockResolvedValue(undefined),
     });
 

@@ -127,7 +127,10 @@ export function PixelBlast({
     animationRef.current = requestAnimationFrame(animateFnRef.current);
   }, [blastInterval, createBlast, gravity, friction, particleSize]);
 
-  animateFnRef.current = animate;
+  // Update animateFnRef in effect to avoid render-phase ref update
+  useEffect(() => {
+    animateFnRef.current = animate;
+  }, [animate]);
 
   const handleResize = useCallback(() => {
     const canvas = canvasRef.current;

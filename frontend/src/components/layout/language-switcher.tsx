@@ -26,6 +26,8 @@ export function LanguageSwitcher() {
 
   const handleLocaleChange = (newLocale: Locale) => {
     // Set NEXT_LOCALE cookie so middleware resolves the correct locale
+    // Note: document.cookie setter is the standard DOM API for setting cookies
+    // eslint-disable-next-line react-hooks/immutability
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
     // Refresh inside a transition to invalidate the entire Router Cache
     // and avoid triggering Suspense boundaries (global loading flash)

@@ -15,8 +15,8 @@ import {
   Store,
   ArrowUpDown,
   User,
-  Zap,
   Loader2,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   ListPageSkeleton,
@@ -43,7 +43,7 @@ import type { StrategyType } from '@/types';
 
 // ==================== Helper Functions ====================
 
-function getTypeIcon(type: string) {
+function getTypeIcon(type: string): LucideIcon {
   switch (type) {
     case 'ai':
       return Bot;
@@ -77,6 +77,7 @@ function getTypeColor(type: string) {
 
 interface MarketplaceCardProps {
   strategy: StrategyResponse;
+  typeIcon: LucideIcon;
   onFork: (id: string) => void;
   forking: boolean;
   t: ReturnType<typeof useTranslations>;
@@ -85,12 +86,12 @@ interface MarketplaceCardProps {
 
 function MarketplaceCard({
   strategy,
+  typeIcon: TypeIcon,
   onFork,
   forking,
   t,
   tType,
 }: MarketplaceCardProps) {
-  const TypeIcon = getTypeIcon(strategy.type);
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors gap-3 group">
@@ -347,6 +348,7 @@ export default function MarketplacePage() {
             <MarketplaceCard
               key={strategy.id}
               strategy={strategy}
+              typeIcon={getTypeIcon(strategy.type)}
               onFork={handleFork}
               forking={forkingId === strategy.id}
               t={t}

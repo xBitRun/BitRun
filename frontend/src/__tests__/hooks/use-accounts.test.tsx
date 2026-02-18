@@ -47,7 +47,7 @@ const mockAccounts = [
   {
     id: "account-1",
     name: "Binance Main",
-    exchange: "binance",
+    exchange: "binance" as const,
     is_testnet: false,
     is_connected: true,
     has_api_key: true,
@@ -60,7 +60,7 @@ const mockAccounts = [
   {
     id: "account-2",
     name: "OKX Test",
-    exchange: "okx",
+    exchange: "okx" as const,
     is_testnet: true,
     is_connected: false,
     has_api_key: true,

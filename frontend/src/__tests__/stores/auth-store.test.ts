@@ -70,6 +70,7 @@ describe("Auth Store", () => {
       email: "test@example.com",
       name: "Test User",
       is_active: true,
+      role: "user" as const,
     };
 
     const tokenResponse = {
@@ -106,6 +107,7 @@ describe("Auth Store", () => {
       email: "test@example.com",
       name: "Test User",
       is_active: true,
+      role: "user" as const,
     };
 
     mockAuthApi.login.mockResolvedValue({
@@ -186,7 +188,7 @@ describe("Auth Store", () => {
 
   it("should handle login with ApiError details", async () => {
     const { ApiError } = await import("@/lib/api");
-    const apiError = new ApiError("Invalid credentials", "AUTH_INVALID_CREDENTIALS", {
+    const apiError = new ApiError("Invalid credentials", 401, "AUTH_INVALID_CREDENTIALS", {
       remaining_attempts: 2,
       remaining_minutes: 5,
     });
@@ -242,6 +244,7 @@ describe("Auth Store", () => {
       email: "new@example.com",
       name: "New User",
       is_active: true,
+      role: "user" as const,
     };
 
     const tokenResponse = {
@@ -251,7 +254,7 @@ describe("Auth Store", () => {
       expires_in: 3600,
     };
 
-    mockAuthApi.register.mockResolvedValue({ message: "Registered" });
+    mockAuthApi.register.mockResolvedValue(testUser);
     mockAuthApi.login.mockResolvedValue(tokenResponse);
     mockAuthApi.me.mockResolvedValue(testUser);
 
@@ -260,6 +263,7 @@ describe("Auth Store", () => {
         email: "new@example.com",
         password: "password123",
         name: "New User",
+        invite_code: "TEST123",
       });
     });
 
@@ -279,7 +283,7 @@ describe("Auth Store", () => {
 
   it("should handle register failure with ApiError", async () => {
     const { ApiError } = await import("@/lib/api");
-    const apiError = new ApiError("Email exists", "AUTH_EMAIL_EXISTS", null);
+    const apiError = new ApiError("Email exists", 400, "AUTH_EMAIL_EXISTS");
 
     mockAuthApi.register.mockRejectedValue(apiError);
 
@@ -289,6 +293,7 @@ describe("Auth Store", () => {
           email: "existing@example.com",
           password: "password123",
           name: "User",
+          invite_code: "TEST123",
         });
       } catch {
         // Expected
@@ -309,6 +314,7 @@ describe("Auth Store", () => {
           email: "test@example.com",
           password: "password123",
           name: "User",
+          invite_code: "TEST123",
         });
       } catch {
         // Expected
@@ -320,6 +326,13 @@ describe("Auth Store", () => {
   });
 
   it("should handle register when me() fails after auto-login", async () => {
+    const testUser = {
+      id: "test-id",
+      email: "new@example.com",
+      name: "New User",
+      is_active: true,
+      role: "user" as const,
+    };
     const tokenResponse = {
       access_token: "test-access-token",
       refresh_token: "test-refresh-token",
@@ -327,7 +340,7 @@ describe("Auth Store", () => {
       expires_in: 3600,
     };
 
-    mockAuthApi.register.mockResolvedValue({ message: "Registered" });
+    mockAuthApi.register.mockResolvedValue(testUser);
     mockAuthApi.login.mockResolvedValue(tokenResponse);
     mockAuthApi.me.mockRejectedValue(new Error("Failed to fetch user"));
 
@@ -336,6 +349,7 @@ describe("Auth Store", () => {
         email: "new@example.com",
         password: "password123",
         name: "New User",
+        invite_code: "TEST123",
       });
     });
 
@@ -363,6 +377,7 @@ describe("Auth Store", () => {
       email: "test@example.com",
       name: "Test User",
       is_active: true,
+      role: "user" as const,
     };
 
     mockTokenManager.isAuthenticated.mockReturnValue(true);
@@ -384,6 +399,7 @@ describe("Auth Store", () => {
       email: "test@example.com",
       name: "Test User",
       is_active: true,
+      role: "user" as const,
     };
 
     mockTokenManager.isAuthenticated.mockReturnValue(false);
@@ -436,6 +452,7 @@ describe("Auth Store", () => {
       email: "test@example.com",
       name: "Test User",
       is_active: true,
+      role: "user" as const,
     };
 
     // Set initial state with user

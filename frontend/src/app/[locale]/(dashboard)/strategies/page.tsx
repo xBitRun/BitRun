@@ -16,6 +16,7 @@ import {
   Eye,
   Trash2,
   Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   ListPageSkeleton,
@@ -47,7 +48,7 @@ import { useToast } from '@/components/ui/toast';
 import type { StrategyResponse } from '@/lib/api';
 import type { StrategyType } from '@/types';
 
-function getTypeIcon(type: string) {
+function getTypeIcon(type: string): LucideIcon {
   switch (type) {
     case 'ai':
       return Bot;
@@ -85,6 +86,7 @@ function getVisibilityColor(vis: string) {
 
 interface StrategyCardProps {
   strategy: StrategyResponse;
+  typeIcon: LucideIcon;
   onDelete: (id: string) => void;
   onToggleVisibility: (id: string, current: string) => void;
   t: ReturnType<typeof useTranslations>;
@@ -93,12 +95,12 @@ interface StrategyCardProps {
 
 function StrategyCard({
   strategy,
+  typeIcon: TypeIcon,
   onDelete,
   onToggleVisibility,
   t,
   tType,
 }: StrategyCardProps) {
-  const TypeIcon = getTypeIcon(strategy.type);
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors gap-3">
@@ -365,6 +367,7 @@ export default function StrategiesPage() {
                 <StrategyCard
                   key={strategy.id}
                   strategy={strategy}
+                  typeIcon={getTypeIcon(strategy.type)}
                   onDelete={handleDelete}
                   onToggleVisibility={handleToggleVisibility}
                   t={t}

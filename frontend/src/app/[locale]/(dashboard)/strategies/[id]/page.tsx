@@ -16,7 +16,6 @@ import {
   Bot,
   Zap,
   Pencil,
-  MoreHorizontal,
   Copy,
   Share2,
   Calendar,
@@ -26,6 +25,7 @@ import {
   FileText,
   Clock,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Card,
@@ -59,20 +59,13 @@ import { useToast } from "@/components/ui/toast";
 import { DetailPageHeader } from "@/components/layout";
 import type { StrategyType } from "@/types";
 
-function getTypeIcon(type: StrategyType) {
-  switch (type) {
-    case "ai":
-      return Bot;
-    case "grid":
-      return Grid3X3;
-    case "dca":
-      return ArrowDownUp;
-    case "rsi":
-      return Activity;
-    default:
-      return LineChart;
-  }
-}
+// Icon mapping - defined at module level to avoid creating components during render
+const TYPE_ICONS: Record<StrategyType, LucideIcon> = {
+  ai: Bot,
+  grid: Grid3X3,
+  dca: ArrowDownUp,
+  rsi: Activity,
+};
 
 function getTypeColor(type: StrategyType) {
   switch (type) {
@@ -186,6 +179,9 @@ export default function StrategyDetailPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Get icon component from static mapping
+  const StrategyIcon = strategy ? TYPE_ICONS[strategy.type] : LineChart;
+
   // Config value renderer - supports JSON object formatting
   const renderConfigValue = (value: unknown): React.ReactNode => {
     if (value === null || value === undefined) return "-";
@@ -262,14 +258,13 @@ export default function StrategyDetailPage({
   const config = strategy.config || {};
   const hasCommonParams: boolean =
     Object.keys(config).filter((k) => k !== "riskControls").length > 0;
-  const IconComponent = getTypeIcon(strategy.type);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <DetailPageHeader
         backHref="/strategies"
-        icon={<IconComponent className="w-6 h-6 text-primary" />}
+        icon={<StrategyIcon className="w-6 h-6 text-primary" />}
         title={strategy.name}
         description={strategy.description ?? undefined}
         badges={[

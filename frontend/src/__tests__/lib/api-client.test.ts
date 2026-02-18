@@ -17,14 +17,16 @@ jest.mock("js-cookie", () => ({
   remove: jest.fn(),
 }));
 
-const mockedCookies = Cookies as jest.Mocked<typeof Cookies>;
+// Use type assertion to handle overloaded Cookies.get function
+const mockedCookies = {
+  get: Cookies.get as unknown as jest.Mock,
+  set: Cookies.set as unknown as jest.Mock,
+  remove: Cookies.remove as unknown as jest.Mock,
+};
 
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
-
-// Store original environment
-const originalEnv = process.env.NODE_ENV;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -32,7 +34,7 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  process.env.NODE_ENV = originalEnv;
+  // No need to restore NODE_ENV as it's read-only
 });
 
 describe("ApiError", () => {

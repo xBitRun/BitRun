@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -24,6 +24,21 @@ import { useAgents } from "@/hooks/use-agents";
 
 const STORAGE_KEY = "bitrun-setup-guide-dismissed";
 
+// SSR-safe localStorage reader using useSyncExternalStore
+function getDismissedSnapshot() {
+  if (typeof window === "undefined") return true; // Default to dismissed on server
+  return localStorage.getItem(STORAGE_KEY) === "true";
+}
+
+function getServerSnapshot() {
+  return true; // Default to dismissed on server
+}
+
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
 interface SetupStep {
   id: string;
   titleKey: string;
@@ -46,14 +61,13 @@ export function FloatingSetupGuide({ className }: FloatingSetupGuideProps) {
   const { strategies, isLoading: strategiesLoading } = useStrategies();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(true); // Default to true to prevent flash
 
-  // Check localStorage on mount (SSR-safe: must read localStorage in effect)
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    const dismissed = localStorage.getItem(STORAGE_KEY);
-    setIsDismissed(dismissed === "true");
-  }, []);
+  // SSR-safe localStorage read
+  const isDismissed = useSyncExternalStore(
+    subscribeToStorage,
+    getDismissedSnapshot,
+    getServerSnapshot
+  );
 
   const isLoading = accountsLoading || agentsLoading || modelsLoading || strategiesLoading;
 
@@ -110,7 +124,8 @@ export function FloatingSetupGuide({ className }: FloatingSetupGuideProps) {
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, "true");
-    setIsDismissed(true);
+    // Dispatch storage event to trigger useSyncExternalStore update
+    window.dispatchEvent(new StorageEvent("storage"));
   };
 
   return (

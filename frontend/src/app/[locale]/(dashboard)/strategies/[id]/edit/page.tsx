@@ -41,12 +41,20 @@ export default function StrategyEditPage({
   // Initialize form from strategy data
   useEffect(() => {
     if (strategy) {
-      setName(strategy.name);
-      setDescription(strategy.description || "");
-      setVisibility(strategy.visibility);
-      setSymbols(strategy.symbols);
-      setTags(strategy.tags);
+      // Only update if values actually changed to avoid cascading renders
+      if (name !== strategy.name) setName(strategy.name);
+      if (description !== (strategy.description || "")) {
+        setDescription(strategy.description || "");
+      }
+      if (visibility !== strategy.visibility) setVisibility(strategy.visibility);
+      if (JSON.stringify(symbols) !== JSON.stringify(strategy.symbols)) {
+        setSymbols(strategy.symbols);
+      }
+      if (JSON.stringify(tags) !== JSON.stringify(strategy.tags)) {
+        setTags(strategy.tags);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strategy]);
 
   const handleAddSymbol = () => {

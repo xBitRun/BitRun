@@ -55,13 +55,21 @@ const mockChannel = {
   name: "Test Channel",
   code: "TEST01",
   commission_rate: 0.1,
-  status: "active",
+  status: "active" as const,
   contact_name: "John Doe",
   contact_email: "john@test.com",
+  contact_phone: null,
+  admin_user_id: null,
   total_users: 10,
   total_revenue: 1000.0,
   total_commission: 100.0,
+  total_accounts: 5,
+  total_agents: 8,
+  active_users: 5,
+  available_balance: 500.0,
+  pending_commission: 100.0,
   created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
 };
 
 const mockChannelUsers = [
@@ -80,6 +88,7 @@ const mockChannelUsers = [
 ];
 
 const mockChannelWallet = {
+  channel_id: "channel-1",
   balance: 500.0,
   frozen_balance: 50.0,
   pending_commission: 100.0,
@@ -95,13 +104,20 @@ const mockStatistics = {
   period_commission: 50.0,
   available_balance: 500.0,
   pending_commission: 100.0,
+  frozen_balance: 50.0,
 };
 
 const mockAccountingOverview = {
+  channel_id: "channel-1",
+  channel_name: "Test Channel",
+  channel_code: "TEST01",
+  commission_rate: 0.1,
+  total_users: 10,
   total_revenue: 1000.0,
   total_commission: 100.0,
-  period_commission: 50.0,
   available_balance: 500.0,
+  pending_commission: 100.0,
+  period_commission: 50.0,
   active_users: 5,
 };
 
@@ -455,7 +471,7 @@ describe("useUpdateChannelStatus", () => {
   });
 
   it("should update channel status", async () => {
-    const suspendedChannel = { ...mockChannel, status: "suspended" };
+    const suspendedChannel = { ...mockChannel, status: "suspended" as const };
     mockedChannelsApi.updateStatus.mockResolvedValue(suspendedChannel);
 
     const { result } = renderHook(() => useUpdateChannelStatus(), {

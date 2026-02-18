@@ -146,12 +146,13 @@ describe("authApi", () => {
   });
 
   it("register should POST to /auth/register with skipAuth", async () => {
-    const data = { email: "a@b.com", password: "pw", name: "Test" };
+    const data = { email: "a@b.com", password: "pw", name: "Test", invite_code: "TEST123" };
     mockedApi.post.mockResolvedValue({
       id: "1",
       email: "a@b.com",
       name: "Test",
       is_active: true,
+      role: "user" as const,
     });
 
     await authApi.register(data);
@@ -247,10 +248,9 @@ describe("strategiesApi", () => {
   it("create should POST /strategies", async () => {
     const data = {
       name: "Test",
-      prompt: "p",
-      trading_mode: "aggressive" as const,
-      symbols: ["BTC"],
-      account_id: "a1",
+      type: "ai" as const,
+      symbols: ["BTCUSDT"],
+      config: { test: true },
     };
     mockedApi.post.mockResolvedValue({ id: "s1" });
     await strategiesApi.create(data);
@@ -785,10 +785,10 @@ describe("agentsApi", () => {
     mockedApi.get.mockResolvedValue([]);
     await agentsApi.list({
       status_filter: "active",
-      strategy_type: "momentum",
+      strategy_type: "dca" as const,
     });
     expect(mockedApi.get).toHaveBeenCalledWith(
-      "/agents?status_filter=active&strategy_type=momentum",
+      "/agents?status_filter=active&strategy_type=dca",
     );
   });
 

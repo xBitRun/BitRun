@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface TradingViewChartProps {
@@ -20,9 +20,8 @@ function TradingViewChartInner({
   className,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string>(
-    `tradingview_${Math.random().toString(36).slice(2, 10)}`
-  );
+  const reactId = useId();
+  const widgetId = `tradingview_${reactId.replace(/:/g, '_')}`;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -33,7 +32,7 @@ function TradingViewChartInner({
 
     // Create the widget container div
     const widgetDiv = document.createElement("div");
-    widgetDiv.id = widgetIdRef.current;
+    widgetDiv.id = widgetId;
     widgetDiv.style.height = "100%";
     widgetDiv.style.width = "100%";
     container.appendChild(widgetDiv);
@@ -71,7 +70,7 @@ function TradingViewChartInner({
         container.innerHTML = "";
       }
     };
-  }, [symbol, interval]);
+  }, [symbol, interval, widgetId]);
 
   return (
     <div

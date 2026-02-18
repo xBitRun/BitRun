@@ -174,13 +174,18 @@ jest.mock("@/components/ui/tabs", () => ({
 }));
 
 const defaultConfig: StrategyStudioConfig = {
+  name: "Test Strategy",
+  description: "Test description",
+  accountId: "account-1",
+  aiModel: "gpt-4",
   symbols: ["BTC"],
   timeframes: ["1h", "4h"],
+  executionIntervalMinutes: 30,
+  autoExecute: true,
   indicators: {
-    rsi: { enabled: true, period: 14, oversold: 30, overbought: 70 },
-    atr: { enabled: false, period: 14, multiplier: 2 },
+    rsi: { enabled: true, period: 14 },
+    atr: { enabled: false, period: 14 },
     macd: { enabled: false, fast: 12, slow: 26, signal: 9 },
-    bollingerBands: { enabled: false, period: 20, stdDev: 2 },
     ema: { enabled: false, periods: [9, 21, 50] },
   },
   riskControls: {
@@ -190,22 +195,24 @@ const defaultConfig: StrategyStudioConfig = {
     minConfidence: 65,
     minRiskRewardRatio: 2.0,
     maxDrawdownPercent: 0.2,
+    defaultSlAtrMultiplier: 1.5,
+    defaultTpAtrMultiplier: 3.0,
+    maxSlPercent: 5,
   },
-  promptMode: "template",
+  language: "en",
+  promptMode: "simple",
   promptSections: {
-    marketAnalysis: true,
-    tradingStrategy: true,
-    riskManagement: true,
-    entryConditions: true,
-    exitConditions: true,
-    positionSizing: true,
+    roleDefinition: "",
+    tradingFrequency: "",
+    entryStandards: "",
+    decisionProcess: "",
   },
   customPrompt: "",
   advancedPrompt: "",
   tradingMode: "balanced",
   debateEnabled: false,
   debateModels: [],
-  debateConsensusMode: "majority",
+  debateConsensusMode: "majority_vote",
   debateMinParticipants: 2,
 };
 
@@ -254,7 +261,7 @@ describe("StrategyStudioTabs", () => {
         {...defaultProps}
         activeTab="risk"
         riskProfile="conservative"
-        timeHorizon="long"
+        timeHorizon="position"
       />,
     );
 
@@ -354,9 +361,16 @@ describe("StrategyStudioTabs", () => {
 
   it("passes promptPreview to PromptPreview component", () => {
     const mockPreview: PromptPreviewResponse = {
-      system_prompt: "System prompt content",
-      user_prompt: "User prompt content",
-      tokens_estimate: 500,
+      systemPrompt: "System prompt content",
+      estimatedTokens: 500,
+      sections: {
+        roleDefinition: "",
+        tradingMode: "",
+        tradingFrequency: "",
+        entryStandards: "",
+        decisionProcess: "",
+        customPrompt: "",
+      },
     };
 
     render(

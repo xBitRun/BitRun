@@ -1079,13 +1079,10 @@ function DecisionsTab({
   const hasScrolled = useRef(false);
   const listTopRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to the highlighted decision once it's loaded and expanded
+  // Scroll to the highlighted decision once it's loaded
+  // Note: Initial expansion is handled by useState initializer
   useEffect(() => {
     if (highlightDecisionId && decisions.length > 0 && !hasScrolled.current) {
-      setExpandedIds((prev) => {
-        if (prev.has(highlightDecisionId)) return prev;
-        return new Set(prev).add(highlightDecisionId);
-      });
       const timer = setTimeout(() => {
         highlightRef.current?.scrollIntoView({
           behavior: "smooth",

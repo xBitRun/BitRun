@@ -237,6 +237,7 @@ describe("MarketSnapshotSection", () => {
       indicators: {},
       klines: {},
       funding_history: [],
+      available_timeframes: ["1h", "4h", "1d"],
     },
   ];
 
@@ -336,6 +337,11 @@ describe("MarketSnapshotSection", () => {
             atr: 500,
             ema: {
               "9": 49900,
+            },
+            bollinger: {
+              upper: 51000,
+              middle: 50000,
+              lower: 49000,
             },
           },
         },

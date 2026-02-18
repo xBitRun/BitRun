@@ -319,10 +319,7 @@ describe("DashboardStatsSchema", () => {
 });
 
 describe("validateResponse", () => {
-  const originalEnv = process.env.NODE_ENV;
-
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
     jest.restoreAllMocks();
   });
 
@@ -352,7 +349,6 @@ describe("validateResponse", () => {
   });
 
   it("logs warning in development mode on failure", () => {
-    process.env.NODE_ENV = "development";
     const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const invalidData = {
@@ -367,7 +363,6 @@ describe("validateResponse", () => {
   });
 
   it("does not log in production mode", () => {
-    process.env.NODE_ENV = "production";
     const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const invalidData = {
@@ -380,7 +375,6 @@ describe("validateResponse", () => {
   });
 
   it("uses default context when not provided", () => {
-    process.env.NODE_ENV = "development";
     const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
     validateResponse({ invalid: true }, LoginResponseSchema);

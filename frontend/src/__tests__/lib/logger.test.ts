@@ -31,7 +31,6 @@ describe("logger", () => {
 
     beforeEach(() => {
       jest.resetModules();
-      process.env.NODE_ENV = "development";
       process.env.NEXT_PUBLIC_DEBUG = "";
       // Re-import to pick up new env
       logger = require("@/lib/logger").logger;
@@ -63,7 +62,6 @@ describe("logger", () => {
 
     beforeEach(() => {
       jest.resetModules();
-      process.env.NODE_ENV = "production";
       process.env.NEXT_PUBLIC_DEBUG = "";
       logger = require("@/lib/logger").logger;
     });
@@ -94,7 +92,6 @@ describe("logger", () => {
 
     beforeEach(() => {
       jest.resetModules();
-      process.env.NODE_ENV = "production";
       process.env.NEXT_PUBLIC_DEBUG = "true";
       logger = require("@/lib/logger").logger;
     });
@@ -120,7 +117,6 @@ describe("wsLogger", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    process.env.NODE_ENV = "development";
     process.env.NEXT_PUBLIC_DEBUG = "";
 
     consoleSpy = {

@@ -13,10 +13,9 @@ jest.mock("next-intl", () => ({
 }));
 
 const defaultSettings: IndicatorSettings = {
-  rsi: { enabled: false, period: 14, oversold: 30, overbought: 70 },
-  atr: { enabled: false, period: 14, multiplier: 2 },
+  rsi: { enabled: false, period: 14 },
+  atr: { enabled: false, period: 14 },
   macd: { enabled: false, fast: 12, slow: 26, signal: 9 },
-  bollingerBands: { enabled: false, period: 20, stdDev: 2 },
   ema: { enabled: false, periods: [9, 21, 50] },
 };
 
