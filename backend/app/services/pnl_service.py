@@ -16,6 +16,7 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..db.models import (
     AgentDB,
@@ -572,9 +573,10 @@ class PnLService:
         Returns:
             List of agent performance dictionaries
         """
-        # Get all agents for this account
+        # Get all agents for this account with strategy relationship preloaded
         stmt = (
             select(AgentDB)
+            .options(selectinload(AgentDB.strategy))
             .where(AgentDB.account_id == account_id)
             .order_by(AgentDB.total_pnl.desc())
         )
