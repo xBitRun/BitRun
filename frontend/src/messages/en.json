@@ -2565,6 +2565,17 @@
         "90d": "90 Days",
         "1y": "1 Year",
         "all": "All Time"
+      },
+      "columns": {
+        "date": "Date",
+        "equity": "Equity",
+        "dailyPnl": "Daily P&L",
+        "dailyPnlPercent": "Daily Return",
+        "cumulativePnl": "Cumulative P&L",
+        "cumulativePnlPercent": "Total Return"
+      },
+      "pagination": {
+        "info": "Showing {start}-{end} of {total} records"
       }
     },
     "pnl": {

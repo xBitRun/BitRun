@@ -2621,6 +2621,17 @@
         "90d": "90天",
         "1y": "1年",
         "all": "全部"
+      },
+      "columns": {
+        "date": "日期",
+        "equity": "权益",
+        "dailyPnl": "日盈亏",
+        "dailyPnlPercent": "日收益率",
+        "cumulativePnl": "累计盈亏",
+        "cumulativePnlPercent": "累计收益率"
+      },
+      "pagination": {
+        "info": "显示第 {start}-{end} 条，共 {total} 条"
       }
     },
     "pnl": {

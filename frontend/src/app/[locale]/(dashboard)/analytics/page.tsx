@@ -26,7 +26,7 @@ import {
   useSyncAccount,
 } from "@/hooks";
 import {
-  EquityCurveChart,
+  EquityCurveTable,
   PnLSummaryCard,
   AgentPerformanceTable,
   TimeRangeSelector,
@@ -280,11 +280,12 @@ export default function AnalyticsPage() {
           )}
 
           {/* Equity Curve */}
-          <EquityCurveChart
+          <EquityCurveTable
             data={dataPoints}
             isLoading={isLoadingCurve}
             timeRange={timeRange}
             onTimeRangeChange={setTimeRange}
+            pageSize={15}
           />
 
           {/* Agent Performance */}
