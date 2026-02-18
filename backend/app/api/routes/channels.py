@@ -56,6 +56,12 @@ class ChannelResponse(BaseModel):
     total_users: int = 0
     total_revenue: float = 0.0
     total_commission: float = 0.0
+    # Extended statistics
+    total_accounts: int = 0
+    total_agents: int = 0
+    active_users: int = 0
+    available_balance: float = 0.0
+    pending_commission: float = 0.0
     created_at: datetime
     updated_at: datetime
 
@@ -193,13 +199,34 @@ async def list_channels(
     offset: int = Query(0, ge=0),
 ):
     """
-    List all channels (platform admin only).
+    List all channels with extended statistics (platform admin only).
     """
     service = ChannelService(db)
     channels = await service.list_channels(status=status, limit=limit, offset=offset)
 
-    return [
-        ChannelResponse(
+    responses = []
+    for c in channels:
+        # Get extended statistics
+        extended_stats = await service.get_channel_extended_stats(c.id)
+
+        # Get wallet info
+        wallet = await service.get_channel_wallet(c.id)
+
+        # Get active users count
+        from sqlalchemy import select, func
+        from ...db.models import UserDB, WalletTransactionDB
+        active_users_query = select(func.count(func.distinct(
+            UserDB.id
+        ))).select_from(UserDB).outerjoin(
+            WalletTransactionDB, UserDB.id == WalletTransactionDB.user_id
+        ).where(
+            UserDB.channel_id == c.id,
+            WalletTransactionDB.id.isnot(None)
+        )
+        result = await db.execute(active_users_query)
+        active_users = result.scalar() or 0
+
+        responses.append(ChannelResponse(
             id=str(c.id),
             name=c.name,
             code=c.code,
@@ -212,11 +239,16 @@ async def list_channels(
             total_users=c.total_users,
             total_revenue=c.total_revenue,
             total_commission=c.total_commission,
+            total_accounts=extended_stats["total_accounts"],
+            total_agents=extended_stats["total_agents"],
+            active_users=active_users,
+            available_balance=wallet.balance if wallet else 0.0,
+            pending_commission=wallet.pending_commission if wallet else 0.0,
             created_at=c.created_at,
             updated_at=c.updated_at,
-        )
-        for c in channels
-    ]
+        ))
+
+    return responses
 
 
 @router.get("/{channel_id}", response_model=ChannelResponse)

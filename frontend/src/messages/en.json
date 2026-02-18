@@ -60,7 +60,7 @@
     "invite": "Invite Friends",
     "channel": "Channel Management",
     "admin": {
-      "channels": "Channels",
+      "channels": "Channel Management",
       "recharge": "Points Orders",
       "accounting": "Accounting"
     }
@@ -2767,6 +2767,8 @@
       "activeChannels": "Active Channels",
       "inviteCodes": "Invite Codes",
       "inviteCodesDescription": "All available invite codes for user registration",
+      "channelsList": "Channels List",
+      "channelsListDescription": "Detailed information for all channels including users, accounts, agents and revenue",
       "allUsers": "All Users",
       "allUsersDescription": "All registered users in the system",
       "filterByRole": "Filter by role",
@@ -2776,13 +2778,28 @@
         "channelAdmin": "Channel Admin",
         "platformAdmin": "Platform Admin"
       },
+      "platformStats": {
+        "channels": "Channels",
+        "activeChannels": "Active / Total",
+        "users": "Channel Users",
+        "channelUsers": "Users assigned to channels",
+        "revenue": "Platform Revenue",
+        "platformRevenue": "Platform net revenue",
+        "commission": "Channel Commission",
+        "totalCommission": "Total commission paid to channels"
+      },
       "table": {
         "name": "Name",
         "code": "Code",
         "status": "Status",
         "commissionRate": "Commission",
         "users": "Users",
+        "active": "active",
+        "accounts": "Accounts",
+        "agents": "Agents",
         "revenue": "Revenue",
+        "commission": "Commission",
+        "pending": "Pending",
         "contact": "Contact",
         "createdAt": "Created",
         "email": "Email",

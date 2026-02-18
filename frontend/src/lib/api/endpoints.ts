@@ -1656,6 +1656,12 @@ export interface ChannelResponse {
   total_users: number;
   total_revenue: number;
   total_commission: number;
+  // Extended statistics
+  total_accounts: number;
+  total_agents: number;
+  active_users: number;
+  available_balance: number;
+  pending_commission: number;
   created_at: string;
   updated_at: string;
 }

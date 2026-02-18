@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 
-// Create the intl middleware
+// Create the intl middleware (next-intl still uses middleware internally)
 const intlMiddleware = createIntlMiddleware(routing);
 
 // Public routes that don't require authentication
@@ -20,9 +20,7 @@ const ACCESS_TOKEN_KEY = "access_token";
  */
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some((route) =>
-    route === "/"
-      ? pathname === "/"
-      : pathname.startsWith(route)
+    route === "/" ? pathname === "/" : pathname.startsWith(route),
   );
 }
 
@@ -33,7 +31,7 @@ function isAuthRoute(pathname: string): boolean {
   return authRoutes.some((route) => pathname.startsWith(route));
 }
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for static files and API routes

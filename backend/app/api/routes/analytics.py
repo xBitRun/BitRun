@@ -239,7 +239,7 @@ async def get_account_equity_curve(
     user_id: CurrentUserDep,
     start_date: Optional[date] = Query(None, description="Start date"),
     end_date: Optional[date] = Query(None, description="End date"),
-    granularity: str = Query("day", regex="^(day|week|month)$", description="Data granularity"),
+    granularity: str = Query("day", pattern="^(day|week|month)$", description="Data granularity"),
 ):
     """
     Get equity curve data for an account.

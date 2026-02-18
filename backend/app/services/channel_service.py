@@ -15,6 +15,8 @@ from ..db.models import (
     UserDB,
     WalletTransactionDB,
     RechargeOrderDB,
+    ExchangeAccountDB,
+    AgentDB,
 )
 
 
@@ -399,4 +401,45 @@ class ChannelService:
             "total_revenue": total_revenue,
             "total_commission": total_commission,
             "platform_revenue": total_revenue - total_commission,
+        }
+
+    async def get_channel_extended_stats(
+        self,
+        channel_id: uuid.UUID,
+    ) -> Dict[str, Any]:
+        """
+        Get extended statistics for a channel (accounts, agents).
+
+        Returns:
+            - total_accounts: Total exchange accounts for channel users
+            - total_agents: Total agents for channel users
+        """
+        # Get channel users IDs
+        users_query = select(UserDB.id).where(UserDB.channel_id == channel_id)
+        result = await self.session.execute(users_query)
+        user_ids = [row[0] for row in result.fetchall()]
+
+        if not user_ids:
+            return {
+                "total_accounts": 0,
+                "total_agents": 0,
+            }
+
+        # Count exchange accounts
+        accounts_query = select(func.count(ExchangeAccountDB.id)).where(
+            ExchangeAccountDB.user_id.in_(user_ids)
+        )
+        accounts_result = await self.session.execute(accounts_query)
+        total_accounts = accounts_result.scalar() or 0
+
+        # Count agents
+        agents_query = select(func.count(AgentDB.id)).where(
+            AgentDB.user_id.in_(user_ids)
+        )
+        agents_result = await self.session.execute(agents_query)
+        total_agents = agents_result.scalar() or 0
+
+        return {
+            "total_accounts": total_accounts,
+            "total_agents": total_agents,
         }

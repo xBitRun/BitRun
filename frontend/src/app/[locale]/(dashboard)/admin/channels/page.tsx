@@ -14,6 +14,11 @@ import {
   Copy,
   Check,
   Filter,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Bot,
+  CreditCard,
 } from "lucide-react";
 import {
   Card,
@@ -59,6 +64,15 @@ import { useToast } from "@/components/ui/toast";
 import { format } from "date-fns";
 import { zhCN, enUS } from "date-fns/locale";
 import { useLocale } from "next-intl";
+
+// Format currency
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    minimumFractionDigits: 2,
+  }).format(value);
+}
 
 // Role badge styling
 function getRoleBadge(role: string) {
@@ -118,6 +132,18 @@ export default function AdminChannelsPage() {
   // Loading state
   const isLoading = channelsLoading || usersLoading;
 
+  // Calculate platform statistics
+  const platformStats = {
+    totalChannels: channels.length,
+    activeChannels: channels.filter((c) => c.status === "active").length,
+    totalUsers: totalUsers,
+    channelUsers: channels.reduce((sum, c) => sum + c.total_users, 0),
+    totalRevenue: channels.reduce((sum, c) => sum + c.total_revenue, 0),
+    totalCommission: channels.reduce((sum, c) => sum + c.total_commission, 0),
+    totalAccounts: channels.reduce((sum, c) => sum + c.total_accounts, 0),
+    totalAgents: channels.reduce((sum, c) => sum + c.total_agents, 0),
+  };
+
   // Handle create invite code (channel)
   const handleCreate = async () => {
     if (!formData.name || !formData.code) {
@@ -171,53 +197,86 @@ export default function AdminChannelsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Platform Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="bg-card/50 backdrop-blur-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {t("totalUsers")}
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("totalInviteCodes")}
-            </CardTitle>
-            <Key className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{channels.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("activeChannels")}
+              {t("platformStats.channels")}
             </CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {channels.filter((c) => c.status === "active").length}
+              {platformStats.activeChannels}
+              <span className="text-sm text-muted-foreground ml-1">
+                / {platformStats.totalChannels}
+              </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {t("platformStats.activeChannels")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t("platformStats.users")}
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{platformStats.channelUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              {t("platformStats.channelUsers")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t("platformStats.revenue")}
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {formatCurrency(platformStats.totalRevenue)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("platformStats.platformRevenue")}:{" "}
+              {formatCurrency(
+                platformStats.totalRevenue - platformStats.totalCommission,
+              )}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t("platformStats.commission")}
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-500">
+              {formatCurrency(platformStats.totalCommission)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("platformStats.totalCommission")}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Invite Codes Section */}
+      {/* Channels Table */}
       <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
-            {t("inviteCodes")}
+            <Building2 className="w-5 h-5" />
+            {t("channelsList")}
           </CardTitle>
-          <CardDescription>{t("inviteCodesDescription")}</CardDescription>
+          <CardDescription>{t("channelsListDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {channelsLoading ? (
@@ -226,51 +285,108 @@ export default function AdminChannelsPage() {
             </div>
           ) : channels.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Key className="h-12 w-12 mb-4" />
+              <Building2 className="h-12 w-12 mb-4" />
               <p>{t("noInviteCodes")}</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {channels.map((channel) => (
-                <div
-                  key={channel.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <code className="text-lg font-mono font-bold bg-primary/10 px-3 py-1 rounded">
-                        {channel.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleCopy(channel.code)}
-                      >
-                        {copied === channel.code ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    <div>
-                      <p className="font-medium">{channel.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {t("table.commissionRate")}:{" "}
-                        {(channel.commission_rate * 100).toFixed(0)}%
-                      </p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      channel.status === "active" ? "default" : "secondary"
-                    }
-                  >
-                    {t(`status.${channel.status}`)}
-                  </Badge>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("table.code")}</TableHead>
+                    <TableHead>{t("table.name")}</TableHead>
+                    <TableHead>{t("table.commissionRate")}</TableHead>
+                    <TableHead>{t("table.status")}</TableHead>
+                    <TableHead className="text-center">{t("table.users")}</TableHead>
+                    <TableHead className="text-center">{t("table.accounts")}</TableHead>
+                    <TableHead className="text-center">{t("table.agents")}</TableHead>
+                    <TableHead className="text-right">{t("table.revenue")}</TableHead>
+                    <TableHead className="text-right">{t("table.commission")}</TableHead>
+                    <TableHead className="text-right">{t("table.pending")}</TableHead>
+                    <TableHead>{t("table.createdAt")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {channels.map((channel) => (
+                    <TableRow key={channel.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono font-bold bg-primary/10 px-2 py-0.5 rounded">
+                            {channel.code}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleCopy(channel.code)}
+                          >
+                            {copied === channel.code ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{channel.name}</TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {(channel.commission_rate * 100).toFixed(0)}%
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            channel.status === "active"
+                              ? "default"
+                              : channel.status === "suspended"
+                                ? "secondary"
+                                : "destructive"
+                          }
+                        >
+                          {t(`status.${channel.status}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="font-medium">{channel.total_users}</span>
+                          {channel.active_users > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {channel.active_users} {t("table.active")}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <CreditCard className="h-3 w-3 text-muted-foreground" />
+                          <span>{channel.total_accounts}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Bot className="h-3 w-3 text-muted-foreground" />
+                          <span>{channel.total_agents}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-green-500">
+                        {formatCurrency(channel.total_revenue)}
+                      </TableCell>
+                      <TableCell className="text-right text-blue-500">
+                        {formatCurrency(channel.total_commission)}
+                      </TableCell>
+                      <TableCell className="text-right text-orange-500">
+                        {formatCurrency(channel.pending_commission)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {format(new Date(channel.created_at), "yyyy-MM-dd", {
+                          locale: dateLocale,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -451,7 +567,7 @@ export default function AdminChannelsPage() {
             </Button>
             <Button onClick={handleCreate} disabled={isCreating}>
               {isCreating ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 w-4 mr-2 animate-spin" />
               ) : null}
               {commonT("confirm")}
             </Button>

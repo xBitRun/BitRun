@@ -60,7 +60,7 @@
     "invite": "邀请好友",
     "channel": "渠道管理",
     "admin": {
-      "channels": "渠道列表",
+      "channels": "渠道管理",
       "recharge": "积分管理",
       "accounting": "账务统计"
     }
@@ -2813,6 +2813,8 @@
       "activeChannels": "活跃渠道",
       "inviteCodes": "邀请码列表",
       "inviteCodesDescription": "所有可用的邀请码，用于用户注册",
+      "channelsList": "渠道列表",
+      "channelsListDescription": "所有渠道的详细信息，包括用户数、交易账户、代理数和收益情况",
       "allUsers": "用户列表",
       "allUsersDescription": "系统中所有注册用户",
       "filterByRole": "按角色筛选",
@@ -2822,13 +2824,28 @@
         "channelAdmin": "渠道管理员",
         "platformAdmin": "平台管理员"
       },
+      "platformStats": {
+        "channels": "渠道统计",
+        "activeChannels": "活跃/总数",
+        "users": "渠道用户",
+        "channelUsers": "已归属渠道的用户数",
+        "revenue": "平台收入",
+        "platformRevenue": "平台净收入",
+        "commission": "渠道佣金",
+        "totalCommission": "累计支付给渠道的佣金"
+      },
       "table": {
         "name": "名称",
         "code": "代码",
         "status": "状态",
         "commissionRate": "佣金比例",
         "users": "用户数",
-        "revenue": "收入",
+        "active": "活跃",
+        "accounts": "交易账户",
+        "agents": "代理数",
+        "revenue": "累计收入",
+        "commission": "累计佣金",
+        "pending": "待结算",
         "contact": "联系方式",
         "createdAt": "创建时间",
         "email": "邮箱",
