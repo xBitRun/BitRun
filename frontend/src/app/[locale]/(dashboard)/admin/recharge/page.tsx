@@ -138,7 +138,7 @@ export default function AdminRechargePage() {
 
     setIsConfirming(true);
     try {
-      await rechargeApi.adminMarkPaid(selectedOrder);
+      await rechargeApi.adminConfirm(selectedOrder);
       success(t("confirmSuccess"));
       setConfirmDialogOpen(false);
       setSelectedOrder(null);
