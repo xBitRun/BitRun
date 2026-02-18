@@ -291,6 +291,9 @@ class QuantExecutionWorker:
                 if pnl_change != 0:
                     chain_of_thought += f"\n盈亏变化: ${pnl_change:.2f}"
 
+                # Get leverage from config (default 1 for quant strategies)
+                leverage = strategy.config.get("leverage", 1) if strategy.config else 1
+
                 await decision_repo.create(
                     agent_id=strategy.id,
                     system_prompt=f"Quant Strategy: {strategy_name}",
@@ -303,7 +306,9 @@ class QuantExecutionWorker:
                         "symbol": strategy.symbol,
                         "confidence": 100,
                         "reasoning": action_desc,
-                        "size_usd": 0,
+                        "leverage": leverage,
+                        "position_size_usd": 0,
+                        "risk_usd": 0,
                     }],
                     overall_confidence=100,
                     ai_model=f"quant:{strategy.strategy_type}",

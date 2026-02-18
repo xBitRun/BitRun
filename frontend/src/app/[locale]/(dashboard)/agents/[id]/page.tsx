@@ -1508,13 +1508,15 @@ function DecisionsTab({
                             const displayLeverage = isCloseAction
                               ? ((execRes?.position_leverage as number) ??
                                 snapshotPos?.leverage ??
-                                d.leverage)
-                              : d.leverage;
+                                d.leverage ??
+                                1)
+                              : (d.leverage ?? 1);
                             const displaySize = isCloseAction
                               ? ((execRes?.position_size_usd as number) ??
                                 snapshotPos?.size_usd ??
-                                d.position_size_usd)
-                              : d.position_size_usd;
+                                d.position_size_usd ??
+                                0)
+                              : (d.position_size_usd ?? 0);
 
                             return (
                               <div
