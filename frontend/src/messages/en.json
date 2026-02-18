@@ -452,6 +452,8 @@
     "searchPair": "Search trading pairs...",
     "loadingPairs": "Loading pairs...",
     "noMatch": "No matching pairs",
+    "aiModel": "AI Model",
+    "selectModel": "Select AI Model",
     "timeRange": "Time Range",
     "startDate": "Start Date",
     "endDate": "End Date",

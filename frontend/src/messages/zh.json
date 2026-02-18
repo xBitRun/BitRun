@@ -452,6 +452,8 @@
     "searchPair": "搜索交易对...",
     "loadingPairs": "加载交易对中...",
     "noMatch": "无匹配交易对",
+    "aiModel": "AI 模型",
+    "selectModel": "选择 AI 模型",
     "timeRange": "时间范围",
     "startDate": "开始日期",
     "endDate": "结束日期",

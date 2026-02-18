@@ -43,6 +43,7 @@ class BacktestRequest(BaseModel):
     initial_balance: float = Field(default=10000, ge=100)
     symbols: list[str] | None = Field(default=None, description="Override strategy symbols for backtest")
     use_ai: bool = Field(default=False, description="Use AI for decisions (slow)")
+    ai_model: str | None = Field(default=None, description="AI model ID for AI strategies (e.g., 'deepseek:deepseek-chat')")
     timeframe: str = Field(default="1h", description="Candle timeframe")
     exchange: ExchangeLiteral = Field(default="hyperliquid", description="Exchange data source")
 
@@ -267,15 +268,15 @@ async def run_backtest(
             detail="Strategy not found"
         )
 
-    # Resolve AI client from DB when use_ai
+    # Resolve AI client from request.ai_model
     ai_client = None
     analysis_ai_client = None
     if request.use_ai:
-        model_id = strategy.ai_model
+        model_id = request.ai_model
         if not model_id:
             raise create_http_exception(
                 ErrorCode.VALIDATION_ERROR,
-                user_message="Strategy has no AI model configured. Edit the strategy and select an AI model.",
+                user_message="AI model is required when use_ai is enabled. Please select an AI model.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         api_key, base_url = await resolve_provider_credentials(
@@ -291,11 +292,11 @@ async def run_backtest(
         if base_url:
             kwargs["base_url"] = base_url
         ai_client = get_ai_client(model_id, **kwargs)
-    
-    # Resolve AI client for analysis (use strategy's AI model if available)
-    if strategy.ai_model:
+
+    # Resolve AI client for analysis (use request's AI model if available)
+    if request.ai_model:
         try:
-            model_id = strategy.ai_model
+            model_id = request.ai_model
             api_key, base_url = await resolve_provider_credentials(
                 db, crypto, UUID(user_id), model_id
             )
@@ -680,15 +681,15 @@ async def create_backtest(
             detail="Strategy not found"
         )
 
-    # Resolve AI client from DB when use_ai
+    # Resolve AI client from request.ai_model
     ai_client = None
     analysis_ai_client = None
     if request.use_ai:
-        model_id = strategy.ai_model
+        model_id = request.ai_model
         if not model_id:
             raise create_http_exception(
                 ErrorCode.VALIDATION_ERROR,
-                user_message="Strategy has no AI model configured. Edit the strategy and select an AI model.",
+                user_message="AI model is required when use_ai is enabled. Please select an AI model.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         api_key, base_url = await resolve_provider_credentials(
@@ -706,9 +707,9 @@ async def create_backtest(
         ai_client = get_ai_client(model_id, **kwargs)
 
     # Resolve AI client for analysis
-    if strategy.ai_model:
+    if request.ai_model:
         try:
-            model_id = strategy.ai_model
+            model_id = request.ai_model
             api_key, base_url = await resolve_provider_credentials(
                 db, crypto, UUID(user_id), model_id
             )

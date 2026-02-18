@@ -4,30 +4,29 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import {
-  FlaskConical,
-  Play,
-  Loader2,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { FlaskConical, Play, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SymbolSelector } from "@/components/symbol-selector";
-import { useStrategies, useCreateBacktest } from "@/hooks";
+import {
+  useStrategies,
+  useCreateBacktest,
+  useUserModels,
+  groupModelsByProvider,
+  getProviderDisplayName,
+} from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import type { BacktestExchange } from "@/lib/api";
 
@@ -48,7 +47,9 @@ export default function RunBacktestPage() {
   const router = useRouter();
   const toast = useToast();
   const { data: strategies } = useStrategies();
-  const { trigger: createBacktest, isMutating: isRunning } = useCreateBacktest();
+  const { trigger: createBacktest, isMutating: isRunning } =
+    useCreateBacktest();
+  const { models } = useUserModels();
 
   // Exchange state
   const [selectedExchange, setSelectedExchange] =
@@ -57,9 +58,16 @@ export default function RunBacktestPage() {
   // Form state
   const [selectedStrategy, setSelectedStrategy] = useState<string>("");
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [initialBalance, setInitialBalance] = useState<string>("10000");
+
+  // Determine if selected strategy is AI-based
+  const selectedStrategyData = (strategies || []).find(
+    (s) => s.id === selectedStrategy,
+  );
+  const isAiStrategy = selectedStrategyData?.type === "ai";
 
   const handleExchangeChange = (value: string) => {
     setSelectedExchange(value as BacktestExchange);
@@ -83,6 +91,8 @@ export default function RunBacktestPage() {
         initial_balance: parseFloat(initialBalance),
         symbols: selectedSymbols,
         exchange: selectedExchange,
+        // Pass AI model for AI strategies
+        ai_model: isAiStrategy ? selectedModel || undefined : undefined,
       });
 
       if (result) {
@@ -105,7 +115,9 @@ export default function RunBacktestPage() {
     selectedSymbols.length > 0 &&
     startDate &&
     endDate &&
-    !isRunning;
+    !isRunning &&
+    // AI strategies must have a selected model
+    (!isAiStrategy || selectedModel);
 
   return (
     <div className="space-y-6">
@@ -150,7 +162,10 @@ export default function RunBacktestPage() {
           {/* Strategy Selection */}
           <div className="space-y-2">
             <Label>{t("run.selectStrategy")}</Label>
-            <Select value={selectedStrategy} onValueChange={setSelectedStrategy}>
+            <Select
+              value={selectedStrategy}
+              onValueChange={setSelectedStrategy}
+            >
               <SelectTrigger className="bg-muted/50">
                 <SelectValue placeholder={t("run.selectStrategyPlaceholder")} />
               </SelectTrigger>
@@ -163,6 +178,34 @@ export default function RunBacktestPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* AI Model Selection - Only shown for AI strategies */}
+          {isAiStrategy && (
+            <div className="space-y-2">
+              <Label>{t("aiModel")}</Label>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue placeholder={t("selectModel")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupModelsByProvider(models || [])).map(
+                    ([provider, providerModels]) => (
+                      <SelectGroup key={provider}>
+                        <SelectLabel>
+                          {getProviderDisplayName(provider)}
+                        </SelectLabel>
+                        {providerModels.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Trading Pairs (Multi-select) */}
           <div className="space-y-2 lg:col-span-2">

@@ -806,6 +806,7 @@ export interface BacktestRequest {
   initial_balance: number;
   symbols?: string[];
   use_ai?: boolean;
+  ai_model?: string;
   timeframe?: string;
   exchange?: BacktestExchange;
 }
