@@ -13,7 +13,11 @@ from ...db.repositories.account import AccountRepository
 from ...services.pnl_service import PnLService
 from ...traders.base import TradeError
 from ...traders import create_trader_from_account
-from ...utils.error_handling import exchange_api_error, exchange_connection_error, sanitize_error_message
+from ...core.errors import (
+    exchange_api_error,
+    exchange_connection_error,
+    sanitize_error_message,
+)
 
 logger = logging.getLogger(__name__)
 
