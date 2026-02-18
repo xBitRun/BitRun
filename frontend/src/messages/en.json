@@ -52,7 +52,15 @@
     "backtest": "Historical Backtest",
     "analytics": "P&L Analytics",
     "settings": "Settings",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "wallet": "My Wallet",
+    "invite": "Invite Friends",
+    "channel": "Channel Management",
+    "admin": {
+      "channels": "Channels",
+      "recharge": "Recharge Orders",
+      "accounting": "Accounting"
+    }
   },
   "header": {
     "search": "Search agents, decisions...",
@@ -915,15 +923,29 @@
   },
   "common": {
     "loading": "Loading...",
-    "error": "Error",
-    "success": "Success",
+    "error": "Failed to load",
+    "retry": "Retry",
+    "save": "Save",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "retry": "Retry",
-    "refresh": "Refresh"
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "actions": "Actions",
+    "status": "Status",
+    "success": "Success",
+    "failed": "Failed",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "notFound": "Not Found",
+    "serverError": "Server Error",
+    "networkError": "Network Error",
+    "validationError": "Validation Error",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "editor": {
     "source": "Source",
@@ -1211,74 +1233,54 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account and preferences",
-    "saveChanges": "Save Changes",
     "tabs": {
       "profile": "Profile",
       "notifications": "Notifications",
-      "ai": "AI Settings",
-      "appearance": "Appearance"
+      "security": "Security"
     },
+    "save": "Save Changes",
+    "saved": "Saved",
     "profile": {
       "title": "Profile Information",
-      "description": "Update your personal information",
-      "name": "Name",
-      "namePlaceholder": "Enter your name",
-      "email": "Email",
-      "emailPlaceholder": "Enter your email"
-    },
-    "security": {
-      "title": "Security",
-      "description": "Manage your account security settings",
-      "changePassword": "Change Password",
-      "twoFactor": "Two-Factor Authentication",
-      "twoFactorDescription": "Add an extra layer of security to your account"
+      "description": "Update your personal details",
+      "email": "Email Address",
+      "emailHint": "Email cannot be changed",
+      "name": "Display Name",
+      "namePlaceholder": "Enter your name"
     },
     "notifications": {
-      "email": {
-        "title": "Email Notifications",
-        "description": "Configure which emails you receive",
-        "decisions": "Trading Decisions",
-        "decisionsDescription": "Get notified when AI makes trading decisions",
-        "dailySummary": "Daily Summary",
-        "dailySummaryDescription": "Receive a daily summary of your trading activity"
-      },
-      "push": {
-        "title": "Push Notifications",
-        "description": "Configure browser notifications",
-        "alerts": "Critical Alerts",
-        "alertsDescription": "Important system alerts and warnings",
-        "positions": "Position Updates",
-        "positionsDescription": "Updates on your open positions"
-      }
+      "channels": "Notification Channels",
+      "channelsDescription": "Configure how you receive notifications",
+      "preferences": "Alert Preferences",
+      "preferencesDescription": "Choose which notifications to receive",
+      "telegramDescription": "Receive instant notifications via Telegram bot",
+      "discordDescription": "Get alerts through Discord webhook",
+      "emailDescription": "Receive notifications via email",
+      "serverConfig": "Server Config",
+      "configHint": "Notification channels are configured on the server. Contact admin to enable.",
+      "decisionAlerts": "Decision Alerts",
+      "decisionAlertsDescription": "Get notified when AI makes trading decisions",
+      "tradeAlerts": "Trade Alerts",
+      "tradeAlertsDescription": "Get notified when trades are executed",
+      "riskAlerts": "Risk Alerts",
+      "riskAlertsDescription": "Get notified about risk warnings and limits"
     },
-    "ai": {
-      "title": "AI Agent Settings",
-      "description": "Configure how AI agents make decisions",
-      "confidenceThreshold": "Default Confidence Threshold",
-      "confidenceThresholdDescription": "Minimum confidence required to execute trades",
-      "moreFrequent": "More frequent",
-      "moreSelective": "More selective",
-      "autoExecute": "Auto-Execute Trades",
-      "autoExecuteDescription": "Automatically execute AI decisions above threshold",
-      "riskLevel": "Risk Level",
-      "riskLevelDescription": "Set your preferred risk tolerance",
-      "riskLevels": {
-        "conservative": "Conservative",
-        "moderate": "Moderate",
-        "aggressive": "Aggressive"
-      },
-      "riskLevelDescriptions": {
-        "conservative": "Lower risk, smaller positions",
-        "moderate": "Balanced approach",
-        "aggressive": "Higher risk, larger positions"
-      }
+    "security": {
+      "changePassword": "Change Password",
+      "changePasswordDescription": "Update your account password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "updatePassword": "Update Password",
+      "apiAccess": "API Access",
+      "apiAccessDescription": "Information about API access and security",
+      "apiNote": "{brandName} uses secure JWT authentication. Access tokens expire after 1 hour.",
+      "exchangeKeysNote": "Exchange API keys are encrypted with AES-256-GCM and stored securely. You can manage your exchange accounts in the Accounts page."
     },
-    "appearance": {
-      "title": "Appearance",
-      "theme": "Theme",
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
+    "password": {
+      "mismatch": "Passwords do not match",
+      "tooShort": "Password must be at least 8 characters",
+      "failed": "Failed to change password"
     }
   },
   "agentDetail": {
@@ -1776,59 +1778,6 @@
     "toast": {
       "failedToUpdateProfile": "Failed to update profile",
       "failedToChangePassword": "Failed to change password"
-    }
-  },
-  "settings": {
-    "title": "Settings",
-    "subtitle": "Manage your account and preferences",
-    "tabs": {
-      "profile": "Profile",
-      "notifications": "Notifications",
-      "security": "Security"
-    },
-    "save": "Save Changes",
-    "saved": "Saved",
-    "profile": {
-      "title": "Profile Information",
-      "description": "Update your personal details",
-      "email": "Email Address",
-      "emailHint": "Email cannot be changed",
-      "name": "Display Name",
-      "namePlaceholder": "Enter your name"
-    },
-    "notifications": {
-      "channels": "Notification Channels",
-      "channelsDescription": "Configure how you receive notifications",
-      "preferences": "Alert Preferences",
-      "preferencesDescription": "Choose which notifications to receive",
-      "telegramDescription": "Receive instant notifications via Telegram bot",
-      "discordDescription": "Get alerts through Discord webhook",
-      "emailDescription": "Receive notifications via email",
-      "serverConfig": "Server Config",
-      "configHint": "Notification channels are configured on the server. Contact admin to enable.",
-      "decisionAlerts": "Decision Alerts",
-      "decisionAlertsDescription": "Get notified when AI makes trading decisions",
-      "tradeAlerts": "Trade Alerts",
-      "tradeAlertsDescription": "Get notified when trades are executed",
-      "riskAlerts": "Risk Alerts",
-      "riskAlertsDescription": "Get notified about risk warnings and limits"
-    },
-    "security": {
-      "changePassword": "Change Password",
-      "changePasswordDescription": "Update your account password",
-      "currentPassword": "Current Password",
-      "newPassword": "New Password",
-      "confirmPassword": "Confirm New Password",
-      "updatePassword": "Update Password",
-      "apiAccess": "API Access",
-      "apiAccessDescription": "Information about API access and security",
-      "apiNote": "{brandName} uses secure JWT authentication. Access tokens expire after 1 hour.",
-      "exchangeKeysNote": "Exchange API keys are encrypted with AES-256-GCM and stored securely. You can manage your exchange accounts in the Accounts page."
-    },
-    "password": {
-      "mismatch": "Passwords do not match",
-      "tooShort": "Password must be at least 8 characters",
-      "failed": "Failed to change password"
     }
   },
   "setupGuide": {
@@ -2632,6 +2581,235 @@
       "button": "Sync Live Data",
       "success": "Data synced successfully",
       "error": "Failed to sync data"
+    }
+  },
+  "wallet": {
+    "title": "My Wallet",
+    "subtitle": "Manage your balance and recharge",
+    "balance": "Available Balance",
+    "frozenBalance": "Frozen Balance",
+    "totalBalance": "Total Balance",
+    "totalRecharged": "Total Recharged",
+    "totalConsumed": "Total Consumed",
+    "recharge": {
+      "title": "Recharge",
+      "description": "After creating an order, please complete payment via bank transfer",
+      "amount": "Amount",
+      "amountPlaceholder": "Enter recharge amount",
+      "bonus": "Bonus Amount",
+      "submit": "Create Order",
+      "success": "Order created successfully",
+      "orders": "Recharge History",
+      "orderNo": "Order No.",
+      "status": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "completed": "Completed",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "createdAt": "Created At",
+      "completedAt": "Completed At",
+      "noOrders": "No recharge records"
+    },
+    "transactions": {
+      "title": "Transaction History",
+      "type": "Type",
+      "amount": "Amount",
+      "balance": "Balance",
+      "time": "Time",
+      "description": "Description",
+      "types": {
+        "recharge": "Recharge",
+        "consume": "Consume",
+        "refund": "Refund",
+        "gift": "Gift",
+        "adjustment": "Adjustment"
+      },
+      "noData": "No transaction records"
+    },
+    "invite": {
+      "title": "Invite Code",
+      "myCode": "My Invite Code",
+      "referrer": "Referrer",
+      "channel": "Channel",
+      "invited": "Users Invited",
+      "share": "Share Invite Code",
+      "copied": "Invite code copied",
+      "description": "Share your invite code to invite new users"
+    }
+  },
+  "channel": {
+    "title": "Channel Management",
+    "description": "Manage your channel and users",
+    "name": "Channel Name",
+    "code": "Channel Code",
+    "commissionRate": "Commission Rate",
+    "noChannel": "No Channel Access",
+    "noChannelDescription": "You are not a channel admin and cannot access this page",
+    "createdAt": "Created At",
+    "totalUsers": "Total Users",
+    "activeUsers": "Active Users",
+    "walletBalance": "Wallet Balance",
+    "totalCommission": "Total Commission",
+    "totalRevenue": "Total Revenue",
+    "pendingCommission": "Pending Commission",
+    "periodCommission": "Period Commission",
+    "availableBalance": "Available Balance",
+    "status": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "closed": "Closed"
+    },
+    "contact": {
+      "name": "Contact Name",
+      "email": "Contact Email",
+      "phone": "Contact Phone"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "totalRevenue": "Total Revenue",
+      "totalCommission": "Total Commission",
+      "periodCommission": "Period Commission",
+      "pendingCommission": "Pending",
+      "availableBalance": "Available"
+    },
+    "users": {
+      "title": "Channel Users",
+      "description": "Users registered through your channel invite code",
+      "email": "Email",
+      "name": "Name",
+      "balance": "Balance",
+      "totalConsumed": "Total Consumed",
+      "registeredAt": "Registered At",
+      "noData": "No users"
+    },
+    "wallet": {
+      "title": "Channel Wallet",
+      "description": "Channel commission and withdrawal management",
+      "balance": "Available Balance",
+      "frozenBalance": "Frozen Balance",
+      "pendingCommission": "Pending Commission",
+      "totalCommission": "Total Commission",
+      "totalWithdrawn": "Total Withdrawn",
+      "noData": "No wallet data"
+    },
+    "accounting": {
+      "title": "Accounting",
+      "description": "Channel revenue and commission statistics",
+      "totalRevenue": "Total Revenue",
+      "totalCommission": "Total Commission",
+      "userConsumption": "User Consumption",
+      "totalRecharge": "User Recharge",
+      "activeUsers": "Active Users",
+      "noData": "No accounting data"
+    }
+  },
+  "admin": {
+    "channels": {
+      "title": "Channel Management",
+      "description": "Create and manage channel partners",
+      "create": "Create Channel",
+      "edit": "Edit Channel",
+      "list": "Channel List",
+      "noChannels": "No channels",
+      "noResults": "No matching channels found",
+      "searchPlaceholder": "Search by name or code...",
+      "createSuccess": "Channel created successfully",
+      "statusUpdateSuccess": "Status updated successfully",
+      "commissionRate": "Commission Rate",
+      "code": "Channel Code",
+      "createdAt": "Created At",
+      "table": {
+        "name": "Name",
+        "code": "Code",
+        "status": "Status",
+        "commissionRate": "Commission",
+        "users": "Users",
+        "revenue": "Revenue",
+        "contact": "Contact",
+        "createdAt": "Created"
+      },
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "closed": "Closed"
+      },
+      "createDialog": {
+        "title": "Create New Channel",
+        "description": "Fill in the details to create a new channel partner",
+        "name": "Channel Name",
+        "namePlaceholder": "Enter channel name",
+        "code": "Channel Code",
+        "codePlaceholder": "e.g., PARTNER001",
+        "commissionRate": "Commission Rate",
+        "commissionRateHint": "0.3 means 30%",
+        "contactName": "Contact Name",
+        "contactEmail": "Contact Email",
+        "contactPhone": "Contact Phone"
+      },
+      "statusDialog": {
+        "title": "Change Channel Status",
+        "description": "Select the new status for this channel"
+      },
+      "actions": {
+        "changeStatus": "Change Status",
+        "suspend": "Suspend Channel",
+        "close": "Close Channel"
+      }
+    },
+    "recharge": {
+      "title": "Recharge Orders",
+      "description": "Process user recharge orders",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "note": "Note",
+      "notePlaceholder": "Enter note",
+      "confirmSuccess": "Order confirmed",
+      "cancelSuccess": "Order cancelled",
+      "noOrders": "No recharge orders",
+      "noResults": "No matching orders found",
+      "searchPlaceholder": "Search by order no. or user ID...",
+      "filterStatus": "Filter Status",
+      "pendingOrders": "Pending Orders",
+      "pendingAmount": "Pending Amount",
+      "totalOrders": "Total Orders",
+      "totalAmount": "Completed Amount",
+      "table": {
+        "orderNo": "Order No.",
+        "user": "User",
+        "amount": "Amount",
+        "status": "Status",
+        "createdAt": "Created",
+        "completedAt": "Completed",
+        "actions": "Actions"
+      },
+      "confirmDialog": {
+        "title": "Confirm Recharge",
+        "description": "Confirm this recharge order has been received",
+        "warning": "User balance will be increased immediately. This action cannot be undone."
+      }
+    },
+    "accounting": {
+      "title": "Platform Accounting",
+      "description": "Platform financial overview",
+      "allTime": "All Time",
+      "registeredUsers": "Registered Users",
+      "totalChannels": "Total Channels",
+      "activeChannels": "Active Channels",
+      "totalUsers": "Total Users",
+      "totalRevenue": "Total Revenue",
+      "totalCommission": "Total Commission",
+      "platformRevenue": "Platform Revenue",
+      "dailyStats": "Daily Statistics",
+      "channelBreakdown": "Channel Breakdown",
+      "channelBreakdownDescription": "Revenue distribution by channel",
+      "commissionRate": "Commission Rate",
+      "users": "Users",
+      "noChannels": "No channel data",
+      "noData": "No accounting data available"
     }
   }
 }

@@ -142,3 +142,27 @@ export type {
   UseAgentPnLOptions,
   UseEquityCurveOptions,
 } from "./use-analytics";
+
+// Wallet hooks
+export {
+  useWallet,
+  useWalletTransactions,
+  useTransactionSummary,
+  useInviteInfo,
+  useRechargeOrders,
+  useCreateRechargeOrder,
+} from "./use-wallet";
+
+// Channel hooks
+export {
+  useMyChannel,
+  useMyChannelUsers,
+  useMyChannelWallet,
+  useMyChannelStatistics,
+  useMyChannelAccounting,
+  useChannels,
+  useChannel,
+  useCreateChannel,
+  useUpdateChannel,
+  useUpdateChannelStatus,
+} from "./use-channel";

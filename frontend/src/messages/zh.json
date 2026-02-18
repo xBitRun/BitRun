@@ -52,7 +52,15 @@
     "backtest": "历史回测",
     "analytics": "盈亏分析",
     "settings": "设置",
-    "collapse": "收起"
+    "collapse": "收起",
+    "wallet": "我的钱包",
+    "invite": "邀请好友",
+    "channel": "渠道管理",
+    "admin": {
+      "channels": "渠道列表",
+      "recharge": "充值管理",
+      "accounting": "账务统计"
+    }
   },
   "header": {
     "search": "搜索代理、决策...",
@@ -915,15 +923,29 @@
   },
   "common": {
     "loading": "加载中...",
-    "error": "错误",
-    "success": "成功",
+    "error": "加载失败",
+    "retry": "重试",
+    "save": "保存",
     "cancel": "取消",
     "confirm": "确认",
-    "save": "保存",
     "delete": "删除",
     "edit": "编辑",
-    "retry": "重试",
-    "refresh": "刷新"
+    "create": "创建",
+    "search": "搜索",
+    "filter": "筛选",
+    "all": "全部",
+    "actions": "操作",
+    "status": "状态",
+    "success": "操作成功",
+    "failed": "操作失败",
+    "unauthorized": "无权限访问",
+    "forbidden": "禁止访问",
+    "notFound": "未找到",
+    "serverError": "服务器错误",
+    "networkError": "网络错误",
+    "validationError": "验证错误",
+    "copy": "复制",
+    "copied": "已复制"
   },
   "editor": {
     "source": "源码",
@@ -1113,12 +1135,23 @@
     "edit": {
       "title": "编辑策略",
       "backToStrategy": "返回策略详情",
+      "basicInfo": "基本信息",
+      "basicInfoDesc": "设置策略名称和描述",
+      "config": "策略配置",
+      "configDesc": "修改策略参数配置",
+      "visibilityAndTags": "可见性与标签",
+      "visibilityAndTagsDesc": "设置策略可见性和标签",
+      "visibility": "可见性",
+      "tags": "标签",
+      "tagPlaceholder": "输入标签",
+      "noTags": "暂无标签",
       "nameRequired": "策略名称不能为空",
-      "notFound": "策略未找到",
-      "add": "添加",
+      "noConfig": "暂无配置参数",
       "yes": "是",
       "no": "否",
-      "saveChanges": "保存更改"
+      "add": "添加",
+      "saveChanges": "保存更改",
+      "notFound": "策略未找到"
     },
     "detail": {
       "backToStrategies": "返回策略列表",
@@ -1195,100 +1228,59 @@
         "updated": "更新时间",
         "stats": "统计数据"
       }
-    },
-    "edit": {
-      "title": "编辑策略",
-      "backToStrategy": "返回策略详情",
-      "basicInfo": "基本信息",
-      "basicInfoDesc": "设置策略名称和描述",
-      "config": "策略配置",
-      "configDesc": "修改策略参数配置",
-      "visibilityAndTags": "可见性与标签",
-      "visibilityAndTagsDesc": "设置策略可见性和标签",
-      "visibility": "可见性",
-      "tags": "标签",
-      "tagPlaceholder": "输入标签",
-      "noTags": "暂无标签",
-      "nameRequired": "策略名称不能为空",
-      "noConfig": "暂无配置参数",
-      "yes": "是",
-      "no": "否",
-      "add": "添加",
-      "saveChanges": "保存更改",
-      "notFound": "策略未找到"
     }
   },
   "settings": {
     "title": "设置",
     "subtitle": "管理您的账户和偏好设置",
-    "saveChanges": "保存更改",
     "tabs": {
       "profile": "个人资料",
       "notifications": "通知",
-      "ai": "AI 设置",
-      "appearance": "外观"
+      "security": "安全"
     },
+    "save": "保存更改",
+    "saved": "已保存",
     "profile": {
       "title": "个人信息",
-      "description": "更新您的个人信息",
-      "name": "姓名",
-      "namePlaceholder": "输入您的姓名",
-      "email": "邮箱",
-      "emailPlaceholder": "输入您的邮箱"
-    },
-    "security": {
-      "title": "安全",
-      "description": "管理您的账户安全设置",
-      "changePassword": "修改密码",
-      "twoFactor": "双因素认证",
-      "twoFactorDescription": "为您的账户添加额外的安全保护"
+      "description": "更新您的个人资料",
+      "email": "邮箱地址",
+      "emailHint": "邮箱不可修改",
+      "name": "显示名称",
+      "namePlaceholder": "输入您的名称"
     },
     "notifications": {
-      "email": {
-        "title": "邮件通知",
-        "description": "配置您接收的邮件类型",
-        "decisions": "交易决策",
-        "decisionsDescription": "AI 做出交易决策时通知您",
-        "dailySummary": "每日摘要",
-        "dailySummaryDescription": "接收每日交易活动摘要"
-      },
-      "push": {
-        "title": "推送通知",
-        "description": "配置浏览器通知",
-        "alerts": "重要警报",
-        "alertsDescription": "重要的系统警报和警告",
-        "positions": "持仓更新",
-        "positionsDescription": "您的持仓变动通知"
-      }
+      "channels": "通知渠道",
+      "channelsDescription": "配置您接收通知的方式",
+      "preferences": "通知偏好",
+      "preferencesDescription": "选择您想接收的通知类型",
+      "telegramDescription": "通过 Telegram 机器人接收即时通知",
+      "discordDescription": "通过 Discord Webhook 接收通知",
+      "emailDescription": "通过电子邮件接收通知",
+      "serverConfig": "服务端配置",
+      "configHint": "通知渠道在服务端配置。如需启用请联系管理员。",
+      "decisionAlerts": "决策通知",
+      "decisionAlertsDescription": "当 AI 做出交易决策时收到通知",
+      "tradeAlerts": "交易通知",
+      "tradeAlertsDescription": "当交易执行时收到通知",
+      "riskAlerts": "风险通知",
+      "riskAlertsDescription": "收到风险警告和限制提醒"
     },
-    "ai": {
-      "title": "AI 代理设置",
-      "description": "配置 AI 代理的决策方式",
-      "confidenceThreshold": "默认置信度阈值",
-      "confidenceThresholdDescription": "执行交易所需的最低置信度",
-      "moreFrequent": "更频繁",
-      "moreSelective": "更谨慎",
-      "autoExecute": "自动执行交易",
-      "autoExecuteDescription": "自动执行超过阈值的 AI 决策",
-      "riskLevel": "风险等级",
-      "riskLevelDescription": "设置您的风险偏好",
-      "riskLevels": {
-        "conservative": "保守",
-        "moderate": "适中",
-        "aggressive": "激进"
-      },
-      "riskLevelDescriptions": {
-        "conservative": "低风险，小仓位",
-        "moderate": "平衡策略",
-        "aggressive": "高风险，大仓位"
-      }
+    "security": {
+      "changePassword": "修改密码",
+      "changePasswordDescription": "更新您的账户密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "updatePassword": "更新密码",
+      "apiAccess": "API 访问",
+      "apiAccessDescription": "API 访问和安全信息",
+      "apiNote": "{brandName} 使用安全的 JWT 认证。访问令牌 1 小时后过期。",
+      "exchangeKeysNote": "交易所 API 密钥使用 AES-256-GCM 加密安全存储。您可以在账户页面管理交易所账户。"
     },
-    "appearance": {
-      "title": "外观",
-      "theme": "主题",
-      "light": "浅色",
-      "dark": "深色",
-      "system": "跟随系统"
+    "password": {
+      "mismatch": "两次输入的密码不一致",
+      "tooShort": "密码至少需要 8 个字符",
+      "failed": "修改密码失败"
     }
   },
   "agentDetail": {
@@ -1786,59 +1778,6 @@
     "toast": {
       "failedToUpdateProfile": "更新个人资料失败",
       "failedToChangePassword": "修改密码失败"
-    }
-  },
-  "settings": {
-    "title": "设置",
-    "subtitle": "管理您的账户和偏好设置",
-    "tabs": {
-      "profile": "个人资料",
-      "notifications": "通知",
-      "security": "安全"
-    },
-    "save": "保存更改",
-    "saved": "已保存",
-    "profile": {
-      "title": "个人信息",
-      "description": "更新您的个人资料",
-      "email": "邮箱地址",
-      "emailHint": "邮箱不可修改",
-      "name": "显示名称",
-      "namePlaceholder": "输入您的名称"
-    },
-    "notifications": {
-      "channels": "通知渠道",
-      "channelsDescription": "配置您接收通知的方式",
-      "preferences": "通知偏好",
-      "preferencesDescription": "选择您想接收的通知类型",
-      "telegramDescription": "通过 Telegram 机器人接收即时通知",
-      "discordDescription": "通过 Discord Webhook 接收通知",
-      "emailDescription": "通过电子邮件接收通知",
-      "serverConfig": "服务端配置",
-      "configHint": "通知渠道在服务端配置。如需启用请联系管理员。",
-      "decisionAlerts": "决策通知",
-      "decisionAlertsDescription": "当 AI 做出交易决策时收到通知",
-      "tradeAlerts": "交易通知",
-      "tradeAlertsDescription": "当交易执行时收到通知",
-      "riskAlerts": "风险通知",
-      "riskAlertsDescription": "收到风险警告和限制提醒"
-    },
-    "security": {
-      "changePassword": "修改密码",
-      "changePasswordDescription": "更新您的账户密码",
-      "currentPassword": "当前密码",
-      "newPassword": "新密码",
-      "confirmPassword": "确认新密码",
-      "updatePassword": "更新密码",
-      "apiAccess": "API 访问",
-      "apiAccessDescription": "API 访问和安全信息",
-      "apiNote": "{brandName} 使用安全的 JWT 认证。访问令牌 1 小时后过期。",
-      "exchangeKeysNote": "交易所 API 密钥使用 AES-256-GCM 加密安全存储。您可以在账户页面管理交易所账户。"
-    },
-    "password": {
-      "mismatch": "两次输入的密码不一致",
-      "tooShort": "密码至少需要 8 个字符",
-      "failed": "修改密码失败"
     }
   },
   "setupGuide": {
@@ -2688,6 +2627,235 @@
       "button": "同步实时数据",
       "success": "数据同步成功",
       "error": "数据同步失败"
+    }
+  },
+  "wallet": {
+    "title": "我的钱包",
+    "subtitle": "管理您的账户余额和充值",
+    "balance": "可用余额",
+    "frozenBalance": "冻结余额",
+    "totalBalance": "总余额",
+    "totalRecharged": "累计充值",
+    "totalConsumed": "累计消费",
+    "recharge": {
+      "title": "充值",
+      "description": "创建充值订单后，请通过银行转账完成支付",
+      "amount": "充值金额",
+      "amountPlaceholder": "请输入充值金额",
+      "bonus": "赠送金额",
+      "submit": "创建订单",
+      "success": "订单创建成功",
+      "orders": "充值记录",
+      "orderNo": "订单号",
+      "status": {
+        "pending": "待支付",
+        "paid": "已支付",
+        "completed": "已完成",
+        "failed": "已失败",
+        "refunded": "已退款"
+      },
+      "createdAt": "创建时间",
+      "completedAt": "完成时间",
+      "noOrders": "暂无充值记录"
+    },
+    "transactions": {
+      "title": "交易记录",
+      "type": "类型",
+      "amount": "金额",
+      "balance": "余额",
+      "time": "时间",
+      "description": "描述",
+      "types": {
+        "recharge": "充值",
+        "consume": "消费",
+        "refund": "退款",
+        "gift": "赠送",
+        "adjustment": "调整"
+      },
+      "noData": "暂无交易记录"
+    },
+    "invite": {
+      "title": "邀请码",
+      "myCode": "我的邀请码",
+      "referrer": "邀请人",
+      "channel": "所属渠道",
+      "invited": "已邀请用户",
+      "share": "分享邀请码",
+      "copied": "邀请码已复制",
+      "description": "分享您的邀请码，邀请新用户注册"
+    }
+  },
+  "channel": {
+    "title": "渠道管理",
+    "description": "管理您的渠道和用户",
+    "name": "渠道名称",
+    "code": "渠道代码",
+    "commissionRate": "佣金比例",
+    "noChannel": "无渠道权限",
+    "noChannelDescription": "您不是渠道管理员，无法访问此页面",
+    "createdAt": "创建时间",
+    "totalUsers": "总用户数",
+    "activeUsers": "活跃用户",
+    "walletBalance": "钱包余额",
+    "totalCommission": "总佣金",
+    "totalRevenue": "总收入",
+    "pendingCommission": "待结算佣金",
+    "periodCommission": "本期佣金",
+    "availableBalance": "可提现余额",
+    "status": {
+      "active": "正常",
+      "suspended": "已暂停",
+      "closed": "已关闭"
+    },
+    "contact": {
+      "name": "联系人",
+      "email": "联系邮箱",
+      "phone": "联系电话"
+    },
+    "statistics": {
+      "title": "统计数据",
+      "totalUsers": "总用户数",
+      "activeUsers": "活跃用户",
+      "totalRevenue": "总收入",
+      "totalCommission": "总佣金",
+      "periodCommission": "本期佣金",
+      "pendingCommission": "待结算",
+      "availableBalance": "可提现"
+    },
+    "users": {
+      "title": "渠道用户",
+      "description": "通过您渠道邀请码注册的用户",
+      "email": "邮箱",
+      "name": "用户名",
+      "balance": "余额",
+      "totalConsumed": "累计消费",
+      "registeredAt": "注册时间",
+      "noData": "暂无用户"
+    },
+    "wallet": {
+      "title": "渠道钱包",
+      "description": "渠道佣金和提现管理",
+      "balance": "可用余额",
+      "frozenBalance": "冻结余额",
+      "pendingCommission": "待结算佣金",
+      "totalCommission": "累计佣金",
+      "totalWithdrawn": "累计提现",
+      "noData": "暂无钱包数据"
+    },
+    "accounting": {
+      "title": "账务明细",
+      "description": "渠道收入和佣金统计",
+      "totalRevenue": "总收入",
+      "totalCommission": "总佣金",
+      "userConsumption": "用户消费",
+      "totalRecharge": "用户充值",
+      "activeUsers": "活跃用户",
+      "noData": "暂无账务数据"
+    }
+  },
+  "admin": {
+    "channels": {
+      "title": "渠道管理",
+      "description": "创建和管理渠道商",
+      "create": "创建渠道",
+      "edit": "编辑渠道",
+      "list": "渠道列表",
+      "noChannels": "暂无渠道",
+      "noResults": "未找到匹配的渠道",
+      "searchPlaceholder": "搜索渠道名称或代码...",
+      "createSuccess": "渠道创建成功",
+      "statusUpdateSuccess": "状态更新成功",
+      "commissionRate": "佣金比例",
+      "code": "渠道代码",
+      "createdAt": "创建时间",
+      "table": {
+        "name": "名称",
+        "code": "代码",
+        "status": "状态",
+        "commissionRate": "佣金比例",
+        "users": "用户数",
+        "revenue": "收入",
+        "contact": "联系方式",
+        "createdAt": "创建时间"
+      },
+      "status": {
+        "active": "活跃",
+        "suspended": "暂停",
+        "closed": "关闭"
+      },
+      "createDialog": {
+        "title": "创建新渠道",
+        "description": "填写渠道信息创建新的渠道商",
+        "name": "渠道名称",
+        "namePlaceholder": "输入渠道名称",
+        "code": "渠道代码",
+        "codePlaceholder": "例如: PARTNER001",
+        "commissionRate": "佣金比例",
+        "commissionRateHint": "0.3 表示 30%",
+        "contactName": "联系人",
+        "contactEmail": "联系邮箱",
+        "contactPhone": "联系电话"
+      },
+      "statusDialog": {
+        "title": "更改渠道状态",
+        "description": "选择新的渠道状态"
+      },
+      "actions": {
+        "changeStatus": "更改状态",
+        "suspend": "暂停渠道",
+        "close": "关闭渠道"
+      }
+    },
+    "recharge": {
+      "title": "充值订单管理",
+      "description": "处理用户充值订单",
+      "confirm": "确认到账",
+      "cancel": "取消订单",
+      "note": "备注",
+      "notePlaceholder": "请输入备注信息",
+      "confirmSuccess": "订单已确认",
+      "cancelSuccess": "订单已取消",
+      "noOrders": "暂无充值订单",
+      "noResults": "未找到匹配的订单",
+      "searchPlaceholder": "搜索订单号或用户ID...",
+      "filterStatus": "筛选状态",
+      "pendingOrders": "待处理订单",
+      "pendingAmount": "待处理金额",
+      "totalOrders": "订单总数",
+      "totalAmount": "已完成总额",
+      "table": {
+        "orderNo": "订单号",
+        "user": "用户",
+        "amount": "金额",
+        "status": "状态",
+        "createdAt": "创建时间",
+        "completedAt": "完成时间",
+        "actions": "操作"
+      },
+      "confirmDialog": {
+        "title": "确认充值",
+        "description": "确认该充值订单已到账",
+        "warning": "确认后用户余额将立即增加，此操作不可撤销。"
+      }
+    },
+    "accounting": {
+      "title": "平台账务",
+      "description": "平台整体财务状况统计",
+      "allTime": "累计",
+      "registeredUsers": "注册用户",
+      "totalChannels": "渠道总数",
+      "activeChannels": "活跃渠道",
+      "totalUsers": "用户总数",
+      "totalRevenue": "总收入",
+      "totalCommission": "总佣金",
+      "platformRevenue": "平台收入",
+      "dailyStats": "每日统计",
+      "channelBreakdown": "渠道明细",
+      "channelBreakdownDescription": "各渠道收入分布",
+      "commissionRate": "佣金比例",
+      "users": "用户",
+      "noChannels": "暂无渠道数据",
+      "noData": "暂无账务数据"
     }
   }
 }

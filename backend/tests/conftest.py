@@ -269,11 +269,147 @@ def mock_redis():
 def mock_ai_client():
     """Create a mock AI client for testing."""
     client = AsyncMock()
-    
+
     client.generate = AsyncMock(return_value={
         "content": '{"chain_of_thought": "test", "decisions": []}',
         "tokens_used": 100,
         "model": "test-model",
     })
-    
+
     return client
+
+
+# =========================================================================
+# Channel & Wallet Fixtures
+# =========================================================================
+
+
+@pytest_asyncio.fixture
+async def test_channel(db_session: AsyncSession) -> "ChannelDB":
+    """Create a test channel."""
+    from app.db.models import ChannelDB
+
+    channel = ChannelDB(
+        id=uuid4(),
+        name="Test Channel",
+        code="TEST01",
+        commission_rate=0.1,  # 10% commission
+        status="active",
+        contact_name="Channel Admin",
+        contact_email="channel@test.com",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(channel)
+    await db_session.commit()
+    await db_session.refresh(channel)
+    return channel
+
+
+@pytest_asyncio.fixture
+async def test_channel_admin(
+    db_session: AsyncSession,
+    test_channel: "ChannelDB",
+) -> UserDB:
+    """Create a test channel admin user."""
+    user = UserDB(
+        id=uuid4(),
+        email="channeladmin@test.com",
+        password_hash=hash_password("testpassword123"),
+        name="Channel Admin",
+        is_active=True,
+        role="channel_admin",
+        channel_id=test_channel.id,
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(user)
+
+    # Update channel admin_user_id
+    test_channel.admin_user_id = user.id
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_channel_user(
+    db_session: AsyncSession,
+    test_channel: "ChannelDB",
+    test_user: UserDB,
+) -> UserDB:
+    """Create a test user belonging to a channel."""
+    test_user.channel_id = test_channel.id
+    test_user.referrer_id = test_user.id  # Self-referral for testing
+    test_user.invite_code = "TESTINVITE"
+    await db_session.commit()
+    await db_session.refresh(test_user)
+    return test_user
+
+
+@pytest_asyncio.fixture
+async def test_wallet(db_session: AsyncSession, test_user: UserDB) -> "WalletDB":
+    """Create a test wallet with balance."""
+    from app.db.models import WalletDB
+
+    wallet = WalletDB(
+        id=uuid4(),
+        user_id=test_user.id,
+        balance=1000.0,
+        frozen_balance=0.0,
+        total_recharged=1000.0,
+        total_consumed=0.0,
+        version=1,
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(wallet)
+    await db_session.commit()
+    await db_session.refresh(wallet)
+    return wallet
+
+
+@pytest_asyncio.fixture
+async def test_channel_wallet(
+    db_session: AsyncSession,
+    test_channel: "ChannelDB",
+) -> "ChannelWalletDB":
+    """Create a test channel wallet."""
+    from app.db.models import ChannelWalletDB
+
+    wallet = ChannelWalletDB(
+        id=uuid4(),
+        channel_id=test_channel.id,
+        balance=100.0,
+        frozen_balance=0.0,
+        pending_commission=0.0,
+        total_commission=100.0,
+        total_withdrawn=0.0,
+        version=1,
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(wallet)
+    await db_session.commit()
+    await db_session.refresh(wallet)
+    return wallet
+
+
+@pytest_asyncio.fixture
+async def test_recharge_order(
+    db_session: AsyncSession,
+    test_user: UserDB,
+) -> "RechargeOrderDB":
+    """Create a test recharge order."""
+    from app.db.models import RechargeOrderDB
+
+    order = RechargeOrderDB(
+        id=uuid4(),
+        user_id=test_user.id,
+        order_no="R202401010001",
+        amount=100.0,
+        bonus_amount=10.0,
+        payment_method="manual",
+        status="pending",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(order)
+    await db_session.commit()
+    await db_session.refresh(order)
+    return order

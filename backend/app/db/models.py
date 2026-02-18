@@ -60,6 +60,32 @@ class UserDB(Base):
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Invitation and channel fields
+    invite_code: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=True,
+        index=True
+    )
+    referrer_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    channel_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("channels.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    role: Mapped[str] = mapped_column(
+        String(20),
+        default="user",
+        nullable=False,
+        index=True
+    )  # user, channel_admin, platform_admin
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -103,6 +129,24 @@ class UserDB(Base):
         cascade="all, delete-orphan"
     )
     daily_agent_snapshots: Mapped[list["DailyAgentSnapshotDB"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    # Channel relationships
+    channel: Mapped[Optional["ChannelDB"]] = relationship(
+        back_populates="users",
+        foreign_keys=[channel_id]
+    )
+    referrer: Mapped[Optional["UserDB"]] = relationship(
+        remote_side=[id],
+        foreign_keys=[referrer_id]
+    )
+    wallet: Mapped[Optional["WalletDB"]] = relationship(
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    recharge_orders: Mapped[list["RechargeOrderDB"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
@@ -1174,3 +1218,454 @@ class DailyAgentSnapshotDB(Base):
 
     def __repr__(self) -> str:
         return f"<DailyAgentSnapshot agent={self.agent_id} date={self.snapshot_date}>"
+
+
+# =============================================================================
+# Channel Management - Invitation and billing system
+# =============================================================================
+
+class ChannelDB(Base):
+    """
+    Channel/Distributor model for multi-tenant distribution.
+
+    Channels are distribution partners that can invite users and earn
+    commissions on user spending. Each channel has:
+    - A unique code used as invite code prefix
+    - A commission rate (0.0-1.0)
+    - An optional admin user (channel_admin role)
+    - A channel wallet for commission tracking
+    """
+    __tablename__ = "channels"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+
+    # Basic info
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    code: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=False,
+        index=True
+    )  # Unique code for invite prefix
+    admin_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Commission settings
+    commission_rate: Mapped[float] = mapped_column(Float, default=0.0)  # 0.0-1.0
+
+    # Status
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="active",
+        index=True
+    )  # active, suspended, closed
+
+    # Contact info
+    contact_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Statistics (denormalized for performance)
+    total_users: Mapped[int] = mapped_column(Integer, default=0)
+    total_revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    total_commission: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    users: Mapped[list["UserDB"]] = relationship(
+        back_populates="channel",
+        foreign_keys="UserDB.channel_id"
+    )
+    admin_user: Mapped[Optional["UserDB"]] = relationship(
+        foreign_keys=[admin_user_id]
+    )
+    wallet: Mapped[Optional["ChannelWalletDB"]] = relationship(
+        back_populates="channel",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Channel {self.name} ({self.code})>"
+
+
+class WalletDB(Base):
+    """
+    User wallet for balance management.
+
+    Each user has one wallet that tracks:
+    - Available balance for spending
+    - Frozen balance (reserved for ongoing operations)
+    - Total recharged and consumed amounts
+    Uses optimistic locking (version) for concurrent updates.
+    """
+    __tablename__ = "wallets"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    # Balance
+    balance: Mapped[float] = mapped_column(Float, default=0.0)  # Available balance
+    frozen_balance: Mapped[float] = mapped_column(Float, default=0.0)  # Reserved
+
+    # Statistics
+    total_recharged: Mapped[float] = mapped_column(Float, default=0.0)
+    total_consumed: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Optimistic locking
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="wallet")
+    transactions: Mapped[list["WalletTransactionDB"]] = relationship(
+        back_populates="wallet",
+        cascade="all, delete-orphan"
+    )
+
+    @property
+    def total_balance(self) -> float:
+        """Total balance including frozen."""
+        return self.balance + self.frozen_balance
+
+    def __repr__(self) -> str:
+        return f"<Wallet user={self.user_id} balance={self.balance}>"
+
+
+class ChannelWalletDB(Base):
+    """
+    Channel wallet for commission tracking.
+
+    Each channel has one wallet that tracks:
+    - Available commission balance
+    - Frozen balance
+    - Pending commission (to be settled)
+    - Total commission earned and withdrawn
+    """
+    __tablename__ = "channel_wallets"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    channel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("channels.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    # Balance
+    balance: Mapped[float] = mapped_column(Float, default=0.0)  # Available
+    frozen_balance: Mapped[float] = mapped_column(Float, default=0.0)  # Reserved
+    pending_commission: Mapped[float] = mapped_column(Float, default=0.0)  # Not yet settled
+
+    # Statistics
+    total_commission: Mapped[float] = mapped_column(Float, default=0.0)
+    total_withdrawn: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Optimistic locking
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Relationships
+    channel: Mapped["ChannelDB"] = relationship(back_populates="wallet")
+    transactions: Mapped[list["ChannelTransactionDB"]] = relationship(
+        back_populates="wallet",
+        cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChannelWallet channel={self.channel_id} balance={self.balance}>"
+
+
+class WalletTransactionDB(Base):
+    """
+    User wallet transaction history.
+
+    Records all balance changes including:
+    - recharge: User topped up balance
+    - consume: User spent on services
+    - refund: Refund to balance
+    - gift: System bonus/gift
+    - adjustment: Manual adjustment by admin
+
+    Each transaction records balance before and after for audit.
+    """
+    __tablename__ = "wallet_transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    wallet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("wallets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Transaction type
+    type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        index=True
+    )  # recharge, consume, refund, gift, adjustment
+
+    # Amount and balance snapshot
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    balance_before: Mapped[float] = mapped_column(Float, nullable=False)
+    balance_after: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Reference info (what caused this transaction)
+    reference_type: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True
+    )  # strategy_subscription, recharge_order, system_gift, etc.
+    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True
+    )
+
+    # Commission info (if this transaction generated commission)
+    # Format: {channel_id, channel_amount, platform_amount}
+    commission_info: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Description
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    wallet: Mapped["WalletDB"] = relationship(back_populates="transactions")
+
+    # Indexes for efficient querying
+    __table_args__ = (
+        Index(
+            "ix_wallet_transactions_reference",
+            "reference_type",
+            "reference_id"
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<WalletTransaction {self.type} amount={self.amount}>"
+
+
+class ChannelTransactionDB(Base):
+    """
+    Channel wallet transaction history.
+
+    Records all channel balance changes including:
+    - commission: Commission earned from user spending
+    - withdraw: Channel admin withdrew funds
+    - adjustment: Manual adjustment
+    - refund: Refund deducted from commission
+
+    source_user_id indicates which user's activity generated this transaction.
+    """
+    __tablename__ = "channel_transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    wallet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("channel_wallets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    channel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("channels.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    source_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )  # User whose activity generated this transaction
+
+    # Transaction type
+    type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        index=True
+    )  # commission, withdraw, adjustment, refund
+
+    # Amount and balance snapshot
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    balance_before: Mapped[float] = mapped_column(Float, nullable=False)
+    balance_after: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Reference info
+    reference_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+
+    # Description
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    wallet: Mapped["ChannelWalletDB"] = relationship(back_populates="transactions")
+
+    def __repr__(self) -> str:
+        return f"<ChannelTransaction {self.type} amount={self.amount}>"
+
+
+class RechargeOrderDB(Base):
+    """
+    Recharge order for user balance top-up.
+
+    Tracks the full lifecycle of a recharge:
+    1. User creates order (status=pending)
+    2. User makes payment (offline transfer)
+    3. Platform admin confirms payment (status=paid)
+    4. System processes and credits balance (status=completed)
+
+    Supports bonus amounts for promotional campaigns.
+    """
+    __tablename__ = "recharge_orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Order info
+    order_no: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    bonus_amount: Mapped[float] = mapped_column(Float, default=0.0)  # Promotional bonus
+
+    # Payment
+    payment_method: Mapped[str] = mapped_column(
+        String(30),
+        default="manual"
+    )  # manual, stripe, crypto, etc.
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        index=True
+    )  # pending, paid, completed, failed, refunded
+
+    # Timestamps
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+        index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False
+    )
+
+    # Note (admin can add notes)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    user: Mapped["UserDB"] = relationship(back_populates="recharge_orders")
+
+    @property
+    def total_amount(self) -> float:
+        """Total amount including bonus."""
+        return self.amount + self.bonus_amount
+
+    def __repr__(self) -> str:
+        return f"<RechargeOrder {self.order_no} amount={self.amount} status={self.status}>"

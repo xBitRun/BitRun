@@ -17,6 +17,8 @@ from ...core.security import (
     verify_token,
 )
 from ...db.repositories.user import UserRepository
+from ...db.repositories.wallet import WalletRepository
+from ...services.invite_service import InviteService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -29,6 +31,8 @@ class UserCreate(BaseModel):
     # bcrypt has a 72-byte limit on passwords; enforce max_length to avoid silent truncation
     password: str = Field(..., min_length=8, max_length=72)
     name: str = Field(..., min_length=1, max_length=100)
+    # Invitation code is required for registration
+    invite_code: str = Field(..., min_length=6, max_length=20, description="Invitation code (required)")
 
 
 class UserResponse(BaseModel):
@@ -37,6 +41,8 @@ class UserResponse(BaseModel):
     email: str
     name: str
     is_active: bool
+    role: str = "user"
+    channel_id: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -71,32 +77,41 @@ async def register(user_data: UserCreate, db: DbSessionDep):
     """
     Register a new user.
 
+    - Requires valid invitation code
     - Validates email uniqueness
     - Hashes password with bcrypt
+    - Creates user wallet
     - Returns user info (without password)
     """
-    repo = UserRepository(db)
+    invite_service = InviteService(db)
 
-    # Check if email exists
-    existing = await repo.get_by_email(user_data.email)
-    if existing:
-        raise auth_error(
-            ErrorCode.AUTH_EMAIL_EXISTS,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    # Create user
-    user = await repo.create(
+    # Create user with invite code
+    user, error = await invite_service.create_user_with_invite(
         email=user_data.email,
         password=user_data.password,
         name=user_data.name,
+        invite_code=user_data.invite_code,
     )
+
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error,
+        )
+
+    # Create wallet for user
+    wallet_repo = WalletRepository(db)
+    await wallet_repo.create(user.id)
+
+    await db.commit()
 
     return UserResponse(
         id=str(user.id),
         email=user.email,
         name=user.name,
         is_active=user.is_active,
+        role=user.role,
+        channel_id=str(user.channel_id) if user.channel_id else None,
     )
 
 
@@ -136,6 +151,8 @@ async def login(
             email=user.email,
             name=user.name,
             is_active=user.is_active,
+            role=user.role,
+            channel_id=str(user.channel_id) if user.channel_id else None,
         ),
     )
 
@@ -212,6 +229,8 @@ async def get_current_user(
         email=user.email,
         name=user.name,
         is_active=user.is_active,
+        role=user.role,
+        channel_id=str(user.channel_id) if user.channel_id else None,
     )
 
 
@@ -255,6 +274,8 @@ async def update_profile(
         email=user.email,
         name=user.name,
         is_active=user.is_active,
+        role=user.role,
+        channel_id=str(user.channel_id) if user.channel_id else None,
     )
 
 

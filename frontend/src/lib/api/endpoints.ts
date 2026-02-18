@@ -1478,6 +1478,298 @@ export const analyticsApi = {
     api.post<SyncSnapshotResponse>(`/analytics/accounts/${accountId}/sync`),
 };
 
+// ==================== Wallet Types ====================
+
+export interface WalletResponse {
+  user_id: string;
+  balance: number;
+  frozen_balance: number;
+  total_balance: number;
+  total_recharged: number;
+  total_consumed: number;
+}
+
+export interface WalletTransactionResponse {
+  id: string;
+  type: "recharge" | "consume" | "refund" | "gift" | "adjustment";
+  amount: number;
+  balance_before: number;
+  balance_after: number;
+  reference_type: string | null;
+  reference_id: string | null;
+  commission_info: {
+    channel_id: string | null;
+    channel_amount: number;
+    platform_amount: number;
+  } | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface TransactionSummaryResponse {
+  recharge: number;
+  consume: number;
+  refund: number;
+  gift: number;
+  adjustment: number;
+}
+
+export interface InviteInfoResponse {
+  invite_code: string | null;
+  referrer_id: string | null;
+  channel_id: string | null;
+  total_invited: number;
+}
+
+export const walletsApi = {
+  getMyWallet: () => api.get<WalletResponse>("/wallets/me"),
+
+  getMyTransactions: (params?: {
+    types?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  }) =>
+    api.get<WalletTransactionResponse[]>("/wallets/me/transactions", {
+      params,
+    }),
+
+  getMySummary: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<TransactionSummaryResponse>("/wallets/me/summary", { params }),
+
+  getMyInviteInfo: () => api.get<InviteInfoResponse>("/wallets/me/invite"),
+};
+
+// ==================== Recharge Types ====================
+
+export interface RechargeOrderResponse {
+  id: string;
+  user_id: string;
+  order_no: string;
+  amount: number;
+  bonus_amount: number;
+  total_amount: number;
+  payment_method: string;
+  status: "pending" | "paid" | "completed" | "failed" | "refunded";
+  paid_at: string | null;
+  completed_at: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RechargeOrderListResponse extends RechargeOrderResponse {
+  user_email: string | null;
+  user_name: string | null;
+}
+
+export const rechargeApi = {
+  createOrder: (data: { amount: number; bonus_amount?: number }) =>
+    api.post<RechargeOrderResponse>("/recharge/orders", data),
+
+  getMyOrders: (params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get<RechargeOrderResponse[]>("/recharge/orders", { params }),
+
+  getMyOrder: (orderId: string) =>
+    api.get<RechargeOrderResponse>(`/recharge/orders/${orderId}`),
+
+  // Admin
+  adminListOrders: (params?: {
+    status?: string;
+    user_id?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  }) =>
+    api.get<RechargeOrderListResponse[]>("/recharge/admin/orders", { params }),
+
+  adminMarkPaid: (orderId: string, note?: string) =>
+    api.post<RechargeOrderResponse>(
+      `/recharge/admin/orders/${orderId}/mark-paid`,
+      { note },
+    ),
+
+  adminConfirm: (orderId: string, note?: string) =>
+    api.post<RechargeOrderResponse>(
+      `/recharge/admin/orders/${orderId}/confirm`,
+      { note },
+    ),
+
+  adminCancel: (orderId: string, note?: string) =>
+    api.post<{ message: string; order_id: string }>(
+      `/recharge/admin/orders/${orderId}/cancel`,
+      { note },
+    ),
+};
+
+// ==================== Channel Types ====================
+
+export interface ChannelResponse {
+  id: string;
+  name: string;
+  code: string;
+  commission_rate: number;
+  status: "active" | "suspended" | "closed";
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  admin_user_id: string | null;
+  total_users: number;
+  total_revenue: number;
+  total_commission: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChannelWalletResponse {
+  channel_id: string;
+  balance: number;
+  frozen_balance: number;
+  pending_commission: number;
+  total_commission: number;
+  total_withdrawn: number;
+}
+
+export interface ChannelUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
+export interface ChannelStatisticsResponse {
+  total_users: number;
+  active_users: number;
+  total_revenue: number;
+  total_commission: number;
+  period_commission: number;
+  pending_commission: number;
+  available_balance: number;
+  frozen_balance: number;
+}
+
+export const channelsApi = {
+  // Platform Admin
+  create: (data: {
+    name: string;
+    code: string;
+    commission_rate?: number;
+    contact_name?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    admin_user_id?: string;
+  }) => api.post<ChannelResponse>("/channels", data),
+
+  list: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get<ChannelResponse[]>("/channels", { params }),
+
+  get: (channelId: string) =>
+    api.get<ChannelResponse>(`/channels/${channelId}`),
+
+  update: (
+    channelId: string,
+    data: Partial<{
+      name: string;
+      commission_rate: number;
+      contact_name: string;
+      contact_email: string;
+      contact_phone: string;
+      admin_user_id: string;
+    }>,
+  ) => api.put<ChannelResponse>(`/channels/${channelId}`, data),
+
+  updateStatus: (
+    channelId: string,
+    status: "active" | "suspended" | "closed",
+  ) => api.put<ChannelResponse>(`/channels/${channelId}/status`, { status }),
+
+  // Channel Admin
+  getMyChannel: () => api.get<ChannelResponse>("/channels/me"),
+
+  getMyUsers: (params?: { limit?: number; offset?: number }) =>
+    api.get<ChannelUserResponse[]>("/channels/me/users", { params }),
+
+  getMyWallet: () => api.get<ChannelWalletResponse>("/channels/me/wallet"),
+
+  getMyStatistics: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<ChannelStatisticsResponse>("/channels/me/statistics", { params }),
+};
+
+// ==================== Accounting Types ====================
+
+export interface UserAccountingOverview {
+  balance: number;
+  frozen_balance: number;
+  total_balance: number;
+  total_recharged: number;
+  total_consumed: number;
+  period_recharged: number;
+  period_consumed: number;
+}
+
+export interface ChannelAccountingOverview {
+  channel_id: string;
+  channel_name: string;
+  channel_code: string;
+  commission_rate: number;
+  total_users: number;
+  total_revenue: number;
+  total_commission: number;
+  available_balance: number;
+  pending_commission: number;
+  period_commission: number;
+  active_users: number;
+}
+
+export interface PlatformAccountingOverview {
+  total_channels: number;
+  active_channels: number;
+  total_users: number;
+  total_revenue: number;
+  total_commission: number;
+  platform_revenue: number;
+}
+
+export interface DailyStats {
+  date: string;
+  recharge_amount: number;
+  consume_amount: number;
+  commission_amount: number;
+}
+
+export const accountingApi = {
+  // User
+  getUserOverview: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<UserAccountingOverview>("/accounting/overview", { params }),
+
+  // Channel
+  getChannelOverview: (
+    channelId: string,
+    params?: { start_date?: string; end_date?: string },
+  ) =>
+    api.get<ChannelAccountingOverview>(
+      `/accounting/channels/${channelId}/overview`,
+      { params },
+    ),
+
+  getMyChannelOverview: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<ChannelAccountingOverview>("/accounting/channels/me/overview", {
+      params,
+    }),
+
+  // Platform Admin
+  getPlatformOverview: () =>
+    api.get<PlatformAccountingOverview>("/accounting/platform/overview"),
+
+  getPlatformDailyStats: (days?: number) =>
+    api.get<DailyStats[]>("/accounting/platform/daily", { params: { days } }),
+};
+
 export interface SyncSnapshotResponse {
   success: boolean;
   message: string;
