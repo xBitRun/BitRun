@@ -15,6 +15,7 @@ from starlette.responses import Response
 
 from ..core.config import get_settings
 from ..db.database import close_db, init_db
+from ..db.seed import seed_admin_user
 from ..services.redis_service import close_redis, get_redis_service
 from ..traders.exchange_pool import ExchangePool
 from .routes import accounts, agents, analytics, auth, backtest, brand, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
@@ -90,6 +91,13 @@ async def lifespan(app: FastAPI):
             logger.info("Database: Connected and initialized")
         except Exception as e:
             logger.error(f"Database: Connection failed - {e}")
+
+    # Seed default admin user (for production deployments)
+    # This runs after database is ready (via init_db in dev or Alembic in prod)
+    try:
+        await seed_admin_user()
+    except Exception as e:
+        logger.warning(f"Seed: Could not seed admin user - {e}")
 
     # Initialize Redis
     try:
