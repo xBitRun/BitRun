@@ -6,7 +6,6 @@ import {
   CreditCard,
   Search,
   Loader2,
-  RefreshCw,
   Clock,
   CheckCircle,
   XCircle,
@@ -164,16 +163,6 @@ export default function AdminRechargePage() {
           <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
           <p className="text-muted-foreground">{t("description")}</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => refresh()}
-          disabled={isLoading}
-        >
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-          />
-          {commonT("retry")}
-        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -346,7 +335,8 @@ export default function AdminRechargePage() {
                           : "-"}
                       </TableCell>
                       <TableCell>
-                        {order.status === "pending" && (
+                        {(order.status === "pending" ||
+                          order.status === "paid") && (
                           <Button
                             size="sm"
                             onClick={() => {
@@ -357,11 +347,12 @@ export default function AdminRechargePage() {
                             {t("confirm")}
                           </Button>
                         )}
-                        {order.status !== "pending" && (
-                          <span className="text-muted-foreground text-sm">
-                            -
-                          </span>
-                        )}
+                        {order.status !== "pending" &&
+                          order.status !== "paid" && (
+                            <span className="text-muted-foreground text-sm">
+                              -
+                            </span>
+                          )}
                       </TableCell>
                     </TableRow>
                   );

@@ -90,13 +90,32 @@
       "viewTutorial": "View Tutorial",
       "watchDemo": "Watch Demo"
     },
+    "accountsOverview": {
+      "title": "Accounts Overview",
+      "viewAll": "View All",
+      "total": "Total",
+      "totalEquity": "Total Equity",
+      "available": "Available",
+      "todayPL": "Today",
+      "offline": "Offline",
+      "noAccounts": "No connected accounts"
+    },
     "stats": {
       "totalEquity": "Total Equity",
       "dailyPL": "Daily P/L",
       "activeStrategies": "Active Agents",
       "openPositions": "Open Positions",
       "executing": "executing",
-      "inProfit": "in profit"
+      "inProfit": "in profit",
+      "plTrend": "P/L Trend",
+      "weeklyPL": "This Week",
+      "monthlyPL": "This Month",
+      "agentsStatus": "Agents Status",
+      "running": "Running",
+      "todayActivity": "Today's Activity",
+      "decisions": "Decisions",
+      "trades": "Trades",
+      "executionRate": "Execution Rate"
     },
     "recentDecisions": {
       "title": "Recent AI Decisions",
@@ -118,7 +137,9 @@
       "pnl": "P/L",
       "long": "LONG",
       "short": "SHORT",
-      "empty": "No open positions"
+      "empty": "No open positions",
+      "positionsCount": "{count} positions",
+      "offlineWarning": "Offline - data may be stale"
     },
     "chart": {
       "title": "Market Overview",
@@ -130,7 +151,9 @@
       "title": "Live Activity Feed",
       "monitoring": "Monitoring market conditions...",
       "analyzing": "AI agents are analyzing in real-time",
-      "viewDetail": "View details"
+      "viewDetail": "View details",
+      "mock": "Mock",
+      "live": "Live"
     },
     "timeAgo": {
       "minAgo": "{count} min ago",

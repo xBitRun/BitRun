@@ -19,14 +19,40 @@ import type {
 
 // ==================== Types ====================
 
+export interface AccountSummary {
+  accountId: string;
+  accountName: string;
+  exchange: string;
+  status: "online" | "offline" | "error";
+  totalEquity: number;
+  availableBalance: number;
+  dailyPnl: number;
+  dailyPnlPercent: number;
+  openPositions: number;
+}
+
 export interface DashboardStats {
+  // Account summaries
+  accounts: AccountSummary[];
+
   // Equity & PnL
   totalEquity: number;
+  totalAvailable: number;
   availableBalance: number;
   unrealizedPnl: number;
   unrealizedPnlPercent: number;
+
+  // Daily P/L
   dailyPnl: number;
   dailyPnlPercent: number;
+
+  // Weekly P/L
+  weeklyPnl: number;
+  weeklyPnlPercent: number;
+
+  // Monthly P/L
+  monthlyPnl: number;
+  monthlyPnlPercent: number;
 
   // Strategies
   activeStrategies: number;
@@ -35,6 +61,10 @@ export interface DashboardStats {
   // Positions
   openPositions: number;
   profitablePositions: number;
+
+  // Today's decisions
+  todayDecisions: number;
+  todayExecutedDecisions: number;
 
   // Accounts
   connectedAccounts: number;
@@ -75,7 +105,7 @@ function mapBackendPositions(
 ): Position[] {
   return positions
     .map((p) => ({
-      accountId: "",
+      accountId: p.account_id || "",
       accountName: p.account_name,
       exchange: p.exchange,
       symbol: p.symbol,
@@ -90,6 +120,25 @@ function mapBackendPositions(
       liquidationPrice: p.liquidation_price ?? undefined,
     }))
     .sort((a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl));
+}
+
+/**
+ * Helper: convert backend account summary to frontend AccountSummary type.
+ */
+function mapBackendAccounts(
+  accounts: DashboardStatsResponse["accounts"]
+): AccountSummary[] {
+  return accounts.map((a) => ({
+    accountId: a.account_id,
+    accountName: a.account_name,
+    exchange: a.exchange,
+    status: a.status as "online" | "offline" | "error",
+    totalEquity: a.total_equity,
+    availableBalance: a.available_balance,
+    dailyPnl: a.daily_pnl,
+    dailyPnlPercent: a.daily_pnl_percent,
+    openPositions: a.open_positions,
+  }));
 }
 
 /**
@@ -115,20 +164,38 @@ export function useDashboardStats() {
         ).length;
 
         const positions = mapBackendPositions(response.positions);
+        const accounts = mapBackendAccounts(response.accounts || []);
 
         const stats: DashboardStats = {
+          // Account summaries
+          accounts,
+          // Equity & PnL
           totalEquity: response.total_equity,
+          totalAvailable: response.total_available ?? response.available_balance,
           availableBalance: response.available_balance,
           unrealizedPnl: response.unrealized_pnl,
           unrealizedPnlPercent: response.total_equity > 0
             ? (response.unrealized_pnl / response.total_equity) * 100
             : 0,
+          // Daily P/L
           dailyPnl: response.daily_pnl,
           dailyPnlPercent: response.daily_pnl_percent,
+          // Weekly P/L
+          weeklyPnl: response.weekly_pnl ?? 0,
+          weeklyPnlPercent: response.weekly_pnl_percent ?? 0,
+          // Monthly P/L
+          monthlyPnl: response.monthly_pnl ?? 0,
+          monthlyPnlPercent: response.monthly_pnl_percent ?? 0,
+          // Strategies
           activeStrategies: response.active_strategies,
           totalStrategies: response.total_strategies,
+          // Positions
           openPositions: response.open_positions,
           profitablePositions,
+          // Today's decisions
+          todayDecisions: response.today_decisions ?? 0,
+          todayExecutedDecisions: response.today_executed_decisions ?? 0,
+          // Accounts
           connectedAccounts: response.accounts_connected,
           totalAccounts: response.accounts_total,
         };
@@ -210,17 +277,49 @@ export function useDashboardStats() {
       // Count accounts
       const connectedAccounts = connectedAccts.length;
 
+      // Build account summaries from balance results
+      const accountSummaries: AccountSummary[] = balanceResults.map(({ account, balance }) => ({
+        accountId: account.id,
+        accountName: account.name,
+        exchange: account.exchange,
+        status: account.is_connected ? (balance ? "online" : "error") : "offline",
+        totalEquity: balance?.equity ?? 0,
+        availableBalance: balance?.available_balance ?? 0,
+        dailyPnl: balance?.unrealized_pnl ?? 0, // Fallback to unrealized PnL
+        dailyPnlPercent: balance && balance.equity > 0
+          ? (balance.unrealized_pnl / balance.equity) * 100
+          : 0,
+        openPositions: balance?.positions.length ?? 0,
+      }));
+
       const stats: DashboardStats = {
+        // Account summaries
+        accounts: accountSummaries,
+        // Equity & PnL
         totalEquity,
+        totalAvailable: availableBalance,
         availableBalance,
         unrealizedPnl,
         unrealizedPnlPercent,
-        dailyPnl: unrealizedPnl, // Use unrealized PnL as daily PnL estimate
+        // Daily P/L (fallback to unrealized PnL as estimate)
+        dailyPnl: unrealizedPnl,
         dailyPnlPercent: unrealizedPnlPercent,
+        // Weekly P/L (not available in fallback)
+        weeklyPnl: 0,
+        weeklyPnlPercent: 0,
+        // Monthly P/L (not available in fallback)
+        monthlyPnl: 0,
+        monthlyPnlPercent: 0,
+        // Strategies
         activeStrategies,
         totalStrategies: agents.length,
+        // Positions
         openPositions,
         profitablePositions,
+        // Today's decisions (not available in fallback)
+        todayDecisions: 0,
+        todayExecutedDecisions: 0,
+        // Accounts
         connectedAccounts,
         totalAccounts: accounts.length,
       };

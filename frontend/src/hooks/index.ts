@@ -75,7 +75,7 @@ export {
   usePerformanceStats,
   useActivityFeed,
 } from "./use-dashboard";
-export type { DashboardStats, Position } from "./use-dashboard";
+export type { DashboardStats, Position, AccountSummary } from "./use-dashboard";
 
 // WebSocket hook
 export { useWebSocket } from "./use-websocket";

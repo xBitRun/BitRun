@@ -90,13 +90,32 @@
       "viewTutorial": "查看教程",
       "watchDemo": "观看演示"
     },
+    "accountsOverview": {
+      "title": "账户概览",
+      "viewAll": "查看全部",
+      "total": "合计",
+      "totalEquity": "总资产",
+      "available": "可用",
+      "todayPL": "今日",
+      "offline": "离线",
+      "noAccounts": "暂无连接的账户"
+    },
     "stats": {
       "totalEquity": "总权益",
       "dailyPL": "日盈亏",
       "activeStrategies": "活跃代理",
       "openPositions": "持仓数量",
       "executing": "执行中",
-      "inProfit": "盈利中"
+      "inProfit": "盈利中",
+      "plTrend": "盈亏趋势",
+      "weeklyPL": "本周",
+      "monthlyPL": "本月",
+      "agentsStatus": "代理状态",
+      "running": "运行中",
+      "todayActivity": "今日动态",
+      "decisions": "决策",
+      "trades": "交易",
+      "executionRate": "执行率"
     },
     "recentDecisions": {
       "title": "最近 AI 决策",
@@ -118,7 +137,9 @@
       "pnl": "盈亏",
       "long": "做多",
       "short": "做空",
-      "empty": "暂无持仓"
+      "empty": "暂无持仓",
+      "positionsCount": "{count} 个持仓",
+      "offlineWarning": "离线 - 数据可能过时"
     },
     "chart": {
       "title": "市场行情",
@@ -130,7 +151,9 @@
       "title": "实时动态",
       "monitoring": "正在监控市场状况...",
       "analyzing": "AI 代理正在实时分析中",
-      "viewDetail": "查看详情"
+      "viewDetail": "查看详情",
+      "mock": "模拟",
+      "live": "实盘"
     },
     "timeAgo": {
       "minAgo": "{count} 分钟前",

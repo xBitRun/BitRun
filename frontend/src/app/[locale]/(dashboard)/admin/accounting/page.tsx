@@ -6,7 +6,6 @@ import {
   DollarSign,
   Users,
   Building2,
-  RefreshCw,
   Loader2,
 } from "lucide-react";
 import {
@@ -61,11 +60,6 @@ export default function AdminAccountingPage() {
   // Loading state
   const isLoading = platformLoading || channelsLoading;
 
-  // Refresh all
-  const handleRefresh = () => {
-    refreshPlatform();
-  };
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -73,18 +67,6 @@ export default function AdminAccountingPage() {
         <div>
           <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
           <p className="text-muted-foreground">{t("description")}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
-            {commonT("retry")}
-          </Button>
         </div>
       </div>
 

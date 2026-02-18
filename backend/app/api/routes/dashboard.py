@@ -8,8 +8,10 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, field_serializer
+from sqlalchemy import func, select
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
+from ...db.models import DailyAccountSnapshotDB
 from ...db.repositories.account import AccountRepository
 from ...db.repositories.decision import DecisionRepository
 from ...db.repositories.strategy import StrategyRepository
@@ -38,22 +40,50 @@ class PositionSummary(BaseModel):
     liquidation_price: Optional[float] = None
     account_name: str
     exchange: str
+    account_id: Optional[str] = None
+
+
+class AccountBalanceSummary(BaseModel):
+    """Summary of a single account's balance and status"""
+    account_id: str
+    account_name: str
+    exchange: str
+    status: str  # online / offline / error
+    total_equity: float
+    available_balance: float
+    daily_pnl: float
+    daily_pnl_percent: float = 0.0
+    open_positions: int = 0
 
 
 class DashboardStatsResponse(BaseModel):
     """Aggregated dashboard statistics"""
+    # Account-level breakdown (new)
+    accounts: list[AccountBalanceSummary] = []
+    # Aggregated totals
     total_equity: float
-    available_balance: float
+    total_available: float  # renamed from available_balance for clarity
+    available_balance: float  # kept for backward compatibility
     unrealized_pnl: float
+    # Daily P/L
     daily_pnl: float
     daily_pnl_percent: float
+    # Weekly P/L (new)
+    weekly_pnl: float = 0.0
+    weekly_pnl_percent: float = 0.0
+    # Monthly P/L (new)
+    monthly_pnl: float = 0.0
+    monthly_pnl_percent: float = 0.0
+    # Strategies
     active_strategies: int
     total_strategies: int
+    # Positions
     open_positions: int
     positions: list[PositionSummary]
+    # Today's decisions
     today_decisions: int
     today_executed_decisions: int
-    # Account breakdown
+    # Account breakdown (legacy - kept for backward compatibility)
     accounts_connected: int
     accounts_total: int
 
@@ -129,6 +159,7 @@ async def get_dashboard_stats(
     unrealized_pnl = 0.0
     all_positions: list[PositionSummary] = []
     accounts_connected = 0
+    account_summaries: list[AccountBalanceSummary] = []
 
     # Fetch real-time data from all connected accounts in parallel
     connected_accounts = [a for a in accounts if a.is_connected]
@@ -249,6 +280,41 @@ async def get_dashboard_stats(
         unrealized_pnl += account_state.unrealized_pnl
         accounts_connected += 1
 
+        # Build account summary
+        # Calculate daily P/L for this account from Redis or use unrealized as fallback
+        account_daily_pnl = 0.0
+        account_daily_pnl_percent = 0.0
+        try:
+            redis = await get_redis_service()
+            account_start_equity = await redis.get_today_start_equity(f"{user_id}_{account.id}")
+            if account_start_equity is not None and account_start_equity > 0:
+                account_daily_pnl = account_state.equity - account_start_equity
+                account_daily_pnl_percent = (account_daily_pnl / account_start_equity) * 100
+            else:
+                account_daily_pnl = account_state.unrealized_pnl
+                account_daily_pnl_percent = (
+                    (account_daily_pnl / account_state.equity * 100)
+                    if account_state.equity > 0 else 0.0
+                )
+        except Exception:
+            account_daily_pnl = account_state.unrealized_pnl
+            account_daily_pnl_percent = (
+                (account_daily_pnl / account_state.equity * 100)
+                if account_state.equity > 0 else 0.0
+            )
+
+        account_summaries.append(AccountBalanceSummary(
+            account_id=str(account.id),
+            account_name=account.name,
+            exchange=account.exchange,
+            status="online",
+            total_equity=round(account_state.equity, 2),
+            available_balance=round(account_state.available_balance, 2),
+            daily_pnl=round(account_daily_pnl, 2),
+            daily_pnl_percent=round(account_daily_pnl_percent, 2),
+            open_positions=len(account_state.positions),
+        ))
+
         for pos in account_state.positions:
             all_positions.append(PositionSummary(
                 symbol=pos.symbol,
@@ -263,7 +329,23 @@ async def get_dashboard_stats(
                 liquidation_price=pos.liquidation_price,
                 account_name=account.name,
                 exchange=account.exchange,
+                account_id=str(account.id),
             ))
+
+    # Add offline accounts to summaries
+    offline_accounts = [a for a in accounts if not a.is_connected]
+    for account in offline_accounts:
+        account_summaries.append(AccountBalanceSummary(
+            account_id=str(account.id),
+            account_name=account.name,
+            exchange=account.exchange,
+            status="offline",
+            total_equity=0.0,
+            available_balance=0.0,
+            daily_pnl=0.0,
+            daily_pnl_percent=0.0,
+            open_positions=0,
+        ))
 
     # Calculate daily P/L using cached midnight equity
     daily_pnl = 0.0
@@ -295,6 +377,67 @@ async def get_dashboard_stats(
         daily_pnl = unrealized_pnl
         daily_pnl_percent = (daily_pnl / total_equity * 100) if total_equity > 0 else 0.0
 
+    # Calculate weekly and monthly P/L from daily snapshots
+    weekly_pnl = 0.0
+    weekly_pnl_percent = 0.0
+    monthly_pnl = 0.0
+    monthly_pnl_percent = 0.0
+
+    try:
+        from datetime import date
+        today_date = date.today()
+
+        # Get user's account IDs
+        user_account_ids = [str(a.id) for a in accounts if a.is_connected]
+        if user_account_ids:
+            # Weekly P/L: from start of week (Monday)
+            week_start = today_date - timedelta(days=today_date.weekday())
+
+            # Query weekly snapshots
+            weekly_stmt = select(
+                DailyAccountSnapshotDB.account_id,
+                func.sum(DailyAccountSnapshotDB.daily_pnl).label("weekly_pnl"),
+                func.min(DailyAccountSnapshotDB.equity - DailyAccountSnapshotDB.daily_pnl).label("week_start_equity")
+            ).where(
+                DailyAccountSnapshotDB.user_id == uuid.UUID(user_id),
+                DailyAccountSnapshotDB.snapshot_date >= week_start,
+                DailyAccountSnapshotDB.snapshot_date <= today_date,
+            ).group_by(DailyAccountSnapshotDB.account_id)
+
+            weekly_result = await db.execute(weekly_stmt)
+            weekly_rows = weekly_result.all()
+
+            if weekly_rows:
+                weekly_pnl = sum(row.weekly_pnl or 0 for row in weekly_rows)
+                week_start_equity = sum(row.week_start_equity or 0 for row in weekly_rows)
+                if week_start_equity > 0:
+                    weekly_pnl_percent = (weekly_pnl / week_start_equity) * 100
+
+            # Monthly P/L: from start of month
+            month_start = today_date.replace(day=1)
+
+            monthly_stmt = select(
+                DailyAccountSnapshotDB.account_id,
+                func.sum(DailyAccountSnapshotDB.daily_pnl).label("monthly_pnl"),
+                func.min(DailyAccountSnapshotDB.equity - DailyAccountSnapshotDB.daily_pnl).label("month_start_equity")
+            ).where(
+                DailyAccountSnapshotDB.user_id == uuid.UUID(user_id),
+                DailyAccountSnapshotDB.snapshot_date >= month_start,
+                DailyAccountSnapshotDB.snapshot_date <= today_date,
+            ).group_by(DailyAccountSnapshotDB.account_id)
+
+            monthly_result = await db.execute(monthly_stmt)
+            monthly_rows = monthly_result.all()
+
+            if monthly_rows:
+                monthly_pnl = sum(row.monthly_pnl or 0 for row in monthly_rows)
+                month_start_equity = sum(row.month_start_equity or 0 for row in monthly_rows)
+                if month_start_equity > 0:
+                    monthly_pnl_percent = (monthly_pnl / month_start_equity) * 100
+
+    except Exception as e:
+        logger.debug(f"Failed to calculate weekly/monthly P/L: {e}")
+
     # Get today's decisions
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     recent_decisions = await decision_repo.get_recent(uuid.UUID(user_id), limit=100)
@@ -306,11 +449,17 @@ async def get_dashboard_stats(
 
     # Build response
     response = DashboardStatsResponse(
+        accounts=account_summaries,
         total_equity=round(total_equity, 2),
+        total_available=round(available_balance, 2),
         available_balance=round(available_balance, 2),
         unrealized_pnl=round(unrealized_pnl, 2),
         daily_pnl=round(daily_pnl, 2),
         daily_pnl_percent=round(daily_pnl_percent, 2),
+        weekly_pnl=round(weekly_pnl, 2),
+        weekly_pnl_percent=round(weekly_pnl_percent, 2),
+        monthly_pnl=round(monthly_pnl, 2),
+        monthly_pnl_percent=round(monthly_pnl_percent, 2),
         active_strategies=len(active_strategies),
         total_strategies=len(strategies),
         open_positions=len(all_positions),
@@ -360,13 +509,15 @@ async def get_activity_feed(
     # Get recent decisions
     decisions = await decision_repo.get_recent(uuid.UUID(user_id), limit=limit + offset + 10)
 
-    # Get user's strategies for names
+    # Get user's strategies for names and agent execution modes
     # DecisionRecordDB has agent_id (not strategy_id), so we build agent_id -> strategy_name mapping
     strategies = await strategy_repo.get_by_user(uuid.UUID(user_id))
     agent_strategy_names: dict[str, str] = {}
+    agent_execution_modes: dict[str, str] = {}
     for s in strategies:
         for a in s.agents:
             agent_strategy_names[str(a.id)] = s.name
+            agent_execution_modes[str(a.id)] = a.execution_mode
 
     for decision in decisions:
         strategy_name = agent_strategy_names.get(str(decision.agent_id), "Unknown Strategy")
@@ -404,6 +555,7 @@ async def get_activity_feed(
                 "confidence": decision.overall_confidence,
                 "executed": decision.executed,
                 "decisions_count": len(decision.decisions),
+                "execution_mode": agent_execution_modes.get(str(decision.agent_id), "mock"),
             },
             status=status,
         ))

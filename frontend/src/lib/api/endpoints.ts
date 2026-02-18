@@ -1000,14 +1000,39 @@ export interface BacktestDetailResponse extends BacktestResponse {
 
 // ==================== Dashboard ====================
 
-export interface DashboardStatsResponse {
+export interface AccountBalanceSummary {
+  account_id: string;
+  account_name: string;
+  exchange: string;
+  status: "online" | "offline" | "error";
   total_equity: number;
   available_balance: number;
-  unrealized_pnl: number;
   daily_pnl: number;
   daily_pnl_percent: number;
+  open_positions: number;
+}
+
+export interface DashboardStatsResponse {
+  // Account-level breakdown
+  accounts: AccountBalanceSummary[];
+  // Aggregated totals
+  total_equity: number;
+  total_available: number;
+  available_balance: number;
+  unrealized_pnl: number;
+  // Daily P/L
+  daily_pnl: number;
+  daily_pnl_percent: number;
+  // Weekly P/L
+  weekly_pnl: number;
+  weekly_pnl_percent: number;
+  // Monthly P/L
+  monthly_pnl: number;
+  monthly_pnl_percent: number;
+  // Strategies
   active_strategies: number;
   total_strategies: number;
+  // Positions
   open_positions: number;
   positions: Array<{
     symbol: string;
@@ -1022,9 +1047,12 @@ export interface DashboardStatsResponse {
     liquidation_price?: number | null;
     account_name: string;
     exchange: string;
+    account_id?: string;
   }>;
+  // Today's decisions
   today_decisions: number;
   today_executed_decisions: number;
+  // Account breakdown (legacy)
   accounts_connected: number;
   accounts_total: number;
 }

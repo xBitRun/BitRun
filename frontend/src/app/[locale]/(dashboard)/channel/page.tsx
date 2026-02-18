@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Clock,
   Loader2,
-  RefreshCw,
   Mail,
   Phone,
   User,
@@ -97,11 +96,6 @@ export default function ChannelPage() {
   // Loading states
   const isLoading = channelLoading || usersLoading || walletLoading;
 
-  // Refresh all data
-  const handleRefresh = async () => {
-    await Promise.all([refreshChannel(), refreshUsers(), refreshWallet()]);
-  };
-
   // No channel access
   if (!channelLoading && !channel) {
     return (
@@ -121,12 +115,6 @@ export default function ChannelPage() {
           <h1 className="text-2xl font-bold text-gradient">{t("title")}</h1>
           <p className="text-muted-foreground">{t("description")}</p>
         </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-          />
-          {commonT("retry")}
-        </Button>
       </div>
 
       {channelLoading ? (

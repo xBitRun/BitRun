@@ -7,7 +7,6 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
-  RefreshCw,
   Copy,
   Check,
   History,
@@ -108,11 +107,6 @@ export default function WalletPage() {
     }
   };
 
-  // Refresh all data
-  const handleRefresh = async () => {
-    await Promise.all([refreshWallet(), refreshTransactions()]);
-  };
-
   // Date locale
   const dateLocale = locale === "zh" ? zhCN : enUS;
 
@@ -125,16 +119,6 @@ export default function WalletPage() {
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
-            {commonT("retry")}
-          </Button>
           <Button onClick={() => router.push("/wallet/recharge")}>
             <ArrowUpRight className="w-4 h-4 mr-2" />
             {t("recharge.title")}

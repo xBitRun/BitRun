@@ -8,7 +8,6 @@ import {
   Search,
   Users,
   Loader2,
-  RefreshCw,
   Mail,
   Building2,
   Hash,
@@ -119,11 +118,6 @@ export default function AdminChannelsPage() {
   // Loading state
   const isLoading = channelsLoading || usersLoading;
 
-  // Refresh all data
-  const handleRefresh = async () => {
-    await Promise.all([refreshChannels(), refreshUsers()]);
-  };
-
   // Handle create invite code (channel)
   const handleCreate = async () => {
     if (!formData.name || !formData.code) {
@@ -170,16 +164,6 @@ export default function AdminChannelsPage() {
           <p className="text-muted-foreground">{t("description")}</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
-            {commonT("retry")}
-          </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             {t("createInviteCode")}
