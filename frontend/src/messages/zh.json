@@ -56,12 +56,12 @@
     "analytics": "盈亏分析",
     "settings": "设置",
     "collapse": "收起",
-    "wallet": "我的钱包",
+    "wallet": "我的积分",
     "invite": "邀请好友",
     "channel": "渠道管理",
     "admin": {
       "channels": "渠道列表",
-      "recharge": "充值管理",
+      "recharge": "积分管理",
       "accounting": "账务统计"
     }
   },
@@ -2633,22 +2633,22 @@
     }
   },
   "wallet": {
-    "title": "我的钱包",
-    "subtitle": "管理您的账户余额和充值",
-    "balance": "可用余额",
-    "frozenBalance": "冻结余额",
-    "totalBalance": "总余额",
-    "totalRecharged": "累计充值",
+    "title": "我的积分",
+    "subtitle": "管理您的积分账户",
+    "balance": "可用积分",
+    "frozenBalance": "冻结积分",
+    "totalBalance": "总积分",
+    "totalRecharged": "累计获取",
     "totalConsumed": "累计消费",
     "recharge": {
-      "title": "充值",
-      "description": "创建充值订单后，请通过银行转账完成支付",
-      "amount": "充值金额",
-      "amountPlaceholder": "请输入充值金额",
-      "bonus": "赠送金额",
+      "title": "获取积分",
+      "description": "创建积分订单后，请完成支付以获取积分",
+      "amount": "购买金额",
+      "amountPlaceholder": "请输入购买金额",
+      "bonus": "赠送积分",
       "submit": "创建订单",
       "success": "订单创建成功",
-      "orders": "充值记录",
+      "orders": "积分记录",
       "orderNo": "订单号",
       "status": {
         "pending": "待支付",
@@ -2659,23 +2659,23 @@
       },
       "createdAt": "创建时间",
       "completedAt": "完成时间",
-      "noOrders": "暂无充值记录"
+      "noOrders": "暂无积分记录"
     },
     "transactions": {
-      "title": "交易记录",
+      "title": "积分明细",
       "type": "类型",
-      "amount": "金额",
-      "balance": "余额",
+      "amount": "积分",
+      "balance": "积分余额",
       "time": "时间",
       "description": "描述",
       "types": {
-        "recharge": "充值",
+        "recharge": "获取",
         "consume": "消费",
-        "refund": "退款",
+        "refund": "退还",
         "gift": "赠送",
         "adjustment": "调整"
       },
-      "noData": "暂无交易记录"
+      "noData": "暂无积分明细"
     },
     "invite": {
       "title": "邀请码",

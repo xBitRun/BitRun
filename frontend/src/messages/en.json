@@ -56,12 +56,12 @@
     "analytics": "P&L Analytics",
     "settings": "Settings",
     "collapse": "Collapse",
-    "wallet": "My Wallet",
+    "wallet": "My Points",
     "invite": "Invite Friends",
     "channel": "Channel Management",
     "admin": {
       "channels": "Channels",
-      "recharge": "Recharge Orders",
+      "recharge": "Points Orders",
       "accounting": "Accounting"
     }
   },
@@ -2587,22 +2587,22 @@
     }
   },
   "wallet": {
-    "title": "My Wallet",
-    "subtitle": "Manage your balance and recharge",
-    "balance": "Available Balance",
-    "frozenBalance": "Frozen Balance",
-    "totalBalance": "Total Balance",
-    "totalRecharged": "Total Recharged",
+    "title": "My Points",
+    "subtitle": "Manage your points account",
+    "balance": "Available Points",
+    "frozenBalance": "Frozen Points",
+    "totalBalance": "Total Points",
+    "totalRecharged": "Total Acquired",
     "totalConsumed": "Total Consumed",
     "recharge": {
-      "title": "Recharge",
-      "description": "After creating an order, please complete payment via bank transfer",
-      "amount": "Amount",
-      "amountPlaceholder": "Enter recharge amount",
-      "bonus": "Bonus Amount",
+      "title": "Get Points",
+      "description": "Create a points order and complete payment to get points",
+      "amount": "Purchase Amount",
+      "amountPlaceholder": "Enter purchase amount",
+      "bonus": "Bonus Points",
       "submit": "Create Order",
       "success": "Order created successfully",
-      "orders": "Recharge History",
+      "orders": "Points History",
       "orderNo": "Order No.",
       "status": {
         "pending": "Pending",
@@ -2613,23 +2613,23 @@
       },
       "createdAt": "Created At",
       "completedAt": "Completed At",
-      "noOrders": "No recharge records"
+      "noOrders": "No points history"
     },
     "transactions": {
-      "title": "Transaction History",
+      "title": "Points History",
       "type": "Type",
-      "amount": "Amount",
-      "balance": "Balance",
+      "amount": "Points",
+      "balance": "Points Balance",
       "time": "Time",
       "description": "Description",
       "types": {
-        "recharge": "Recharge",
+        "recharge": "Acquire",
         "consume": "Consume",
-        "refund": "Refund",
-        "gift": "Gift",
+        "refund": "Return",
+        "gift": "Bonus",
         "adjustment": "Adjustment"
       },
-      "noData": "No transaction records"
+      "noData": "No points history"
     },
     "invite": {
       "title": "Invite Code",

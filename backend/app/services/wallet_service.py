@@ -198,7 +198,9 @@ class WalletService:
             return None, "Concurrent wallet update conflict, please retry"
 
         # Calculate commission info
-        commission_info = await self._calculate_commission(user_id, amount)
+        # NOTE: 渠道分润功能暂未实现
+        # commission_info = await self._calculate_commission(user_id, amount)
+        commission_info = None
 
         # Create transaction record
         transaction = await self.wallet_repo.create_transaction(
@@ -215,14 +217,15 @@ class WalletService:
         )
 
         # Record channel commission if applicable
-        if commission_info and commission_info.get("channel_id"):
-            await self._record_channel_commission(
-                channel_id=uuid.UUID(commission_info["channel_id"]),
-                user_id=user_id,
-                amount=commission_info["channel_amount"],
-                reference_type=reference_type,
-                reference_id=reference_id,
-            )
+        # NOTE: 渠道分润功能暂未实现
+        # if commission_info and commission_info.get("channel_id"):
+        #     await self._record_channel_commission(
+        #         channel_id=uuid.UUID(commission_info["channel_id"]),
+        #         user_id=user_id,
+        #         amount=commission_info["channel_amount"],
+        #         reference_type=reference_type,
+        #         reference_id=reference_id,
+        #     )
 
         return transaction, None
 
@@ -374,11 +377,17 @@ class WalletService:
         """
         Calculate commission for a transaction.
 
+        NOTE: 渠道分润功能暂未实现，返回 None 表示无佣金计算。
+
         Returns dict with:
         - channel_id: Channel ID (if user belongs to a channel)
         - channel_amount: Commission amount for channel
         - platform_amount: Amount retained by platform
         """
+        # 渠道分润功能暂未实现
+        return None
+
+        # ===== 以下代码保留，待功能启用时恢复 =====
         from sqlalchemy import select
         from ..db.models import UserDB
 
@@ -423,7 +432,15 @@ class WalletService:
         reference_type: str,
         reference_id: uuid.UUID,
     ) -> None:
-        """Record commission in channel wallet"""
+        """
+        Record commission in channel wallet.
+
+        NOTE: 渠道分润功能暂未实现。
+        """
+        # 渠道分润功能暂未实现
+        return
+
+        # ===== 以下代码保留，待功能启用时恢复 =====
         from ..db.models import ChannelWalletDB, ChannelTransactionDB
 
         # Get or create channel wallet
