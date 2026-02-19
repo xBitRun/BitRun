@@ -1391,6 +1391,12 @@
       "balanced": "Balanced",
       "aggressive": "Aggressive"
     },
+    "strategyTypes": {
+      "ai": "AI Strategy",
+      "grid": "Grid Trading",
+      "dca": "DCA Strategy",
+      "rsi": "RSI Strategy"
+    },
     "overview": {
       "totalPnl": "Total P/L",
       "winRate": "Win Rate",
@@ -1398,6 +1404,7 @@
       "maxDrawdown": "Max Drawdown",
       "noData": "No data",
       "configuration": "Configuration",
+      "strategyType": "Strategy Type",
       "tradingMode": "Trading Mode",
       "aiModel": "AI Model",
       "executionInterval": "Execution Interval",

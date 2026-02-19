@@ -77,6 +77,7 @@ export interface Agent {
   strategyId: string;
   strategyType?: StrategyType | null;
   strategyName?: string | null;
+  config?: Record<string, unknown> | null; // Strategy config (trading_mode, etc.)
 
   // AI model (only for AI strategies)
   aiModel?: string | null;

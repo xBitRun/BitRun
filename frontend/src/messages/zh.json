@@ -1391,6 +1391,12 @@
       "balanced": "均衡型",
       "aggressive": "激进型"
     },
+    "strategyTypes": {
+      "ai": "AI 策略",
+      "grid": "网格交易",
+      "dca": "DCA 定投",
+      "rsi": "RSI 策略"
+    },
     "overview": {
       "totalPnl": "总盈亏",
       "winRate": "胜率",
@@ -1398,6 +1404,7 @@
       "maxDrawdown": "最大回撤",
       "noData": "暂无数据",
       "configuration": "配置",
+      "strategyType": "策略类型",
       "tradingMode": "交易模式",
       "aiModel": "AI 模型",
       "executionInterval": "执行间隔",

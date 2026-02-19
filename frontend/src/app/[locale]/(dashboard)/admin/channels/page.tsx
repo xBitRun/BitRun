@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Key,
   Plus,
   Search,
   Users,
@@ -15,7 +14,6 @@ import {
   Check,
   Filter,
   TrendingUp,
-  TrendingDown,
   Wallet,
   Bot,
   CreditCard,
@@ -118,7 +116,6 @@ export default function AdminChannelsPage() {
   } = useChannels();
   const {
     users,
-    total: totalUsers,
     isLoading: usersLoading,
     refresh: refreshUsers,
   } = useAdminUsers({
@@ -136,8 +133,6 @@ export default function AdminChannelsPage() {
   const platformStats = {
     totalChannels: channels.length,
     activeChannels: channels.filter((c) => c.status === "active").length,
-    totalUsers: totalUsers,
-    channelUsers: channels.reduce((sum, c) => sum + c.total_users, 0),
     totalRevenue: channels.reduce((sum, c) => sum + c.total_revenue, 0),
     totalCommission: channels.reduce((sum, c) => sum + c.total_commission, 0),
     totalAccounts: channels.reduce((sum, c) => sum + c.total_accounts, 0),
@@ -198,7 +193,7 @@ export default function AdminChannelsPage() {
       </div>
 
       {/* Platform Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="bg-card/50 backdrop-blur-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -215,20 +210,6 @@ export default function AdminChannelsPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {t("platformStats.activeChannels")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("platformStats.users")}
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{platformStats.channelUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              {t("platformStats.channelUsers")}
             </p>
           </CardContent>
         </Card>
@@ -297,7 +278,6 @@ export default function AdminChannelsPage() {
                     <TableHead>{t("table.name")}</TableHead>
                     <TableHead>{t("table.commissionRate")}</TableHead>
                     <TableHead>{t("table.status")}</TableHead>
-                    <TableHead className="text-center">{t("table.users")}</TableHead>
                     <TableHead className="text-center">{t("table.accounts")}</TableHead>
                     <TableHead className="text-center">{t("table.agents")}</TableHead>
                     <TableHead className="text-right">{t("table.revenue")}</TableHead>
@@ -346,16 +326,6 @@ export default function AdminChannelsPage() {
                         >
                           {t(`status.${channel.status}`)}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="font-medium">{channel.total_users}</span>
-                          {channel.active_users > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              {channel.active_users} {t("table.active")}
-                            </span>
-                          )}
-                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">

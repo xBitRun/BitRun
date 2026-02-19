@@ -47,6 +47,7 @@ class AgentResponse(BaseModel):
     strategy_type: Optional[str] = None  # populated from strategy.type
     strategy_name: Optional[str] = None  # populated from strategy.name
     strategy_symbols: list[str] = []  # populated from strategy.symbols
+    config: Optional[dict] = None  # populated from strategy.config
 
     # AI model
     ai_model: Optional[str] = None
@@ -1120,6 +1121,7 @@ def _agent_to_response(agent) -> AgentResponse:
         strategy_type=strategy.type if strategy else None,
         strategy_name=strategy.name if strategy else None,
         strategy_symbols=strategy.symbols if strategy else [],
+        config=strategy.config if strategy else None,
         ai_model=agent.ai_model,
         execution_mode=agent.execution_mode,
         account_id=str(agent.account_id) if agent.account_id else None,

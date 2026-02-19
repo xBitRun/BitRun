@@ -571,29 +571,40 @@ function OverviewTab({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
-                {t("overview.tradingMode")}
+                {t("overview.strategyType")}
               </span>
-              <span className="font-medium">
-                {t(
-                  `tradingModeValue.${(agent.config as Record<string, unknown>)?.trading_mode || "balanced"}`,
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs",
+                  agent.strategy_type === "ai" && "border-rose-500/30 text-rose-500",
+                  agent.strategy_type === "grid" && "border-blue-500/30 text-blue-500",
+                  agent.strategy_type === "dca" && "border-emerald-500/30 text-emerald-500",
+                  agent.strategy_type === "rsi" && "border-amber-500/30 text-amber-500",
                 )}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">
-                {t("overview.aiModel")}
-              </span>
-              <span
-                className="font-medium text-xs truncate max-w-[150px]"
-                title={agent.ai_model || ""}
               >
-                {agent.ai_model
-                  ? agent.ai_model.includes(":")
-                    ? agent.ai_model.split(":").slice(1).join(":")
-                    : agent.ai_model
+                {agent.strategy_type
+                  ? t(`strategyTypes.${agent.strategy_type}`)
                   : "-"}
-              </span>
+              </Badge>
             </div>
+            {agent.strategy_type === "ai" && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  {t("overview.aiModel")}
+                </span>
+                <span
+                  className="font-medium text-xs truncate max-w-[150px]"
+                  title={agent.ai_model || ""}
+                >
+                  {agent.ai_model
+                    ? agent.ai_model.includes(":")
+                      ? agent.ai_model.split(":").slice(1).join(":")
+                      : agent.ai_model
+                    : "-"}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 {t("overview.executionInterval")}
@@ -2390,11 +2401,23 @@ export default function AgentDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="overview">{t("tabs.overview")}</TabsTrigger>
-          <TabsTrigger value="decisions">{t("tabs.decisions")}</TabsTrigger>
-          <TabsTrigger value="positions">{t("tabs.positions")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("tabs.settings")}</TabsTrigger>
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">
+            <BarChart3 className="w-4 h-4 mr-1.5" />
+            {t("tabs.overview")}
+          </TabsTrigger>
+          <TabsTrigger value="decisions">
+            <Brain className="w-4 h-4 mr-1.5" />
+            {t("tabs.decisions")}
+          </TabsTrigger>
+          <TabsTrigger value="positions">
+            <Target className="w-4 h-4 mr-1.5" />
+            {t("tabs.positions")}
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="w-4 h-4 mr-1.5" />
+            {t("tabs.settings")}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
