@@ -97,6 +97,15 @@ class QuantExecutionWorker:
         if self._running:
             return
         self._running = True
+
+        # Send initial heartbeat immediately to avoid "not running" status
+        # during the gap between API activation and first cycle execution
+        try:
+            async with AsyncSessionLocal() as session:
+                await update_heartbeat(session, self.agent_id, self._worker_instance_id)
+        except Exception as e:
+            logger.warning(f"Failed to send initial heartbeat for quant strategy {self.agent_id}: {e}")
+
         self._task = asyncio.create_task(self._run_loop())
         logger.info(f"Started quant worker for {self.strategy_type} strategy {self.agent_id}")
 

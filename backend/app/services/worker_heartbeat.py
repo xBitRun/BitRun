@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # Heartbeat configuration constants
 HEARTBEAT_INTERVAL_SECONDS = 60  # Worker should update heartbeat every 60 seconds
 HEARTBEAT_TIMEOUT_SECONDS = 180  # 3 minutes without heartbeat = stale
+STARTUP_GRACE_SECONDS = 60  # Grace period for worker startup (no heartbeat yet)
 
 
 def get_worker_instance_id() -> str:
@@ -275,6 +276,7 @@ async def clear_all_heartbeats_for_active_agents(
 def is_agent_running(
     agent: AgentDB,
     timeout_seconds: int = HEARTBEAT_TIMEOUT_SECONDS,
+    startup_grace_seconds: int = STARTUP_GRACE_SECONDS,
 ) -> bool:
     """
     Check if an agent is actually running based on heartbeat.
@@ -282,14 +284,19 @@ def is_agent_running(
     An agent is considered running if:
     - Its status is 'active'
     - It has a heartbeat within the timeout window
+    - OR it was recently activated (within startup grace period) and has no heartbeat yet
 
     This is used to distinguish between:
     - status='active', running=True: Agent is actively executing
     - status='active', running=False: Agent should be running but worker crashed
 
+    The startup grace period prevents false "not running" status during the
+    brief window between API activation and the worker sending its first heartbeat.
+
     Args:
         agent: AgentDB instance
         timeout_seconds: Seconds without heartbeat to consider not running
+        startup_grace_seconds: Grace period for newly activated agents
 
     Returns:
         True if agent appears to be actively running
@@ -298,6 +305,13 @@ def is_agent_running(
         return False
 
     if agent.worker_heartbeat_at is None:
+        # No heartbeat yet - check if within startup grace period
+        # Use updated_at as a proxy for when the agent was last activated
+        if agent.updated_at:
+            startup_cutoff = datetime.now(UTC) - timedelta(seconds=startup_grace_seconds)
+            if agent.updated_at > startup_cutoff:
+                # Recently activated, allow grace period for worker to start
+                return True
         return False
 
     cutoff_time = datetime.now(UTC) - timedelta(seconds=timeout_seconds)

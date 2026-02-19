@@ -2,6 +2,11 @@
 
 Note: QuantStrategyDB is an alias for AgentDB. All 'agent_id' parameters
 actually refer to AgentDB.id, not StrategyDB.id.
+
+Architecture:
+- StrategyDB stores the strategy logic (type, symbols, config)
+- AgentDB (QuantStrategyDB) stores execution settings (account, capital, status)
+- Each AgentDB has a strategy_id foreign key to StrategyDB
 """
 
 import uuid
@@ -12,7 +17,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..models import QuantStrategyDB
+from ..models import AgentDB, QuantStrategyDB, StrategyDB
 
 
 class QuantStrategyRepository:
@@ -32,25 +37,66 @@ class QuantStrategyRepository:
         description: str = "",
         allocated_capital: Optional[float] = None,
         allocated_capital_percent: Optional[float] = None,
+        trade_type: str = "crypto_perp",
+        execution_interval_minutes: int = 30,
     ) -> QuantStrategyDB:
-        """Create a new quant strategy (agent)"""
-        strategy = QuantStrategyDB(
+        """Create a new quant strategy (agent).
+
+        This creates both:
+        1. StrategyDB - stores strategy logic (type, symbols, config)
+        2. AgentDB - stores execution settings (account, capital, status)
+
+        Args:
+            user_id: Owner user ID
+            name: Agent/strategy name
+            strategy_type: Strategy type ("grid", "dca", "rsi")
+            symbol: Trading symbol (e.g., "BTC")
+            config: Strategy-specific configuration
+            account_id: Optional exchange account for live trading
+            description: Optional description
+            allocated_capital: Optional fixed capital allocation
+            allocated_capital_percent: Optional percentage-based allocation
+            trade_type: Trade type (default: "crypto_perp")
+            execution_interval_minutes: Execution interval in minutes
+
+        Returns:
+            The created AgentDB instance (QuantStrategyDB alias)
+        """
+        # Step 1: Create StrategyDB with strategy logic
+        strategy_db = StrategyDB(
             user_id=user_id,
-            account_id=account_id,
+            type=strategy_type,
             name=name,
             description=description,
-            strategy_type=strategy_type,
-            symbol=symbol,
+            symbols=[symbol],  # Quant strategies typically use single symbol
             config=config,
-            runtime_state={},
-            status="draft",
+            visibility="private",
+        )
+        self.session.add(strategy_db)
+        await self.session.flush()  # Get strategy_db.id
+
+        # Step 2: Create AgentDB with execution settings
+        agent = AgentDB(
+            user_id=user_id,
+            name=name,
+            strategy_id=strategy_db.id,
+            account_id=account_id,
+            execution_mode="mock" if account_id is None else "live",
             allocated_capital=allocated_capital,
             allocated_capital_percent=allocated_capital_percent,
+            trade_type=trade_type,
+            execution_interval_minutes=execution_interval_minutes,
+            runtime_state={},
+            status="draft",
         )
-        self.session.add(strategy)
+        self.session.add(agent)
         await self.session.flush()
-        await self.session.refresh(strategy)
-        return strategy
+        await self.session.refresh(agent)
+
+        # Also refresh the strategy relationship
+        await self.session.refresh(agent, ["strategy"])
+
+        return agent
 
     async def get_by_id(
         self,
@@ -82,12 +128,23 @@ class QuantStrategyRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> list[QuantStrategyDB]:
-        """Get all quant agents for a user."""
-        query = select(QuantStrategyDB).where(QuantStrategyDB.user_id == user_id)
+        """Get all quant agents for a user.
+
+        Note:
+            strategy_type filter uses StrategyDB.type via JOIN,
+            since strategy_type is a property on AgentDB.
+        """
+        query = (
+            select(QuantStrategyDB)
+            .options(selectinload(QuantStrategyDB.strategy))
+            .where(QuantStrategyDB.user_id == user_id)
+        )
         if status:
             query = query.where(QuantStrategyDB.status == status)
         if strategy_type:
-            query = query.where(QuantStrategyDB.strategy_type == strategy_type)
+            # Must JOIN with StrategyDB to filter by type
+            query = query.join(StrategyDB, QuantStrategyDB.strategy_id == StrategyDB.id)
+            query = query.where(StrategyDB.type == strategy_type)
 
         query = query.order_by(QuantStrategyDB.updated_at.desc())
         query = query.limit(limit).offset(offset)
@@ -123,25 +180,43 @@ class QuantStrategyRepository:
 
         Args:
             agent_id: AgentDB.id (not StrategyDB.id)
+
+        Note:
+            - "symbol" and "config" are stored in StrategyDB, not AgentDB
+            - They are updated via the strategy relationship
         """
-        strategy = await self.get_by_id(agent_id, user_id)
-        if not strategy:
+        agent = await self.get_by_id(agent_id, user_id)
+        if not agent:
             return None
 
-        allowed_fields = {
-            "name", "description", "symbol", "config",
-            "account_id", "status", "error_message",
+        # Agent-level fields (stored in AgentDB)
+        agent_fields = {
+            "name", "account_id", "status", "error_message",
             "runtime_state", "last_run_at", "next_run_at",
             "allocated_capital", "allocated_capital_percent",
+            "execution_interval_minutes", "trade_type",
+        }
+
+        # Strategy-level fields (stored in StrategyDB via relationship)
+        strategy_fields = {
+            "symbol", "config", "description",
         }
 
         for key, value in kwargs.items():
-            if key in allowed_fields:
-                setattr(strategy, key, value)
+            if key in agent_fields:
+                setattr(agent, key, value)
+            elif key in strategy_fields:
+                # Update via strategy relationship
+                if agent.strategy:
+                    if key == "symbol":
+                        # symbol -> symbols list
+                        agent.strategy.symbols = [value] if value else []
+                    else:
+                        setattr(agent.strategy, key, value)
 
         await self.session.flush()
-        await self.session.refresh(strategy)
-        return strategy
+        await self.session.refresh(agent)
+        return agent
 
     async def update_status(
         self,
