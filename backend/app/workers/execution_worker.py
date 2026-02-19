@@ -944,20 +944,26 @@ async def get_worker_manager(distributed: Optional[bool] = None) -> WorkerManage
     """
     Get or create worker manager singleton.
 
+    This function provides backward compatibility by returning a wrapper
+    that delegates to UnifiedWorkerManager. The actual worker management
+    is now handled by the unified system.
+
     Args:
         distributed: If True, use ARQ task queue. If False, use in-process workers.
                     If None, uses WORKER_DISTRIBUTED setting from config.
+                    Note: distributed mode is deprecated; unified manager uses in-process.
 
     Returns:
-        WorkerManager instance
+        WorkerManager instance (wrapper around UnifiedWorkerManager)
     """
     global _worker_manager
     if _worker_manager is None:
-        if distributed is None:
-            settings = get_settings()
-            distributed = getattr(settings, 'worker_distributed', False)
+        # Import here to avoid circular import
+        from .unified_manager import get_unified_worker_manager
 
-        _worker_manager = WorkerManager(distributed=distributed)
+        # Get the unified manager and create a compatibility wrapper
+        unified = await get_unified_worker_manager()
+        _worker_manager = _WorkerManagerCompatibilityWrapper(unified)
     return _worker_manager
 
 
@@ -967,3 +973,68 @@ async def reset_worker_manager() -> None:
     if _worker_manager:
         await _worker_manager.stop()
     _worker_manager = None
+
+
+class _WorkerManagerCompatibilityWrapper:
+    """
+    Compatibility wrapper that provides the WorkerManager interface
+    but delegates to UnifiedWorkerManager.
+    """
+
+    def __init__(self, unified_manager):
+        self._unified = unified_manager
+        self._distributed = False
+
+    @property
+    def is_distributed(self) -> bool:
+        return False
+
+    async def start(self) -> None:
+        await self._unified.start()
+
+    async def stop(self) -> None:
+        await self._unified.stop()
+
+    async def start_agent(
+        self,
+        agent_id: str,
+        credentials=None,
+        account=None,
+    ) -> bool:
+        return await self._unified.start_agent(agent_id)
+
+    async def stop_agent(self, agent_id: str) -> bool:
+        return await self._unified.stop_agent(agent_id)
+
+    async def start_strategy(
+        self,
+        strategy_id: str,
+        credentials=None,
+        account=None,
+    ) -> bool:
+        return await self._unified.start_strategy(strategy_id, credentials, account)
+
+    async def stop_strategy(self, strategy_id: str) -> bool:
+        return await self._unified.stop_strategy(strategy_id)
+
+    async def trigger_manual_execution(
+        self,
+        strategy_id: str,
+        user_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+    ) -> dict:
+        return await self._unified.trigger_manual_execution(
+            strategy_id, user_id, agent_id
+        )
+
+    def get_worker_status(self, agent_id: str) -> Optional[dict]:
+        return self._unified.get_worker_status(agent_id)
+
+    async def get_distributed_status(self, agent_id: str) -> Optional[dict]:
+        return await self._unified.get_distributed_status(agent_id)
+
+    async def get_queue_info(self) -> Optional[dict]:
+        return await self._unified.get_queue_info()
+
+    def list_workers(self) -> list[str]:
+        return self._unified.list_workers()

@@ -783,8 +783,50 @@ _quant_worker_manager: Optional[QuantWorkerManager] = None
 
 
 async def get_quant_worker_manager() -> QuantWorkerManager:
-    """Get the singleton QuantWorkerManager instance"""
+    """
+    Get the singleton QuantWorkerManager instance.
+
+    This function provides backward compatibility by returning a wrapper
+    that delegates to UnifiedWorkerManager. The actual worker management
+    is now handled by the unified system.
+
+    Returns:
+        QuantWorkerManager instance (wrapper around UnifiedWorkerManager)
+    """
     global _quant_worker_manager
     if _quant_worker_manager is None:
-        _quant_worker_manager = QuantWorkerManager()
+        # Import here to avoid circular import
+        from .unified_manager import get_unified_worker_manager
+
+        # Get the unified manager and create a compatibility wrapper
+        unified = await get_unified_worker_manager()
+        _quant_worker_manager = _QuantWorkerManagerCompatibilityWrapper(unified)
     return _quant_worker_manager
+
+
+class _QuantWorkerManagerCompatibilityWrapper:
+    """
+    Compatibility wrapper that provides the QuantWorkerManager interface
+    but delegates to UnifiedWorkerManager.
+    """
+
+    def __init__(self, unified_manager):
+        self._unified = unified_manager
+
+    async def start(self) -> None:
+        await self._unified.start()
+
+    async def stop(self) -> None:
+        await self._unified.stop()
+
+    async def start_strategy(self, agent_id: str) -> bool:
+        return await self._unified.start_agent(agent_id)
+
+    async def stop_strategy(self, agent_id: str) -> None:
+        await self._unified.stop_agent(agent_id)
+
+    def get_worker_count(self) -> int:
+        return len(self._unified.list_quant_agents())
+
+    def get_running_strategies(self) -> list[str]:
+        return self._unified.list_quant_agents()

@@ -530,28 +530,15 @@ async def update_agent_status(
     # Update status
     await agent_repo.update_status(uuid.UUID(agent_id), new)
 
-    # TODO: Sync with unified worker manager
-    # For now, use existing worker managers based on strategy type
+    # Sync with unified worker manager
     try:
-        if agent.strategy and agent.strategy.type == "ai":
-            # AI strategy: use agent_id directly to support multiple agents per strategy
-            from ...workers.execution_worker import get_worker_manager
-            worker_manager = await get_worker_manager()
-            agent_id_str = str(agent.id)  # AgentDB.id
-            if new == "active":
-                await worker_manager.start_agent(agent_id_str)
-            elif new in ("paused", "stopped"):
-                await worker_manager.stop_agent(agent_id_str)
-        else:
-            # Quant strategy: QuantWorkerManager expects AgentDB.id
-            # (because QuantStrategyDB = AgentDB)
-            from ...workers.quant_worker import get_quant_worker_manager
-            worker_manager = await get_quant_worker_manager()
-            agent_id_str = str(agent.id)  # AgentDB.id
-            if new == "active":
-                await worker_manager.start_strategy(agent_id_str)
-            elif new in ("paused", "stopped"):
-                await worker_manager.stop_strategy(agent_id_str)
+        from ...workers.unified_manager import get_unified_worker_manager
+        worker_manager = await get_unified_worker_manager()
+        agent_id_str = str(agent.id)
+        if new == "active":
+            await worker_manager.start_agent(agent_id_str)
+        elif new in ("paused", "stopped"):
+            await worker_manager.stop_agent(agent_id_str)
     except Exception as e:
         logger.error(f"Error syncing worker for agent {agent_id}: {e}")
 
@@ -871,29 +858,13 @@ async def trigger_agent_execution(
             detail=f"Cannot trigger execution for agent in '{agent.status}' status. Agent must be active."
         )
 
-    # Route to appropriate worker based on strategy type
-    strategy_type = agent.strategy.type if agent.strategy else None
-
-    if strategy_type == "ai":
-        # AI strategy: use ExecutionWorker
-        from ...workers.execution_worker import get_worker_manager
-        worker_manager = await get_worker_manager()
-        result = await worker_manager.trigger_manual_execution(
-            str(agent.strategy_id),
-            user_id=user_id,
-            agent_id=agent_id,
-        )
-    else:
-        # Quant strategy (grid/dca/rsi): use QuantWorker
-        from ...workers.quant_worker import get_quant_worker_manager
-        worker_manager = await get_quant_worker_manager()
-
-        # Trigger a single cycle execution
-        result = await _trigger_quant_cycle(
-            worker_manager,
-            agent,
-            db,
-        )
+    # Use unified worker manager for all strategy types
+    from ...workers.unified_manager import get_unified_worker_manager
+    worker_manager = await get_unified_worker_manager()
+    result = await worker_manager.trigger_execution(
+        agent_id=agent_id,
+        user_id=user_id,
+    )
 
     if not result.get("success"):
         raise HTTPException(

@@ -26,6 +26,7 @@ from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.sentry import init_sentry
 from ..workers.execution_worker import get_worker_manager
 from ..workers.quant_worker import get_quant_worker_manager
+from ..workers.unified_manager import get_unified_worker_manager
 
 
 class JSONFormatter(logging.Formatter):
@@ -114,32 +115,22 @@ async def lifespan(app: FastAPI):
     collector.set_app_info(settings.app_version, settings.environment)
     logger.info("Prometheus Metrics: Enabled")
 
-    # Initialize Worker Manager for strategy execution
-    worker_manager = None
+    # Initialize Unified Worker Manager for strategy execution
+    unified_worker_manager = None
     if settings.worker_enabled:
         try:
-            worker_manager = await get_worker_manager(distributed=settings.worker_distributed)
-            await worker_manager.start()
-            mode = "DISTRIBUTED (ARQ)" if settings.worker_distributed else "LEGACY (in-process)"
-            logger.info(f"Worker Manager: Started in {mode} mode")
-            if settings.worker_distributed:
-                logger.info("Worker Manager: Tasks will be processed by external ARQ workers")
-            else:
-                logger.info("Worker Manager: Auto-loading active strategies")
+            unified_worker_manager = await get_unified_worker_manager()
+            await unified_worker_manager.start()
+            ai_count = len(unified_worker_manager.list_ai_agents())
+            quant_count = len(unified_worker_manager.list_quant_agents())
+            logger.info(
+                f"Unified Worker Manager: Started "
+                f"({ai_count} AI agents, {quant_count} quant agents)"
+            )
         except Exception as e:
-            logger.error(f"Worker Manager: Failed to start - {e}")
+            logger.error(f"Unified Worker Manager: Failed to start - {e}")
     else:
         logger.info("Worker Manager: Disabled (set WORKER_ENABLED=true to enable)")
-
-    # Initialize Quant Worker Manager for traditional strategy execution
-    quant_worker_manager = None
-    if settings.worker_enabled:
-        try:
-            quant_worker_manager = await get_quant_worker_manager()
-            await quant_worker_manager.start()
-            logger.info(f"Quant Worker Manager: Started with {quant_worker_manager.get_worker_count()} active strategies")
-        except Exception as e:
-            logger.error(f"Quant Worker Manager: Failed to start - {e}")
 
     # Reminder: AI provider API keys are configured in the app (Models / Providers), stored in DB
     logger.info(
@@ -151,20 +142,13 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info(f"Shutting down {settings.app_name}")
 
-    # Stop worker managers
-    if worker_manager:
+    # Stop unified worker manager
+    if unified_worker_manager:
         try:
-            await worker_manager.stop()
-            logger.info("Worker Manager: Stopped")
+            await unified_worker_manager.stop()
+            logger.info("Unified Worker Manager: Stopped")
         except Exception as e:
-            logger.error(f"Worker Manager: Error stopping - {e}")
-
-    if quant_worker_manager:
-        try:
-            await quant_worker_manager.stop()
-            logger.info("Quant Worker Manager: Stopped")
-        except Exception as e:
-            logger.error(f"Quant Worker Manager: Error stopping - {e}")
+            logger.error(f"Unified Worker Manager: Error stopping - {e}")
 
     # Close task queue connections if in distributed mode
     if settings.worker_distributed:
