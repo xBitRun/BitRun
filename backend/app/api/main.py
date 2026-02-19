@@ -4,6 +4,7 @@ FastAPI application entry point.
 BITRUN - AI-Powered Trading Agent
 """
 
+import asyncio
 import json
 import logging
 import sys
@@ -116,19 +117,28 @@ async def lifespan(app: FastAPI):
     logger.info("Prometheus Metrics: Enabled")
 
     # Initialize Unified Worker Manager for strategy execution
+    # Use non-blocking startup to allow healthcheck to pass quickly
     unified_worker_manager = None
     if settings.worker_enabled:
-        try:
-            unified_worker_manager = await get_unified_worker_manager()
-            await unified_worker_manager.start()
-            ai_count = len(unified_worker_manager.list_ai_agents())
-            quant_count = len(unified_worker_manager.list_quant_agents())
-            logger.info(
-                f"Unified Worker Manager: Started "
-                f"({ai_count} AI agents, {quant_count} quant agents)"
-            )
-        except Exception as e:
-            logger.error(f"Unified Worker Manager: Failed to start - {e}")
+        async def start_workers_later():
+            """Start workers in background after service is ready for healthcheck."""
+            await asyncio.sleep(5)  # Wait for service to be ready
+            try:
+                nonlocal unified_worker_manager
+                unified_worker_manager = await get_unified_worker_manager()
+                await unified_worker_manager.start()
+                ai_count = len(unified_worker_manager.list_ai_agents())
+                quant_count = len(unified_worker_manager.list_quant_agents())
+                logger.info(
+                    f"Unified Worker Manager: Started "
+                    f"({ai_count} AI agents, {quant_count} quant agents)"
+                )
+            except Exception as e:
+                logger.error(f"Unified Worker Manager: Failed to start - {e}")
+
+        # Create background task for non-blocking startup
+        asyncio.create_task(start_workers_later())
+        logger.info("Worker Manager: Starting in background...")
     else:
         logger.info("Worker Manager: Disabled (set WORKER_ENABLED=true to enable)")
 

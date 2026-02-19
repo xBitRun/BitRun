@@ -98,6 +98,46 @@ if [ $retry_count -eq $max_retries ]; then
 fi
 
 # ============================================================
+# Wait for Redis to be ready (if REDIS_URL is set)
+# ============================================================
+if [ -n "$REDIS_URL" ]; then
+    echo "⏳ Waiting for Redis..."
+    redis_host=$(echo "$REDIS_URL" | sed -E 's#.*@([^:]+):.*#\1#' | sed 's#.*://\([^:]*\):.*#\1#')
+    redis_port=$(echo "$REDIS_URL" | grep -oE ':[0-9]+' | tail -1 | tr -d ':')
+
+    # Fallback parsing if above didn't work
+    if [ -z "$redis_host" ] || [ -z "$redis_port" ]; then
+        redis_host=$(echo "$REDIS_URL" | awk -F[@:] '{print $(NF-1)}')
+        redis_port=$(echo "$REDIS_URL" | awk -F[:] '{print $NF}' | awk -F[/] '{print $1}')
+    fi
+
+    redis_retry=0
+    redis_max_retries=30
+    while [ $redis_retry -lt $redis_max_retries ]; do
+        if python3 -c "
+import redis, sys, os
+url = os.environ.get('REDIS_URL', '')
+try:
+    r = redis.from_url(url, socket_connect_timeout=2)
+    r.ping()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
+            echo "✅ Redis is ready"
+            break
+        fi
+        redis_retry=$((redis_retry + 1))
+        echo "⏳ Redis not ready, retrying... ($redis_retry/$redis_max_retries)"
+        sleep 2
+    done
+
+    if [ $redis_retry -eq $redis_max_retries ]; then
+        echo "⚠️  Redis connection failed after $redis_max_retries attempts (continuing anyway)"
+    fi
+fi
+
+# ============================================================
 # Run database migrations
 # ============================================================
 echo "📦 Running database migrations..."
