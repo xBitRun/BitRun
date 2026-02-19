@@ -73,6 +73,9 @@ class StrategyRepository:
         if user_id:
             query = query.where(StrategyDB.user_id == user_id)
 
+        # Eager load agents to avoid lazy loading in async context
+        query = query.options(selectinload(StrategyDB.agents))
+
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 

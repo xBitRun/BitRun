@@ -58,6 +58,9 @@ class StrategyResponse(BaseModel):
     fork_count: int = 0
     author_name: Optional[str] = None
 
+    # Statistics
+    agent_count: int = 0
+
     # Pricing
     is_paid: bool = False
     price_monthly: Optional[float] = None
@@ -704,6 +707,14 @@ def _strategy_to_response(strategy) -> StrategyResponse:
     except Exception:
         pass
 
+    # Get agent count from eagerly-loaded agents relationship
+    agent_count = 0
+    try:
+        if strategy.agents is not None:
+            agent_count = len(strategy.agents)
+    except Exception:
+        pass
+
     return StrategyResponse(
         id=str(strategy.id),
         user_id=str(strategy.user_id),
@@ -718,6 +729,7 @@ def _strategy_to_response(strategy) -> StrategyResponse:
         forked_from=str(strategy.forked_from) if strategy.forked_from else None,
         fork_count=strategy.fork_count or 0,
         author_name=author_name,
+        agent_count=agent_count,
         is_paid=strategy.is_paid or False,
         price_monthly=strategy.price_monthly,
         pricing_model=strategy.pricing_model or "free",

@@ -56,6 +56,9 @@ export interface Strategy {
   forkedFrom?: string | null;
   forkCount: number;
 
+  // Statistics
+  agentCount: number;
+
   // Timestamps
   createdAt: string;
   updatedAt: string;

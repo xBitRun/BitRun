@@ -180,6 +180,9 @@ export interface StrategyResponse {
   fork_count: number;
   author_name?: string | null;
 
+  // Statistics
+  agent_count: number;
+
   // Pricing
   is_paid: boolean;
   price_monthly?: number | null;

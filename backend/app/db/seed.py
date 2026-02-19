@@ -38,7 +38,10 @@ async def seed_admin_user() -> Optional[UserDB]:
     # Skip if not configured
     if not admin_email or not admin_password:
         logger.info("Seed: Admin user not configured (set ADMIN_EMAIL and ADMIN_PASSWORD)")
+        logger.debug(f"Current ADMIN_EMAIL value: {admin_email!r}")
         return None
+
+    logger.info(f"Seed: Creating admin user {admin_email}...")
 
     async with AsyncSessionLocal() as session:
         try:

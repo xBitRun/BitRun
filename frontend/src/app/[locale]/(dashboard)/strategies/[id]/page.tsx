@@ -700,7 +700,7 @@ export default function StrategyDetailPage({
                 <span className="text-muted-foreground">
                   {t("stats.agentCount")}
                 </span>
-                <span className="font-semibold">-</span>
+                <span className="font-semibold">{strategy.agent_count}</span>
               </div>
             </CardContent>
           </Card>

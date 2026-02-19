@@ -263,6 +263,7 @@ class TestStrategyEngine:
             ai_client=mock_ai_client,
             db_session=None,
             auto_execute=True,
+            use_enhanced_context=False,
         )
 
         result = await engine.run_cycle()
