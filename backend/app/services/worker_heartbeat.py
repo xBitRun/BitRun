@@ -133,7 +133,8 @@ async def detect_stale_agents(
     An agent is considered stale if:
     - Its status is 'active'
     - Its last heartbeat was more than timeout_seconds ago
-    - OR it has no heartbeat but should have one (was started)
+    - OR it has no heartbeat but last_run_at is also older than timeout_seconds
+      (this allows a grace period for workers to start up and send first heartbeat)
 
     Args:
         session: Database session
@@ -145,6 +146,8 @@ async def detect_stale_agents(
     cutoff_time = datetime.now(UTC) - timedelta(seconds=timeout_seconds)
 
     # Find active agents with stale or missing heartbeat
+    # Note: For agents without heartbeat, we also require last_run_at to be older than
+    # the cutoff time. This provides a grace period for workers to start up.
     stmt = (
         select(AgentDB)
         .where(
@@ -153,8 +156,11 @@ async def detect_stale_agents(
                 # Either has a heartbeat that's too old
                 (AgentDB.worker_heartbeat_at.isnot(None)) & (AgentDB.worker_heartbeat_at < cutoff_time)
                 |
-                # Or has no heartbeat but should have one (was running)
-                (AgentDB.worker_heartbeat_at.is_(None)) & (AgentDB.last_run_at.isnot(None))
+                # Or has no heartbeat AND last_run is also older than cutoff
+                # (grace period for worker startup)
+                (AgentDB.worker_heartbeat_at.is_(None))
+                & (AgentDB.last_run_at.isnot(None))
+                & (AgentDB.last_run_at < cutoff_time)
             ),
         )
     )
