@@ -13,6 +13,7 @@ Heartbeat Lifecycle:
 4. On next startup or periodic check → stale agents are marked as error
 """
 
+import asyncio
 import logging
 import os
 import uuid
@@ -22,13 +23,15 @@ from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.config import get_settings
+from ..core.retry_utils import classify_error, ErrorType, calculate_backoff_delay
 from ..db.models import AgentDB
 
 logger = logging.getLogger(__name__)
 
-# Heartbeat configuration constants
+# Heartbeat configuration constants (use settings for actual values)
 HEARTBEAT_INTERVAL_SECONDS = 60  # Worker should update heartbeat every 60 seconds
-HEARTBEAT_TIMEOUT_SECONDS = 180  # 3 minutes without heartbeat = stale
+HEARTBEAT_TIMEOUT_SECONDS = 300  # 5 minutes without heartbeat = stale (was 180)
 STARTUP_GRACE_SECONDS = 60  # Grace period for worker startup (no heartbeat yet)
 
 
@@ -86,6 +89,80 @@ async def update_heartbeat(
         logger.error(f"Failed to update heartbeat for agent {agent_id}: {e}")
         await session.rollback()
         return False
+
+
+async def update_heartbeat_with_retry(
+    session: AsyncSession,
+    agent_id: uuid.UUID,
+    worker_instance_id: Optional[str] = None,
+    max_attempts: Optional[int] = None,
+    base_delay: Optional[float] = None,
+) -> bool:
+    """
+    Update heartbeat with exponential backoff retry on transient errors.
+
+    This is the preferred function for worker heartbeat updates as it
+    handles temporary network issues gracefully.
+
+    Args:
+        session: Database session
+        agent_id: UUID of the agent to update
+        worker_instance_id: Optional worker identifier. If None, generates one.
+        max_attempts: Maximum retry attempts (defaults to config)
+        base_delay: Base delay for exponential backoff (defaults to config)
+
+    Returns:
+        True if heartbeat was updated successfully within retry attempts
+    """
+    settings = get_settings()
+    max_attempts = max_attempts or settings.worker_heartbeat_retry_attempts
+    base_delay = base_delay or settings.worker_heartbeat_retry_base_delay
+
+    if worker_instance_id is None:
+        worker_instance_id = get_worker_instance_id()
+
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            result = await update_heartbeat(session, agent_id, worker_instance_id)
+            if result:
+                return True
+            # update_heartbeat returned False but didn't raise
+            # This is typically a database error, treat as transient
+            if attempt < max_attempts - 1:
+                delay = calculate_backoff_delay(
+                    attempt, base_delay, max_delay=10.0, jitter=True
+                )
+                logger.warning(
+                    f"Heartbeat update returned False for agent {agent_id}, "
+                    f"retrying in {delay:.1f}s (attempt {attempt + 1}/{max_attempts})"
+                )
+                await asyncio.sleep(delay)
+        except Exception as e:
+            last_error = e
+            error_type = classify_error(e)
+
+            if error_type == ErrorType.PERMANENT:
+                logger.error(
+                    f"Permanent error updating heartbeat for agent {agent_id}: {e}"
+                )
+                return False
+
+            if attempt < max_attempts - 1:
+                delay = calculate_backoff_delay(
+                    attempt, base_delay, max_delay=10.0, jitter=True
+                )
+                logger.warning(
+                    f"Transient error updating heartbeat for agent {agent_id}, "
+                    f"retrying in {delay:.1f}s (attempt {attempt + 1}/{max_attempts}): {e}"
+                )
+                await asyncio.sleep(delay)
+
+    logger.error(
+        f"Failed to update heartbeat for agent {agent_id} "
+        f"after {max_attempts} attempts: {last_error}"
+    )
+    return False
 
 
 async def clear_heartbeat(

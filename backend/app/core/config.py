@@ -125,7 +125,19 @@ class Settings(BaseSettings):
     worker_distributed: bool = False  # Use distributed task queue (ARQ) instead of in-process workers
     worker_max_concurrent_jobs: int = 10  # Max concurrent jobs per worker (distributed mode)
     worker_job_timeout: int = 300  # Job timeout in seconds (distributed mode)
+
+    # Worker error handling settings
     worker_max_consecutive_errors: int = 5
+    worker_error_window_seconds: int = 600  # 10 minute error window
+    worker_retry_base_delay: float = 2.0  # Exponential backoff base delay
+    worker_retry_max_delay: float = 60.0  # Maximum retry delay cap
+    worker_retry_jitter: bool = True  # Add jitter to prevent thundering herd
+
+    # Worker heartbeat settings
+    worker_heartbeat_interval_seconds: int = 60  # Heartbeat update interval
+    worker_heartbeat_timeout_seconds: int = 300  # 5 minute timeout (was 180)
+    worker_heartbeat_retry_attempts: int = 3  # Heartbeat retry attempts
+    worker_heartbeat_retry_base_delay: float = 1.0  # Base delay for heartbeat retries
 
     # Simulator settings (for backtesting)
     simulator_maker_fee: float = 0.0002  # 0.02%

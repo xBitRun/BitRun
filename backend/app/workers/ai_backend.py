@@ -25,6 +25,12 @@ from .lifecycle import (
     OWNER_TTL_SECONDS,
 )
 from ..core.config import get_settings
+from ..core.retry_utils import (
+    ErrorWindow,
+    ErrorType,
+    classify_error,
+    calculate_backoff_delay,
+)
 from ..db.database import AsyncSessionLocal
 from ..db.models import AgentDB
 from ..db.repositories.account import AccountRepository
@@ -44,6 +50,8 @@ class AIExecutionWorker:
     Extends the original ExecutionWorker with distributed safety features:
     - Redis ownership lock for leader election
     - Execution lock to prevent concurrent cycles
+    - Error window tracking with configurable thresholds
+    - Exponential backoff retry with jitter
     """
 
     def __init__(
@@ -67,6 +75,15 @@ class AIExecutionWorker:
 
         settings = get_settings()
         self._max_errors = settings.worker_max_consecutive_errors
+
+        # Enhanced error handling
+        self._error_window = ErrorWindow(
+            window_seconds=settings.worker_error_window_seconds,
+            max_errors=settings.worker_max_consecutive_errors,
+        )
+        self._retry_base_delay = settings.worker_retry_base_delay
+        self._retry_max_delay = settings.worker_retry_max_delay
+        self._retry_jitter = settings.worker_retry_jitter
 
     async def start(self) -> None:
         """Start the worker."""
@@ -107,11 +124,13 @@ class AIExecutionWorker:
         logger.info(f"Stopped AI worker for agent {self.agent_id}")
 
     async def _run_loop(self) -> None:
-        """Main execution loop."""
+        """Main execution loop with enhanced error handling."""
         while self._running:
             try:
                 await self._run_cycle()
+                # Success: reset error window and counters
                 self._error_count = 0
+                self._error_window.reset()
 
                 # Wait for next interval
                 await asyncio.sleep(self.interval_minutes * 60)
@@ -119,17 +138,43 @@ class AIExecutionWorker:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in AI agent {self.agent_id}: {e}")
-                self._error_count += 1
+                error_type = classify_error(e)
+                logger.error(f"Error in AI agent {self.agent_id}: {e} (type: {error_type.value})")
 
-                if self._error_count >= self._max_errors:
-                    error_msg = f"Execution failed after {self._error_count} retries: {str(e)}"
-                    logger.error(f"Too many errors, stopping agent {self.agent_id}")
+                # Permanent errors: stop immediately
+                if error_type == ErrorType.PERMANENT:
+                    error_msg = f"Permanent error: {str(e)}"
+                    logger.error(f"Permanent error, stopping agent {self.agent_id}")
                     await self._update_agent_status("error", error_msg)
                     break
 
-                # Wait before retry
-                await asyncio.sleep(60)
+                # Record error in window
+                self._error_count += 1
+                self._error_window.record_error()
+
+                # Check if error threshold reached within window
+                if self._error_window.should_stop:
+                    error_msg = (
+                        f"Too many errors within error window "
+                        f"({self._error_window.error_count} errors in "
+                        f"{self._error_window.window_seconds}s): {str(e)}"
+                    )
+                    logger.error(f"Error threshold reached, stopping agent {self.agent_id}")
+                    await self._update_agent_status("error", error_msg)
+                    break
+
+                # Calculate backoff delay with jitter
+                delay = calculate_backoff_delay(
+                    attempt=min(self._error_count - 1, 5),  # Cap attempt for backoff
+                    base_delay=self._retry_base_delay,
+                    max_delay=self._retry_max_delay,
+                    jitter=self._retry_jitter,
+                )
+                logger.info(
+                    f"Transient error, retrying agent {self.agent_id} "
+                    f"in {delay:.1f}s (error {self._error_count}/{self._max_errors})"
+                )
+                await asyncio.sleep(delay)
 
     async def _run_cycle(self) -> None:
         """Run one decision cycle with optional execution lock."""
@@ -157,9 +202,16 @@ class AIExecutionWorker:
         from ..services.agent_position_service import AgentPositionService
 
         async with AsyncSessionLocal() as session:
-            # Update heartbeat at start of cycle
-            from ..services.worker_heartbeat import update_heartbeat
-            await update_heartbeat(session, self.agent_id, self._worker_instance_id)
+            # Update heartbeat at start of cycle with retry
+            from ..services.worker_heartbeat import update_heartbeat_with_retry
+            heartbeat_ok = await update_heartbeat_with_retry(
+                session, self.agent_id, self._worker_instance_id
+            )
+            if not heartbeat_ok:
+                logger.warning(
+                    f"Heartbeat update failed for agent {self.agent_id}, "
+                    "continuing execution cycle"
+                )
 
             # Get agent from database
             agent_stmt = (

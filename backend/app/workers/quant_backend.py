@@ -29,6 +29,12 @@ from .lifecycle import (
     OWNER_TTL_SECONDS,
 )
 from ..core.config import get_settings
+from ..core.retry_utils import (
+    ErrorWindow,
+    ErrorType,
+    classify_error,
+    calculate_backoff_delay,
+)
 from ..db.database import AsyncSessionLocal
 from ..db.models import AgentDB
 from ..db.repositories.account import AccountRepository
@@ -55,6 +61,7 @@ class QuantExecutionWorker:
 
     Runs the strategy engine's cycle at configured intervals.
     Includes trader health checks and automatic reconnection.
+    Enhanced with error window tracking and exponential backoff.
     """
 
     def __init__(
@@ -83,6 +90,15 @@ class QuantExecutionWorker:
 
         settings = get_settings()
         self._max_errors = settings.worker_max_consecutive_errors
+
+        # Enhanced error handling
+        self._error_window = ErrorWindow(
+            window_seconds=settings.worker_error_window_seconds,
+            max_errors=settings.worker_max_consecutive_errors,
+        )
+        self._retry_base_delay = settings.worker_retry_base_delay
+        self._retry_max_delay = settings.worker_retry_max_delay
+        self._retry_jitter = settings.worker_retry_jitter
 
     async def start(self) -> None:
         """Start the worker."""
@@ -125,14 +141,16 @@ class QuantExecutionWorker:
         logger.info(f"Stopped quant worker for strategy {self.agent_id}")
 
     async def _run_loop(self) -> None:
-        """Main execution loop."""
+        """Main execution loop with enhanced error handling."""
         while self._running:
             try:
                 # Timeout protection: prevent cycles from hanging indefinitely
                 await asyncio.wait_for(
                     self._run_cycle(), timeout=300.0  # 5 minute timeout
                 )
+                # Success: reset error window and counters
                 self._error_count = 0
+                self._error_window.reset()
                 await asyncio.sleep(self.interval_minutes * 60)
 
             except asyncio.CancelledError:
@@ -142,22 +160,62 @@ class QuantExecutionWorker:
                     f"Quant strategy {self.agent_id} cycle timed out (>300s)"
                 )
                 self._error_count += 1
-                if self._error_count >= self._max_errors:
-                    await self._update_status("error", "Cycle execution timed out")
+                self._error_window.record_error()
+
+                if self._error_window.should_stop:
+                    await self._update_status("error", "Cycle execution timed out repeatedly")
                     break
-                await asyncio.sleep(60)
+
+                delay = calculate_backoff_delay(
+                    attempt=min(self._error_count - 1, 5),
+                    base_delay=self._retry_base_delay,
+                    max_delay=self._retry_max_delay,
+                    jitter=self._retry_jitter,
+                )
+                logger.info(
+                    f"Quant strategy {self.agent_id} timeout, "
+                    f"retrying in {delay:.1f}s"
+                )
+                await asyncio.sleep(delay)
             except Exception as e:
-                logger.exception(f"Error in quant strategy {self.agent_id}")
-                self._error_count += 1
-                if self._error_count >= self._max_errors:
-                    logger.error(
-                        f"Too many errors, pausing quant strategy {self.agent_id}"
-                    )
-                    await self._update_status("error", str(e))
+                error_type = classify_error(e)
+                logger.exception(f"Error in quant strategy {self.agent_id} (type: {error_type.value})")
+
+                # Permanent errors: stop immediately
+                if error_type == ErrorType.PERMANENT:
+                    await self._update_status("error", f"Permanent error: {str(e)}")
                     break
+
+                # Record error in window
+                self._error_count += 1
+                self._error_window.record_error()
+
+                # Check if error threshold reached within window
+                if self._error_window.should_stop:
+                    error_msg = (
+                        f"Too many errors within error window "
+                        f"({self._error_window.error_count} errors in "
+                        f"{self._error_window.window_seconds}s): {str(e)}"
+                    )
+                    logger.error(f"Error threshold reached, pausing quant strategy {self.agent_id}")
+                    await self._update_status("error", error_msg)
+                    break
+
                 # On connection-related errors, try to reconnect the trader
                 await self._try_reconnect_trader()
-                await asyncio.sleep(60)
+
+                # Calculate backoff delay
+                delay = calculate_backoff_delay(
+                    attempt=min(self._error_count - 1, 5),
+                    base_delay=self._retry_base_delay,
+                    max_delay=self._retry_max_delay,
+                    jitter=self._retry_jitter,
+                )
+                logger.info(
+                    f"Quant strategy {self.agent_id} transient error, "
+                    f"retrying in {delay:.1f}s (error {self._error_count}/{self._max_errors})"
+                )
+                await asyncio.sleep(delay)
 
     async def _try_reconnect_trader(self) -> None:
         """Attempt to recreate the trader connection."""
@@ -205,9 +263,16 @@ class QuantExecutionWorker:
         from ..services.position_service import PositionService
 
         async with AsyncSessionLocal() as session:
-            # Update heartbeat at start of cycle
-            from ..services.worker_heartbeat import update_heartbeat
-            await update_heartbeat(session, self.agent_id, self._worker_instance_id)
+            # Update heartbeat at start of cycle with retry
+            from ..services.worker_heartbeat import update_heartbeat_with_retry
+            heartbeat_ok = await update_heartbeat_with_retry(
+                session, self.agent_id, self._worker_instance_id
+            )
+            if not heartbeat_ok:
+                logger.warning(
+                    f"Heartbeat update failed for quant strategy {self.agent_id}, "
+                    "continuing execution cycle"
+                )
 
             repo = QuantStrategyRepository(session)
             strategy = await repo.get_by_id(self.agent_id)

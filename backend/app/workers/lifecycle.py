@@ -40,7 +40,7 @@ async def send_initial_heartbeat(
     worker_instance_id: str,
 ) -> bool:
     """
-    Send an initial heartbeat for an agent.
+    Send an initial heartbeat for an agent with retry support.
 
     This should be called immediately when starting a worker to avoid
     the "not running" status gap between API activation and first cycle.
@@ -53,12 +53,13 @@ async def send_initial_heartbeat(
         True if heartbeat sent successfully, False otherwise
     """
     from ..db.database import AsyncSessionLocal
-    from ..services.worker_heartbeat import update_heartbeat
+    from ..services.worker_heartbeat import update_heartbeat_with_retry
 
     try:
         async with AsyncSessionLocal() as session:
-            await update_heartbeat(session, agent_id, worker_instance_id)
-        return True
+            return await update_heartbeat_with_retry(
+                session, agent_id, worker_instance_id
+            )
     except Exception as e:
         logger.warning(
             f"Failed to send initial heartbeat for agent {agent_id}: {e}"
