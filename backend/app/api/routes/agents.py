@@ -534,14 +534,14 @@ async def update_agent_status(
     # For now, use existing worker managers based on strategy type
     try:
         if agent.strategy and agent.strategy.type == "ai":
-            # AI strategy: ExecutionWorker expects StrategyDB.id
+            # AI strategy: use agent_id directly to support multiple agents per strategy
             from ...workers.execution_worker import get_worker_manager
             worker_manager = await get_worker_manager()
-            strategy_id = str(agent.strategy_id)  # StrategyDB.id
+            agent_id_str = str(agent.id)  # AgentDB.id
             if new == "active":
-                await worker_manager.start_strategy(strategy_id)
+                await worker_manager.start_agent(agent_id_str)
             elif new in ("paused", "stopped"):
-                await worker_manager.stop_strategy(strategy_id)
+                await worker_manager.stop_agent(agent_id_str)
         else:
             # Quant strategy: QuantWorkerManager expects AgentDB.id
             # (because QuantStrategyDB = AgentDB)

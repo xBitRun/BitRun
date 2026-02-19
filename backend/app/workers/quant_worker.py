@@ -27,6 +27,11 @@ from ..db.repositories.quant_strategy import QuantStrategyRepository
 from ..db.repositories.account import AccountRepository
 from ..db.repositories.decision import DecisionRepository
 from ..services.quant_engine import create_engine
+from ..services.worker_heartbeat import (
+    get_worker_instance_id,
+    update_heartbeat,
+    clear_heartbeat,
+)
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import create_trader_from_account
 from ..traders.mock_trader import MockTrader
@@ -82,6 +87,7 @@ class QuantExecutionWorker:
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._error_count = 0
+        self._worker_instance_id = get_worker_instance_id()
 
         settings = get_settings()
         self._max_errors = settings.worker_max_consecutive_errors
@@ -109,6 +115,13 @@ class QuantExecutionWorker:
                 logger.warning(f"Quant worker for strategy {self.agent_id} did not stop within {timeout}s, forcing")
             except asyncio.CancelledError:
                 pass
+
+        # Clear heartbeat on shutdown
+        try:
+            async with AsyncSessionLocal() as session:
+                await clear_heartbeat(session, self.agent_id)
+        except Exception as e:
+            logger.warning(f"Failed to clear heartbeat for quant strategy {self.agent_id}: {e}")
 
         # Close trader connection to avoid resource leaks
         if self.trader:
@@ -243,6 +256,9 @@ class QuantExecutionWorker:
         from ..services.position_service import PositionService
 
         async with AsyncSessionLocal() as session:
+            # Update heartbeat at start of cycle (same as ExecutionWorker)
+            await update_heartbeat(session, self.agent_id, self._worker_instance_id)
+
             repo = QuantStrategyRepository(session)
             strategy = await repo.get_by_id(self.agent_id)
 
@@ -388,6 +404,11 @@ class QuantWorkerManager:
         if self._running:
             return
         self._running = True
+
+        # Clear heartbeats for all active quant strategies on startup
+        # This prevents false positives from WorkerManager's heartbeat monitoring
+        await self._clear_quant_heartbeats()
+
         await self._load_active_strategies()
         # Start periodic sync task to handle:
         # - Refreshing ownership TTLs
@@ -688,6 +709,41 @@ class QuantWorkerManager:
             except Exception as e:
                 logger.exception("Quant worker sync error")
                 await asyncio.sleep(30)
+
+    async def _clear_quant_heartbeats(self) -> None:
+        """Clear heartbeats for all active quant strategies on startup.
+
+        This prevents WorkerManager's _monitor_loop from incorrectly marking
+        quant strategies as stale before they have a chance to send their
+        first heartbeat.
+        """
+        from sqlalchemy import update
+        from ..db.models import AgentDB
+
+        try:
+            async with AsyncSessionLocal() as session:
+                repo = QuantStrategyRepository(session)
+                active = await repo.get_active_strategies()
+
+                if not active:
+                    return
+
+                active_ids = [s.id for s in active]
+
+                stmt = (
+                    update(AgentDB)
+                    .where(AgentDB.id.in_(active_ids))
+                    .values(
+                        worker_heartbeat_at=None,
+                        worker_instance_id=None,
+                    )
+                )
+                await session.execute(stmt)
+                await session.commit()
+                logger.info(f"Cleared heartbeats for {len(active_ids)} active quant strategies")
+
+        except Exception as e:
+            logger.warning(f"Failed to clear quant heartbeats: {e}")
 
     async def _load_active_strategies(self) -> None:
         """Load and start workers for all active quant strategies (if not owned by another instance)."""
