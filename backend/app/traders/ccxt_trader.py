@@ -150,6 +150,7 @@ def create_trader_from_account(
     account,
     credentials: dict,
     margin_mode: str = "isolated",
+    trade_type: str = "crypto_perp",
 ) -> "CCXTTrader":
     """
     Create a unified CCXTTrader from a database account and credentials.
@@ -160,6 +161,8 @@ def create_trader_from_account(
         account: Database account model (or any object with .exchange / .is_testnet).
         credentials: Decrypted credentials dict from the repository.
         margin_mode: "isolated" (default, recommended for multi-strategy) or "cross".
+        trade_type: Market type – "crypto_perp" (default), "crypto_spot",
+                    "forex", or "metals".
 
     Returns:
         CCXTTrader instance configured for the exchange.
@@ -177,6 +180,7 @@ def create_trader_from_account(
         credentials=credentials,
         testnet=account.is_testnet,
         margin_mode=margin_mode,
+        trade_type=trade_type,
     )
 
 
@@ -200,6 +204,7 @@ class CCXTTrader(BaseTrader):
         credentials: dict[str, str],
         testnet: bool = True,
         margin_mode: str = "isolated",
+        trade_type: str = "crypto_perp",
     ):
         """
         Args:
@@ -209,6 +214,8 @@ class CCXTTrader(BaseTrader):
             testnet: Use testnet / sandbox mode if True.
             margin_mode: Margin mode – "isolated" (default, recommended for
                          multi-strategy) or "cross".
+            trade_type: Market type – "crypto_perp" (default), "crypto_spot",
+                        "forex", or "metals".
         """
         default_slippage = _DEFAULT_SLIPPAGE.get(exchange_id, 0.01)
         super().__init__(testnet=testnet, default_slippage=default_slippage)
@@ -218,6 +225,7 @@ class CCXTTrader(BaseTrader):
         self._exchange: Optional[ccxt.Exchange] = None
         self._ccxt_config = _build_ccxt_config(exchange_id, credentials, testnet)
         self._margin_mode = margin_mode
+        self._trade_type = trade_type
 
     # ------------------------------------------------------------------
     # BaseTrader interface – lifecycle
@@ -278,6 +286,7 @@ class CCXTTrader(BaseTrader):
         Normalise a bare symbol ("BTC") or pair ("EUR/USD") into the CCXT
         unified format used by the current exchange.
 
+        Crypto spot        → "BTC/USDT" (or USDC for Hyperliquid)
         Crypto perpetuals  → "BTC/USDT:USDT" (or USDC:USDC for Hyperliquid)
         Forex / Metals     → "EUR/USD" / "XAU/USD" (already standard)
         """
@@ -295,8 +304,13 @@ class CCXTTrader(BaseTrader):
             return f"{symbol}/USD"
 
         # --- Crypto path ---
-        # Already formatted with settlement
+        is_spot = self._trade_type == "crypto_spot"
+
+        # Already formatted with settlement - only for perp mode
         if ":" in symbol:
+            if is_spot:
+                # Strip settlement suffix for spot mode
+                return symbol.split(":")[0]
             return symbol
 
         # Already has quote currency
@@ -304,7 +318,10 @@ class CCXTTrader(BaseTrader):
             parts = symbol.split("/")
             base = parts[0]
             quote = parts[1]
-            # Hyperliquid uses USDC settlement
+            # Spot mode: no settlement suffix
+            if is_spot:
+                return f"{base}/{quote}"
+            # Perp mode: add settlement suffix
             if self._exchange_id == "hyperliquid":
                 return f"{base}/{quote}:USDC"
             return f"{base}/{quote}:USDT"
@@ -318,6 +335,13 @@ class CCXTTrader(BaseTrader):
             .replace("_", "")
         )
 
+        # Spot mode: no settlement currency suffix
+        if is_spot:
+            if self._exchange_id == "hyperliquid":
+                return f"{base}/USDC"
+            return f"{base}/USDT"
+
+        # Perp mode: add settlement currency suffix
         if self._exchange_id == "hyperliquid":
             # Hyperliquid uses USDC for both quote and settlement: BTC/USDC:USDC
             return f"{base}/USDC:USDC"

@@ -33,6 +33,7 @@ class AgentRepository:
         allocated_capital_percent: Optional[float] = None,
         execution_interval_minutes: int = 30,
         auto_execute: bool = True,
+        trade_type: str = "crypto_perp",
         debate_enabled: bool = False,
         debate_models: Optional[list] = None,
         debate_consensus_mode: Optional[str] = None,
@@ -51,6 +52,7 @@ class AgentRepository:
             allocated_capital_percent=allocated_capital_percent,
             execution_interval_minutes=execution_interval_minutes,
             auto_execute=auto_execute,
+            trade_type=trade_type,
             debate_enabled=debate_enabled,
             debate_models=debate_models,
             debate_consensus_mode=debate_consensus_mode,
@@ -149,6 +151,7 @@ class AgentRepository:
             "allocated_capital", "allocated_capital_percent",
             "execution_interval_minutes", "auto_execute",
             "runtime_state",
+            "trade_type",
             "debate_enabled", "debate_models", "debate_consensus_mode", "debate_min_participants",
         }
 

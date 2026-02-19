@@ -522,6 +522,13 @@ class AgentDB(Base):
     )
     auto_execute: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Trade type configuration (crypto_perp, crypto_spot, forex, metals)
+    trade_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="crypto_perp"
+    )
+
     # Multi-model debate configuration (for AI strategies)
     debate_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     debate_models: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)

@@ -29,6 +29,7 @@ from ...models.agent import (
     AgentUpdate,
     ExecutionMode,
 )
+from ...traders.exchange_capabilities import supports_asset, AssetType
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 logger = logging.getLogger(__name__)
@@ -66,6 +67,9 @@ class AgentResponse(BaseModel):
     # Execution config
     execution_interval_minutes: int = 30
     auto_execute: bool = True
+
+    # Trade type configuration
+    trade_type: str = "crypto_perp"
 
     # Multi-model debate configuration (for AI strategies)
     debate_enabled: bool = False
@@ -198,6 +202,13 @@ async def create_agent(
             )
         account_uuid = uuid.UUID(data.account_id)
 
+        # Validate exchange supports the requested trade type
+        if not supports_asset(account.exchange, AssetType(data.trade_type.value)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Exchange {account.exchange} does not support {data.trade_type.value}"
+            )
+
     agent_repo = AgentRepository(db)
 
     # Validate capital allocation for live mode
@@ -223,6 +234,7 @@ async def create_agent(
         allocated_capital_percent=data.allocated_capital_percent,
         execution_interval_minutes=data.execution_interval_minutes,
         auto_execute=data.auto_execute,
+        trade_type=data.trade_type.value,
         debate_enabled=data.debate_enabled,
         debate_models=data.debate_models,
         debate_consensus_mode=data.debate_consensus_mode,
@@ -1145,6 +1157,7 @@ def _agent_to_response(agent) -> AgentResponse:
         allocated_capital_percent=agent.allocated_capital_percent,
         execution_interval_minutes=agent.execution_interval_minutes,
         auto_execute=agent.auto_execute,
+        trade_type=agent.trade_type,
         debate_enabled=agent.debate_enabled,
         debate_models=agent.debate_models or [],
         debate_consensus_mode=agent.debate_consensus_mode or "majority_vote",

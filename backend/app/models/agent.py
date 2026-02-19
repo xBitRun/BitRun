@@ -15,6 +15,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from ..traders.exchange_capabilities import AssetType
+
 
 class AgentStatus(str, Enum):
     """Agent lifecycle status"""
@@ -65,6 +67,9 @@ class Agent(BaseModel):
     # Execution config
     execution_interval_minutes: int = Field(default=15)
     auto_execute: bool = Field(default=True)
+
+    # Trade type configuration
+    trade_type: AssetType = Field(default=AssetType.CRYPTO_PERP)
 
     # Multi-model debate configuration (for AI strategies)
     debate_enabled: bool = Field(default=False)
@@ -141,6 +146,12 @@ class AgentCreate(BaseModel):
         description="Automatically execute decisions above confidence threshold"
     )
 
+    # Trade type configuration
+    trade_type: AssetType = Field(
+        default=AssetType.CRYPTO_PERP,
+        description="Market type: crypto_perp, crypto_spot, forex, metals"
+    )
+
     # Multi-model debate configuration (for AI strategies)
     debate_enabled: bool = Field(
         default=False,
@@ -197,6 +208,9 @@ class AgentUpdate(BaseModel):
     debate_models: Optional[list[str]] = None
     debate_consensus_mode: Optional[str] = None
     debate_min_participants: Optional[int] = Field(None, ge=2, le=5)
+
+    # Trade type configuration
+    trade_type: Optional[AssetType] = None
 
     @model_validator(mode="after")
     def validate_capital_allocation(self):
