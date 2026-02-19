@@ -85,6 +85,8 @@ class QuantExecutionWorker:
 
         self._running = False
         self._task: Optional[asyncio.Task] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._heartbeat_interval = 60  # Send heartbeat every 60 seconds
         self._error_count = 0
         self._worker_instance_id = get_worker_instance_id()
 
@@ -109,14 +111,50 @@ class QuantExecutionWorker:
         # Send initial heartbeat immediately
         await send_initial_heartbeat(self.agent_id, self._worker_instance_id)
 
+        # Start background heartbeat task (independent of execution cycle)
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
         self._task = asyncio.create_task(self._run_loop())
         logger.info(
             f"Started quant worker for {self.strategy_type} strategy {self.agent_id}"
         )
 
+    async def _heartbeat_loop(self) -> None:
+        """Background heartbeat task - sends heartbeat every 60 seconds."""
+        while self._running:
+            try:
+                await asyncio.sleep(self._heartbeat_interval)
+                if not self._running:
+                    break
+                await self._send_background_heartbeat()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"Heartbeat error for quant strategy {self.agent_id}: {e}")
+
+    async def _send_background_heartbeat(self) -> None:
+        """Send background heartbeat independent of execution cycle."""
+        try:
+            async with AsyncSessionLocal() as session:
+                from ..services.worker_heartbeat import update_heartbeat_with_retry
+                await update_heartbeat_with_retry(
+                    session, self.agent_id, self._worker_instance_id
+                )
+        except Exception as e:
+            logger.warning(f"Background heartbeat failed for quant strategy {self.agent_id}: {e}")
+
     async def stop(self, timeout: float = 30.0) -> None:
         """Stop the worker gracefully with timeout."""
         self._running = False
+
+        # Stop heartbeat task first
+        if self._heartbeat_task:
+            self._heartbeat_task.cancel()
+            try:
+                await asyncio.wait_for(self._heartbeat_task, timeout=5.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                pass
+
         if self._task:
             self._task.cancel()
             try:

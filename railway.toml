@@ -38,3 +38,5 @@ healthcheckTimeout = 180
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 numReplicas = 1
+# Give workers 60 seconds to gracefully shutdown
+terminationGracePeriodSeconds = 60
