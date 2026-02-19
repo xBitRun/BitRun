@@ -226,6 +226,15 @@
       "interval": "Execution Interval (min)",
       "autoExecute": "Auto Execute"
     },
+    "tradeType": {
+      "label": "Trade Type",
+      "crypto_perp": "Perpetual Contract",
+      "crypto_spot": "Spot",
+      "forex": "Forex",
+      "metals": "Metals",
+      "description": "Select the market type to trade",
+      "spotWarning": "Spot mode does not support leverage or short selling"
+    },
     "stats": {
       "totalPL": "Total P/L",
       "winRate": "Win Rate",

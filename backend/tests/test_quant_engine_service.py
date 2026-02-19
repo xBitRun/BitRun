@@ -1097,8 +1097,247 @@ class TestGridEngineExtended:
         )
         
         result = await engine.run_cycle()
-        
+
         # Should have recalculated grid levels
         state = result["updated_state"]
         assert state["grid_levels"] == [90.0, 95.0, 100.0, 105.0, 110.0]
         assert state["config_hash"] == "110.0:90.0:4"
+
+
+# ── Trade Type Tests ─────────────────────────────────────────────────────
+
+
+class TestSpotModeConstraints:
+    """Tests for spot mode constraints: leverage=1, no short selling."""
+
+    @pytest.fixture
+    def grid_config(self):
+        return {
+            "upper_price": 110.0,
+            "lower_price": 90.0,
+            "grid_count": 4,
+            "total_investment": 400.0,
+            "leverage": 2.0,  # Will be forced to 1 in spot mode
+        }
+
+    @pytest.mark.asyncio
+    async def test_spot_mode_forces_leverage_to_one(self, grid_config):
+        """Spot mode should force leverage to 1 regardless of config."""
+        trader = _mock_trader(mark_price=88.0)
+        engine = GridEngine(
+            agent_id="g1", trader=trader, symbol="BTC",
+            config=grid_config, runtime_state={},
+            trade_type="crypto_spot",
+        )
+
+        # Spy on _open_with_isolation to verify leverage
+        original_open = engine._open_with_isolation
+        captured_leverage = []
+
+        async def mock_open(size_usd, leverage=1, side="long"):
+            captured_leverage.append(leverage)
+            return await original_open(size_usd, leverage, side)
+
+        engine._open_with_isolation = mock_open
+
+        await engine.run_cycle()
+
+        # All calls should have leverage=1 (forced by spot mode)
+        assert all(lev == 1 for lev in captured_leverage)
+
+    @pytest.mark.asyncio
+    async def test_spot_mode_rejects_short_selling(self):
+        """Spot mode should reject short side orders."""
+        trader = _mock_trader(mark_price=50000.0)
+
+        # Create engine with spot mode
+        engine = RSIEngine(
+            agent_id="r1", trader=trader, symbol="BTC",
+            config={
+                "rsi_period": 14,
+                "overbought_threshold": 70.0,
+                "oversold_threshold": 30.0,
+                "order_amount": 100.0,
+            },
+            runtime_state={},
+            trade_type="crypto_spot",
+        )
+
+        # Call _open_with_isolation with short side
+        result = await engine._open_with_isolation(size_usd=100.0, leverage=1, side="short")
+
+        # Should return failure
+        assert result.success is False
+        assert "not supported in spot mode" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_perp_mode_allows_high_leverage(self, grid_config):
+        """Perp mode should allow configured leverage."""
+        trader = _mock_trader(mark_price=88.0)
+        engine = GridEngine(
+            agent_id="g1", trader=trader, symbol="BTC",
+            config=grid_config, runtime_state={},
+            trade_type="crypto_perp",  # Default perp mode
+        )
+
+        # Spy on _open_with_isolation to verify leverage
+        original_open = engine._open_with_isolation
+        captured_leverage = []
+
+        async def mock_open(size_usd, leverage=1, side="long"):
+            captured_leverage.append(leverage)
+            return await original_open(size_usd, leverage, side)
+
+        engine._open_with_isolation = mock_open
+
+        await engine.run_cycle()
+
+        # In perp mode, leverage from config (2.0) should be used
+        assert all(lev == 2 for lev in captured_leverage)
+
+
+class TestCreateEngineWithTradeType:
+    """Tests for create_engine factory with trade_type parameter."""
+
+    def test_create_engine_with_default_trade_type(self):
+        """Default trade_type should be crypto_perp."""
+        trader = _mock_trader()
+        engine = create_engine("grid", "s1", trader, "BTC", {"upper_price": 100}, {})
+
+        assert isinstance(engine, GridEngine)
+        assert engine._trade_type == "crypto_perp"
+
+    def test_create_engine_with_spot_trade_type(self):
+        """Should pass trade_type to engine."""
+        trader = _mock_trader()
+        engine = create_engine(
+            "dca", "s2", trader, "ETH",
+            {"order_amount": 50}, {},
+            trade_type="crypto_spot"
+        )
+
+        assert isinstance(engine, DCAEngine)
+        assert engine._trade_type == "crypto_spot"
+
+    def test_create_engine_with_forex_trade_type(self):
+        """Should pass forex trade_type to engine."""
+        trader = _mock_trader()
+        engine = create_engine(
+            "rsi", "s3", trader, "EUR/USD",
+            {"order_amount": 100}, {},
+            trade_type="forex"
+        )
+
+        assert isinstance(engine, RSIEngine)
+        assert engine._trade_type == "forex"
+
+
+class TestCCXTTraderSymbolFormatting:
+    """Tests for CCXTTrader symbol formatting based on trade_type."""
+
+    def test_perp_mode_adds_settlement_suffix(self):
+        """Perp mode should add :USDT settlement suffix."""
+        from unittest.mock import MagicMock
+
+        # We need to mock the exchange initialization
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            trader = MagicMock()
+            trader._exchange_id = "binanceusdm"
+            trader._trade_type = "crypto_perp"
+
+            # Import the actual method
+            from app.traders.ccxt_trader import CCXTTrader
+
+            # Test the method directly
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "binanceusdm"
+            trader_instance._trade_type = "crypto_perp"
+
+            result = trader_instance._to_ccxt_symbol("BTC")
+            assert result == "BTC/USDT:USDT"
+
+    def test_spot_mode_no_settlement_suffix(self):
+        """Spot mode should NOT add settlement suffix."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "binanceusdm"
+            trader_instance._trade_type = "crypto_spot"
+
+            result = trader_instance._to_ccxt_symbol("BTC")
+            assert result == "BTC/USDT"
+
+    def test_hyperliquid_spot_uses_usdc(self):
+        """Hyperliquid spot mode should use USDC quote currency."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "hyperliquid"
+            trader_instance._trade_type = "crypto_spot"
+
+            result = trader_instance._to_ccxt_symbol("BTC")
+            assert result == "BTC/USDC"
+
+    def test_hyperliquid_perp_uses_usdc_settlement(self):
+        """Hyperliquid perp mode should use USDC:USDC format."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "hyperliquid"
+            trader_instance._trade_type = "crypto_perp"
+
+            result = trader_instance._to_ccxt_symbol("BTC")
+            assert result == "BTC/USDC:USDC"
+
+    def test_spot_mode_strips_existing_settlement(self):
+        """Spot mode should strip existing settlement suffix."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "binanceusdm"
+            trader_instance._trade_type = "crypto_spot"
+
+            # Input already has settlement suffix
+            result = trader_instance._to_ccxt_symbol("BTC/USDT:USDT")
+            assert result == "BTC/USDT"
+
+    def test_forex_symbols_unchanged(self):
+        """Forex symbols should remain unchanged."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "binanceusdm"
+            trader_instance._trade_type = "forex"
+
+            result = trader_instance._to_ccxt_symbol("EUR/USD")
+            assert result == "EUR/USD"
+
+    def test_metals_symbols_add_usd_quote(self):
+        """Bare metal symbols should get /USD quote."""
+        from unittest.mock import MagicMock
+
+        with patch("app.traders.ccxt_trader.ExchangePool"):
+            from app.traders.ccxt_trader import CCXTTrader
+
+            trader_instance = CCXTTrader.__new__(CCXTTrader)
+            trader_instance._exchange_id = "binanceusdm"
+            trader_instance._trade_type = "metals"
+
+            result = trader_instance._to_ccxt_symbol("XAU")
+            assert result == "XAU/USD"
+

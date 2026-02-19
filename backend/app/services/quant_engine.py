@@ -45,6 +45,7 @@ class QuantEngineBase(ABC):
         account_id: Optional[str] = None,
         position_service: Optional[PositionService] = None,
         strategy: Optional[object] = None,
+        trade_type: str = "crypto_perp",
     ):
         # Note: agent_id is AgentDB.id (QuantStrategyDB is alias for AgentDB)
         self.agent_id = agent_id
@@ -55,6 +56,7 @@ class QuantEngineBase(ABC):
         self.account_id = account_id
         self.position_service = position_service
         self.strategy = strategy  # QuantStrategyDB instance for capital checks
+        self._trade_type = trade_type
         self._cached_account_equity: Optional[float] = None
 
     # ------------------------------------------------------------------
@@ -78,6 +80,22 @@ class QuantEngineBase(ABC):
         existing DB record is updated (accumulated) rather than creating
         a new claim.
         """
+        # Spot mode constraints
+        is_spot = self._trade_type == "crypto_spot"
+        if is_spot:
+            # Spot mode: force leverage to 1
+            leverage = 1
+            # Spot mode: reject short selling
+            if side == "short":
+                logger.warning(
+                    f"Quant {self.agent_id}: short selling rejected "
+                    f"in spot mode for {self.symbol}"
+                )
+                return OrderResult(
+                    success=False,
+                    error="Short selling is not supported in spot mode",
+                )
+
         ps = self.position_service
         claim = None
         is_existing_position = False  # True when accumulating onto open record
@@ -808,6 +826,7 @@ def create_engine(
     account_id: Optional[str] = None,
     position_service: Optional[PositionService] = None,
     strategy: Optional[object] = None,
+    trade_type: str = "crypto_perp",
 ) -> QuantEngineBase:
     """Factory function to create the appropriate engine for a strategy type.
 
@@ -815,6 +834,7 @@ def create_engine(
         strategy_type: Type of strategy (grid, dca, rsi)
         agent_id: AgentDB.id (not StrategyDB.id)
         ...
+        trade_type: Market type (crypto_perp, crypto_spot, forex, metals)
     """
     engines = {
         "grid": GridEngine,
@@ -835,4 +855,5 @@ def create_engine(
         account_id=account_id,
         position_service=position_service,
         strategy=strategy,
+        trade_type=trade_type,
     )

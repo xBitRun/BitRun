@@ -226,6 +226,15 @@
       "interval": "执行间隔（分钟）",
       "autoExecute": "自动执行"
     },
+    "tradeType": {
+      "label": "交易类型",
+      "crypto_perp": "合约 (永续)",
+      "crypto_spot": "现货",
+      "forex": "外汇",
+      "metals": "贵金属",
+      "description": "选择要交易的金融市场类型",
+      "spotWarning": "现货模式不支持杠杆和做空"
+    },
     "stats": {
       "totalPL": "总盈亏",
       "winRate": "胜率",

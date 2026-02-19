@@ -68,6 +68,7 @@ class QuantExecutionWorker:
         interval_minutes: int = 5,
         account_id: Optional[uuid.UUID] = None,
         user_id: Optional[uuid.UUID] = None,
+        trade_type: str = "crypto_perp",
     ):
         # Note: agent_id is AgentDB.id (QuantStrategyDB is alias for AgentDB)
         self.agent_id = uuid.UUID(agent_id)
@@ -76,6 +77,7 @@ class QuantExecutionWorker:
         self.interval_minutes = interval_minutes
         self._account_id = account_id
         self._user_id = user_id
+        self._trade_type = trade_type
 
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -192,7 +194,9 @@ class QuantExecutionWorker:
                     )
                     return
 
-                new_trader = create_trader_from_account(account, credentials)
+                new_trader = create_trader_from_account(
+                    account, credentials, trade_type=self._trade_type
+                )
                 await new_trader.initialize()
                 self.trader = new_trader
                 logger.info(
@@ -261,6 +265,7 @@ class QuantExecutionWorker:
                 account_id=str(strategy.account_id) if strategy.account_id else None,
                 position_service=position_service,
                 strategy=strategy,
+                trade_type=strategy.trade_type,
             )
 
             # Run cycle
@@ -492,7 +497,9 @@ class QuantWorkerManager:
                         await self._release_ownership(agent_id)
                         return False
 
-                    trader = create_trader_from_account(account, credentials)
+                    trader = create_trader_from_account(
+                        account, credentials, trade_type=strategy.trade_type
+                    )
                     await trader.initialize()
 
                 # Determine cycle interval: prefer database config over defaults
@@ -511,6 +518,7 @@ class QuantWorkerManager:
                     interval_minutes=interval,
                     account_id=strategy.account_id if strategy.execution_mode != "mock" else None,
                     user_id=strategy.user_id,
+                    trade_type=strategy.trade_type,
                 )
 
                 await worker.start()
