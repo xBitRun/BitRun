@@ -498,20 +498,20 @@ class TestSyncActiveStrategies:
         """Test sync with no active strategies"""
         mock_redis = AsyncMock()
         ctx = {"redis": mock_redis}
-        
+
         with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock()
             MockSession.return_value = mock_session
-            
+
             with patch("app.workers.tasks.StrategyRepository") as MockRepo:
                 mock_repo = MagicMock()
                 mock_repo.get_active_strategies = AsyncMock(return_value=[])
                 MockRepo.return_value = mock_repo
-                
+
                 result = await sync_active_strategies(ctx)
-                
+
                 assert result["started"] == 0
                 assert result["skipped"] == 0
                 assert result["errors"] == 0
@@ -555,6 +555,326 @@ class TestSyncActiveStrategies:
 
                         assert result["skipped"] == 1
                         assert result["started"] == 0
+
+    # ========================================================================
+    # Edge Case Tests for Interval Fix
+    # ========================================================================
+
+    @pytest.mark.asyncio
+    async def test_sync_skips_when_next_run_at_in_future_and_heartbeat_ok(self):
+        """
+        Case 1: Normal execution - next_run_at in future, heartbeat OK
+        Expected: Skip scheduling (job already scheduled via _defer_by)
+        """
+        mock_redis = AsyncMock()
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+        next_run = now + timedelta(minutes=10)  # 10 min in future, within 1.5x of 15min interval
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    # Mock agent with next_run_at in future and recent heartbeat
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = next_run
+                    mock_agent.worker_heartbeat_at = now - timedelta(seconds=30)  # Recent heartbeat
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        # job.info() returns None for deferred jobs (ARQ behavior)
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should skip because next_run_at is in future and heartbeat OK
+                        assert result["skipped"] == 1
+                        assert result["started"] == 0
+                        # Should NOT have enqueued a new job
+                        mock_redis.enqueue_job.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sync_reschedules_when_heartbeat_timeout(self):
+        """
+        Case 2: Worker crashed - next_run_at in future but heartbeat timeout
+        Expected: Reschedule immediately (worker crashed during wait)
+        """
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock(return_value=MagicMock(job_id="test-job"))
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+        next_run = now + timedelta(minutes=10)  # 10 min in future
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    # Mock agent with next_run_at in future but OLD heartbeat (timeout)
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = next_run
+                    mock_agent.worker_heartbeat_at = now - timedelta(minutes=10)  # Old heartbeat (timeout)
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now - timedelta(minutes=10)
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should start new job because heartbeat timeout
+                        assert result["started"] == 1
+                        assert result["skipped"] == 0
+                        # Should have enqueued a job
+                        mock_redis.enqueue_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_sync_reschedules_when_next_run_at_too_far(self):
+        """
+        Case 3: Config changed - next_run_at too far in future (>1.5x interval)
+        Expected: Reschedule immediately (adapt to new interval)
+        """
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock(return_value=MagicMock(job_id="test-job"))
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+        # 50 min in future, way beyond 1.5x of 15min (22.5min)
+        next_run = now + timedelta(minutes=50)
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = next_run
+                    mock_agent.worker_heartbeat_at = now - timedelta(seconds=30)
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should start new job because next_run_at is too far
+                        assert result["started"] == 1
+                        mock_redis.enqueue_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_sync_schedules_immediately_when_next_run_at_in_past(self):
+        """
+        Case 4: Catch up - next_run_at is in the past
+        Expected: Schedule immediately (delay=0)
+        """
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock(return_value=MagicMock(job_id="test-job"))
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+        # next_run_at in the past
+        next_run = now - timedelta(minutes=5)
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = next_run
+                    mock_agent.worker_heartbeat_at = now
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should start new job immediately
+                        assert result["started"] == 1
+                        # Check delay is 0 (immediate)
+                        call_kwargs = mock_redis.enqueue_job.call_args
+                        assert call_kwargs[1]["_defer_by"] == timedelta(seconds=0)
+
+    @pytest.mark.asyncio
+    async def test_sync_schedules_immediately_when_no_next_run_at(self):
+        """
+        Case 5: New agent - no next_run_at (first run or just activated)
+        Expected: Schedule immediately (delay=0)
+        """
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock(return_value=MagicMock(job_id="test-job"))
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = None  # No next_run_at
+                    mock_agent.worker_heartbeat_at = None
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should start new job immediately
+                        assert result["started"] == 1
+                        # Check delay is 0 (immediate)
+                        call_kwargs = mock_redis.enqueue_job.call_args
+                        assert call_kwargs[1]["_defer_by"] == timedelta(seconds=0)
+
+    @pytest.mark.asyncio
+    async def test_sync_respects_future_delay_when_appropriate(self):
+        """
+        Verify that when next_run_at is in future but outside reasonable window,
+        the delay is set to the remaining time.
+        """
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock(return_value=MagicMock(job_id="test-job"))
+        ctx = {"redis": mock_redis}
+        agent_id = uuid4()
+
+        now = datetime.now(UTC)
+        # 30 min in future, beyond 1.5x of 15min (22.5min) but still valid delay target
+        next_run = now + timedelta(minutes=30)
+
+        with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
+            mock_session = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock()
+            MockSession.return_value = mock_session
+
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    mock_agent = MagicMock()
+                    mock_agent.id = agent_id
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 15
+                    mock_agent.next_run_at = next_run
+                    mock_agent.worker_heartbeat_at = now
+                    mock_agent.status = "active"
+                    mock_agent.updated_at = now
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=None)
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        # Should start new job
+                        assert result["started"] == 1
+                        # Check delay is set to remaining time (should be ~30min)
+                        call_kwargs = mock_redis.enqueue_job.call_args
+                        delay = call_kwargs[1]["_defer_by"]
+                        # Allow 1 second tolerance for test execution time
+                        assert abs(delay.total_seconds() - 1800) < 2  # ~30 minutes
 
 
 class TestWorkerSettings:

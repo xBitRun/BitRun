@@ -32,6 +32,7 @@ from ..services.worker_heartbeat import (
     clear_heartbeat,
     mark_stale_agents_as_error,
     clear_all_heartbeats_for_active_agents,
+    is_agent_running,
 )
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
@@ -859,14 +860,53 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                 job_info = await job.info()
 
                 if job_info is None:
-                    # No job exists, schedule one using agent-based execution
-                    try:
-                        interval_minutes = agent.execution_interval_minutes or 30
+                    now = datetime.now(UTC)
+                    interval_minutes = agent.execution_interval_minutes or 30
 
-                        # Calculate delay based on next_run_at if set
+                    # ===== Check if we should skip scheduling =====
+                    # ARQ's job.info() returns None for deferred jobs, so we need
+                    # to check next_run_at to avoid creating duplicate jobs.
+
+                    # Case: next_run_at is in the reasonable future
+                    # - Normal case: task already scheduled via _defer_by
+                    # - Max reasonable delay = 1.5 × execution interval (tolerates some latency)
+                    if agent.next_run_at and agent.next_run_at > now:
+                        time_until_next = (agent.next_run_at - now).total_seconds() / 60
+                        max_reasonable_delay = interval_minutes * 1.5
+
+                        if time_until_next <= max_reasonable_delay:
+                            # Check heartbeat to confirm worker hasn't crashed
+                            if is_agent_running(agent):
+                                # Everything looks normal - job is scheduled, worker is alive
+                                skipped += 1
+                                logger.debug(
+                                    f"Agent {agent_id} already scheduled for "
+                                    f"{agent.next_run_at}, heartbeat OK, skipping"
+                                )
+                                continue
+                            else:
+                                # Heartbeat timeout but next_run_at in future = worker crashed
+                                # during the wait period
+                                logger.warning(
+                                    f"Agent {agent_id} has future next_run_at but heartbeat "
+                                    f"timeout, will reschedule immediately"
+                                )
+                                # Fall through to reschedule
+                        else:
+                            # next_run_at too far in future (config change?), reschedule
+                            logger.info(
+                                f"Agent {agent_id} next_run_at too far in future "
+                                f"({time_until_next:.1f}min > {max_reasonable_delay:.1f}min), "
+                                f"rescheduling"
+                            )
+                            # Fall through to reschedule
+
+                    # ===== Schedule the job =====
+                    try:
+                        # Calculate delay based on next_run_at if set and in future
                         delay = timedelta(seconds=0)
-                        if agent.next_run_at and agent.next_run_at > datetime.now(UTC):
-                            delay = agent.next_run_at - datetime.now(UTC)
+                        if agent.next_run_at and agent.next_run_at > now:
+                            delay = agent.next_run_at - now
 
                         await redis.enqueue_job(
                             "execute_agent_cycle",
@@ -875,7 +915,7 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                             _job_id=job_id,
                         )
                         started += 1
-                        logger.info(f"Scheduled agent job for {agent_id}")
+                        logger.info(f"Scheduled agent job for {agent_id} with delay {delay}")
                     except Exception as e:
                         errors += 1
                         logger.exception(f"Failed to schedule job for agent {agent_id}")
