@@ -395,6 +395,11 @@ export interface AgentResponse {
   status: AgentStatus;
   error_message?: string | null;
 
+  // Worker heartbeat tracking
+  worker_heartbeat_at?: string | null;
+  worker_instance_id?: string | null;
+  is_running: boolean;
+
   // Performance
   total_pnl: number;
   total_trades: number;

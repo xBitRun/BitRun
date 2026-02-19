@@ -195,7 +195,9 @@
       "stopped": "stopped",
       "error": "error",
       "draft": "draft",
-      "warning": "warning"
+      "warning": "warning",
+      "notRunning": "Not Running",
+      "notRunningHint": "Agent is active but Worker heartbeat is missing. The worker may have crashed or not started."
     },
     "executionMode": {
       "live": "Live Trading",

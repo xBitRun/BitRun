@@ -380,37 +380,44 @@ class TestExecuteStrategyCycle:
                     assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_strategy_not_active(self):
-        """Test handling inactive strategy"""
+    async def test_no_active_agent(self):
+        """Test handling when no active agent found for strategy"""
         ctx = {"redis": AsyncMock()}
         strategy_id = str(uuid4())
-        
+
         with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock(return_value=False)
+            mock_session.commit = AsyncMock()
+
+            # Mock session.execute for the agent query → no active agent found
+            mock_agent_result = MagicMock()
+            mock_agent_result.scalar_one_or_none.return_value = None
+            mock_session.execute = AsyncMock(return_value=mock_agent_result)
+
             MockSession.return_value = mock_session
-            
+
             with patch("app.workers.tasks.StrategyRepository") as MockRepo:
                 mock_strategy = MagicMock()
-                mock_strategy.status = "paused"
-                
+                mock_strategy.id = uuid4()
+
                 mock_repo = MagicMock()
                 mock_repo.get_by_id = AsyncMock(return_value=mock_strategy)
                 MockRepo.return_value = mock_repo
-                
+
                 with patch("app.workers.tasks.AccountRepository"):
                     result = await execute_strategy_cycle(ctx, strategy_id)
-                
+
                     assert result["success"] is False
-                    assert "not active" in result["error"]
+                    assert "No active agent" in result["error"]
 
     @pytest.mark.asyncio
     async def test_strategy_no_account(self):
         """Test handling strategy without account (no agent bound)"""
         ctx = {"redis": AsyncMock()}
         strategy_id = str(uuid4())
-        
+
         with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -423,23 +430,22 @@ class TestExecuteStrategyCycle:
             mock_session.execute = AsyncMock(return_value=mock_agent_result)
 
             MockSession.return_value = mock_session
-            
+
             with patch("app.workers.tasks.StrategyRepository") as MockRepo:
                 mock_strategy = MagicMock()
-                mock_strategy.status = "active"
                 mock_strategy.account_id = None
                 mock_strategy.id = uuid4()
-                
+
                 mock_repo = MagicMock()
                 mock_repo.get_by_id = AsyncMock(return_value=mock_strategy)
                 mock_repo.update_status = AsyncMock()
                 MockRepo.return_value = mock_repo
-                
+
                 with patch("app.workers.tasks.AccountRepository"):
                     result = await execute_strategy_cycle(ctx, strategy_id)
-                    
+
                     assert result["success"] is False
-                    assert "no account" in result["error"]
+                    assert "No active agent" in result["error"]
 
 
 class TestStartStrategyExecution:
@@ -515,32 +521,40 @@ class TestSyncActiveStrategies:
         """Test sync when job already exists"""
         mock_redis = AsyncMock()
         ctx = {"redis": mock_redis}
-        
+
         with patch("app.workers.tasks.AsyncSessionLocal") as MockSession:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock()
             MockSession.return_value = mock_session
-            
-            with patch("app.workers.tasks.StrategyRepository") as MockRepo:
-                mock_strategy = MagicMock()
-                mock_strategy.id = uuid4()
-                mock_strategy.config = {}
-                mock_strategy.next_run_at = None
-                
-                mock_repo = MagicMock()
-                mock_repo.get_active_strategies = AsyncMock(return_value=[mock_strategy])
-                MockRepo.return_value = mock_repo
-                
-                with patch("app.workers.tasks.Job") as MockJob:
-                    mock_job = MagicMock()
-                    mock_job.info = AsyncMock(return_value=MagicMock())  # Job exists
-                    MockJob.return_value = mock_job
-                    
-                    result = await sync_active_strategies(ctx)
-                    
-                    assert result["skipped"] == 1
-                    assert result["started"] == 0
+
+            # Mock heartbeat functions
+            with patch("app.workers.tasks.mark_stale_agents_as_error", AsyncMock(return_value=0)):
+                with patch("app.workers.tasks.clear_all_heartbeats_for_active_agents", AsyncMock(return_value=0)):
+                    # Mock agent query
+                    mock_agent = MagicMock()
+                    mock_agent.id = uuid4()
+                    mock_agent.strategy = MagicMock()
+                    mock_agent.execution_interval_minutes = 30
+                    mock_agent.next_run_at = None
+
+                    mock_scalars = MagicMock()
+                    mock_scalars.all.return_value = [mock_agent]
+
+                    mock_result = MagicMock()
+                    mock_result.scalars.return_value = mock_scalars
+
+                    mock_session.execute = AsyncMock(return_value=mock_result)
+
+                    with patch("app.workers.tasks.Job") as MockJob:
+                        mock_job = MagicMock()
+                        mock_job.info = AsyncMock(return_value=MagicMock())  # Job exists
+                        MockJob.return_value = mock_job
+
+                        result = await sync_active_strategies(ctx)
+
+                        assert result["skipped"] == 1
+                        assert result["started"] == 0
 
 
 class TestWorkerSettings:
@@ -559,9 +573,10 @@ class TestWorkerSettings:
             )
             
             settings = get_worker_settings()
-            
+
             assert "functions" in settings
-            assert len(settings["functions"]) == 5
+            # 5 original + 3 agent-based + 1 utility (create_daily_snapshots)
+            assert len(settings["functions"]) == 9
             assert "on_startup" in settings
             assert "on_shutdown" in settings
             assert settings["max_jobs"] == 10
@@ -569,7 +584,8 @@ class TestWorkerSettings:
 
     def test_worker_settings_class(self):
         """Test WorkerSettings class"""
-        assert len(WorkerSettings.functions) == 5
+        # 5 original + 3 agent-based + 1 utility (create_daily_snapshots)
+        assert len(WorkerSettings.functions) == 9
         assert WorkerSettings.max_jobs == 10
         assert WorkerSettings.job_timeout == 300
         assert WorkerSettings.queue_name == "bitrun:tasks"

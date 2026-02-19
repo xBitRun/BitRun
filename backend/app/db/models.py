@@ -557,6 +557,14 @@ class AgentDB(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Worker heartbeat tracking
+    worker_heartbeat_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    worker_instance_id: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

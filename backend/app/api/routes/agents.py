@@ -80,6 +80,11 @@ class AgentResponse(BaseModel):
     status: str
     error_message: Optional[str] = None
 
+    # Worker heartbeat tracking
+    worker_heartbeat_at: Optional[str] = None  # Last heartbeat timestamp
+    worker_instance_id: Optional[str] = None  # Worker process identifier
+    is_running: bool = False  # Computed: true if heartbeat within 3 minutes
+
     # Performance
     total_pnl: float = 0.0
     total_trades: int = 0
@@ -892,6 +897,65 @@ async def trigger_agent_execution(
     }
 
 
+class RuntimeStatusResponse(BaseModel):
+    """Runtime status response model"""
+    agent_id: str
+    status: str
+    is_running: bool
+    worker_heartbeat_at: Optional[str] = None
+    worker_instance_id: Optional[str] = None
+    last_run_at: Optional[str] = None
+    next_run_at: Optional[str] = None
+    error_message: Optional[str] = None
+    heartbeat_age_seconds: Optional[float] = None  # Seconds since last heartbeat
+
+
+@router.get("/{agent_id}/runtime-status", response_model=RuntimeStatusResponse)
+async def get_agent_runtime_status(
+    agent_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Get runtime status of an agent.
+
+    Returns real-time information about whether the agent is actually running,
+    based on worker heartbeat. This helps distinguish between:
+    - Agent is 'active' and running (heartbeat recent)
+    - Agent is 'active' but worker crashed (heartbeat stale)
+    - Agent is 'active' but never started (no heartbeat)
+    """
+    from datetime import UTC, datetime
+    from ...services.worker_heartbeat import is_agent_running
+
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Calculate heartbeat age
+    heartbeat_age_seconds = None
+    if agent.worker_heartbeat_at:
+        delta = datetime.now(UTC) - agent.worker_heartbeat_at
+        heartbeat_age_seconds = delta.total_seconds()
+
+    return RuntimeStatusResponse(
+        agent_id=str(agent.id),
+        status=agent.status,
+        is_running=is_agent_running(agent),
+        worker_heartbeat_at=agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None,
+        worker_instance_id=agent.worker_instance_id,
+        last_run_at=agent.last_run_at.isoformat() if agent.last_run_at else None,
+        next_run_at=agent.next_run_at.isoformat() if agent.next_run_at else None,
+        error_message=agent.error_message,
+        heartbeat_age_seconds=heartbeat_age_seconds,
+    )
+
+
 async def _save_quant_decision_record(
     db,
     agent,
@@ -1126,6 +1190,10 @@ def _agent_to_response(agent) -> AgentResponse:
     strategy = getattr(agent, "strategy", None)
     account = getattr(agent, "account", None)
 
+    # Compute is_running based on heartbeat
+    from ...services.worker_heartbeat import is_agent_running
+    agent_is_running = is_agent_running(agent)
+
     return AgentResponse(
         id=str(agent.id),
         user_id=str(agent.user_id),
@@ -1152,6 +1220,9 @@ def _agent_to_response(agent) -> AgentResponse:
         runtime_state=agent.runtime_state,
         status=agent.status,
         error_message=agent.error_message,
+        worker_heartbeat_at=agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None,
+        worker_instance_id=agent.worker_instance_id,
+        is_running=agent_is_running,
         total_pnl=agent.total_pnl,
         total_trades=agent.total_trades,
         winning_trades=agent.winning_trades,

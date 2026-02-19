@@ -133,6 +133,105 @@ class TaskQueueService:
             logger.error(f"Failed to trigger execution for strategy {strategy_id}: {e}")
             return None
 
+    # ==================== Agent Tasks ====================
+
+    async def start_agent(
+        self,
+        agent_id: str,
+        defer_seconds: int = 0,
+    ) -> Optional[str]:
+        """
+        Start execution for an agent.
+
+        Schedules the first execution cycle.
+
+        Args:
+            agent_id: UUID of the agent
+            defer_seconds: Optional delay before first execution
+
+        Returns:
+            Job ID if successful, None otherwise
+        """
+        try:
+            job = await self.redis.enqueue_job(
+                "start_agent_execution",
+                agent_id,
+                _defer_by=timedelta(seconds=defer_seconds) if defer_seconds > 0 else None,
+                _job_id=f"agent:{agent_id}",
+                _queue_name=self.QUEUE_NAME,
+            )
+            logger.info(f"Scheduled start for agent {agent_id}")
+            return job.job_id if job else None
+        except Exception as e:
+            logger.error(f"Failed to schedule start for agent {agent_id}: {e}")
+            return None
+
+    async def stop_agent(self, agent_id: str) -> bool:
+        """
+        Stop execution for an agent.
+
+        Cancels any pending execution jobs.
+
+        Args:
+            agent_id: UUID of the agent
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Submit stop task
+            await self.redis.enqueue_job(
+                "stop_agent_execution",
+                agent_id,
+                _queue_name=self.QUEUE_NAME,
+            )
+
+            # Also try to abort the execution job directly
+            job_id = f"agent:{agent_id}"
+            job = Job(job_id, self.redis)
+            try:
+                await job.abort()
+            except Exception:
+                pass  # Job may not exist
+
+            logger.info(f"Stopped agent {agent_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to stop agent {agent_id}: {e}")
+            return False
+
+    async def trigger_agent_execution(
+        self,
+        agent_id: str,
+    ) -> Optional[str]:
+        """
+        Manually trigger an agent execution cycle.
+
+        This is used for manual "Run Now" functionality.
+
+        Args:
+            agent_id: UUID of the agent
+
+        Returns:
+            Job ID if successful, None otherwise
+        """
+        try:
+            # Use a unique job ID for manual triggers
+            import uuid
+            manual_job_id = f"manual:agent:{agent_id}:{uuid.uuid4().hex[:8]}"
+
+            job = await self.redis.enqueue_job(
+                "execute_agent_cycle",
+                agent_id,
+                _job_id=manual_job_id,
+                _queue_name=self.QUEUE_NAME,
+            )
+            logger.info(f"Triggered manual execution for agent {agent_id}")
+            return job.job_id if job else None
+        except Exception as e:
+            logger.error(f"Failed to trigger execution for agent {agent_id}: {e}")
+            return None
+
     # ==================== Job Status ====================
 
     async def get_job_status(self, job_id: str) -> Optional[dict[str, Any]]:
@@ -178,6 +277,19 @@ class TaskQueueService:
             Dict with job status or None if no job exists
         """
         job_id = f"strategy:{strategy_id}"
+        return await self.get_job_status(job_id)
+
+    async def get_agent_job_status(self, agent_id: str) -> Optional[dict[str, Any]]:
+        """
+        Get status of the scheduled job for an agent.
+
+        Args:
+            agent_id: UUID of the agent
+
+        Returns:
+            Dict with job status or None if no job exists
+        """
+        job_id = f"agent:{agent_id}"
         return await self.get_job_status(job_id)
 
     async def is_strategy_scheduled(self, strategy_id: str) -> bool:

@@ -3,6 +3,12 @@ Distributed Task Definitions for ARQ (Async Redis Queue).
 
 This module defines all background tasks that can be executed by workers.
 Tasks are submitted to Redis and distributed across worker instances.
+
+Architecture (v2 - Agent-based):
+- Tasks bind to agent_id (not strategy_id)
+- Multiple agents can share the same strategy
+- Each agent has independent execution state
+- Heartbeat tracking for crash recovery
 """
 
 import logging
@@ -15,10 +21,18 @@ from arq.jobs import Job
 
 from ..core.config import get_settings
 from ..db.database import AsyncSessionLocal
-from ..db.models import DecisionRecordDB, ExchangeAccountDB, StrategyDB
+from ..db.models import DecisionRecordDB, ExchangeAccountDB, StrategyDB, AgentDB
 from ..db.repositories.account import AccountRepository
+from ..db.repositories.agent import AgentRepository
 from ..db.repositories.strategy import StrategyRepository
 from ..services.strategy_engine import StrategyEngine
+from ..services.worker_heartbeat import (
+    get_worker_instance_id,
+    update_heartbeat,
+    clear_heartbeat,
+    mark_stale_agents_as_error,
+    clear_all_heartbeats_for_active_agents,
+)
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
 
@@ -226,18 +240,14 @@ async def execute_strategy_cycle(
             account_repo = AccountRepository(session)
             
             strategy = await strategy_repo.get_by_id(uuid.UUID(strategy_id))
-            
+
             if not strategy:
                 result["error"] = f"Strategy {strategy_id} not found"
                 logger.error(result["error"])
                 return result
-            
-            if strategy.status != "active":
-                result["error"] = f"Strategy {strategy_id} is not active (status: {strategy.status})"
-                logger.info(result["error"])
-                return result
-            
+
             # ── Load active agent for this strategy ──
+            # Note: StrategyDB has no status field; status is on AgentDB
             from ..db.repositories.agent import AgentRepository
             from ..db.models import AgentDB
             from sqlalchemy import select
@@ -254,6 +264,11 @@ async def execute_strategy_cycle(
             )
             agent_result = await session.execute(agent_stmt)
             agent = agent_result.scalar_one_or_none()
+
+            if not agent:
+                result["error"] = f"No active agent found for strategy {strategy_id}"
+                logger.info(result["error"])
+                return result
 
             # ── Determine execution mode and create trader ──
             if agent and agent.execution_mode == "mock":
@@ -484,12 +499,314 @@ async def stop_strategy_execution(
     }
 
 
+# ==================== Agent-Based Tasks (v2) ====================
+
+async def execute_agent_cycle(
+    ctx: dict,
+    agent_id: str,
+) -> dict[str, Any]:
+    """
+    Execute a single decision cycle for an agent.
+
+    This is the preferred execution method (v2 architecture) that binds
+    directly to agent_id instead of strategy_id. This allows multiple
+    agents to share the same strategy with independent execution.
+
+    Includes heartbeat tracking for crash recovery.
+
+    Args:
+        ctx: ARQ context (contains redis connection)
+        agent_id: UUID of the agent to execute
+
+    Returns:
+        Dict with execution results
+    """
+    logger.info(f"Starting agent cycle for {agent_id}")
+
+    result = {
+        "agent_id": agent_id,
+        "success": False,
+        "error": None,
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "executed_at": datetime.now(UTC).isoformat(),
+    }
+
+    trader = None
+    worker_instance_id = get_worker_instance_id()
+
+    # Agent-level execution lock
+    redis: ArqRedis = ctx["redis"]
+    lock_key = f"exec_lock:agent:{agent_id}"
+    lock_acquired = False
+    try:
+        lock_acquired = await redis.set(lock_key, worker_instance_id, nx=True, ex=300)
+    except Exception as e:
+        logger.error(f"Failed to acquire exec lock for agent {agent_id}: {e}")
+        result["error"] = f"Redis lock unavailable: {e}"
+        return result
+
+    if not lock_acquired:
+        result["error"] = f"Agent {agent_id} is already executing. Skipping this cycle."
+        logger.warning(result["error"])
+        return result
+
+    try:
+        async with AsyncSessionLocal() as session:
+            # Get agent from database with strategy
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+
+            agent_stmt = (
+                select(AgentDB)
+                .where(AgentDB.id == uuid.UUID(agent_id))
+                .options(selectinload(AgentDB.strategy))
+            )
+            agent_result = await session.execute(agent_stmt)
+            agent = agent_result.scalar_one_or_none()
+
+            if not agent:
+                result["error"] = f"Agent {agent_id} not found"
+                logger.error(result["error"])
+                return result
+
+            if agent.status != "active":
+                result["error"] = f"Agent {agent_id} is not active (status={agent.status})"
+                logger.info(result["error"])
+                return result
+
+            strategy = agent.strategy
+            if not strategy:
+                result["error"] = f"Agent {agent_id} has no strategy"
+                logger.error(result["error"])
+                return result
+
+            # Update heartbeat
+            await update_heartbeat(session, uuid.UUID(agent_id), worker_instance_id)
+
+            # Determine execution mode and create trader
+            account_repo = AccountRepository(session)
+            agent_repo = AgentRepository(session)
+
+            if agent.execution_mode == "mock":
+                trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                if error:
+                    result["error"] = error
+                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error}")
+                    await session.commit()
+                    return result
+            else:
+                # Live mode
+                if not agent.account_id:
+                    error_msg = "No exchange account configured"
+                    result["error"] = error_msg
+                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await session.commit()
+                    return result
+
+                account = await account_repo.get_by_id(agent.account_id)
+                if not account:
+                    error_msg = "Exchange account not found"
+                    result["error"] = error_msg
+                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await session.commit()
+                    return result
+
+                credentials = await account_repo.get_decrypted_credentials(
+                    agent.account_id, agent.user_id
+                )
+                if not credentials:
+                    error_msg = "Invalid API credentials"
+                    result["error"] = error_msg
+                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await session.commit()
+                    return result
+
+                try:
+                    trader = create_trader_from_account(account, credentials)
+                    await trader.initialize()
+                except (ValueError, TradeError) as e:
+                    error_msg = str(e) if isinstance(e, ValueError) else e.message
+                    result["error"] = f"Trader initialization failed: {error_msg}"
+                    logger.error(result["error"])
+                    await agent_repo.update_status(agent.id, "error", f"Trader initialization failed: {error_msg}")
+                    await session.commit()
+                    return result
+
+            # Create position service
+            from ..services.redis_service import get_redis_service
+            from ..services.agent_position_service import AgentPositionService
+            try:
+                redis_service = await get_redis_service()
+            except Exception:
+                redis_service = None
+            position_service = AgentPositionService(db=session, redis=redis_service)
+
+            # Create strategy engine and run cycle
+            engine = StrategyEngine(
+                agent=agent,
+                strategy=strategy,
+                trader=trader,
+                ai_client=None,
+                db_session=session,
+                position_service=position_service,
+            )
+
+            cycle_result = await engine.run_cycle()
+
+            # Update agent timestamps
+            interval_minutes = agent.execution_interval_minutes or 30
+            await agent_repo.update(
+                agent.id,
+                agent.user_id,
+                last_run_at=datetime.now(UTC),
+                next_run_at=datetime.now(UTC) + timedelta(minutes=interval_minutes),
+            )
+            await session.commit()
+
+            # Schedule next execution
+            await redis.enqueue_job(
+                "execute_agent_cycle",
+                agent_id,
+                _defer_by=timedelta(minutes=interval_minutes),
+                _job_id=f"agent:{agent_id}",
+            )
+
+            result["success"] = cycle_result.get("success", False)
+            result["tokens_used"] = cycle_result.get("tokens_used", 0)
+            result["latency_ms"] = cycle_result.get("latency_ms", 0)
+
+            logger.info(
+                f"Agent {agent_id} cycle completed: "
+                f"success={result['success']}, "
+                f"tokens={result['tokens_used']}, "
+                f"latency={result['latency_ms']}ms"
+            )
+
+    except Exception as e:
+        result["error"] = str(e)
+        logger.exception(f"Error executing agent {agent_id}: {e}")
+
+        # Update agent status on repeated failures
+        try:
+            async with AsyncSessionLocal() as session:
+                agent_repo = AgentRepository(session)
+                agent = await agent_repo.get_by_id(uuid.UUID(agent_id))
+
+                if agent:
+                    job_try = ctx.get("job_try", 1)
+                    settings = get_settings()
+                    if job_try >= settings.worker_max_consecutive_errors:
+                        await agent_repo.update_status(
+                            agent.id,
+                            "error",
+                            f"Execution failed after {job_try} retries: {str(e)}"
+                        )
+                        await session.commit()
+                        logger.error(f"Agent {agent.id} marked as error due to repeated failures")
+        except Exception as update_error:
+            logger.exception("Failed to update agent status after execution error")
+
+    finally:
+        if trader:
+            try:
+                await trader.close()
+            except Exception as e:
+                logger.warning(f"Error closing trader: {e}")
+
+        try:
+            await redis.delete(lock_key)
+        except Exception:
+            pass
+
+    return result
+
+
+async def start_agent_execution(
+    ctx: dict,
+    agent_id: str,
+) -> dict[str, Any]:
+    """
+    Start execution for an agent by scheduling the first cycle.
+
+    Args:
+        ctx: ARQ context
+        agent_id: UUID of the agent to start
+
+    Returns:
+        Dict with status
+    """
+    logger.info(f"Starting execution for agent {agent_id}")
+
+    redis: ArqRedis = ctx["redis"]
+
+    # Schedule immediate execution
+    job = await redis.enqueue_job(
+        "execute_agent_cycle",
+        agent_id,
+        _job_id=f"agent:{agent_id}",
+    )
+
+    return {
+        "agent_id": agent_id,
+        "status": "scheduled",
+        "job_id": job.job_id if job else None,
+    }
+
+
+async def stop_agent_execution(
+    ctx: dict,
+    agent_id: str,
+) -> dict[str, Any]:
+    """
+    Stop execution for an agent by canceling pending jobs.
+
+    Also clears the heartbeat for this agent.
+
+    Args:
+        ctx: ARQ context
+        agent_id: UUID of the agent to stop
+
+    Returns:
+        Dict with status
+    """
+    logger.info(f"Stopping execution for agent {agent_id}")
+
+    redis: ArqRedis = ctx["redis"]
+
+    # Try to abort the pending job
+    job_id = f"agent:{agent_id}"
+    job = Job(job_id, redis)
+
+    try:
+        await job.abort()
+        logger.info(f"Aborted job for agent {agent_id}")
+    except Exception as e:
+        logger.warning(f"Could not abort job for agent {agent_id}: {e}")
+
+    # Clear heartbeat
+    try:
+        async with AsyncSessionLocal() as session:
+            await clear_heartbeat(session, uuid.UUID(agent_id))
+    except Exception as e:
+        logger.warning(f"Could not clear heartbeat for agent {agent_id}: {e}")
+
+    return {
+        "agent_id": agent_id,
+        "status": "stopped",
+    }
+
+
 async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
     """
-    Sync active strategies with the task queue.
+    Sync active agents with the task queue.
 
-    This is a periodic task that ensures all active strategies have
-    scheduled jobs, and stopped strategies don't.
+    This is a periodic task that ensures all active agents have
+    scheduled jobs, and stopped agents don't.
+
+    Also handles heartbeat recovery:
+    - Marks stale agents (heartbeat timeout) as error
+    - Clears old heartbeats before scheduling
 
     Args:
         ctx: ARQ context
@@ -497,20 +814,29 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
     Returns:
         Dict with sync results
     """
-    logger.info("Syncing active strategies with task queue")
-    
+    logger.info("Syncing active agents with task queue")
+
     redis: ArqRedis = ctx["redis"]
     started = 0
     skipped = 0
     errors = 0
-    
+    stale_recovered = 0
+
     try:
         async with AsyncSessionLocal() as session:
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
-            from ..db.models import AgentDB
 
-            # Query active agents with their strategies
+            # Phase 1: Mark stale agents as error (crash recovery)
+            stale_count = await mark_stale_agents_as_error(session)
+            if stale_count > 0:
+                stale_recovered = stale_count
+                logger.info(f"Marked {stale_count} stale agents as error")
+
+            # Phase 2: Clear heartbeats for active agents (clean slate)
+            await clear_all_heartbeats_for_active_agents(session)
+
+            # Phase 3: Query active agents with their strategies
             stmt = (
                 select(AgentDB)
                 .where(AgentDB.status == "active")
@@ -524,15 +850,16 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                 if not strategy:
                     continue
 
-                strategy_id = str(strategy.id)
-                job_id = f"strategy:{strategy_id}"
+                # Use agent-based job ID (v2 architecture)
+                agent_id = str(agent.id)
+                job_id = f"agent:{agent_id}"
 
                 # Check if job already exists
                 job = Job(job_id, redis)
                 job_info = await job.info()
 
                 if job_info is None:
-                    # No job exists, schedule one
+                    # No job exists, schedule one using agent-based execution
                     try:
                         interval_minutes = agent.execution_interval_minutes or 30
 
@@ -542,28 +869,29 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                             delay = agent.next_run_at - datetime.now(UTC)
 
                         await redis.enqueue_job(
-                            "execute_strategy_cycle",
-                            strategy_id,
+                            "execute_agent_cycle",
+                            agent_id,
                             _defer_by=delay,
                             _job_id=job_id,
                         )
                         started += 1
-                        logger.info(f"Scheduled job for agent {agent.id}, strategy {strategy_id}")
+                        logger.info(f"Scheduled agent job for {agent_id}")
                     except Exception as e:
                         errors += 1
-                        logger.exception(f"Failed to schedule job for strategy {strategy_id}")
+                        logger.exception(f"Failed to schedule job for agent {agent_id}")
                 else:
                     skipped += 1
-                    logger.debug(f"Job already exists for strategy {strategy_id}")
-    
+                    logger.debug(f"Job already exists for agent {agent_id}")
+
     except Exception as e:
-        logger.exception(f"Error syncing strategies: {e}")
+        logger.exception(f"Error syncing agents: {e}")
         return {"error": str(e)}
-    
+
     return {
         "started": started,
         "skipped": skipped,
         "errors": errors,
+        "stale_recovered": stale_recovered,
     }
 
 
@@ -821,14 +1149,21 @@ def get_worker_settings() -> dict:
         Dict with worker configuration
     """
     settings = get_settings()
-    
+
     return {
         "functions": [
+            # Strategy-based functions (backward compatibility)
             execute_strategy_cycle,
             start_strategy_execution,
             stop_strategy_execution,
+            # Agent-based functions (v2 architecture - preferred)
+            execute_agent_cycle,
+            start_agent_execution,
+            stop_agent_execution,
+            # Utility functions
             sync_active_strategies,
             reconcile_positions,
+            create_daily_snapshots,
         ],
         "on_startup": startup,
         "on_shutdown": shutdown,
@@ -845,14 +1180,13 @@ def get_worker_settings() -> dict:
         "health_check_interval": 30,  # Health check every 30 seconds
         "queue_name": "bitrun:tasks",
         "cron_jobs": [
-            # Sync strategies every 5 minutes
+            # Sync agents every 5 minutes (handles heartbeat recovery)
             {
                 "coroutine": sync_active_strategies,
                 "cron": "*/5 * * * *",  # Every 5 minutes
                 "unique": True,
             },
-            # Reconcile positions every 2 minutes (reduced from 5min to
-            # detect SL/TP fills and liquidations more quickly)
+            # Reconcile positions every 2 minutes
             {
                 "coroutine": reconcile_positions,
                 "cron": "*/2 * * * *",  # Every 2 minutes
@@ -871,16 +1205,22 @@ def get_worker_settings() -> dict:
 # Export worker class for arq CLI
 class WorkerSettings:
     """ARQ Worker Settings class for CLI."""
-    
+
     functions = [
+        # Strategy-based functions (backward compatibility)
         execute_strategy_cycle,
         start_strategy_execution,
         stop_strategy_execution,
+        # Agent-based functions (v2 architecture - preferred)
+        execute_agent_cycle,
+        start_agent_execution,
+        stop_agent_execution,
+        # Utility functions
         sync_active_strategies,
         reconcile_positions,
         create_daily_snapshots,
     ]
-    
+
     on_startup = startup
     on_shutdown = shutdown
     

@@ -683,6 +683,12 @@ class StrategyEngine:
                     "latency_ms": p.latency_ms,
                     "tokens_used": p.tokens_used,
                     "error": p.error,
+                    # 原始响应 - 用于调试和异常分析
+                    "raw_response": p.raw_response,
+                    # 思维链和市场评估（可选）
+                    "chain_of_thought": p.chain_of_thought if p.succeeded else None,
+                    "market_assessment": p.market_assessment if p.succeeded else None,
+                    # 决策详情
                     "decisions": [
                         {
                             "symbol": d.symbol,

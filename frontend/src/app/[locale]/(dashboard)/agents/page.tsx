@@ -18,6 +18,8 @@ import {
   RotateCcw,
   Zap,
   Eye,
+  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import {
   ListPageSkeleton,
@@ -50,13 +52,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/hooks/use-agents';
 import { useToast } from '@/components/ui/toast';
 import type { AgentResponse } from '@/lib/api';
 import type { AgentStatus } from '@/types';
 
-function getStatusColor(status: AgentStatus) {
+function getStatusColor(status: AgentStatus, isRunning?: boolean) {
+  // If agent is active but not running, show warning color
+  if (status === 'active' && isRunning === false) {
+    return 'bg-[var(--warning)]/20 text-[var(--warning)]';
+  }
   switch (status) {
     case 'active':
       return 'bg-[var(--profit)]/20 text-[var(--profit)]';
@@ -71,6 +83,17 @@ function getStatusColor(status: AgentStatus) {
     default:
       return 'bg-muted text-muted-foreground';
   }
+}
+
+function getStatusDisplayText(
+  status: AgentStatus,
+  isRunning: boolean,
+  t: ReturnType<typeof useTranslations>
+): string {
+  if (status === 'active' && !isRunning) {
+    return t('status.notRunning');
+  }
+  return t(`status.${status}`);
 }
 
 function getExecutionModeColor(mode: string) {
@@ -114,6 +137,11 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
     }
   };
 
+  // Determine if agent is actually running based on is_running field
+  const isRunning = agent.is_running ?? false;
+  const isActiveButNotRunning = agent.status === 'active' && !isRunning;
+  const hasError = agent.status === 'error' && agent.error_message;
+
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/30 transition-colors gap-3">
       <CardHeader className="pb-0">
@@ -125,12 +153,33 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
             <div className="min-w-0">
               <CardTitle className="text-lg">{agent.name}</CardTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className={cn('text-xs', getStatusColor(agent.status))}
-                >
-                  {t(`status.${agent.status}`)}
-                </Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className={cn('text-xs', getStatusColor(agent.status, isRunning))}
+                      >
+                        {agent.status === 'active' && !isRunning && (
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                        )}
+                        {agent.status === 'error' && (
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                        )}
+                        {getStatusDisplayText(agent.status, isRunning, t)}
+                      </Badge>
+                    </TooltipTrigger>
+                    {(isActiveButNotRunning || hasError) && (
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">
+                          {hasError
+                            ? agent.error_message
+                            : t('status.notRunningHint')}
+                        </p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 {agent.strategy_type && (
                   <Badge
                     variant="outline"
@@ -208,6 +257,16 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Error Message */}
+        {hasError && (
+          <div className="p-2 rounded-md bg-[var(--loss)]/10 border border-[var(--loss)]/20">
+            <p className="text-xs text-[var(--loss)] flex items-start gap-1">
+              <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+              <span className="break-words">{agent.error_message}</span>
+            </p>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/30">
           <div>

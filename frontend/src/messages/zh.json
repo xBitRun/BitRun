@@ -195,7 +195,9 @@
       "stopped": "已停止",
       "error": "错误",
       "draft": "草稿",
-      "warning": "警告"
+      "warning": "警告",
+      "notRunning": "未运行",
+      "notRunningHint": "代理状态为运行中但 Worker 未响应心跳，可能已崩溃或未启动"
     },
     "executionMode": {
       "live": "实盘交易",
