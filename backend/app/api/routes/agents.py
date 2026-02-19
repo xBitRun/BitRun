@@ -530,6 +530,10 @@ async def update_agent_status(
     # Update status
     await agent_repo.update_status(uuid.UUID(agent_id), new)
 
+    # Commit transaction BEFORE starting worker to avoid race condition
+    # Worker creates a new DB session and needs to see the updated status
+    await db.commit()
+
     # Sync with unified worker manager
     try:
         from ...workers.unified_manager import get_unified_worker_manager
