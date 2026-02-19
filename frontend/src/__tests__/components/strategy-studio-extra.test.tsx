@@ -1,6 +1,6 @@
 /**
- * Tests for Strategy Studio extra components:
- * - DebateConfig
+ * Tests for Strategy Studio and Agent Wizard components:
+ * - DebateConfig (used in agent creation wizard)
  * - PromptPreview
  * - PromptTemplateEditor
  * - StrategyStudioTabs
@@ -113,10 +113,6 @@ jest.mock("@/types", () => ({
       decisionProcess: "",
     },
     customPrompt: "",
-    debateEnabled: false,
-    debateModels: [],
-    debateConsensusMode: "majority_vote",
-    debateMinParticipants: 2,
   },
   POPULAR_SYMBOLS: ["BTC", "ETH", "SOL"],
   TIMEFRAME_OPTIONS: [
@@ -1095,10 +1091,6 @@ describe("StrategyStudioTabs", () => {
     },
     customPrompt: "",
     advancedPrompt: "",
-    debateEnabled: false,
-    debateModels: [] as string[],
-    debateConsensusMode: "majority_vote" as const,
-    debateMinParticipants: 2,
   };
 
   const defaultProps = {
@@ -1111,14 +1103,13 @@ describe("StrategyStudioTabs", () => {
     onRefreshPreview: jest.fn(),
   };
 
-  it("should render all 6 tab triggers", () => {
+  it("should render all 5 tab triggers", () => {
     render(<StrategyStudioTabs {...defaultProps} />);
 
     expect(screen.getByText("tabs.coins")).toBeInTheDocument();
     expect(screen.getByText("tabs.indicators")).toBeInTheDocument();
     expect(screen.getByText("tabs.risk")).toBeInTheDocument();
     expect(screen.getByText("tabs.prompt")).toBeInTheDocument();
-    expect(screen.getByText("tabs.debate")).toBeInTheDocument();
     expect(screen.getByText("tabs.preview")).toBeInTheDocument();
   });
 
@@ -1193,18 +1184,6 @@ describe("StrategyStudioTabs", () => {
     expect(promptTab).toBeInTheDocument();
   });
 
-  it("should render DebateConfig on debate tab", () => {
-    // Mock DebateConfig
-    jest.mock("@/components/strategy-studio/debate-config", () => ({
-      DebateConfig: () => <div data-testid="debate-config">DebateConfig</div>,
-    }));
-
-    render(<StrategyStudioTabs {...defaultProps} activeTab="debate" />);
-
-    const debateTab = screen.getByText("tabs.debate");
-    expect(debateTab).toBeInTheDocument();
-  });
-
   it("should render PromptPreview on preview tab", () => {
     // Mock PromptPreview
     jest.mock("@/components/strategy-studio/prompt-preview", () => ({
@@ -1229,7 +1208,7 @@ describe("StrategyStudioTabs", () => {
       />,
     );
 
-    const tabs = ["indicators", "risk", "prompt", "debate", "preview"] as const;
+    const tabs = ["indicators", "risk", "prompt", "preview"] as const;
     tabs.forEach((tab) => {
       rerender(
         <StrategyStudioTabs

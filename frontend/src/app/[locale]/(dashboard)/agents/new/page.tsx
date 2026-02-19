@@ -20,13 +20,13 @@ import {
   Plus,
   Wallet,
   Play,
+  Users,
 } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,6 +188,11 @@ interface WizardState {
   selectedStrategy: StrategyResponse | null;
   // Step 2
   aiModel: string;
+  // Debate configuration (for AI strategies)
+  debateEnabled: boolean;
+  debateModels: string[];
+  debateConsensusMode: string;
+  debateMinParticipants: number;
   // Step 3
   executionMode: ExecutionMode;
   accountId: string;
@@ -205,6 +210,10 @@ const initialState: WizardState = {
   selectedStrategyId: null,
   selectedStrategy: null,
   aiModel: "",
+  debateEnabled: false,
+  debateModels: [],
+  debateConsensusMode: "majority_vote",
+  debateMinParticipants: 2,
   executionMode: "live",
   accountId: "",
   mockInitialBalance: 10000,
@@ -314,8 +323,13 @@ export default function AgentWizardPage() {
             : undefined,
         execution_interval_minutes: state.executionIntervalMinutes,
         auto_execute: state.autoExecute,
+        // Debate configuration (only for AI strategies)
+        debate_enabled: isAiStrategy ? state.debateEnabled : undefined,
+        debate_models: isAiStrategy && state.debateEnabled ? state.debateModels : undefined,
+        debate_consensus_mode: isAiStrategy && state.debateEnabled ? state.debateConsensusMode : undefined,
+        debate_min_participants: isAiStrategy && state.debateEnabled ? state.debateMinParticipants : undefined,
       };
-      const agent = await agentsApi.create(request);
+      await agentsApi.create(request);
       toast.success(t("toast.created"));
       router.push(`/agents`);
     } catch (err) {
@@ -625,12 +639,51 @@ function ModelSelectStep({
   onNext: () => void;
   onBack: () => void;
 }) {
-  // Auto-select if only one model
-  useEffect(() => {
-    if (models.length === 1 && !state.aiModel) {
-      setState((prev) => ({ ...prev, aiModel: models[0].id }));
-    }
-  }, [models, state.aiModel, setState]);
+  // Track all selected models in a unified array
+  // aiModel stores the first selected, debateModels stores all
+  const selectedModels = state.debateEnabled ? state.debateModels : (state.aiModel ? [state.aiModel] : []);
+
+  // Handle model selection toggle
+  const toggleModel = useCallback((modelId: string) => {
+    setState((prev) => {
+      const currentModels = prev.debateEnabled ? prev.debateModels : (prev.aiModel ? [prev.aiModel] : []);
+      let newModels: string[];
+
+      if (currentModels.includes(modelId)) {
+        // Deselect
+        newModels = currentModels.filter((id) => id !== modelId);
+      } else if (currentModels.length < 5) {
+        // Select (max 5)
+        newModels = [...currentModels, modelId];
+      } else {
+        // Max reached, no change
+        return prev;
+      }
+
+      // Determine mode based on count
+      const isDebate = newModels.length >= 2;
+
+      return {
+        ...prev,
+        aiModel: newModels[0] || "",
+        debateEnabled: isDebate,
+        debateModels: isDebate ? newModels : [],
+        // Reset min participants if models decrease
+        debateMinParticipants: isDebate ? Math.min(prev.debateMinParticipants, newModels.length) : 2,
+      };
+    });
+  }, [setState]);
+
+  // Check if a model is selected
+  const isModelSelected = (modelId: string) => selectedModels.includes(modelId);
+
+  // Can proceed if at least one model selected (or no models available)
+  const canProceed = selectedModels.length > 0 || models.length === 0;
+
+  // Mode indicator
+  const modeText = selectedModels.length >= 2
+    ? t("wizard.modelStep.debateMode")
+    : t("wizard.modelStep.singleMode");
 
   return (
     <div className="space-y-4">
@@ -665,54 +718,154 @@ function ModelSelectStep({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
-          {Object.entries(groupedModels).map(([provider, providerModels]) => (
-            <div key={provider}>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                {getProviderDisplayName(provider)}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {providerModels.map((model) => {
-                  const isSelected = state.aiModel === model.id;
-                  return (
-                    <Card
-                      key={model.id}
-                      className={cn(
-                        "cursor-pointer transition-all hover:border-primary/40",
-                        isSelected
-                          ? "border-primary ring-2 ring-primary/20"
-                          : "border-border/50",
-                      )}
-                      onClick={() =>
-                        setState((prev) => ({ ...prev, aiModel: model.id }))
-                      }
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-sm truncate">
-                              {model.name}
-                            </h4>
-                            {model.description && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {model.description}
-                              </p>
-                            )}
-                          </div>
-                          {isSelected && (
-                            <div className="p-1 rounded-full bg-primary text-primary-foreground shrink-0 ml-2">
-                              <Check className="w-3 h-3" />
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+        <>
+          {/* Unified Model Selection Grid */}
+          <div className="space-y-4">
+            {/* Selection hint and status */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {t("wizard.modelStep.selectHint")}
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge variant={selectedModels.length >= 2 ? "default" : "secondary"}>
+                  {t("wizard.modelStep.selectedCount", { count: selectedModels.length })}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {modeText}
+                </Badge>
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* Model cards - multi-select */}
+            <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+              {Object.entries(groupedModels).map(([provider, providerModels]) => (
+                <div key={provider}>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                    {getProviderDisplayName(provider)}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {providerModels.map((model) => {
+                      const isSelected = isModelSelected(model.id);
+                      return (
+                        <Card
+                          key={model.id}
+                          className={cn(
+                            "cursor-pointer transition-all hover:border-primary/40",
+                            isSelected
+                              ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                              : "border-border/50",
+                          )}
+                          onClick={() => toggleModel(model.id)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {/* Checkbox indicator */}
+                                <div
+                                  className={cn(
+                                    "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
+                                    isSelected
+                                      ? "border-primary bg-primary"
+                                      : "border-muted-foreground"
+                                  )}
+                                >
+                                  {isSelected && (
+                                    <Check className="w-3 h-3 text-primary-foreground" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-semibold text-sm truncate">
+                                    {model.name}
+                                  </h4>
+                                  {model.description && (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                      {model.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Debate Configuration - shown when 2+ models selected */}
+          {state.debateEnabled && selectedModels.length >= 2 && (
+            <Card className="border-purple-500/30 bg-purple-500/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-4 w-4 text-purple-500" />
+                  {t("wizard.modelStep.debateTitle")}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {t("wizard.modelStep.debateDesc")}
+                </p>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                {/* Consensus Mode */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">{t("wizard.modelStep.debateConsensusMode")}</Label>
+                  <Select
+                    value={state.debateConsensusMode}
+                    onValueChange={(v) =>
+                      setState((prev) => ({ ...prev, debateConsensusMode: v }))
+                    }
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="majority_vote">{t("wizard.modelStep.consensusModes.majorityVote")}</SelectItem>
+                      <SelectItem value="highest_confidence">{t("wizard.modelStep.consensusModes.highestConfidence")}</SelectItem>
+                      <SelectItem value="weighted_average">{t("wizard.modelStep.consensusModes.weightedAverage")}</SelectItem>
+                      <SelectItem value="unanimous">{t("wizard.modelStep.consensusModes.unanimous")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Min Participants */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">{t("wizard.modelStep.debateMinParticipants")}</Label>
+                  <Select
+                    value={String(state.debateMinParticipants)}
+                    onValueChange={(v) =>
+                      setState((prev) => ({ ...prev, debateMinParticipants: parseInt(v) }))
+                    }
+                  >
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2, 3, 4, 5]
+                        .filter((n) => n <= selectedModels.length)
+                        .map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n} {t("wizard.modelStep.models")}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Estimated cost indicator */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                  <span className="text-xs text-muted-foreground">
+                    {t("wizard.modelStep.estimatedCost")}
+                  </span>
+                  <Badge variant="outline" className="text-xs">
+                    ~${(selectedModels.length * 0.1).toFixed(2)} / {t("wizard.modelStep.perCycle")}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Navigation */}
@@ -721,7 +874,7 @@ function ModelSelectStep({
           <ArrowLeft className="w-4 h-4 mr-2" />
           {t("wizard.back")}
         </Button>
-        <Button onClick={onNext} disabled={!state.aiModel && models.length > 0}>
+        <Button onClick={onNext} disabled={!canProceed}>
           {t("wizard.next")}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>

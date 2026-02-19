@@ -110,7 +110,6 @@ describe("Constants", () => {
   it("DEFAULT_STRATEGY_STUDIO_CONFIG should use conservative mode", () => {
     expect(DEFAULT_STRATEGY_STUDIO_CONFIG.tradingMode).toBe("conservative");
     expect(DEFAULT_STRATEGY_STUDIO_CONFIG.symbols).toEqual(["BTC", "ETH"]);
-    expect(DEFAULT_STRATEGY_STUDIO_CONFIG.debateEnabled).toBe(false);
   });
 
   it("CONSENSUS_MODE_OPTIONS should have 4 modes", () => {

@@ -155,26 +155,6 @@ class AIStrategyConfig(BaseModel):
         description="Full custom prompt content for advanced mode (replaces sections 1-6)"
     )
 
-    # Multi-model debate settings
-    debate_enabled: bool = Field(
-        default=False,
-        description="Enable multi-model debate for decisions"
-    )
-    debate_models: list[str] = Field(
-        default_factory=list,
-        description="List of model IDs for debate (e.g., ['deepseek:deepseek-chat', 'qwen:qwen-plus'])"
-    )
-    debate_consensus_mode: str = Field(
-        default="majority_vote",
-        description="Consensus mode: majority_vote, highest_confidence, weighted_average, unanimous"
-    )
-    debate_min_participants: int = Field(
-        default=2,
-        ge=2,
-        le=5,
-        description="Minimum successful model responses required for valid debate"
-    )
-
 
 # =============================================================================
 # Quant Strategy Configs (reuse existing, no changes)

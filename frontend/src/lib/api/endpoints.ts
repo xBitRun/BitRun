@@ -320,6 +320,11 @@ export interface CreateAgentRequest {
   allocated_capital_percent?: number | null;
   execution_interval_minutes?: number;
   auto_execute?: boolean;
+  // Multi-model debate configuration
+  debate_enabled?: boolean;
+  debate_models?: string[];
+  debate_consensus_mode?: string;
+  debate_min_participants?: number;
 }
 
 export interface UpdateAgentRequest {
@@ -332,6 +337,11 @@ export interface UpdateAgentRequest {
   allocated_capital_percent?: number | null;
   execution_interval_minutes?: number;
   auto_execute?: boolean;
+  // Multi-model debate configuration
+  debate_enabled?: boolean;
+  debate_models?: string[];
+  debate_consensus_mode?: string;
+  debate_min_participants?: number;
 }
 
 export interface AgentStatusRequest {
@@ -367,6 +377,12 @@ export interface AgentResponse {
   // Execution config
   execution_interval_minutes: number;
   auto_execute: boolean;
+
+  // Multi-model debate configuration
+  debate_enabled: boolean;
+  debate_models: string[];
+  debate_consensus_mode: string;
+  debate_min_participants: number;
 
   // Quant runtime state
   runtime_state?: Record<string, unknown> | null;

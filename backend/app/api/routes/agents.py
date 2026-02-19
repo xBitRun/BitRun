@@ -67,6 +67,12 @@ class AgentResponse(BaseModel):
     execution_interval_minutes: int = 30
     auto_execute: bool = True
 
+    # Multi-model debate configuration (for AI strategies)
+    debate_enabled: bool = False
+    debate_models: list[str] = []
+    debate_consensus_mode: str = "majority_vote"
+    debate_min_participants: int = 2
+
     # Runtime state (quant)
     runtime_state: Optional[dict] = None
 
@@ -158,12 +164,15 @@ async def create_agent(
             detail="Strategy not found or does not belong to you."
         )
 
-    # AI strategies require ai_model
-    if strategy.type == "ai" and not data.ai_model:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="AI strategies require an ai_model selection."
-        )
+    # AI strategies require either ai_model or debate with 2+ models
+    if strategy.type == "ai":
+        has_single_model = data.ai_model is not None
+        has_debate = data.debate_enabled and len(data.debate_models or []) >= 2
+        if not has_single_model and not has_debate:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="AI strategies require either ai_model or debate mode with 2+ models."
+            )
 
     # Quant strategies don't need ai_model
     if strategy.type != "ai" and data.ai_model:
@@ -214,6 +223,10 @@ async def create_agent(
         allocated_capital_percent=data.allocated_capital_percent,
         execution_interval_minutes=data.execution_interval_minutes,
         auto_execute=data.auto_execute,
+        debate_enabled=data.debate_enabled,
+        debate_models=data.debate_models,
+        debate_consensus_mode=data.debate_consensus_mode,
+        debate_min_participants=data.debate_min_participants,
     )
 
     # Eagerly load strategy for response
@@ -1132,6 +1145,10 @@ def _agent_to_response(agent) -> AgentResponse:
         allocated_capital_percent=agent.allocated_capital_percent,
         execution_interval_minutes=agent.execution_interval_minutes,
         auto_execute=agent.auto_execute,
+        debate_enabled=agent.debate_enabled,
+        debate_models=agent.debate_models or [],
+        debate_consensus_mode=agent.debate_consensus_mode or "majority_vote",
+        debate_min_participants=agent.debate_min_participants,
         runtime_state=agent.runtime_state,
         status=agent.status,
         error_message=agent.error_message,

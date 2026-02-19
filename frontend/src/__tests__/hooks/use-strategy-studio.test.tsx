@@ -49,10 +49,6 @@ jest.mock("@/types", () => {
       decisionProcess: "",
     },
     customPrompt: "",
-    debateEnabled: false,
-    debateModels: [],
-    debateConsensusMode: "majority_vote",
-    debateMinParticipants: 2,
   };
 
   return {
@@ -100,7 +96,6 @@ describe("useStrategyStudio - initial state", () => {
     expect(result.current.config.name).toBe("");
     expect(result.current.config.symbols).toEqual(["BTC", "ETH"]);
     expect(result.current.config.tradingMode).toBe("conservative");
-    expect(result.current.config.debateEnabled).toBe(false);
   });
 
   it("should apply initialConfig override", () => {
@@ -233,21 +228,6 @@ describe("useStrategyStudio - validation", () => {
 
     expect(valid!).toBe(false);
     expect(result.current.errors.symbols).toBeDefined();
-  });
-
-  it("should fail validation when debate enabled with < 2 models", () => {
-    const { result } = renderHook(
-      () => useStrategyStudio({ initialConfig: { name: "Test", debateEnabled: true, debateModels: ["model-1"] } }),
-      { wrapper: createWrapper() }
-    );
-
-    let valid: boolean;
-    act(() => {
-      valid = result.current.validate();
-    });
-
-    expect(valid!).toBe(false);
-    expect(result.current.errors.debate).toBeDefined();
   });
 
   it("should pass validation with valid config", () => {
@@ -408,10 +388,6 @@ describe("apiResponseToConfig", () => {
           entry_standards: "Enter when...",
           decision_process: "Decide by...",
         },
-        debate_enabled: true,
-        debate_models: ["model-a", "model-b"],
-        debate_consensus_mode: "weighted_average",
-        debate_min_participants: 3,
       },
     };
 
@@ -423,8 +399,6 @@ describe("apiResponseToConfig", () => {
     expect(config.language).toBe("zh");
     expect(config.symbols).toEqual(["BTC", "SOL"]);
     expect(config.autoExecute).toBe(false);
-    expect(config.debateEnabled).toBe(true);
-    expect(config.debateModels).toEqual(["model-a", "model-b"]);
     expect(config.riskControls?.maxLeverage).toBe(10);
     expect(config.promptSections?.roleDefinition).toBe("You are a trader");
   });
@@ -435,7 +409,6 @@ describe("apiResponseToConfig", () => {
     expect(config.name).toBe("");
     expect(config.symbols).toEqual(["BTC", "ETH"]);
     expect(config.tradingMode).toBe("conservative");
-    expect(config.debateEnabled).toBe(false);
     expect(config.riskControls?.maxLeverage).toBe(5);
   });
 
@@ -597,35 +570,6 @@ describe("useStrategyStudio - validation edge cases", () => {
     expect(valid!).toBe(false);
     expect(result.current.errors.timeframes).toBe("At least one timeframe is required");
   });
-
-  it("should pass validation when debate disabled even with < 2 models", () => {
-    const { result } = renderHook(
-      () => useStrategyStudio({ initialConfig: { name: "Test", debateEnabled: false, debateModels: ["model-1"] } }),
-      { wrapper: createWrapper() }
-    );
-
-    let valid: boolean;
-    act(() => {
-      valid = result.current.validate();
-    });
-
-    expect(valid!).toBe(true);
-  });
-
-  it("should pass validation when debate enabled with >= 2 models", () => {
-    const { result } = renderHook(
-      () => useStrategyStudio({ initialConfig: { name: "Test", debateEnabled: true, debateModels: ["model-1", "model-2"] } }),
-      { wrapper: createWrapper() }
-    );
-
-    let valid: boolean;
-    act(() => {
-      valid = result.current.validate();
-    });
-
-    expect(valid!).toBe(true);
-    expect(result.current.errors.debate).toBeUndefined();
-  });
 });
 
 describe("useStrategyStudio - toApiFormat", () => {
@@ -646,10 +590,6 @@ describe("useStrategyStudio - toApiFormat", () => {
           timeframes: ["1h", "4h"],
           customPrompt: "Custom prompt",
           advancedPrompt: "Advanced prompt",
-          debateEnabled: true,
-          debateModels: ["model-1", "model-2"],
-          debateConsensusMode: "weighted_average",
-          debateMinParticipants: 3,
         },
       }),
       { wrapper: createWrapper() }
@@ -666,8 +606,6 @@ describe("useStrategyStudio - toApiFormat", () => {
     expect(apiFormat!.ai_model).toBe("deepseek:chat");
     expect(apiFormat!.trading_mode).toBe("aggressive");
     expect((apiFormat!.config as Record<string, unknown>).symbols).toEqual(["BTC", "SOL"]);
-    expect((apiFormat!.config as Record<string, unknown>).debate_enabled).toBe(true);
-    expect((apiFormat!.config as Record<string, unknown>).debate_models).toEqual(["model-1", "model-2"]);
   });
 
   it("should handle disabled indicators in API format", () => {

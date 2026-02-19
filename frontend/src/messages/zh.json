@@ -345,12 +345,30 @@
       },
       "modelStep": {
         "title": "选择 AI 模型",
-        "subtitle": "选择驱动此代理决策的 AI 模型",
+        "subtitle": "选择驱动此代理决策的 AI 模型（1-5个）",
         "noModels": "暂未配置 AI 模型",
         "noModelsDesc": "请先在模型管理中添加 AI 供应商。",
         "addModel": "配置模型",
         "skipped": "量化策略无需配置 AI 模型",
-        "selected": "已选中"
+        "selected": "已选中",
+        "selectedCount": "已选择 {count}/5 个模型",
+        "singleMode": "单模型模式",
+        "debateMode": "辩论模式",
+        "debateTitle": "辩论配置",
+        "debateDesc": "已选择多个模型，自动启用辩论模式",
+        "debateError": "辩论模式至少需要 2 个模型",
+        "selectHint": "选择 1 个模型使用单模型模式，选择 2-5 个模型自动启用辩论模式",
+        "debateConsensusMode": "共识算法",
+        "debateMinParticipants": "最少成功响应数",
+        "models": "个模型",
+        "estimatedCost": "预估成本",
+        "perCycle": "每周期",
+        "consensusModes": {
+          "majorityVote": "多数投票",
+          "highestConfidence": "最高置信度",
+          "weightedAverage": "加权平均",
+          "unanimous": "全票通过"
+        }
       },
       "executionStep": {
         "title": "执行模式",

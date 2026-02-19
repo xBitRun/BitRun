@@ -345,12 +345,30 @@
       },
       "modelStep": {
         "title": "Select AI Model",
-        "subtitle": "Choose an AI model to power this agent's decisions",
+        "subtitle": "Choose AI models to power this agent's decisions (1-5)",
         "noModels": "No AI models configured",
         "noModelsDesc": "Add an AI provider in Model Management first.",
         "addModel": "Configure Models",
         "skipped": "Not required for quantitative strategies",
-        "selected": "Selected"
+        "selected": "Selected",
+        "selectedCount": "{count}/5 models selected",
+        "singleMode": "Single Model",
+        "debateMode": "Debate Mode",
+        "debateTitle": "Debate Configuration",
+        "debateDesc": "Multiple models selected, debate mode enabled automatically",
+        "debateError": "Debate mode requires at least 2 models",
+        "selectHint": "Select 1 model for single mode, 2-5 models to enable debate mode",
+        "debateConsensusMode": "Consensus Algorithm",
+        "debateMinParticipants": "Min Successful Responses",
+        "models": "models",
+        "estimatedCost": "Estimated Cost",
+        "perCycle": "per cycle",
+        "consensusModes": {
+          "majorityVote": "Majority Vote",
+          "highestConfidence": "Highest Confidence",
+          "weightedAverage": "Weighted Average",
+          "unanimous": "Unanimous"
+        }
       },
       "executionStep": {
         "title": "Execution Mode",

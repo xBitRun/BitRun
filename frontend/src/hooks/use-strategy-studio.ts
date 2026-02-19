@@ -12,7 +12,6 @@ import {
   IndicatorSettings,
   RiskControlsConfig,
   PromptSections,
-  ConsensusMode,
   RiskProfile,
   TimeHorizon,
   getStrategyPreset,
@@ -137,11 +136,6 @@ function configToApiFormat(
       advanced_prompt: config.advancedPrompt || "",
       execution_interval_minutes: config.executionIntervalMinutes,
       auto_execute: config.autoExecute,
-      // Debate configuration
-      debate_enabled: config.debateEnabled,
-      debate_models: config.debateModels,
-      debate_consensus_mode: config.debateConsensusMode,
-      debate_min_participants: config.debateMinParticipants,
     },
   };
 }
@@ -210,12 +204,6 @@ export function apiResponseToConfig(
       entryStandards: promptSections.entry_standards || "",
       decisionProcess: promptSections.decision_process || "",
     },
-    // Debate configuration
-    debateEnabled: (config.debate_enabled as boolean) ?? false,
-    debateModels: (config.debate_models as string[]) || [],
-    debateConsensusMode:
-      (config.debate_consensus_mode as ConsensusMode) || "majority_vote",
-    debateMinParticipants: (config.debate_min_participants as number) || 2,
   };
 }
 
@@ -408,11 +396,6 @@ export function useStrategyStudio(
 
     if (config.timeframes.length === 0) {
       newErrors.timeframes = "At least one timeframe is required";
-    }
-
-    // Debate validation
-    if (config.debateEnabled && config.debateModels.length < 2) {
-      newErrors.debate = "At least 2 models required for debate mode";
     }
 
     setErrors(newErrors);

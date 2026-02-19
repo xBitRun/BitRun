@@ -33,6 +33,10 @@ class AgentRepository:
         allocated_capital_percent: Optional[float] = None,
         execution_interval_minutes: int = 30,
         auto_execute: bool = True,
+        debate_enabled: bool = False,
+        debate_models: Optional[list] = None,
+        debate_consensus_mode: Optional[str] = None,
+        debate_min_participants: int = 2,
     ) -> AgentDB:
         """Create a new agent"""
         agent = AgentDB(
@@ -47,6 +51,10 @@ class AgentRepository:
             allocated_capital_percent=allocated_capital_percent,
             execution_interval_minutes=execution_interval_minutes,
             auto_execute=auto_execute,
+            debate_enabled=debate_enabled,
+            debate_models=debate_models,
+            debate_consensus_mode=debate_consensus_mode,
+            debate_min_participants=debate_min_participants,
             status="draft",
         )
         self.session.add(agent)
@@ -141,6 +149,7 @@ class AgentRepository:
             "allocated_capital", "allocated_capital_percent",
             "execution_interval_minutes", "auto_execute",
             "runtime_state",
+            "debate_enabled", "debate_models", "debate_consensus_mode", "debate_min_participants",
         }
 
         for key, value in kwargs.items():

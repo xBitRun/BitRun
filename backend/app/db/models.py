@@ -522,6 +522,12 @@ class AgentDB(Base):
     )
     auto_execute: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Multi-model debate configuration (for AI strategies)
+    debate_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    debate_models: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    debate_consensus_mode: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    debate_min_participants: Mapped[int] = mapped_column(Integer, default=2)
+
     # Quant strategy runtime state (only for grid/dca/rsi)
     # Grid: {filled_grids, active_orders, ...}
     # DCA: {orders_placed, total_invested, avg_cost, ...}

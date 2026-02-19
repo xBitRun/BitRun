@@ -6,7 +6,6 @@ import {
   Shield,
   FileText,
   Eye,
-  Users,
   TrendingUp,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +23,6 @@ import { TimeframeSelector } from "./timeframe-selector";
 import { RiskControlsPanel } from "./risk-controls-panel";
 import { PromptTemplateEditor } from "./prompt-template-editor";
 import { PromptPreview } from "./prompt-preview";
-import { DebateConfig } from "./debate-config";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +46,6 @@ const TAB_CONFIG: { value: StudioTab; icon: React.ElementType }[] = [
   { value: "indicators", icon: Activity },
   { value: "risk", icon: Shield },
   { value: "prompt", icon: FileText },
-  { value: "debate", icon: Users },
   { value: "preview", icon: Eye },
 ];
 
@@ -80,7 +77,7 @@ export function StrategyStudioTabs({
       onValueChange={(v) => onTabChange(v as StudioTab)}
       className="w-full"
     >
-      <TabsList className="w-full grid grid-cols-6 h-auto p-1 bg-muted/50">
+      <TabsList className="w-full grid grid-cols-5 h-auto p-1 bg-muted/50">
         {TAB_CONFIG.map(({ value, icon: Icon }) => (
           <TabsTrigger
             key={value}
@@ -164,27 +161,6 @@ export function StrategyStudioTabs({
               updateConfig("advancedPrompt", advancedPrompt)
             }
             tradingMode={config.tradingMode}
-          />
-        </TabsContent>
-
-        <TabsContent value="debate" className="m-0">
-          <DebateConfig
-            enabled={config.debateEnabled}
-            onEnabledChange={(enabled) =>
-              updateConfig("debateEnabled", enabled)
-            }
-            modelIds={config.debateModels}
-            onModelIdsChange={(modelIds) =>
-              updateConfig("debateModels", modelIds)
-            }
-            consensusMode={config.debateConsensusMode}
-            onConsensusModeChange={(mode) =>
-              updateConfig("debateConsensusMode", mode)
-            }
-            minParticipants={config.debateMinParticipants}
-            onMinParticipantsChange={(min) =>
-              updateConfig("debateMinParticipants", min)
-            }
           />
         </TabsContent>
 

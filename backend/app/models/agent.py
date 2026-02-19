@@ -66,6 +66,12 @@ class Agent(BaseModel):
     execution_interval_minutes: int = Field(default=15)
     auto_execute: bool = Field(default=True)
 
+    # Multi-model debate configuration (for AI strategies)
+    debate_enabled: bool = Field(default=False)
+    debate_models: list[str] = Field(default_factory=list)
+    debate_consensus_mode: str = Field(default="majority_vote")
+    debate_min_participants: int = Field(default=2, ge=2, le=5)
+
     # Quant runtime state
     runtime_state: Optional[dict] = None
 
@@ -135,6 +141,26 @@ class AgentCreate(BaseModel):
         description="Automatically execute decisions above confidence threshold"
     )
 
+    # Multi-model debate configuration (for AI strategies)
+    debate_enabled: bool = Field(
+        default=False,
+        description="Enable multi-model debate for decisions"
+    )
+    debate_models: list[str] = Field(
+        default_factory=list,
+        description="List of model IDs for debate (e.g., ['deepseek:deepseek-chat', 'qwen:qwen-plus'])"
+    )
+    debate_consensus_mode: str = Field(
+        default="majority_vote",
+        description="Consensus mode: majority_vote, highest_confidence, weighted_average, unanimous"
+    )
+    debate_min_participants: int = Field(
+        default=2,
+        ge=2,
+        le=5,
+        description="Minimum successful model responses required for valid debate"
+    )
+
     @model_validator(mode="after")
     def validate_execution_mode(self):
         """Validate that live mode has an account and mock mode has balance."""
@@ -166,6 +192,11 @@ class AgentUpdate(BaseModel):
     allocated_capital_percent: Optional[float] = Field(None, ge=0, le=1.0)
     execution_interval_minutes: Optional[int] = Field(None, ge=1, le=43200)
     auto_execute: Optional[bool] = None
+    # Multi-model debate configuration
+    debate_enabled: Optional[bool] = None
+    debate_models: Optional[list[str]] = None
+    debate_consensus_mode: Optional[str] = None
+    debate_min_participants: Optional[int] = Field(None, ge=2, le=5)
 
     @model_validator(mode="after")
     def validate_capital_allocation(self):

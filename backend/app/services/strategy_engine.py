@@ -139,23 +139,29 @@ class StrategyEngine:
                 logger.warning(f"Failed to initialize DataAccessLayer: {e}, falling back to basic context")
                 self.data_access_layer = None
 
-        # Initialize debate engine if enabled
+        # Initialize debate engine if enabled (config from Agent, not Strategy)
         self.debate_engine: Optional[DebateEngine] = None
-        if self.config.debate_enabled and len(self.config.debate_models) >= 2:
-            debate_config = DebateConfig(
-                enabled=True,
-                model_ids=self.config.debate_models,
-                consensus_mode=ConsensusMode(self.config.debate_consensus_mode),
-                min_participants=self.config.debate_min_participants,
-            )
-            self.debate_engine = DebateEngine(
-                config=debate_config,
-                risk_controls=self.risk_controls,
-            )
-            logger.info(
-                f"Debate mode enabled for strategy {strategy.id} with "
-                f"{len(self.config.debate_models)} models"
-            )
+        if self.agent:
+            debate_enabled = getattr(self.agent, 'debate_enabled', False) or False
+            debate_models = getattr(self.agent, 'debate_models', None) or []
+            debate_consensus_mode = getattr(self.agent, 'debate_consensus_mode', None) or 'majority_vote'
+            debate_min_participants = getattr(self.agent, 'debate_min_participants', 2) or 2
+
+            if debate_enabled and len(debate_models) >= 2:
+                debate_config = DebateConfig(
+                    enabled=True,
+                    model_ids=debate_models,
+                    consensus_mode=ConsensusMode(debate_consensus_mode),
+                    min_participants=debate_min_participants,
+                )
+                self.debate_engine = DebateEngine(
+                    config=debate_config,
+                    risk_controls=self.risk_controls,
+                )
+                logger.info(
+                    f"Debate mode enabled for agent {self.agent.id} with "
+                    f"{len(debate_models)} models"
+                )
 
         # Execution state
         self._last_decision: Optional[DecisionResponse] = None

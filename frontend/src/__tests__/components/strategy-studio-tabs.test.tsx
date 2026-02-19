@@ -99,12 +99,6 @@ jest.mock("@/components/strategy-studio/prompt-preview", () => ({
   ),
 }));
 
-jest.mock("@/components/strategy-studio/debate-config", () => ({
-  DebateConfig: (props: any) => (
-    <div data-testid="debate-config">Debate Config</div>
-  ),
-}));
-
 // Use a module-level ref to capture onValueChange for testing
 let capturedOnValueChange: ((value: string) => void) | null = null;
 
@@ -210,10 +204,6 @@ const defaultConfig: StrategyStudioConfig = {
   customPrompt: "",
   advancedPrompt: "",
   tradingMode: "balanced",
-  debateEnabled: false,
-  debateModels: [],
-  debateConsensusMode: "majority_vote",
-  debateMinParticipants: 2,
 };
 
 describe("StrategyStudioTabs", () => {
@@ -238,7 +228,6 @@ describe("StrategyStudioTabs", () => {
     expect(screen.getByText("tabs.indicators")).toBeInTheDocument();
     expect(screen.getByText("tabs.risk")).toBeInTheDocument();
     expect(screen.getByText("tabs.prompt")).toBeInTheDocument();
-    expect(screen.getByText("tabs.debate")).toBeInTheDocument();
     expect(screen.getByText("tabs.preview")).toBeInTheDocument();
   });
 
@@ -276,12 +265,6 @@ describe("StrategyStudioTabs", () => {
     render(<StrategyStudioTabs {...defaultProps} activeTab="prompt" />);
 
     expect(screen.getByTestId("prompt-template-editor")).toBeInTheDocument();
-  });
-
-  it("renders debate tab content", () => {
-    render(<StrategyStudioTabs {...defaultProps} activeTab="debate" />);
-
-    expect(screen.getByTestId("debate-config")).toBeInTheDocument();
   });
 
   it("renders preview tab content with loading state", () => {

@@ -252,7 +252,6 @@ export type StudioTab =
   | "indicators"
   | "risk"
   | "prompt"
-  | "debate"
   | "preview";
 
 // Indicator Settings
@@ -325,12 +324,6 @@ export interface StrategyStudioConfig {
   promptSections: PromptSections;
   customPrompt: string; // Deprecated in simple mode, kept for backward compatibility
   advancedPrompt: string; // Full markdown content for advanced mode
-
-  // Debate configuration
-  debateEnabled: boolean;
-  debateModels: string[];
-  debateConsensusMode: ConsensusMode;
-  debateMinParticipants: number;
 }
 
 // Default values
@@ -416,11 +409,6 @@ export const DEFAULT_STRATEGY_STUDIO_CONFIG: StrategyStudioConfig = {
   promptSections: DEFAULT_PROMPT_SECTIONS,
   customPrompt: "",
   advancedPrompt: "",
-  // Debate defaults
-  debateEnabled: false,
-  debateModels: [],
-  debateConsensusMode: "majority_vote",
-  debateMinParticipants: 2,
 };
 
 // Prompt Preview Response
