@@ -661,7 +661,7 @@ function OverviewTab({
                       : "text-[var(--loss)]",
                   )}
                 >
-                  {(agent.total_pnl ?? 0) >= 0 ? "+" : ""}$
+                  {(agent.total_pnl ?? 0) >= 0 ? "+" : "-"}$
                   {Math.abs(agent.total_pnl ?? 0).toLocaleString()}
                 </span>
               ) : (

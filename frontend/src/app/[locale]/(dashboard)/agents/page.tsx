@@ -227,7 +227,7 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
               ) : (
                 <TrendingDown className="w-3 h-3" />
               )}
-              ${Math.abs(agent.total_pnl).toLocaleString()}
+              {agent.total_pnl >= 0 ? "+" : "-"}${Math.abs(agent.total_pnl).toLocaleString()}
             </p>
           </div>
           <div>
