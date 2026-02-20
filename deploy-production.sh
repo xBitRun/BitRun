@@ -7,7 +7,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/deploy-production.sh | bash
 #
 # Prerequisites:
-#   - Aliyun ECS instance (Ubuntu 20.04+)
+#   - Aliyun ECS instance (Alibaba Cloud Linux 4 / Ubuntu 20.04+)
 #   - DNS records configured:
 #     * app.qemind.xyz → Server IP
 #     * api.qemind.xyz → Server IP
@@ -53,6 +53,14 @@ preflight_checks() {
     if [ "$ARCH" != "x86_64" ] && [ "$ARCH" != "aarch64" ]; then
         echo -e "${RED}Error: Unsupported architecture: $ARCH${NC}"
         exit 1
+    fi
+
+    # Detect OS
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS_NAME="$NAME"
+        OS_VERSION="$VERSION_ID"
+        echo -e "${BLUE}Detected OS: $OS_NAME $OS_VERSION${NC}"
     fi
 
     # Check DNS resolution
@@ -107,17 +115,68 @@ preflight_checks() {
     echo -e "${GREEN}✓ Preflight checks passed${NC}"
 }
 
+# ==================== Detect Package Manager ====================
+
+detect_package_manager() {
+    if command -v dnf &>/dev/null; then
+        PKG_MANAGER="dnf"
+        PKG_UPDATE="dnf makecache -q 2>/dev/null || true"
+        PKG_INSTALL="dnf install -y -q"
+        PKG_REMOVE="dnf remove -y -q"
+    elif command -v yum &>/dev/null; then
+        PKG_MANAGER="yum"
+        PKG_UPDATE="yum makecache -q 2>/dev/null || true"
+        PKG_INSTALL="yum install -y -q"
+        PKG_REMOVE="yum remove -y -q"
+    elif command -v apt-get &>/dev/null; then
+        PKG_MANAGER="apt-get"
+        PKG_UPDATE="apt-get update -qq"
+        PKG_INSTALL="apt-get install -y -qq"
+        PKG_REMOVE="apt-get remove -y -qq"
+    elif command -v apk &>/dev/null; then
+        PKG_MANAGER="apk"
+        PKG_UPDATE="apk update"
+        PKG_INSTALL="apk add --no-cache"
+        PKG_REMOVE="apk del"
+    else
+        echo -e "${RED}Error: No supported package manager found${NC}"
+        exit 1
+    fi
+
+    echo -e "${BLUE}Using package manager: $PKG_MANAGER${NC}"
+}
+
 # ==================== System Preparation ====================
 
 prepare_system() {
     echo -e "${YELLOW}Preparing system...${NC}"
 
+    detect_package_manager
+
     # Update package list
-    apt-get update -qq
-    apt-get install -y -qq curl wget git ca-certificates gnupg lsb-release
+    eval $PKG_UPDATE
+
+    # Install required packages
+    if [ "$PKG_MANAGER" = "dnf" ] || [ "$PKG_MANAGER" = "yum" ]; then
+        # Alibaba Cloud Linux / RHEL / CentOS
+        $PKG_INSTALL curl wget git ca-certificates gnupg2 tar procps-ng || {
+            echo -e "${YELLOW}Some packages may already be installed${NC}"
+        }
+        # Install EPEL for additional packages (if not already installed)
+        if [ "$PKG_MANAGER" = "dnf" ]; then
+            dnf install -y epel-release 2>/dev/null || true
+        else
+            yum install -y epel-release 2>/dev/null || true
+        fi
+    else
+        # Ubuntu/Debian
+        $PKG_INSTALL curl wget git ca-certificates gnupg lsb-release || {
+            $PKG_INSTALL curl wget git ca-certificates
+        }
+    fi
 
     # Set timezone
-    timedatectl set-timezone Asia/Shanghai 2>/dev/null || true
+    timedatectl set-timezone Asia/Shanghai 2>/dev/null || ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
     # Increase file descriptor limits
     if ! grep -q "bitrun" /etc/security/limits.conf 2>/dev/null; then
@@ -141,7 +200,7 @@ install_docker() {
         return
     fi
 
-    # Install Docker using official script
+    # Install Docker using official script (works on all Linux distros)
     curl -fsSL https://get.docker.com | sh
 
     # Start Docker
@@ -166,7 +225,24 @@ install_certbot() {
         return
     fi
 
-    apt-get install -y -qq certbot
+    if [ "$PKG_MANAGER" = "dnf" ] || [ "$PKG_MANAGER" = "yum" ]; then
+        # Alibaba Cloud Linux / RHEL / CentOS
+        # Try certbot from EPEL first, then fall back to pip
+        $PKG_INSTALL certbot 2>/dev/null || {
+            echo -e "${YELLOW}Installing certbot via pip...${NC}"
+            $PKG_INSTALL python3-pip || $PKG_INSTALL python3-pip
+            pip3 install certbot --quiet
+        }
+    else
+        # Ubuntu/Debian
+        $PKG_INSTALL certbot
+    fi
+
+    # Verify installation
+    if ! command -v certbot &> /dev/null; then
+        echo -e "${RED}Error: Failed to install certbot${NC}"
+        exit 1
+    fi
 
     # Create certbot webroot directory
     mkdir -p /var/www/certbot
@@ -179,7 +255,20 @@ install_certbot() {
 configure_firewall() {
     echo -e "${YELLOW}Configuring firewall...${NC}"
 
-    if command -v ufw &> /dev/null; then
+    if command -v firewall-cmd &> /dev/null; then
+        # Alibaba Cloud Linux / RHEL / CentOS with firewalld
+        systemctl start firewalld 2>/dev/null || true
+        systemctl enable firewalld 2>/dev/null || true
+
+        firewall-cmd --permanent --add-service=ssh
+        firewall-cmd --permanent --add-port=80/tcp
+        firewall-cmd --permanent --add-port=443/tcp
+        firewall-cmd --reload
+
+        echo -e "${GREEN}✓ Firewalld configured${NC}"
+        echo -e "${BLUE}  Open ports: 22, 80, 443${NC}"
+
+    elif command -v ufw &> /dev/null; then
         # Ubuntu/Debian with UFW
         ufw --force reset
         ufw default deny incoming
@@ -189,11 +278,34 @@ configure_firewall() {
         ufw allow 443/tcp comment 'HTTPS'
         ufw --force enable
         echo -e "${GREEN}✓ UFW configured${NC}"
+
+    elif command -v iptables &> /dev/null; then
+        # Fallback to iptables
+        iptables -F
+        iptables -X
+        iptables -P INPUT DROP
+        iptables -P FORWARD DROP
+        iptables -P OUTPUT ACCEPT
+        iptables -A INPUT -i lo -j ACCEPT
+        iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+        iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+        # Save iptables rules
+        if command -v iptables-save &>/dev/null; then
+            iptables-save > /etc/sysconfig/iptables 2>/dev/null || \
+            iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+        fi
+
+        echo -e "${GREEN}✓ iptables configured${NC}"
+
     else
         echo -e "${YELLOW}No firewall detected. Please configure manually:${NC}"
         echo "  - Open ports: 22, 80, 443"
-        echo "  - Aliyun Security Group: Ensure these ports are open"
     fi
+
+    echo -e "${YELLOW}Note: Also ensure ports 22, 80, 443 are open in Aliyun Security Group${NC}"
 }
 
 # ==================== Setup BITRUN ====================
@@ -332,7 +444,7 @@ EOF
     rm /tmp/certbot-nginx.conf
 
     # Setup auto-renewal
-    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'docker restart bitrun-nginx'") | crontab -
+    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'docker restart bitrun-nginx 2>/dev/null || true'") | crontab -
 
     echo -e "${GREEN}✓ SSL certificates obtained${NC}"
     echo -e "${GREEN}✓ Auto-renewal configured (daily at 3:00 AM)${NC}"
