@@ -313,9 +313,9 @@ install_docker() {
                 # Also check ID_LIKE for compatibility
                 local id_like=$(grep '^ID_LIKE=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"')
 
-                # Alibaba Cloud Linux variants: alinux, alinux2, alinux3, etc.
+                # Alibaba Cloud Linux variants: alinux, alinux2, alinux3, alinux4, etc.
                 case "$os_id_like" in
-                    alinux|alinux2|alinux3)
+                    alinux|alinux2|alinux3|alinux4)
                         is_alinux=true
                         ;;
                     *)
@@ -333,11 +333,11 @@ install_docker() {
 
             if [ "$is_alinux" = true ]; then
                 # Alibaba Cloud Linux - use dnf/yum with Docker CE repo
-                log_substep "Detected Alibaba Cloud Linux, using dnf..."
+                local alinux_ver=$(grep '^VERSION_ID=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"' | cut -d'.' -f1)
+                log_substep "Detected Alibaba Cloud Linux $alinux_ver, using dnf..."
 
                 # Determine CentOS version base (alinux3/4 uses CentOS 9 Stream packages)
                 local centos_ver=9
-                local alinux_ver=$(grep '^VERSION_ID=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"' | cut -d'.' -f1)
                 if [ "$alinux_ver" = "2" ]; then
                     centos_ver=7
                 elif [ "$alinux_ver" = "3" ]; then
@@ -345,6 +345,8 @@ install_docker() {
                 else
                     centos_ver=9  # Default to 9 for alinux4+
                 fi
+
+                log_substep "Using CentOS $centos_ver compatible Docker packages..."
 
                 # Add Docker CE repository manually
                 cat > /etc/yum.repos.d/docker-ce.repo << REPO
@@ -372,6 +374,12 @@ REPO
 
                 log_substep "Installing Docker CE packages..."
                 dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+                # alinux4 uses nftables by default, ensure iptables compatibility
+                if [ "$alinux_ver" = "4" ]; then
+                    log_substep "Ensuring iptables/nftables compatibility for alinux4..."
+                    dnf install -y iptables-nft 2>/dev/null || true
+                fi
 
             else
                 # Standard distributions - use official script
@@ -446,9 +454,13 @@ install_certbot() {
     fi
 
     if [ "$PKG_MANAGER" = "dnf" ] || [ "$PKG_MANAGER" = "yum" ]; then
+        # Try epel-release first (needed for certbot on RHEL-based systems)
+        $PKG_INSTALL epel-release 2>/dev/null || true
         $PKG_INSTALL certbot 2>/dev/null || {
             log_substep "Installing certbot via pip..."
             $PKG_INSTALL python3-pip 2>/dev/null || true
+            # Use --break-system-packages for Python 3.12+ (alinux4)
+            pip3 install certbot --quiet --break-system-packages 2>/dev/null || \
             pip3 install certbot --quiet
         }
     else
