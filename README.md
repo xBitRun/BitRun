@@ -66,18 +66,18 @@
 bitrun/
 ├── backend/                  # FastAPI 后端应用
 │   ├── app/
-│   │   ├── api/              #   API 路由 + WebSocket (24 个模块)
+│   │   ├── api/              #   API 路由 + WebSocket (23 个模块)
 │   │   │   └── routes/       #   各模块路由
 │   │   ├── backtest/         #   回测引擎 (Engine + Simulator + DataProvider)
 │   │   ├── core/             #   配置、安全、依赖注入
-│   │   ├── db/               #   数据库模型 + Repository 层 (11 个)
+│   │   ├── db/               #   数据库模型 + Repository 层 (10 个)
 │   │   ├── models/           #   Pydantic 领域模型
 │   │   ├── monitoring/       #   Prometheus + Sentry
-│   │   ├── services/         #   业务逻辑层 (20 个)
-│   │   │   └── ai/           #     AI 客户端实现 (9+ Provider)
+│   │   ├── services/         #   业务逻辑层 (19 个)
+│   │   │   └── ai/           #     AI 客户端实现 (12 个客户端，9+ Provider)
 │   │   ├── traders/          #   交易所适配器 (CCXT / Hyperliquid)
 │   │   └── workers/          #   后台 Worker (Unified 架构)
-│   ├── alembic/              #   数据库迁移 (021 个)
+│   ├── alembic/              #   数据库迁移 (21 个)
 │   └── tests/                #   测试套件 (30+ 测试文件)
 ├── frontend/                 # Next.js 前端应用
 │   ├── src/
@@ -93,10 +93,10 @@ bitrun/
 │   │   └── messages/         #   i18n 翻译文件 (en.json / zh.json)
 │   └── e2e/                  #   Playwright E2E 测试
 ├── scripts/                  # 部署和开发脚本
+│   ├── install.sh            #   一键安装
 │   ├── quick-start.sh        #   一键启动
 │   ├── deploy.sh             #   生产部署
 │   ├── start-dev.sh          #   本地开发启动
-│   ├── docker-dev.sh         #   Docker 开发环境
 │   └── health-check.sh       #   健康检查
 ├── docs/                     # 项目文档
 ├── docker-compose.yml        # Docker 基础配置
@@ -188,31 +188,130 @@ npm run dev
 
 ### 后端 (`backend/.env`)
 
+#### 基础配置
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `ENVIRONMENT` | 运行环境 | `development` |
+| `HOST` | 服务监听地址 | `0.0.0.0` |
+| `PORT` | 服务监听端口 | `8000` |
+
+#### 数据库
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql+asyncpg://postgres:postgres@localhost:5432/bitrun` |
+| `REDIS_URL` | Redis 连接字符串 | `redis://localhost:6379/0` |
+
+#### 安全
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `JWT_SECRET` | JWT 签名密钥 | 留空自动生成 (重启后失效) |
+| `DATA_ENCRYPTION_KEY` | AES-256 数据加密密钥 | 留空自动生成 (重启后失效) |
+| `TRANSPORT_ENCRYPTION_ENABLED` | 启用传输加密 (RSA+AES) | `false` |
+| `CORS_ORIGINS` | CORS 允许的源 (逗号分隔) | `http://localhost:3000` |
+
+#### Worker 配置
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `WORKER_ENABLED` | 是否启用策略执行 Worker | `true` |
+
+#### 通知配置
+
 | 变量 | 说明 |
 |------|------|
-| `DATABASE_URL` | PostgreSQL 连接字符串 |
-| `REDIS_URL` | Redis 连接字符串 |
-| `JWT_SECRET` | JWT 签名密钥 (留空自动生成) |
-| `DATA_ENCRYPTION_KEY` | AES-256 数据加密密钥 (留空自动生成) |
-| `WORKER_ENABLED` | 是否启用策略执行 Worker (默认 `true`) |
-| `WORKER_MAX_CONSECUTIVE_ERRORS` | Worker 最大连续错误数 (默认 5) |
-| `WORKER_HEARTBEAT_INTERVAL_SECONDS` | 心跳间隔秒数 (默认 60) |
-| `WORKER_HEARTBEAT_TIMEOUT_SECONDS` | 心跳超时秒数 (默认 300) |
-| `PROXY_URL` | 代理地址 (用于受地域限制的交易所 API) |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token (从 @BotFather 获取) |
+| `TELEGRAM_CHAT_ID` | Telegram Chat ID (从 @userinfobot 获取) |
+| `DISCORD_WEBHOOK_URL` | Discord Webhook URL |
+| `RESEND_API_KEY` | Resend 邮件 API Key |
+| `RESEND_FROM` | 发件人邮箱 (需在 Resend 验证域名) |
+
+#### 代理配置
+
+| 变量 | 说明 |
+|------|------|
+| `PROXY_URL` | 代理地址 (用于 Bybit、OKX 等受地域限制的交易所 API) |
+
+#### 监控
+
+| 变量 | 说明 |
+|------|------|
 | `SENTRY_DSN` | Sentry 错误追踪 DSN |
 
-AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密存储在数据库中。
+#### 品牌配置 (后端通知用)
 
-完整变量列表请查看 `backend/.env.example`。
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `BRAND_NAME` | 品牌名称 | `BITRUN` |
+| `BRAND_TAGLINE` | 品牌标语 | `AI-Powered Trading Agent` |
+| `BRAND_DESCRIPTION` | 品牌描述 | `Prompt-driven automated trading...` |
+
+#### 管理员账户 (首次启动自动创建)
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `ADMIN_EMAIL` | 管理员邮箱 | `admin@example.com` |
+| `ADMIN_PASSWORD` | 管理员密码 | ⚠️ 生产环境必须修改 |
+| `ADMIN_NAME` | 管理员名称 | `Admin` |
+
+> AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密存储在数据库中。
 
 ### 前端 (`frontend/.env.local`)
 
+#### API 配置
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `NEXT_PUBLIC_API_URL` | 后端 API 地址 | `http://localhost:8000/api/v1` |
+| `NEXT_PUBLIC_WS_URL` | WebSocket 地址 | `ws://localhost:8000/api/v1/ws` |
+
+#### 品牌配置
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `NEXT_PUBLIC_BRAND_NAME` | 品牌名称 | `BITRUN` |
+| `NEXT_PUBLIC_BRAND_SHORT_NAME` | 品牌简称 | `BITRUN` |
+| `NEXT_PUBLIC_BRAND_TAGLINE` | 品牌标语 | `AI-Powered Trading Agent` |
+| `NEXT_PUBLIC_BRAND_DESCRIPTION` | 品牌描述 | - |
+
+#### 品牌资源
+
 | 变量 | 说明 |
 |------|------|
-| `NEXT_PUBLIC_API_URL` | 后端 API 地址 |
-| `NEXT_PUBLIC_WS_URL` | WebSocket 地址 |
+| `NEXT_PUBLIC_BRAND_LOGO_DEFAULT` | 默认 Logo URL |
+| `NEXT_PUBLIC_BRAND_LOGO_COMPACT` | 紧凑 Logo URL |
+| `NEXT_PUBLIC_BRAND_LOGO_ICON` | 图标 Logo URL |
+| `NEXT_PUBLIC_BRAND_FAVICON` | Favicon 路径 |
+| `NEXT_PUBLIC_BRAND_THEME_PRESET` | 主题预设 (`bitrun` / `ocean` / `binance`) |
+| `NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE` | 主题颜色覆盖 (JSON 格式) |
 
-完整变量列表请查看 `frontend/.env.local.example`。
+#### 法律与链接
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER` | 版权持有者 | `BITRUN` |
+| `NEXT_PUBLIC_BRAND_TERMS_URL` | 服务条款 URL | `/terms` |
+| `NEXT_PUBLIC_BRAND_PRIVACY_URL` | 隐私政策 URL | `/privacy` |
+| `NEXT_PUBLIC_BRAND_HOMEPAGE_URL` | 官网 URL | - |
+| `NEXT_PUBLIC_BRAND_DOCS_URL` | 文档 URL | - |
+| `NEXT_PUBLIC_BRAND_SUPPORT_URL` | 支持 URL | - |
+
+### 生产环境 (docker-compose.prod.yml)
+
+生产环境需要额外配置以下变量：
+
+| 变量 | 说明 | 必填 |
+|------|------|------|
+| `POSTGRES_DB` | 数据库名称 | 否 (默认 `bitrun`) |
+| `POSTGRES_USER` | 数据库用户 | 否 (默认 `bitrun`) |
+| `POSTGRES_PASSWORD` | 数据库密码 | **是** |
+| `REDIS_PASSWORD` | Redis 密码 | **是** |
+| `FRONTEND_DOMAIN` | 前端域名 (如 `app.example.com`) | **是** |
+| `BACKEND_DOMAIN` | 后端域名 (如 `api.example.com`) | **是** |
+
+> 完整变量列表请查看 `backend/.env.example` 和 `frontend/.env.local.example`。
 
 ## 访问地址
 

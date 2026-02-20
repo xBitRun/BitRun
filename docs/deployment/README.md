@@ -12,7 +12,7 @@
     ┌──────────────────┐            ┌──────────────────┐
     │ app.example.com   │            │ api.example.com   │
     │   (Frontend)     │            │    (Backend)     │
-    │   Next.js 19     │            │    FastAPI       │
+    │   Next.js 16     │            │    FastAPI       │
     └──────────────────┘            └──────────────────┘
               │                               │
               └───────────────┬───────────────┘
@@ -38,8 +38,9 @@
 | `scripts/deploy.sh` | 服务管理脚本（start/stop/logs 等） |
 | `docker-compose.prod.yml` | 生产环境 Docker Compose 配置 |
 | `nginx/nginx.prod.conf` | 生产环境 Nginx 配置（前后端分离域名） |
-| `.github/workflows/deploy.yml` | GitHub Actions 自动部署 |
-| `.env.example` | 环境变量模板 |
+| `.github/workflows/test.yml` | GitHub Actions 测试工作流 |
+| `backend/.env.example` | 后端环境变量模板 |
+| `frontend/.env.local.example` | 前端环境变量模板 |
 
 ---
 
