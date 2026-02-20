@@ -36,8 +36,10 @@ INSTALL_DIR=""
 PRODUCTION_MODE=false
 FRONTEND_DOMAIN=""
 BACKEND_DOMAIN=""
+GITHUB_REPO="https://github.com/xBitRun/BitRun.git"
 GITHUB_RAW="https://raw.githubusercontent.com/xBitRun/BitRun/main"
 COMPOSE_FILE="docker-compose.prod.yml"
+SSL_SKIPPED=false
 
 # ==================== Argument Parsing ====================
 
@@ -379,6 +381,24 @@ REPO
 
             systemctl enable docker
             systemctl start docker
+
+            # Wait for Docker network to be fully ready (iptables rules created)
+            log_substep "Waiting for Docker network to be ready..."
+            local docker_ready=false
+            for i in {1..30}; do
+                if docker network inspect bridge &>/dev/null && iptables -t nat -L DOCKER &>/dev/null 2>&1; then
+                    docker_ready=true
+                    break
+                fi
+                sleep 1
+            done
+
+            if [ "$docker_ready" = false ]; then
+                log_warn "Docker network not fully ready, restarting Docker..."
+                systemctl restart docker
+                sleep 5
+            fi
+
             log_info "Docker installed"
         else
             log_error "Docker is not installed"
@@ -488,50 +508,118 @@ setup_directory() {
     fi
     log_step "Step $step_num: Setting Up Installation Directory"
 
-    mkdir -p "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
-    log_info "Installation directory: $INSTALL_DIR"
+    # Check if directory already exists with source code
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        log_info "Found existing installation, updating..."
+        cd "$INSTALL_DIR"
+
+        # Backup .env if exists
+        if [ -f ".env" ]; then
+            cp .env .env.bak.$(date +%s)
+            log_info "Backed up existing .env file"
+        fi
+
+        # Pull latest changes
+        git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || true
+        log_info "Updated to latest version"
+    elif [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
+        # Directory exists with docker-compose but no git
+        log_warn "Installation directory exists but is not a git repository"
+        log_substep "Backing up and re-installing..."
+        mv "$INSTALL_DIR" "${INSTALL_DIR}.bak.$(date +%s)"
+        mkdir -p "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        log_info "Created fresh installation directory"
+    else
+        mkdir -p "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        log_info "Installation directory: $INSTALL_DIR"
+    fi
 }
 
-# ==================== Download Configuration Files ====================
+# ==================== Download Source Code ====================
 
-download_files() {
+download_source_code() {
     local step_num
     if [ "$PRODUCTION_MODE" = true ]; then
         step_num="7"
     else
         step_num="3"
     fi
-    log_step "Step $step_num: Downloading Configuration Files"
+    log_step "Step $step_num: Downloading Source Code"
 
-    # Download docker-compose file
-    curl -fsSL "$GITHUB_RAW/$COMPOSE_FILE" -o docker-compose.yml 2>/dev/null || {
-        if [ ! -f "docker-compose.yml" ] && [ ! -f "$COMPOSE_FILE" ]; then
-            log_error "No docker-compose file found"
-            exit 1
-        fi
-    }
+    cd "$INSTALL_DIR"
 
-    # Download nginx config
-    mkdir -p nginx
+    # Check if already cloned
+    if [ -d ".git" ]; then
+        log_info "Source code already present"
+        return
+    fi
+
+    log_substep "Cloning repository from GitHub..."
+
+    # Clone the repository
+    if git clone "$GITHUB_REPO" . 2>/dev/null; then
+        log_info "Source code downloaded successfully"
+    else
+        log_error "Failed to clone repository"
+        echo "  Please check your network connection and try again"
+        echo "  Repository: $GITHUB_REPO"
+        exit 1
+    fi
+
+    # Verify essential directories exist
+    if [ ! -d "backend" ] || [ ! -d "frontend" ]; then
+        log_error "Source code is incomplete - missing backend or frontend directory"
+        exit 1
+    fi
+
+    log_info "Source code verified"
+}
+
+# ==================== Configure Application ====================
+
+configure_app() {
+    local step_num
     if [ "$PRODUCTION_MODE" = true ]; then
-        curl -fsSL "$GITHUB_RAW/nginx/nginx.prod.conf" -o nginx/nginx.prod.conf 2>/dev/null || true
+        step_num="8"
+    else
+        step_num="4"
+    fi
+    log_step "Step $step_num: Configuring Application"
 
-        # Replace domain placeholders with actual domains
+    cd "$INSTALL_DIR"
+
+    # Select appropriate docker-compose file
+    if [ "$PRODUCTION_MODE" = true ]; then
+        if [ -f "docker-compose.prod.yml" ]; then
+            ln -sf docker-compose.prod.yml docker-compose.yml 2>/dev/null || \
+            cp docker-compose.prod.yml docker-compose.yml
+            log_info "Using production docker-compose configuration"
+        fi
+
+        # Configure nginx with domains
         if [ -f "nginx/nginx.prod.conf" ] && [ -n "$FRONTEND_DOMAIN" ] && [ -n "$BACKEND_DOMAIN" ]; then
             log_substep "Configuring nginx with your domains..."
             sed -i.bak \
                 -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
                 -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
-                nginx/nginx.prod.conf
-            rm -f nginx/nginx.prod.conf.bak
+                nginx/nginx.prod.conf 2>/dev/null || \
+            # macOS sed compatibility
+            sed -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
+                -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
+                nginx/nginx.prod.conf > nginx/nginx.prod.conf.tmp && \
+            mv nginx/nginx.prod.conf.tmp nginx/nginx.prod.conf
+            rm -f nginx/nginx.prod.conf.bak 2>/dev/null || true
             log_info "Nginx configured for $FRONTEND_DOMAIN and $BACKEND_DOMAIN"
         fi
     else
-        curl -fsSL "$GITHUB_RAW/nginx/nginx.conf" -o nginx/nginx.conf 2>/dev/null || true
+        if [ -f "docker-compose.dev.yml" ]; then
+            ln -sf docker-compose.dev.yml docker-compose.yml 2>/dev/null || \
+            cp docker-compose.dev.yml docker-compose.yml
+            log_info "Using development docker-compose configuration"
+        fi
     fi
-
-    log_info "Configuration files downloaded"
 }
 
 # ==================== Generate Environment File ====================
@@ -539,11 +627,13 @@ download_files() {
 generate_env() {
     local step_num
     if [ "$PRODUCTION_MODE" = true ]; then
-        step_num="8"
+        step_num="9"
     else
-        step_num="4"
+        step_num="5"
     fi
     log_step "Step $step_num: Generating Environment Configuration"
+
+    cd "$INSTALL_DIR"
 
     # Skip if .env already exists
     if [ -f ".env" ]; then
@@ -703,7 +793,7 @@ obtain_ssl_certificates() {
         return
     fi
 
-    log_step "Step 9: Obtaining SSL Certificates"
+    log_step "Step 10: Obtaining SSL Certificates"
 
     # Check if certificates already exist
     if [ -d "/etc/letsencrypt/live/$FRONTEND_DOMAIN" ] && [ -d "/etc/letsencrypt/live/$BACKEND_DOMAIN" ]; then
@@ -728,30 +818,79 @@ http {
 }
 EOF
 
-    docker run -d --name certbot-nginx \
-        -p 80:80 \
-        -v /var/www/certbot:/var/www/certbot:ro \
-        -v /tmp/certbot-nginx.conf:/etc/nginx/nginx.conf:ro \
-        nginx:alpine
+    # Start nginx container with retry logic (handles iptables race condition)
+    local nginx_started=false
+    local retry=0
+    while [ $retry -lt 3 ]; do
+        if docker run -d --name certbot-nginx \
+            -p 80:80 \
+            -v /var/www/certbot:/var/www/certbot:ro \
+            -v /tmp/certbot-nginx.conf:/etc/nginx/nginx.conf:ro \
+            nginx:alpine; then
+            nginx_started=true
+            break
+        fi
+
+        retry=$((retry + 1))
+        log_warn "Failed to start nginx container (attempt $retry/3), retrying..."
+
+        # Clean up failed container
+        docker rm -f certbot-nginx 2>/dev/null || true
+
+        # Restart Docker to rebuild iptables rules
+        log_substep "Restarting Docker to rebuild iptables rules..."
+        systemctl restart docker
+        sleep 5
+    done
+
+    if [ "$nginx_started" = false ]; then
+        log_error "Failed to start nginx container after 3 attempts"
+        log_error "This may be a firewall/iptables issue"
+        log_warn "Skipping SSL certificate setup. You can obtain certificates manually later."
+        echo ""
+        echo "  After fixing firewall issues, run:"
+        echo "    certbot certonly --webroot -w /var/www/certbot -d $FRONTEND_DOMAIN -d $BACKEND_DOMAIN"
+        echo "    cd $INSTALL_DIR && docker compose restart nginx"
+        SSL_SKIPPED=true
+        return
+    fi
 
     sleep 3
 
     # Obtain certificates
+    local cert_success=true
+
     log_substep "Obtaining certificate for $FRONTEND_DOMAIN..."
-    certbot certonly --webroot -w /var/www/certbot -d "$FRONTEND_DOMAIN" --non-interactive --agree-tos --email "admin@$FRONTEND_DOMAIN"
+    if ! certbot certonly --webroot -w /var/www/certbot -d "$FRONTEND_DOMAIN" --non-interactive --agree-tos --email "admin@$FRONTEND_DOMAIN"; then
+        log_warn "Failed to obtain certificate for $FRONTEND_DOMAIN"
+        cert_success=false
+    fi
 
     log_substep "Obtaining certificate for $BACKEND_DOMAIN..."
-    certbot certonly --webroot -w /var/www/certbot -d "$BACKEND_DOMAIN" --non-interactive --agree-tos --email "admin@$BACKEND_DOMAIN"
+    if ! certbot certonly --webroot -w /var/www/certbot -d "$BACKEND_DOMAIN" --non-interactive --agree-tos --email "admin@$BACKEND_DOMAIN"; then
+        log_warn "Failed to obtain certificate for $BACKEND_DOMAIN"
+        cert_success=false
+    fi
 
     # Cleanup
     docker stop certbot-nginx && docker rm certbot-nginx
     rm /tmp/certbot-nginx.conf
 
-    # Setup auto-renewal
-    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'docker restart bitrun-nginx 2>/dev/null || true'") | crontab -
-
-    log_info "SSL certificates obtained"
-    log_info "Auto-renewal configured (daily at 3:00 AM)"
+    if [ "$cert_success" = true ]; then
+        # Setup auto-renewal
+        (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'docker restart bitrun-nginx 2>/dev/null || true'") | crontab -
+        log_info "SSL certificates obtained"
+        log_info "Auto-renewal configured (daily at 3:00 AM)"
+    else
+        log_warn "SSL certificate obtainment failed"
+        log_warn "Please check your domain DNS and cloud security group settings"
+        log_warn "Make sure ports 80 and 443 are open"
+        log_warn "Continuing without SSL. Obtain certificates manually and restart nginx:"
+        echo ""
+        echo "  certbot certonly --webroot -w /var/www/certbot -d $FRONTEND_DOMAIN -d $BACKEND_DOMAIN"
+        echo "  cd $INSTALL_DIR && docker compose restart nginx"
+        SSL_SKIPPED=true
+    fi
 }
 
 # ==================== Build and Start Services ====================
@@ -759,9 +898,9 @@ EOF
 start_services() {
     local step_num
     if [ "$PRODUCTION_MODE" = true ]; then
-        step_num="10"
+        step_num="11"
     else
-        step_num="5"
+        step_num="6"
     fi
     log_step "Step $step_num: Building and Starting Services"
 
@@ -788,9 +927,9 @@ start_services() {
 run_migrations() {
     local step_num
     if [ "$PRODUCTION_MODE" = true ]; then
-        step_num="11"
+        step_num="12"
     else
-        step_num="6"
+        step_num="7"
     fi
     log_step "Step $step_num: Running Database Migrations"
 
@@ -829,7 +968,7 @@ print_success() {
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║              🎉 Installation Complete! 🎉                  ${NC}║"
+    echo -e "${GREEN}║              Installation Complete!              ${NC}║"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
@@ -846,6 +985,22 @@ print_success() {
     echo ""
     echo -e "${BLUE}Install Dir:${NC}   $INSTALL_DIR"
     echo -e "${BLUE}Env File:${NC}      $INSTALL_DIR/.env"
+
+    # SSL warning if skipped
+    if [ "$PRODUCTION_MODE" = true ] && [ "$SSL_SKIPPED" = true ]; then
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}⚠️  SSL certificates were not obtained${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "  HTTPS will not work until you obtain certificates."
+        echo ""
+        echo -e "  ${CYAN}To obtain SSL certificates:${NC}"
+        echo "    1. Make sure ports 80 and 443 are open in your cloud security group"
+        echo "    2. Run: certbot certonly --webroot -w /var/www/certbot -d $FRONTEND_DOMAIN -d $BACKEND_DOMAIN"
+        echo "    3. Restart: cd $INSTALL_DIR && docker compose restart nginx"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    fi
+
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}Service Management:${NC}"
@@ -884,7 +1039,8 @@ main() {
     install_certbot
     configure_firewall
     setup_directory
-    download_files
+    download_source_code
+    configure_app
     generate_env
     obtain_ssl_certificates
     start_services
