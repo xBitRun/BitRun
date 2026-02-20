@@ -87,8 +87,8 @@ WORKDIR /app
 ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1
 
-# Install dependencies for native modules
-RUN apk add --no-cache libc6-compat
+# Install dependencies for native modules (wget for health check)
+RUN apk add --no-cache libc6-compat wget
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -123,8 +123,8 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-# Install runtime dependencies only
-RUN apk add --no-cache libc6-compat
+# Install runtime dependencies (wget for health check)
+RUN apk add --no-cache libc6-compat wget
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
