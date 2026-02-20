@@ -1,5 +1,13 @@
 # BITRUN Production Docker Compose
-# Usage: docker compose -f docker-compose.prod.yml up -d
+# Separated domains: app.qemind.xyz (frontend) + api.qemind.xyz (backend)
+# Usage: docker compose -f docker-compose.prod-domains.yml up -d
+#
+# Prerequisites:
+#   1. DNS records configured:
+#      - app.qemind.xyz → Server IP
+#      - api.qemind.xyz → Server IP
+#   2. SSL certificates obtained (use deploy-production.sh)
+#   3. .env.production file configured with secrets
 
 services:
   # ==================== Infrastructure ====================
@@ -64,8 +72,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: bitrun-backend
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
+    # Internal only - accessed via nginx
+    expose:
+      - "8000"
     environment:
       # Database
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bitrun}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitrun}
@@ -78,17 +87,8 @@ services:
       # Security (required in production)
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?DATA_ENCRYPTION_KEY is required}
-      # CORS
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      # AI Configuration (optional, set as needed)
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      QWEN_API_KEY: ${QWEN_API_KEY:-}
-      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
-      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
-      KIMI_API_KEY: ${KIMI_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GROK_API_KEY: ${GROK_API_KEY:-}
+      # CORS - allow frontend domain
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
       # Worker settings
       WORKER_ENABLED: ${WORKER_ENABLED:-true}
       # Notifications (optional)
@@ -125,14 +125,33 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+      args:
+        # Build-time environment variables (embedded into the compiled code)
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:?NEXT_PUBLIC_WS_URL is required}
+        # Brand Identity (optional - defaults will be used if not set)
+        NEXT_PUBLIC_BRAND_NAME: ${NEXT_PUBLIC_BRAND_NAME:-}
+        NEXT_PUBLIC_BRAND_SHORT_NAME: ${NEXT_PUBLIC_BRAND_SHORT_NAME:-}
+        NEXT_PUBLIC_BRAND_TAGLINE: ${NEXT_PUBLIC_BRAND_TAGLINE:-}
+        NEXT_PUBLIC_BRAND_DESCRIPTION: ${NEXT_PUBLIC_BRAND_DESCRIPTION:-}
+        NEXT_PUBLIC_BRAND_LOGO_DEFAULT: ${NEXT_PUBLIC_BRAND_LOGO_DEFAULT:-}
+        NEXT_PUBLIC_BRAND_LOGO_COMPACT: ${NEXT_PUBLIC_BRAND_LOGO_COMPACT:-}
+        NEXT_PUBLIC_BRAND_LOGO_ICON: ${NEXT_PUBLIC_BRAND_LOGO_ICON:-}
+        NEXT_PUBLIC_BRAND_FAVICON: ${NEXT_PUBLIC_BRAND_FAVICON:-}
+        NEXT_PUBLIC_BRAND_THEME_PRESET: ${NEXT_PUBLIC_BRAND_THEME_PRESET:-}
+        NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE: ${NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE:-}
+        NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER: ${NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER:-}
+        NEXT_PUBLIC_BRAND_TERMS_URL: ${NEXT_PUBLIC_BRAND_TERMS_URL:-}
+        NEXT_PUBLIC_BRAND_PRIVACY_URL: ${NEXT_PUBLIC_BRAND_PRIVACY_URL:-}
+        NEXT_PUBLIC_BRAND_HOMEPAGE_URL: ${NEXT_PUBLIC_BRAND_HOMEPAGE_URL:-}
+        NEXT_PUBLIC_BRAND_DOCS_URL: ${NEXT_PUBLIC_BRAND_DOCS_URL:-}
+        NEXT_PUBLIC_BRAND_SUPPORT_URL: ${NEXT_PUBLIC_BRAND_SUPPORT_URL:-}
     container_name: bitrun-frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+    # Internal only - accessed via nginx
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
-      # API URL (use public URL for browser access)
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/api/v1/ws}
       NEXT_TELEMETRY_DISABLED: 1
     depends_on:
       backend:
@@ -158,18 +177,18 @@ services:
         max-file: "3"
 
   # ==================== Reverse Proxy ====================
-  # Nginx reverse proxy with rate limiting and security headers.
-  # To enable HTTPS: place SSL certs in ./nginx/ssl/ and uncomment SSL lines in nginx.conf.
+  # Nginx handles both frontend and backend domains with SSL
 
   nginx:
     image: nginx:alpine
     container_name: bitrun-nginx
     ports:
-      - "${HTTP_PORT:-80}:80"
-      # - "${HTTPS_PORT:-443}:443"  # Uncomment when SSL is configured
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # - ./nginx/ssl:/etc/nginx/ssl:ro  # Uncomment when SSL is configured
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       frontend:
         condition: service_healthy
