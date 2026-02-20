@@ -1,7 +1,13 @@
 #!/bin/bash
 #
-# BITRUN Production Deployment Script
+# BITRUN Service Management Script
+# https://github.com/xBitRun/BitRun
+#
 # Usage: ./scripts/deploy.sh [command]
+#
+# For first-time installation, use:
+#   ./scripts/install.sh           # Development mode
+#   ./scripts/install.sh --prod    # Production mode with SSL
 #
 # Commands:
 #   start     - Build and start all services (default)

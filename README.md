@@ -125,10 +125,14 @@ Railway 部署步骤:
 
 > 详细配置请查看 [Railway 部署指南](docs/deployment.md#railway-部署)
 
-### 一键安装 (Linux / macOS)
+### 一键安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/BitRun/main/install.sh | bash
+# 本地/开发环境 (localhost, 无 SSL)
+curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash
+
+# 生产环境 (域名 + SSL)
+curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash -s -- --prod
 ```
 
 自动检查 Docker 环境、拉取镜像、生成密钥、启动全部服务。

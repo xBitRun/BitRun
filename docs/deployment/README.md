@@ -34,10 +34,10 @@
 
 | 文件 | 用途 |
 |------|------|
-| `deploy-production.sh` | 生产环境一键部署脚本 |
+| `scripts/install.sh` | 一键安装脚本（支持 `--prod` 生产模式） |
+| `scripts/deploy.sh` | 服务管理脚本（start/stop/logs 等） |
 | `docker-compose.prod.yml` | 生产环境 Docker Compose 配置 |
 | `nginx/nginx.prod.conf` | 生产环境 Nginx 配置（前后端分离域名） |
-| `install.sh` | 本地/开发环境快速安装脚本 |
 | `.github/workflows/deploy.yml` | GitHub Actions 自动部署 |
 | `.env.example` | 环境变量模板 |
 
@@ -78,7 +78,8 @@
 SSH 到服务器执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/deploy-production.sh | bash
+# 生产环境一键安装 (域名 + SSL)
+curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash -s -- --prod
 ```
 
 脚本会自动完成：

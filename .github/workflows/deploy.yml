@@ -149,7 +149,7 @@ jobs:
               git clone https://github.com/xBitRun/BitRun.git .
             fi
 
-            # Update docker-compose
+            # Update docker-compose (nginx config is in git repo)
             echo "📥 Updating configuration files..."
             curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/docker-compose.prod.yml -o docker-compose.yml
 
@@ -192,20 +192,20 @@ jobs:
             ADMIN_NAME=${{ secrets.ADMIN_NAME }}
 
             # ==================== Frontend Brand Configuration ====================
-            NEXT_PUBLIC_BRAND_NAME=${{ secrets.NEXT_PUBLIC_BRAND_NAME }}
-            NEXT_PUBLIC_BRAND_SHORT_NAME=${{ secrets.NEXT_PUBLIC_BRAND_SHORT_NAME }}
-            NEXT_PUBLIC_BRAND_TAGLINE=${{ secrets.NEXT_PUBLIC_BRAND_TAGLINE }}
-            NEXT_PUBLIC_BRAND_DESCRIPTION=${{ secrets.NEXT_PUBLIC_BRAND_DESCRIPTION }}
+            NEXT_PUBLIC_BRAND_NAME=${{ secrets.NEXT_PUBLIC_BRAND_NAME || 'BITRUN' }}
+            NEXT_PUBLIC_BRAND_SHORT_NAME=${{ secrets.NEXT_PUBLIC_BRAND_SHORT_NAME || 'BITRUN' }}
+            NEXT_PUBLIC_BRAND_TAGLINE=${{ secrets.NEXT_PUBLIC_BRAND_TAGLINE || 'AI-Powered Trading Agent' }}
+            NEXT_PUBLIC_BRAND_DESCRIPTION=${{ secrets.NEXT_PUBLIC_BRAND_DESCRIPTION || 'Prompt-driven automated trading with AI decision making' }}
             NEXT_PUBLIC_BRAND_LOGO_DEFAULT=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_DEFAULT }}
             NEXT_PUBLIC_BRAND_LOGO_COMPACT=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_COMPACT }}
             NEXT_PUBLIC_BRAND_LOGO_ICON=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_ICON }}
-            NEXT_PUBLIC_BRAND_FAVICON=${{ secrets.NEXT_PUBLIC_BRAND_FAVICON }}
-            NEXT_PUBLIC_BRAND_THEME_PRESET=${{ secrets.NEXT_PUBLIC_BRAND_THEME_PRESET }}
+            NEXT_PUBLIC_BRAND_FAVICON=${{ secrets.NEXT_PUBLIC_BRAND_FAVICON || '/logo.png' }}
+            NEXT_PUBLIC_BRAND_THEME_PRESET=${{ secrets.NEXT_PUBLIC_BRAND_THEME_PRESET || 'bitrun' }}
             NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE=${{ secrets.NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE }}
-            NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER=${{ secrets.NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER }}
-            NEXT_PUBLIC_BRAND_TERMS_URL=${{ secrets.NEXT_PUBLIC_BRAND_TERMS_URL }}
-            NEXT_PUBLIC_BRAND_PRIVACY_URL=${{ secrets.NEXT_PUBLIC_BRAND_PRIVACY_URL }}
-            NEXT_PUBLIC_BRAND_HOMEPAGE_URL=${{ secrets.NEXT_PUBLIC_BRAND_HOMEPAGE_URL }}
+            NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER=${{ secrets.NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER || 'BITRUN' }}
+            NEXT_PUBLIC_BRAND_TERMS_URL=${{ secrets.NEXT_PUBLIC_BRAND_TERMS_URL || '/terms' }}
+            NEXT_PUBLIC_BRAND_PRIVACY_URL=${{ secrets.NEXT_PUBLIC_BRAND_PRIVACY_URL || '/privacy' }}
+            NEXT_PUBLIC_BRAND_HOMEPAGE_URL=${{ secrets.NEXT_PUBLIC_BRAND_HOMEPAGE_URL || format('https://{0}', secrets.FRONTEND_DOMAIN) }}
             NEXT_PUBLIC_BRAND_DOCS_URL=${{ secrets.NEXT_PUBLIC_BRAND_DOCS_URL }}
             NEXT_PUBLIC_BRAND_SUPPORT_URL=${{ secrets.NEXT_PUBLIC_BRAND_SUPPORT_URL }}
 
@@ -221,8 +221,8 @@ jobs:
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
 
             # ==================== Backend Brand (for notifications) ====================
-            BRAND_NAME=${{ secrets.BRAND_NAME }}
-            BRAND_TAGLINE=${{ secrets.BRAND_TAGLINE }}
+            BRAND_NAME=${{ secrets.BRAND_NAME || 'BITRUN' }}
+            BRAND_TAGLINE=${{ secrets.BRAND_TAGLINE || 'AI-Powered Trading Agent' }}
 
             # ==================== System ====================
             TZ=Asia/Shanghai

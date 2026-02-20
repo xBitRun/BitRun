@@ -212,14 +212,18 @@ BACKEND_DOMAIN=api.qemind.xyz
 SSH 到服务器执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/deploy-production.sh | bash
+# 生产环境一键安装 (域名 + SSL)
+curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash -s -- --prod
 ```
 
 脚本会自动完成：
-- 安装 Docker
+- 安装 Docker 和系统依赖
+- 配置防火墙
 - 申请 SSL 证书 (Let's Encrypt)
 - 生成所有密钥
 - 构建并启动服务
+
+> 部署后使用 `./scripts/deploy.sh` 管理服务（start/stop/logs/status 等）
 
 ## Nginx 反向代理
 

@@ -203,8 +203,8 @@ start_default() {
 stop_services() {
     log_info "Stopping BITRUN..."
 
-    if [ -f "docker-compose.prod.yml" ] && [ -f ".env.production" ]; then
-        $DOCKER_COMPOSE -f docker-compose.prod.yml --env-file .env.production down
+    if [ -f "docker-compose.prod.yml" ] && [ -f ".env" ]; then
+        $DOCKER_COMPOSE -f docker-compose.prod.yml down
     else
         $DOCKER_COMPOSE --profile app down
     fi
