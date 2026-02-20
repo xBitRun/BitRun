@@ -386,6 +386,39 @@ ADMIN_NAME=Admin
 # ==================== System ====================
 TZ=Asia/Shanghai
 
+# ==================== Frontend Brand Configuration ====================
+# These are build-time variables (embedded into the compiled Next.js app)
+# Changing these requires: docker compose build frontend && docker compose up -d
+
+# --- Identity ---
+NEXT_PUBLIC_BRAND_NAME=BITRUN
+NEXT_PUBLIC_BRAND_SHORT_NAME=BITRUN
+NEXT_PUBLIC_BRAND_TAGLINE=AI-Powered Trading Agent
+NEXT_PUBLIC_BRAND_DESCRIPTION=Prompt-driven automated trading with AI decision making
+
+# --- Assets (URLs to logos, leave empty for default) ---
+NEXT_PUBLIC_BRAND_LOGO_DEFAULT=
+NEXT_PUBLIC_BRAND_LOGO_COMPACT=
+NEXT_PUBLIC_BRAND_LOGO_ICON=
+NEXT_PUBLIC_BRAND_FAVICON=/logo.png
+
+# --- Theme ---
+# Available presets: bitrun, ocean, binance
+NEXT_PUBLIC_BRAND_THEME_PRESET=bitrun
+# Theme color overrides as JSON (optional)
+# Example: NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE={"primary":"#F0B90B","profit":"#0ECB81"}
+NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE=
+
+# --- Legal ---
+NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER=BITRUN
+NEXT_PUBLIC_BRAND_TERMS_URL=/terms
+NEXT_PUBLIC_BRAND_PRIVACY_URL=/privacy
+
+# --- Links ---
+NEXT_PUBLIC_BRAND_HOMEPAGE_URL=https://${FRONTEND_DOMAIN}
+NEXT_PUBLIC_BRAND_DOCS_URL=
+NEXT_PUBLIC_BRAND_SUPPORT_URL=
+
 # ==================== Optional Features ====================
 # Uncomment and configure as needed:
 
