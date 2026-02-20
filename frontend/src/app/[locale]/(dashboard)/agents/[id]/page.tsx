@@ -723,7 +723,7 @@ function OverviewTab({
                   <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
                     <span>{t("overview.consensusMode")}</span>
                     <span className="font-medium">
-                      {t(`overview.consensusModes.${agent.debate_consensus_mode}`, agent.debate_consensus_mode)}
+                      {t(`overview.consensusModes.${agent.debate_consensus_mode}`)}
                     </span>
                   </div>
                 )}
