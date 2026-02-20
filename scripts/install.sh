@@ -601,16 +601,19 @@ configure_app() {
         # Configure nginx with domains
         if [ -f "nginx/nginx.prod.conf" ] && [ -n "$FRONTEND_DOMAIN" ] && [ -n "$BACKEND_DOMAIN" ]; then
             log_substep "Configuring nginx with your domains..."
-            sed -i.bak \
+            # Try Linux sed -i first, fall back to macOS compatible method
+            if sed -i.bak \
                 -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
                 -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
-                nginx/nginx.prod.conf 2>/dev/null || \
-            # macOS sed compatibility
-            sed -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
-                -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
-                nginx/nginx.prod.conf > nginx/nginx.prod.conf.tmp && \
-            mv nginx/nginx.prod.conf.tmp nginx/nginx.prod.conf
-            rm -f nginx/nginx.prod.conf.bak 2>/dev/null || true
+                nginx/nginx.prod.conf 2>/dev/null; then
+                rm -f nginx/nginx.prod.conf.bak 2>/dev/null || true
+            else
+                # macOS sed compatibility (doesn't support -i with backup extension)
+                sed -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
+                    -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
+                    nginx/nginx.prod.conf > nginx/nginx.prod.conf.tmp && \
+                mv nginx/nginx.prod.conf.tmp nginx/nginx.prod.conf
+            fi
             log_info "Nginx configured for $FRONTEND_DOMAIN and $BACKEND_DOMAIN"
         fi
     else
