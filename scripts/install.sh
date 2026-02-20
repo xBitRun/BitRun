@@ -7,8 +7,11 @@
 #   # Local/Development (no SSL)
 #   curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash
 #
-#   # Production (with SSL and domain)
+#   # Production (with SSL and domain) - interactive mode
 #   curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh | bash -s -- --prod
+#
+#   # Production with domains via environment variables (non-interactive)
+#   curl -fsSL ... | FRONTEND_DOMAIN=app.example.com BACKEND_DOMAIN=api.example.com bash -s -- --prod
 #
 #   # Custom installation directory
 #   curl -fsSL ... | bash -s -- /opt/bitrun
@@ -171,14 +174,28 @@ check_dns_resolution() {
     if [ -z "$FRONTEND_DOMAIN" ] || [ -z "$BACKEND_DOMAIN" ]; then
         echo ""
         echo -e "  ${YELLOW}Please enter your domain names:${NC}"
+
+        # Determine the best way to read user input
         if [ -t 0 ]; then
             # stdin is a terminal, use normal read
-            read -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN
-            read -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN
+            read -r -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN
+            read -r -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN
+        elif [ -e /dev/tty ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then
+            # stdin is piped but /dev/tty is available
+            read -r -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN < /dev/tty
+            read -r -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN < /dev/tty
         else
-            # stdin is piped, read from /dev/tty
-            read -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN < /dev/tty
-            read -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN < /dev/tty
+            # No interactive terminal available
+            log_error "Cannot read user input in non-interactive mode"
+            echo ""
+            echo -e "  ${CYAN}Please provide domains via environment variables:${NC}"
+            echo "    FRONTEND_DOMAIN=app.example.com BACKEND_DOMAIN=api.example.com $0 --prod"
+            echo ""
+            echo -e "  ${CYAN}Or run the script directly (not via curl | bash):${NC}"
+            echo "    wget https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install.sh"
+            echo "    chmod +x install.sh"
+            echo "    sudo ./install.sh --prod"
+            exit 1
         fi
 
         if [ -z "$FRONTEND_DOMAIN" ] || [ -z "$BACKEND_DOMAIN" ]; then
