@@ -697,25 +697,31 @@ class AIWorkerBackend(BaseWorkerBackend):
         except Exception as e:
             logger.error(f"Failed to set agent {agent_id} error status: {e}")
 
-    async def _load_active_agents(self) -> None:
-        """Load and start workers for all active AI agents."""
+    async def _load_active_agents(self, clear_heartbeats: bool = True) -> None:
+        """Load and start workers for all active AI agents.
+
+        Args:
+            clear_heartbeats: If True, clear heartbeats before loading (for initial startup).
+                             If False, just try to claim orphaned agents (for periodic sync).
+        """
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
         from ..services.worker_heartbeat import (
-            mark_stale_agents_as_error,
             clear_all_heartbeats_for_active_agents,
         )
 
         async with AsyncSessionLocal() as session:
-            # Phase 1: Mark stale agents as error
-            stale_count = await mark_stale_agents_as_error(session)
-            if stale_count > 0:
-                logger.info(f"Marked {stale_count} stale AI agents as error")
+            # Only clear heartbeats on initial startup, not during periodic sync
+            # This prevents interfering with running workers' heartbeats
+            if clear_heartbeats:
+                await clear_all_heartbeats_for_active_agents(session)
 
-            # Phase 2: Clear all heartbeats for active agents
-            await clear_all_heartbeats_for_active_agents(session)
+            # NOTE: We do NOT call mark_stale_agents_as_error here.
+            # Service restart is expected, and we should try to recover active agents
+            # rather than immediately marking them as error.
+            # Stale detection happens via heartbeat timeout in worker_heartbeat service.
 
-            # Phase 3: Query active AI agents
+            # Query active AI agents
             account_repo = AccountRepository(session)
 
             stmt = (
@@ -768,8 +774,8 @@ class AIWorkerBackend(BaseWorkerBackend):
                     )
                     await self.stop_agent(agent_id)
 
-                # 2. Try to claim orphaned active agents
-                await self._load_active_agents()
+                # 2. Try to claim orphaned active agents (without clearing heartbeats)
+                await self._load_active_agents(clear_heartbeats=False)
 
             except asyncio.CancelledError:
                 break
