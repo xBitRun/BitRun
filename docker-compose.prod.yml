@@ -1,11 +1,11 @@
 # BITRUN Production Docker Compose
-# Separated domains: app.qemind.xyz (frontend) + api.qemind.xyz (backend)
+# Separated domains: app.example.com (frontend) + api.example.com (backend)
 # Usage: docker compose up -d
 #
 # Prerequisites:
 #   1. DNS records configured:
-#      - app.qemind.xyz → Server IP
-#      - api.qemind.xyz → Server IP
+#      - app.example.com → Server IP
+#      - api.example.com → Server IP
 #   2. SSL certificates obtained (use scripts/install.sh --prod)
 #   3. .env file configured with secrets
 

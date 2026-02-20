@@ -411,6 +411,17 @@ download_files() {
     mkdir -p nginx
     if [ "$PRODUCTION_MODE" = true ]; then
         curl -fsSL "$GITHUB_RAW/nginx/nginx.prod.conf" -o nginx/nginx.prod.conf 2>/dev/null || true
+
+        # Replace domain placeholders with actual domains
+        if [ -f "nginx/nginx.prod.conf" ] && [ -n "$FRONTEND_DOMAIN" ] && [ -n "$BACKEND_DOMAIN" ]; then
+            log_substep "Configuring nginx with your domains..."
+            sed -i.bak \
+                -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
+                -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
+                nginx/nginx.prod.conf
+            rm -f nginx/nginx.prod.conf.bak
+            log_info "Nginx configured for $FRONTEND_DOMAIN and $BACKEND_DOMAIN"
+        fi
     else
         curl -fsSL "$GITHUB_RAW/nginx/nginx.conf" -o nginx/nginx.conf 2>/dev/null || true
     fi

@@ -1399,7 +1399,7 @@ ws://localhost:8000/api/v1/ws?token=<access_token>
 
 生产环境 (Nginx + SSL):
 ```
-wss://api.qemind.xyz/api/v1/ws?token=<access_token>
+wss://api.example.com/api/v1/ws?token=<access_token>
 ```
 
 ### 连接限制

@@ -10,7 +10,7 @@
               ┌───────────────┴───────────────┐
               ▼                               ▼
     ┌──────────────────┐            ┌──────────────────┐
-    │ app.qemind.xyz   │            │ api.qemind.xyz   │
+    │ app.example.com   │            │ api.example.com   │
     │   (Frontend)     │            │    (Backend)     │
     │   Next.js 19     │            │    FastAPI       │
     └──────────────────┘            └──────────────────┘
@@ -49,8 +49,8 @@
 
 1. **服务器**: 阿里云 ECS (Ubuntu 20.04+)
 2. **DNS 配置**:
-   - `app.qemind.xyz` → 服务器 IP
-   - `api.qemind.xyz` → 服务器 IP
+   - `app.example.com` → 服务器 IP
+   - `api.example.com` → 服务器 IP
 3. **安全组**: 开放 22, 80, 443 端口
 
 ### 部署步骤
@@ -64,8 +64,8 @@
 | `SERVER_HOST` | 服务器 IP |
 | `SERVER_USER` | SSH 用户 (如 `root`) |
 | `SSH_PRIVATE_KEY` | SSH 私钥 |
-| `FRONTEND_DOMAIN` | `app.qemind.xyz` |
-| `BACKEND_DOMAIN` | `api.qemind.xyz` |
+| `FRONTEND_DOMAIN` | `app.example.com` |
+| `BACKEND_DOMAIN` | `api.example.com` |
 | `POSTGRES_PASSWORD` | 数据库密码 |
 | `JWT_SECRET` | JWT 密钥 |
 | `DATA_ENCRYPTION_KEY` | 加密密钥 |
@@ -131,9 +131,9 @@ docker compose exec backend alembic upgrade head
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | https://app.qemind.xyz |
-| 后端 API | https://api.qemind.xyz |
-| API 文档 | https://api.qemind.xyz/api/v1/docs |
+| 前端 | https://app.example.com |
+| 后端 API | https://api.example.com |
+| API 文档 | https://api.example.com/api/v1/docs |
 
 ---
 
@@ -149,7 +149,7 @@ certbot certificates
 certbot renew
 
 # 重新申请
-certbot certonly --webroot -w /var/www/certbot -d app.qemind.xyz
+certbot certonly --webroot -w /var/www/certbot -d app.example.com
 ```
 
 ### 服务无法启动

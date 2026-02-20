@@ -218,10 +218,10 @@ AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密�
 
 | 服务 | 开发环境 | 生产环境 |
 |------|---------|---------|
-| 前端 | http://localhost:3000 | https://app.qemind.xyz |
-| 后端 API | http://localhost:8000 | https://api.qemind.xyz |
-| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |
-| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.qemind.xyz/api/v1/ws |
+| 前端 | http://localhost:3000 | https://app.example.com |
+| 后端 API | http://localhost:8000 | https://api.example.com |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.example.com/api/v1/docs |
+| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.example.com/api/v1/ws |
 
 ## 文档
 

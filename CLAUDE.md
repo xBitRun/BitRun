@@ -294,8 +294,8 @@ WORKER_HEARTBEAT_RETRY_ATTEMPTS=3
 
 ```bash
 # 域名配置
-FRONTEND_DOMAIN=app.qemind.xyz
-BACKEND_DOMAIN=api.qemind.xyz
+FRONTEND_DOMAIN=app.example.com
+BACKEND_DOMAIN=api.example.com
 
 # 安全密钥
 JWT_SECRET=<32+ 字符随机串>
@@ -330,6 +330,6 @@ REDIS_PASSWORD=<强密码>
 
 | 服务     | 开发环境                    | 生产环境                         |
 | -------- | --------------------------- | -------------------------------- |
-| 前端     | http://localhost:3000       | https://app.qemind.xyz           |
-| 后端 API | http://localhost:8000       | https://api.qemind.xyz           |
-| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |
+| 前端     | http://localhost:3000       | https://app.example.com           |
+| 后端 API | http://localhost:8000       | https://api.example.com           |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.example.com/api/v1/docs |

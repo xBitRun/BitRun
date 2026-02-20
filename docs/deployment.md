@@ -12,7 +12,7 @@
               ┌───────────────┴───────────────┐
               ▼                               ▼
     ┌──────────────────┐            ┌──────────────────┐
-    │ app.qemind.xyz   │            │ api.qemind.xyz   │
+    │ app.example.com   │            │ api.example.com   │
     │   (Frontend)     │            │    (Backend)     │
     │   Next.js 16     │            │    FastAPI       │
     └──────────────────┘            └──────────────────┘
@@ -139,8 +139,8 @@ POSTGRES_PASSWORD=<强密码>
 ENVIRONMENT=production
 
 # 域名配置
-FRONTEND_DOMAIN=app.qemind.xyz
-BACKEND_DOMAIN=api.qemind.xyz
+FRONTEND_DOMAIN=app.example.com
+BACKEND_DOMAIN=api.example.com
 ```
 
 #### 资源限制
@@ -173,8 +173,8 @@ BACKEND_DOMAIN=api.qemind.xyz
 
 1. **服务器**: 阿里云 ECS (Ubuntu 20.04+) 或其他云服务器
 2. **DNS 配置**:
-   - `app.qemind.xyz` → 服务器 IP
-   - `api.qemind.xyz` → 服务器 IP
+   - `app.example.com` → 服务器 IP
+   - `api.example.com` → 服务器 IP
 3. **安全组**: 开放 22, 80, 443 端口
 
 ### 配置 GitHub Secrets
@@ -186,8 +186,8 @@ BACKEND_DOMAIN=api.qemind.xyz
 | `SERVER_HOST` | 服务器 IP |
 | `SERVER_USER` | SSH 用户 (如 `root`) |
 | `SSH_PRIVATE_KEY` | SSH 私钥 |
-| `FRONTEND_DOMAIN` | `app.qemind.xyz` |
-| `BACKEND_DOMAIN` | `api.qemind.xyz` |
+| `FRONTEND_DOMAIN` | `app.example.com` |
+| `BACKEND_DOMAIN` | `api.example.com` |
 | `POSTGRES_PASSWORD` | 数据库密码 |
 | `JWT_SECRET` | JWT 密钥 |
 | `DATA_ENCRYPTION_KEY` | 加密密钥 |
@@ -234,13 +234,13 @@ curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install
 Nginx 配置位于 `nginx/nginx.prod.conf`，支持前后端分离域名：
 
 ```nginx
-# Frontend - app.qemind.xyz
+# Frontend - app.example.com
 server {
     listen 443 ssl http2;
-    server_name app.qemind.xyz;
+    server_name app.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/app.qemind.xyz/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/app.qemind.xyz/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
 
     location / {
         proxy_pass http://frontend:3000;
@@ -252,13 +252,13 @@ server {
     }
 }
 
-# Backend - api.qemind.xyz
+# Backend - api.example.com
 server {
     listen 443 ssl http2;
-    server_name api.qemind.xyz;
+    server_name api.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/api.qemind.xyz/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.qemind.xyz/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
 
     location /api/ {
         proxy_pass http://backend:8000;
@@ -309,10 +309,10 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 apt install certbot
 
 # 获取证书 (前端域名)
-certbot certonly --webroot -w /var/www/certbot -d app.qemind.xyz
+certbot certonly --webroot -w /var/www/certbot -d app.example.com
 
 # 获取证书 (后端域名)
-certbot certonly --webroot -w /var/www/certbot -d api.qemind.xyz
+certbot certonly --webroot -w /var/www/certbot -d api.example.com
 ```
 
 证书文件：
@@ -353,8 +353,8 @@ nginx:
 #### 3. 更新前端环境变量
 
 ```bash
-NEXT_PUBLIC_API_URL=https://api.qemind.xyz/api
-NEXT_PUBLIC_WS_URL=wss://api.qemind.xyz/api/v1/ws
+NEXT_PUBLIC_API_URL=https://api.example.com/api
+NEXT_PUBLIC_WS_URL=wss://api.example.com/api/v1/ws
 ```
 
 ## Railway 部署
@@ -500,10 +500,10 @@ ufw enable
 
 | 服务 | 开发环境 | 生产环境 |
 |------|---------|---------|
-| 前端 | http://localhost:3000 | https://app.qemind.xyz |
-| 后端 API | http://localhost:8000 | https://api.qemind.xyz |
-| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |
-| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.qemind.xyz/api/v1/ws |
+| 前端 | http://localhost:3000 | https://app.example.com |
+| 后端 API | http://localhost:8000 | https://api.example.com |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.example.com/api/v1/docs |
+| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.example.com/api/v1/ws |
 
 ## 监控与告警
 
@@ -636,8 +636,8 @@ certbot certificates
 certbot renew
 
 # 重新申请
-certbot certonly --webroot -w /var/www/certbot -d app.qemind.xyz
-certbot certonly --webroot -w /var/www/certbot -d api.qemind.xyz
+certbot certonly --webroot -w /var/www/certbot -d app.example.com
+certbot certonly --webroot -w /var/www/certbot -d api.example.com
 ```
 
 ### 服务无法启动

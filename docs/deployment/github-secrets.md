@@ -15,8 +15,8 @@
 | `SERVER_HOST` | 服务器 IP 地址 | `123.45.67.89` |
 | `SERVER_USER` | SSH 用户名 | `root` |
 | `SSH_PRIVATE_KEY` | SSH 私钥内容 | `-----BEGIN RSA PRIVATE KEY-----\n...` |
-| `FRONTEND_DOMAIN` | 前端域名 | `app.qemind.xyz` |
-| `BACKEND_DOMAIN` | 后端域名 | `api.qemind.xyz` |
+| `FRONTEND_DOMAIN` | 前端域名 | `app.example.com` |
+| `BACKEND_DOMAIN` | 后端域名 | `api.example.com` |
 | `POSTGRES_PASSWORD` | 数据库密码 | `openssl rand -base64 24 \| tr -d '/+='` |
 | `JWT_SECRET` | JWT 签名密钥 | `openssl rand -base64 32` |
 | `DATA_ENCRYPTION_KEY` | 数据加密密钥 | `openssl rand -base64 32` |
@@ -70,8 +70,8 @@ echo "REDIS_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"
 - [ ] `SERVER_HOST` - 服务器 IP
 - [ ] `SERVER_USER` - SSH 用户
 - [ ] `SSH_PRIVATE_KEY` - SSH 私钥
-- [ ] `FRONTEND_DOMAIN` - `app.qemind.xyz`
-- [ ] `BACKEND_DOMAIN` - `api.qemind.xyz`
+- [ ] `FRONTEND_DOMAIN` - `app.example.com`
+- [ ] `BACKEND_DOMAIN` - `api.example.com`
 - [ ] `POSTGRES_PASSWORD` - 数据库密码
 - [ ] `JWT_SECRET` - JWT 密钥
 - [ ] `DATA_ENCRYPTION_KEY` - 加密密钥
