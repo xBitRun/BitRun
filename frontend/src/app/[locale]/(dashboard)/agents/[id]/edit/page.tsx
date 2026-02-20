@@ -16,6 +16,9 @@ import {
   Zap,
   ExternalLink,
   FileText,
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -42,7 +46,7 @@ import {
   useStrategy,
 } from "@/hooks";
 import { useAgent, useUpdateAgent } from "@/hooks/use-agents";
-import type { ExecutionMode } from "@/types";
+import type { ExecutionMode, AssetType } from "@/types";
 
 function LoadingSkeleton() {
   return (
@@ -86,6 +90,7 @@ export default function EditAgentPage() {
   const [name, setName] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("mock");
+  const [tradeType, setTradeType] = useState<AssetType>("crypto_perp");
   const [accountId, setAccountId] = useState("");
   const [mockInitialBalance, setMockInitialBalance] = useState(10000);
   const [executionIntervalMinutes, setExecutionIntervalMinutes] = useState(15);
@@ -100,6 +105,7 @@ export default function EditAgentPage() {
       setName(agent.name || "");
       setAiModel(agent.ai_model || "");
       setExecutionMode(agent.execution_mode || "mock");
+      setTradeType((agent.trade_type as AssetType) || "crypto_perp");
       setAccountId(agent.account_id || "");
       setMockInitialBalance(agent.mock_initial_balance || 10000);
       setExecutionIntervalMinutes(agent.execution_interval_minutes || 15);
@@ -133,6 +139,7 @@ export default function EditAgentPage() {
         name: name.trim(),
         ai_model: isAiStrategy ? aiModel : null,
         execution_mode: executionMode,
+        trade_type: tradeType,
         account_id: executionMode === "live" ? accountId : null,
         mock_initial_balance:
           executionMode === "mock" ? mockInitialBalance : null,
@@ -363,6 +370,73 @@ export default function EditAgentPage() {
                 </div>
               </div>
 
+              {/* Trade Type Selection */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-base font-medium">{t("tradeType.label")}</Label>
+                  <p className="text-sm text-muted-foreground">{t("tradeType.description")}</p>
+                </div>
+                <RadioGroup
+                  value={tradeType}
+                  onValueChange={(value) =>
+                    setTradeType(value as AssetType)
+                  }
+                  className="grid grid-cols-2 gap-4"
+                >
+                  {/* Perpetual Contract */}
+                  <div
+                    className={cn(
+                      "relative flex flex-col p-4 rounded-lg border-2 cursor-pointer transition-all",
+                      tradeType === "crypto_perp"
+                        ? "border-purple-500 bg-purple-500/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    )}
+                    onClick={() => setTradeType("crypto_perp")}
+                  >
+                    <RadioGroupItem value="crypto_perp" className="sr-only" />
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="w-5 h-5 text-purple-500" />
+                      <span className="font-medium">{t("tradeType.crypto_perp")}</span>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• {t("wizard.executionStep.perpFeatures.leverage")}</li>
+                      <li>• {t("wizard.executionStep.perpFeatures.shortSelling")}</li>
+                    </ul>
+                  </div>
+
+                  {/* Spot */}
+                  <div
+                    className={cn(
+                      "relative flex flex-col p-4 rounded-lg border-2 cursor-pointer transition-all",
+                      tradeType === "crypto_spot"
+                        ? "border-emerald-500 bg-emerald-500/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    )}
+                    onClick={() => setTradeType("crypto_spot")}
+                  >
+                    <RadioGroupItem value="crypto_spot" className="sr-only" />
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-emerald-500" />
+                      <span className="font-medium">{t("tradeType.crypto_spot")}</span>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• {t("wizard.executionStep.spotFeatures.noLeverage")}</li>
+                      <li>• {t("wizard.executionStep.spotFeatures.longOnly")}</li>
+                    </ul>
+                  </div>
+                </RadioGroup>
+
+                {/* Spot Mode Warning */}
+                {tradeType === "crypto_spot" && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      {t("tradeType.spotWarning")}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Account Selection (Live Mode) */}
               {executionMode === "live" && (
                 <div className="space-y-2">
@@ -492,6 +566,32 @@ export default function EditAgentPage() {
                 </span>
                 <Badge variant="outline" className="text-xs">
                   {agent.strategy_type?.toUpperCase() || "-"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
+                  {t("tradeType.label")}
+                </span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    agent.trade_type === "crypto_spot"
+                      ? "border-emerald-500/30 text-emerald-500"
+                      : "border-purple-500/30 text-purple-500"
+                  )}
+                >
+                  {agent.trade_type === "crypto_spot" ? (
+                    <>
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {t("tradeType.crypto_spot")}
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-3 h-3 mr-1" />
+                      {t("tradeType.crypto_perp")}
+                    </>
+                  )}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">

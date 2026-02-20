@@ -102,7 +102,6 @@ import {
   AccountSnapshotSection,
 } from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
-import { ChainOfThought as ChainOfThoughtView } from "@/components/decisions/chain-of-thought";
 import { DetailPageHeader } from "@/components/layout";
 
 function getStatusColor(status: StrategyStatus) {
@@ -588,23 +587,6 @@ function OverviewTab({
                   : "-"}
               </Badge>
             </div>
-            {agent.strategy_type === "ai" && (
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("overview.aiModel")}
-                </span>
-                <span
-                  className="font-medium text-xs truncate max-w-[150px]"
-                  title={agent.ai_model || ""}
-                >
-                  {agent.ai_model
-                    ? agent.ai_model.includes(":")
-                      ? agent.ai_model.split(":").slice(1).join(":")
-                      : agent.ai_model
-                    : "-"}
-                </span>
-              </div>
-            )}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 {t("overview.executionInterval")}
@@ -699,6 +681,70 @@ function OverviewTab({
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Models - Only show for AI strategies */}
+      {agent.strategy_type === "ai" && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" />
+                {t("overview.aiModelsTitle")}
+              </CardTitle>
+              {agent.debate_enabled && (
+                <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-500">
+                  {t("overview.debateMode")}
+                </Badge>
+              )}
+              {!agent.debate_enabled && (
+                <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
+                  {t("overview.singleMode")}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {agent.debate_enabled && agent.debate_models.length > 0 ? (
+              <div className="space-y-2">
+                {agent.debate_models.map((modelId, index) => (
+                  <div
+                    key={modelId}
+                    className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                  >
+                    <span className="w-6 h-6 flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+                      {index + 1}
+                    </span>
+                    <span className="font-mono text-sm">
+                      {modelId.includes(":") ? modelId.split(":").slice(1).join(":") : modelId}
+                    </span>
+                  </div>
+                ))}
+                {agent.debate_consensus_mode && (
+                  <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{t("overview.consensusMode")}</span>
+                    <span className="font-medium">
+                      {t(`overview.consensusModes.${agent.debate_consensus_mode}`, agent.debate_consensus_mode)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : agent.ai_model ? (
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                <span className="w-6 h-6 flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  1
+                </span>
+                <span className="font-mono text-sm">
+                  {agent.ai_model.includes(":") ? agent.ai_model.split(":").slice(1).join(":") : agent.ai_model}
+                </span>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                -
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Trade Execution List */}
       <div ref={tradeListTopRef} />
@@ -1440,12 +1486,11 @@ function DecisionsTab({
                     <CardContent className="pt-0 space-y-6">
                       {/* Market Assessment */}
                       <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
-                        <h4 className="text-sm font-semibold mb-2">
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-primary" />
                           {t("decisions.marketAssessment")}
                         </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {decision.market_assessment}
-                        </p>
+                        <MarkdownToggle content={decision.market_assessment} />
                       </div>
 
                       {/* Account Snapshot */}
@@ -1465,15 +1510,16 @@ function DecisionsTab({
                           />
                         )}
 
-                      {/* Chain of Thought - Enhanced Timeline View */}
-                      <ChainOfThoughtView
-                        content={decision.chain_of_thought}
-                        titleKey={
-                          decision.ai_model?.startsWith("quant:")
-                            ? "executionReasoning"
-                            : "chainOfThought"
-                        }
-                      />
+                      {/* Chain of Thought */}
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Brain className="w-4 h-4 text-primary" />
+                          {decision.ai_model?.startsWith("quant:")
+                            ? t("decisions.executionReasoning")
+                            : t("decisions.chainOfThought")}
+                        </h4>
+                        <MarkdownToggle content={decision.chain_of_thought} />
+                      </div>
 
                       {/* Trading Decisions */}
                       <div>
@@ -2292,6 +2338,17 @@ export default function AgentDetailPage() {
                   label: agent.account_name,
                   className:
                     "bg-muted/30 text-muted-foreground border-border/30",
+                },
+              ]
+            : []),
+          ...(agent.trade_type
+            ? [
+                {
+                  label: t(`tradeType.${agent.trade_type}`),
+                  className:
+                    agent.trade_type === "crypto_spot"
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                      : "bg-purple-500/10 text-purple-500 border-purple-500/30",
                 },
               ]
             : []),

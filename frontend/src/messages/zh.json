@@ -403,7 +403,17 @@
         "fullyAllocated": "账户资金已全部分配",
         "fullyAllocatedDesc": "该账户 100% 资金已分配给其他代理，请选择其他账户或调整现有代理的资金分配。",
         "allocationExceeded": "分配比例超出可用额度",
-        "allocationExceededDesc": "请求分配 {requested}%，但仅剩 {available}% 可用"
+        "allocationExceededDesc": "请求分配 {requested}%，但仅剩 {available}% 可用",
+        "tradeTypeNotSupportedTitle": "交易类型不支持",
+        "tradeTypeNotSupported": "{exchange} 不支持 {tradeType} 交易",
+        "perpFeatures": {
+          "leverage": "支持杠杆 (1-50x)",
+          "shortSelling": "可做多/做空"
+        },
+        "spotFeatures": {
+          "noLeverage": "杠杆固定为 1x",
+          "longOnly": "仅支持做多"
+        }
       },
       "reviewStep": {
         "title": "确认并启动",
@@ -419,6 +429,8 @@
         "summaryStrategy": "策略",
         "summaryType": "类型",
         "summaryModel": "AI 模型",
+        "summaryModels": "AI 模型 ({count})",
+        "summaryDebateMode": "辩论模式",
         "summaryMode": "执行模式",
         "summaryAccount": "账户",
         "summaryCapital": "资金",
@@ -1353,6 +1365,10 @@
       "live": "实盘交易",
       "mock": "模拟交易"
     },
+    "tradeType": {
+      "crypto_perp": "合约 (永续)",
+      "crypto_spot": "现货"
+    },
     "actions": {
       "start": "启动",
       "pause": "暂停",
@@ -1436,6 +1452,9 @@
       "strategyType": "策略类型",
       "tradingMode": "交易模式",
       "aiModel": "AI 模型",
+      "aiModelsTitle": "AI 模型",
+      "debateMode": "辩论模式",
+      "singleMode": "单模型",
       "executionInterval": "执行间隔",
       "everyMinutes": "每 {minutes} 分钟",
       "maxLeverage": "最大杠杆",

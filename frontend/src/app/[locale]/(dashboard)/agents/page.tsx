@@ -20,6 +20,7 @@ import {
   Eye,
   AlertTriangle,
   AlertCircle,
+  BarChart3,
 } from 'lucide-react';
 import {
   ListPageSkeleton,
@@ -117,6 +118,14 @@ function getStrategyTypeColor(type: string | null | undefined) {
   }
 }
 
+function getTradeTypeColor(tradeType: string | null | undefined) {
+  if (tradeType === 'crypto_spot') {
+    return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30';
+  }
+  // Default to perpetual contract styling
+  return 'bg-purple-500/10 text-purple-500 border-purple-500/30';
+}
+
 interface AgentCardProps {
   agent: AgentResponse;
   onStatusChange: (id: string, status: AgentStatus) => void;
@@ -200,6 +209,24 @@ function AgentCard({ agent, onStatusChange, onDelete, t }: AgentCardProps) {
                 >
                   {t(`executionMode.${agent.execution_mode}`)}
                 </Badge>
+                {agent.trade_type && (
+                  <Badge
+                    variant="outline"
+                    className={cn('text-xs', getTradeTypeColor(agent.trade_type))}
+                  >
+                    {agent.trade_type === 'crypto_spot' ? (
+                      <>
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        {t('tradeType.crypto_spot')}
+                      </>
+                    ) : (
+                      <>
+                        <BarChart3 className="w-3 h-3 mr-1" />
+                        {t('tradeType.crypto_perp')}
+                      </>
+                    )}
+                  </Badge>
+                )}
               </div>
               {agent.strategy_name && (
                 <p className="text-xs text-muted-foreground mt-1">

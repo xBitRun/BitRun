@@ -403,7 +403,17 @@
         "fullyAllocated": "Account fully allocated",
         "fullyAllocatedDesc": "This account has 100% capital allocated to other agents. Please select another account or adjust existing allocations.",
         "allocationExceeded": "Allocation exceeds available",
-        "allocationExceededDesc": "Requested {requested}% but only {available}% available"
+        "allocationExceededDesc": "Requested {requested}% but only {available}% available",
+        "tradeTypeNotSupportedTitle": "Trade Type Not Supported",
+        "tradeTypeNotSupported": "{exchange} does not support {tradeType} trading",
+        "perpFeatures": {
+          "leverage": "Leverage supported (1-50x)",
+          "shortSelling": "Long & short positions"
+        },
+        "spotFeatures": {
+          "noLeverage": "Fixed 1x leverage",
+          "longOnly": "Long positions only"
+        }
       },
       "reviewStep": {
         "title": "Review & Launch",
@@ -419,6 +429,8 @@
         "summaryStrategy": "Strategy",
         "summaryType": "Type",
         "summaryModel": "AI Model",
+        "summaryModels": "AI Models ({count})",
+        "summaryDebateMode": "Debate Mode",
         "summaryMode": "Execution Mode",
         "summaryAccount": "Account",
         "summaryCapital": "Capital",
@@ -1353,6 +1365,10 @@
       "live": "Live Trading",
       "mock": "Paper Trading"
     },
+    "tradeType": {
+      "crypto_perp": "Perpetual Contract",
+      "crypto_spot": "Spot"
+    },
     "actions": {
       "start": "Start",
       "pause": "Pause",
@@ -1436,6 +1452,9 @@
       "strategyType": "Strategy Type",
       "tradingMode": "Trading Mode",
       "aiModel": "AI Model",
+      "aiModelsTitle": "AI Models",
+      "debateMode": "Debate Mode",
+      "singleMode": "Single Model",
       "executionInterval": "Execution Interval",
       "everyMinutes": "Every {minutes} min",
       "maxLeverage": "Max Leverage",

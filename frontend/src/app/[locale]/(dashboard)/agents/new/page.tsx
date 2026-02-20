@@ -21,6 +21,8 @@ import {
   Wallet,
   Play,
   Users,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import {
   Card,
@@ -51,13 +53,14 @@ import {
   getProviderDisplayName,
   useStrategyExchangeCompatibility,
   useBoundAccounts,
+  useSupportsAsset,
 } from "@/hooks";
 import type {
   StrategyResponse,
   CreateAgentRequest,
   BoundAccountInfo,
 } from "@/lib/api";
-import type { StrategyType, ExecutionMode } from "@/types";
+import type { StrategyType, ExecutionMode, AssetType } from "@/types";
 
 // ==================== Constants ====================
 
@@ -195,6 +198,7 @@ interface WizardState {
   debateMinParticipants: number;
   // Step 3
   executionMode: ExecutionMode;
+  tradeType: AssetType;
   accountId: string;
   mockInitialBalance: number;
   capitalMode: "none" | "fixed" | "percent";
@@ -215,6 +219,7 @@ const initialState: WizardState = {
   debateConsensusMode: "majority_vote",
   debateMinParticipants: 2,
   executionMode: "live",
+  tradeType: "crypto_perp",
   accountId: "",
   mockInitialBalance: 10000,
   capitalMode: "none",
@@ -323,6 +328,8 @@ export default function AgentWizardPage() {
             : undefined,
         execution_interval_minutes: state.executionIntervalMinutes,
         auto_execute: state.autoExecute,
+        // Trade type
+        trade_type: state.tradeType,
         // Debate configuration (only for AI strategies)
         debate_enabled: isAiStrategy ? state.debateEnabled : undefined,
         debate_models: isAiStrategy && state.debateEnabled ? state.debateModels : undefined,
@@ -951,13 +958,18 @@ function ExecutionModeStep({
   const { isCompatible, incompatibleSymbols } =
     useStrategyExchangeCompatibility(selectedExchange, strategySymbols);
 
+  // Check if the selected account supports the selected trade type
+  const { supports: supportsTradeType, isLoading: checkingTradeType } =
+    useSupportsAsset(selectedExchange, state.tradeType);
+
   const canProceed =
     (state.executionMode === "mock" ||
       (state.executionMode === "live" && !!state.accountId)) &&
     isCompatible &&
     !isFullyAllocated &&
     !percentAllocationExceeds &&
-    !hasAllocationModeConflict;
+    !hasAllocationModeConflict &&
+    (state.executionMode === "mock" || supportsTradeType || checkingTradeType);
 
   return (
     <div className="space-y-4">
@@ -1031,6 +1043,77 @@ function ExecutionModeStep({
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Trade Type Selection */}
+      <div className="space-y-3">
+        <div>
+          <Label className="text-base font-medium">{t("tradeType.label")}</Label>
+          <p className="text-sm text-muted-foreground">{t("tradeType.description")}</p>
+        </div>
+        <RadioGroup
+          value={state.tradeType}
+          onValueChange={(value) =>
+            setState((prev) => ({ ...prev, tradeType: value as AssetType }))
+          }
+          className="grid grid-cols-2 gap-4"
+        >
+          {/* Perpetual Contract */}
+          <div
+            className={cn(
+              "relative flex flex-col p-4 rounded-lg border-2 cursor-pointer transition-all",
+              state.tradeType === "crypto_perp"
+                ? "border-purple-500 bg-purple-500/5"
+                : "border-border hover:border-muted-foreground/50"
+            )}
+            onClick={() =>
+              setState((prev) => ({ ...prev, tradeType: "crypto_perp" }))
+            }
+          >
+            <RadioGroupItem value="crypto_perp" className="sr-only" />
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-5 h-5 text-purple-500" />
+              <span className="font-medium">{t("tradeType.crypto_perp")}</span>
+            </div>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• {t("wizard.executionStep.perpFeatures.leverage")}</li>
+              <li>• {t("wizard.executionStep.perpFeatures.shortSelling")}</li>
+            </ul>
+          </div>
+
+          {/* Spot */}
+          <div
+            className={cn(
+              "relative flex flex-col p-4 rounded-lg border-2 cursor-pointer transition-all",
+              state.tradeType === "crypto_spot"
+                ? "border-emerald-500 bg-emerald-500/5"
+                : "border-border hover:border-muted-foreground/50"
+            )}
+            onClick={() =>
+              setState((prev) => ({ ...prev, tradeType: "crypto_spot" }))
+            }
+          >
+            <RadioGroupItem value="crypto_spot" className="sr-only" />
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+              <span className="font-medium">{t("tradeType.crypto_spot")}</span>
+            </div>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• {t("wizard.executionStep.spotFeatures.noLeverage")}</li>
+              <li>• {t("wizard.executionStep.spotFeatures.longOnly")}</li>
+            </ul>
+          </div>
+        </RadioGroup>
+
+        {/* Spot Mode Warning */}
+        {state.tradeType === "crypto_spot" && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {t("tradeType.spotWarning")}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Live Mode: Account Selection */}
@@ -1171,6 +1254,24 @@ function ExecutionModeStep({
                       {t("wizard.executionStep.incompatibleSymbols", {
                         symbols: incompatibleSymbols.join(", "),
                         exchange: selectedExchange ?? "",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Trade Type Not Supported Warning */}
+              {selectedAccount && !supportsTradeType && !checkingTradeType && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <div className="text-xs text-destructive">
+                    <p className="font-medium">
+                      {t("wizard.executionStep.tradeTypeNotSupportedTitle")}
+                    </p>
+                    <p className="mt-1">
+                      {t("wizard.executionStep.tradeTypeNotSupported", {
+                        exchange: selectedExchange ?? "",
+                        tradeType: t(`tradeType.${state.tradeType}`),
                       })}
                     </p>
                   </div>
@@ -1413,7 +1514,20 @@ function ReviewStep({
   onSubmit: () => void;
 }) {
   const accountName = accounts.find((a) => a.id === state.accountId)?.name;
-  const modelName = models.find((m) => m.id === state.aiModel)?.name;
+
+  // Get model display - show all debate models if enabled, otherwise single model
+  const modelDisplay = useMemo(() => {
+    if (state.debateEnabled && state.debateModels.length > 0) {
+      // Multi-model debate mode
+      return state.debateModels.map((id) => {
+        const model = models.find((m) => m.id === id);
+        return model?.name || id;
+      });
+    }
+    // Single model mode
+    const model = models.find((m) => m.id === state.aiModel);
+    return model?.name ? [model.name] : [];
+  }, [state.debateEnabled, state.debateModels, state.aiModel, models]);
 
   const canSubmit = !!state.agentName && !!state.selectedStrategyId;
 
@@ -1509,8 +1623,32 @@ function ReviewStep({
             />
             {isAiStrategy && (
               <SummaryRow
-                label={t("wizard.reviewStep.summaryModel")}
-                value={modelName || "-"}
+                label={state.debateEnabled
+                  ? t("wizard.reviewStep.summaryModels", { count: modelDisplay.length })
+                  : t("wizard.reviewStep.summaryModel")}
+                value={
+                  modelDisplay.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 justify-end">
+                      {modelDisplay.map((name, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    "-"
+                  )
+                }
+              />
+            )}
+            {isAiStrategy && state.debateEnabled && (
+              <SummaryRow
+                label={t("wizard.reviewStep.summaryDebateMode")}
+                value={
+                  <Badge variant="secondary" className="text-xs">
+                    {t(`wizard.modelStep.consensusModes.${state.debateConsensusMode === "majority_vote" ? "majorityVote" : state.debateConsensusMode === "highest_confidence" ? "highestConfidence" : state.debateConsensusMode === "weighted_average" ? "weightedAverage" : "unanimous"}`)}
+                  </Badge>
+                }
               />
             )}
             <SummaryRow
@@ -1523,6 +1661,32 @@ function ReviewStep({
                   className="text-xs"
                 >
                   {t(`executionMode.${state.executionMode}`)}
+                </Badge>
+              }
+            />
+            <SummaryRow
+              label={t("tradeType.label")}
+              value={
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    state.tradeType === "crypto_spot"
+                      ? "border-emerald-500/30 text-emerald-500"
+                      : "border-purple-500/30 text-purple-500"
+                  )}
+                >
+                  {state.tradeType === "crypto_spot" ? (
+                    <>
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {t("tradeType.crypto_spot")}
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-3 h-3 mr-1" />
+                      {t("tradeType.crypto_perp")}
+                    </>
+                  )}
                 </Badge>
               }
             />

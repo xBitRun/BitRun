@@ -320,6 +320,8 @@ export interface CreateAgentRequest {
   allocated_capital_percent?: number | null;
   execution_interval_minutes?: number;
   auto_execute?: boolean;
+  // Trade type (crypto_perp, crypto_spot, etc.)
+  trade_type?: string;
   // Multi-model debate configuration
   debate_enabled?: boolean;
   debate_models?: string[];
@@ -337,6 +339,8 @@ export interface UpdateAgentRequest {
   allocated_capital_percent?: number | null;
   execution_interval_minutes?: number;
   auto_execute?: boolean;
+  // Trade type (crypto_perp, crypto_spot, etc.)
+  trade_type?: string;
   // Multi-model debate configuration
   debate_enabled?: boolean;
   debate_models?: string[];
@@ -377,6 +381,9 @@ export interface AgentResponse {
   // Execution config
   execution_interval_minutes: number;
   auto_execute: boolean;
+
+  // Trade type (crypto_perp, crypto_spot, etc.)
+  trade_type: string;
 
   // Multi-model debate configuration
   debate_enabled: boolean;
