@@ -497,6 +497,25 @@ configure_firewall() {
     log_warn "Also ensure ports 22, 80, 443 are open in your cloud security group"
 }
 
+# ==================== Check Essential Files ====================
+
+check_essential_files() {
+    # Essential files that must exist for a valid installation
+    local essential_files=(
+        "backend/Dockerfile"
+        "frontend/Dockerfile"
+        "docker-compose.yml"
+        "nginx/nginx.prod.conf"
+    )
+
+    for file in "${essential_files[@]}"; do
+        if [ ! -f "$INSTALL_DIR/$file" ]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
 # ==================== Setup Installation Directory ====================
 
 setup_directory() {
@@ -508,8 +527,8 @@ setup_directory() {
     fi
     log_step "Step $step_num: Setting Up Installation Directory"
 
-    # Check if directory already exists with source code
-    if [ -d "$INSTALL_DIR/.git" ]; then
+    # Check if directory already exists with complete source code
+    if [ -d "$INSTALL_DIR/.git" ] && check_essential_files; then
         log_info "Found existing installation, updating..."
         cd "$INSTALL_DIR"
 
@@ -522,6 +541,14 @@ setup_directory() {
         # Pull latest changes
         git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || true
         log_info "Updated to latest version"
+    elif [ -d "$INSTALL_DIR/.git" ]; then
+        # Git repo exists but files are incomplete - need fresh clone
+        log_warn "Existing installation is incomplete"
+        log_substep "Backing up and re-cloning..."
+        mv "$INSTALL_DIR" "${INSTALL_DIR}.incomplete.$(date +%s)"
+        mkdir -p "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        log_info "Created fresh installation directory"
     elif [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
         # Directory exists with docker-compose but no git
         log_warn "Installation directory exists but is not a git repository"
@@ -599,21 +626,24 @@ configure_app() {
         fi
 
         # Configure nginx with domains
-        if [ -f "nginx/nginx.prod.conf" ] && [ -n "$FRONTEND_DOMAIN" ] && [ -n "$BACKEND_DOMAIN" ]; then
+        if [ -n "$FRONTEND_DOMAIN" ] && [ -n "$BACKEND_DOMAIN" ]; then
+            if [ ! -f "nginx/nginx.prod.conf" ]; then
+                log_error "nginx/nginx.prod.conf not found - source code may be incomplete"
+                exit 1
+            fi
+
             log_substep "Configuring nginx with your domains..."
-            # Try Linux sed -i first, fall back to macOS compatible method
-            if sed -i.bak \
+
+            # Use sed with in-place replacement (Linux style)
+            # The .bak extension is required for portability
+            sed -i.bak \
                 -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
                 -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
-                nginx/nginx.prod.conf 2>/dev/null; then
-                rm -f nginx/nginx.prod.conf.bak 2>/dev/null || true
-            else
-                # macOS sed compatibility (doesn't support -i with backup extension)
-                sed -e "s|__FRONTEND_DOMAIN__|$FRONTEND_DOMAIN|g" \
-                    -e "s|__BACKEND_DOMAIN__|$BACKEND_DOMAIN|g" \
-                    nginx/nginx.prod.conf > nginx/nginx.prod.conf.tmp && \
-                mv nginx/nginx.prod.conf.tmp nginx/nginx.prod.conf
-            fi
+                nginx/nginx.prod.conf
+
+            # Remove backup file
+            rm -f nginx/nginx.prod.conf.bak
+
             log_info "Nginx configured for $FRONTEND_DOMAIN and $BACKEND_DOMAIN"
         fi
     else
