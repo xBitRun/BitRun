@@ -99,6 +99,16 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      # Email notifications (optional - Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-}
+      # Proxy for geo-restricted exchange APIs (optional)
+      PROXY_URL: ${PROXY_URL:-}
+      # Error tracking (optional - Sentry)
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      # Brand configuration (for backend notifications)
+      BRAND_NAME: ${BRAND_NAME:-BITRUN}
+      BRAND_TAGLINE: ${BRAND_TAGLINE:-AI-Powered Trading Agent}
     depends_on:
       postgres:
         condition: service_healthy

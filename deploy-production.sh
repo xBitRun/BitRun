@@ -385,6 +385,23 @@ ADMIN_NAME=Admin
 
 # ==================== System ====================
 TZ=Asia/Shanghai
+
+# ==================== Optional Features ====================
+# Uncomment and configure as needed:
+
+# Proxy for geo-restricted exchange APIs (Bybit, OKX, etc.)
+# PROXY_URL=http://host.docker.internal:7890
+
+# Email notifications (Resend - https://resend.com/)
+# RESEND_API_KEY=re_xxx
+# RESEND_FROM=noreply@yourdomain.com
+
+# Error tracking (Sentry - https://sentry.io/)
+# SENTRY_DSN=https://xxx@sentry.io/xxx
+
+# Brand configuration (for backend notifications)
+BRAND_NAME=BITRUN
+BRAND_TAGLINE=AI-Powered Trading Agent
 EOF
 
     # Set restrictive permissions
