@@ -87,9 +87,10 @@ backend/
 │   ├── api/                      # API 层
 │   │   ├── main.py               #   FastAPI 应用入口，中间件配置，路由注册
 │   │   ├── websocket.py          #   WebSocket 连接管理器和事件发布器
-│   │   └── routes/               #   路由模块 (每个功能一个文件)
+│   │   └── routes/               #   路由模块 (24 个文件)
 │   │       ├── auth.py           #     认证 (注册/登录/刷新/登出)
 │   │       ├── accounts.py       #     交易所账户管理
+│   │       ├── agents.py         #     Agent 执行实例管理 (NEW)
 │   │       ├── strategies.py     #     AI Agent 策略
 │   │       ├── quant_strategies.py #   量化策略
 │   │       ├── decisions.py      #     决策记录查询
@@ -101,6 +102,13 @@ backend/
 │   │       ├── data.py           #     市场数据和缓存
 │   │       ├── metrics.py        #     Prometheus 指标
 │   │       ├── notifications.py  #     通知管理
+│   │       ├── analytics.py      #     数据分析 (NEW)
+│   │       ├── wallets.py        #     钱包管理 (NEW)
+│   │       ├── recharge.py       #     余额充值 (NEW)
+│   │       ├── channels.py       #     通知渠道 (NEW)
+│   │       ├── accounting.py     #     账务统计 (NEW)
+│   │       ├── brand.py          #     品牌定制 (NEW)
+│   │       ├── system.py         #     系统配置 (NEW)
 │   │       ├── crypto.py         #     传输加密
 │   │       └── ws.py             #     WebSocket 端点
 │   │
@@ -119,11 +127,16 @@ backend/
 │   ├── db/                       # 数据库层
 │   │   ├── database.py           #   数据库连接和会话管理
 │   │   ├── models.py             #   SQLAlchemy 模型定义
-│   │   └── repositories/         #   Repository 模式数据访问
+│   │   └── repositories/         #   Repository 模式数据访问 (11 个)
 │   │       ├── account.py        #     账户 CRUD
+│   │       ├── agent.py          #     Agent CRUD (NEW)
 │   │       ├── strategy.py       #     策略 CRUD
 │   │       ├── quant_strategy.py #     量化策略 CRUD
 │   │       ├── decision.py       #     决策记录 CRUD
+│   │       ├── backtest.py       #     回测结果 CRUD (NEW)
+│   │       ├── channel.py        #     渠道 CRUD (NEW)
+│   │       ├── recharge.py       #     充值记录 CRUD (NEW)
+│   │       ├── wallet.py         #     钱包/交易 CRUD (NEW)
 │   │       └── user.py           #     用户 CRUD
 │   │
 │   ├── models/                   # Pydantic 领域模型
@@ -138,7 +151,7 @@ backend/
 │   │   ├── metrics.py            #   指标采集器
 │   │   └── sentry.py             #   Sentry 初始化
 │   │
-│   ├── services/                 # 业务逻辑层
+│   ├── services/                 # 业务逻辑层 (20 个)
 │   │   ├── ai/                   #   AI 客户端
 │   │   │   ├── base.py           #     基类 (BaseAIClient, AIProvider)
 │   │   │   ├── factory.py        #     工厂 (AIClientFactory)
@@ -160,11 +173,17 @@ backend/
 │   │   ├── quant_engine.py       #   量化策略引擎 (Grid/DCA/RSI)
 │   │   ├── order_manager.py      #   订单生命周期管理
 │   │   ├── position_service.py   #   持仓跟踪与管理
+│   │   ├── agent_position_service.py # Agent 持仓服务 (NEW)
 │   │   ├── data_access_layer.py  #   统一数据访问 (K 线 + 指标)
 │   │   ├── indicator_calculator.py # 技术指标计算
 │   │   ├── market_data_cache.py  #   市场数据 Redis 缓存
 │   │   ├── redis_service.py      #   Redis 操作封装
-│   │   └── notifications.py      #   通知服务
+│   │   ├── notifications.py      #   通知服务
+│   │   ├── wallet_service.py     #   钱包服务 (NEW)
+│   │   ├── channel_service.py    #   渠道服务 (NEW)
+│   │   ├── invite_service.py     #   邀请服务 (NEW)
+│   │   ├── pnl_service.py        #   盈亏服务 (NEW)
+│   │   └── worker_heartbeat.py   #   Worker 心跳追踪 (NEW)
 │   │
 │   ├── traders/                  # 交易所适配层
 │   │   ├── base.py               #   BaseTrader 抽象接口
@@ -172,19 +191,24 @@ backend/
 │   │   ├── exchange_pool.py      #   交易所连接池
 │   │   └── hyperliquid.py        #   Hyperliquid 工具函数
 │   │
-│   └── workers/                  # 后台任务
-│       ├── execution_worker.py   #   AI 策略执行 Worker
-│       ├── quant_worker.py       #   量化策略执行 Worker
+│   └── workers/                  # 后台任务 (Unified 架构)
+│       ├── unified_manager.py    #   统一入口 - UnifiedWorkerManager
+│       ├── base_backend.py       #   WorkerBackend 抽象基类
+│       ├── ai_backend.py         #   AIWorkerBackend (AI 策略)
+│       ├── quant_backend.py      #   QuantWorkerBackend (量化策略)
+│       ├── lifecycle.py          #   Worker 生命周期管理
+│       ├── execution_worker.py   #   Legacy AI Worker (兼容)
+│       ├── quant_worker.py       #   Legacy Quant Worker (兼容)
 │       ├── queue.py              #   ARQ 分布式任务队列
 │       └── tasks.py              #   任务定义
 │
 ├── alembic/                      # 数据库迁移
 │   ├── env.py                    #   迁移环境 (异步支持)
-│   └── versions/                 #   迁移脚本
+│   └── versions/                 #   迁移脚本 (021 个)
 │       ├── 001_initial_schema.py
 │       ├── 002_add_ai_model_to_strategies.py
 │       ├── ...
-│       └── 010_add_debate_fields_to_decisions.py
+│       └── 021_add_trade_type_to_agents.py
 │
 ├── tests/                        # 测试套件
 ├── alembic.ini                   # Alembic 配置
@@ -206,15 +230,35 @@ frontend/
 │   │   │   ├── layout.tsx        #     Locale 布局 (i18n Provider)
 │   │   │   ├── (auth)/           #     认证页面组
 │   │   │   │   └── login/        #       登录页
+│   │   │   ├── (onboarding)/     #     引导页组
+│   │   │   │   └── setup/        #       初始设置
 │   │   │   ├── (dashboard)/      #     Dashboard 页面组
 │   │   │   │   ├── overview/     #       首页 (Dashboard)
-│   │   │   │   ├── agents/       #       AI Agent 策略
-│   │   │   │   ├── strategies/   #       量化策略
+│   │   │   │   ├── agents/       #       AI Agent 执行实例
+│   │   │   │   │   ├── new/      #         新建
+│   │   │   │   │   └── [id]/     #         详情/编辑
+│   │   │   │   ├── strategies/   #       策略配置
+│   │   │   │   │   ├── new/      #         新建
+│   │   │   │   │   └── [id]/     #         详情/编辑
 │   │   │   │   ├── accounts/     #       交易所账户
+│   │   │   │   │   └── new/      #         新建
 │   │   │   │   ├── models/       #       AI 模型管理
+│   │   │   │   │   └── new/      #         新建
 │   │   │   │   ├── backtest/     #       回测
+│   │   │   │   │   ├── run/      #         运行回测
+│   │   │   │   │   └── [id]/     #         结果查看
 │   │   │   │   ├── decisions/    #       决策记录
-│   │   │   │   └── settings/     #       设置
+│   │   │   │   ├── analytics/    #       数据分析 (NEW)
+│   │   │   │   ├── wallet/       #       钱包管理 (NEW)
+│   │   │   │   │   └── recharge/ #         充值页面
+│   │   │   │   ├── channel/      #       通知渠道 (NEW)
+│   │   │   │   ├── invite/       #       邀请系统 (NEW)
+│   │   │   │   ├── marketplace/  #       策略市场 (NEW)
+│   │   │   │   ├── settings/     #       设置
+│   │   │   │   └── admin/        #       管理后台 (NEW)
+│   │   │   │       ├── recharge/ #         充值管理
+│   │   │   │       ├── accounting/ #       账务统计
+│   │   │   │       └── channels/ #         渠道管理
 │   │   │   └── (landing)/        #     Landing 页面组
 │   │   └── middleware.ts         #   路由中间件 (认证 + 国际化)
 │   │
@@ -233,6 +277,7 @@ frontend/
 │   │
 │   ├── hooks/                    # 自定义 Hooks
 │   │   ├── use-accounts.ts       #   账户管理
+│   │   ├── use-agents.ts         #   Agent 管理 (NEW)
 │   │   ├── use-backtest.ts       #   回测操作
 │   │   ├── use-dashboard.ts      #   仪表盘统计
 │   │   ├── use-decisions.ts      #   决策记录
@@ -241,6 +286,8 @@ frontend/
 │   │   ├── use-quant-strategies.ts # 量化策略
 │   │   ├── use-strategies.ts     #   AI 策略管理
 │   │   ├── use-strategy-studio.ts #  策略工作室状态
+│   │   ├── use-wallet.ts         #   钱包管理 (NEW)
+│   │   ├── use-channels.ts       #   渠道管理 (NEW)
 │   │   ├── use-websocket.ts      #   WebSocket 连接
 │   │   └── use-mobile.ts         #   移动端检测
 │   │
@@ -491,6 +538,17 @@ docker compose exec backend alembic upgrade head
 | 008 | 策略持仓表 (strategy_positions) |
 | 009 | 交易所账户索引优化 |
 | 010 | 决策记录增加辩论字段 (Debate Engine) |
+| 011 | 策略 Agent 解耦 (Strategy + Agent 分离) |
+| 012 | Mock Agent 可空账户 |
+| 013 | 策略版本管理 |
+| 014 | 付费策略支持 |
+| 015 | 回测结果表 |
+| 016 | 盈亏记录表 (pnl_records) |
+| 017 | 日快照表 (daily_snapshots) |
+| 018 | 渠道计费系统 (Channel + Billing) |
+| 019 | 辩论模式迁移到 Agents |
+| 020 | Worker 心跳字段 (worker_heartbeat_at, worker_instance_id) |
+| 021 | 交易类型字段 (trade_type: crypto_perp/crypto_spot) |
 
 ## 相关文档
 

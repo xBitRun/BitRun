@@ -22,19 +22,92 @@ BitRun 是一个 AI 驱动的加密货币交易代理平台，支持自然语言
 bitrun/
 ├── backend/                  # FastAPI 后端
 │   ├── app/
-│   │   ├── api/routes/       # API 路由
-│   │   ├── services/         # 业务逻辑层
-│   │   ├── services/ai/      # AI 客户端 (9+ Provider)
+│   │   ├── api/routes/       # API 路由 (24 个模块)
+│   │   │   ├── auth.py       #   认证
+│   │   │   ├── accounts.py   #   交易所账户
+│   │   │   ├── agents.py     #   Agent 执行实例 (NEW)
+│   │   │   ├── strategies.py #   AI 策略
+│   │   │   ├── quant_strategies.py # 量化策略
+│   │   │   ├── decisions.py  #   决策记录
+│   │   │   ├── backtest.py   #   回测
+│   │   │   ├── dashboard.py  #   仪表盘
+│   │   │   ├── models.py     #   AI 模型
+│   │   │   ├── providers.py  #   AI Provider
+│   │   │   ├── analytics.py  #   数据分析 (NEW)
+│   │   │   ├── wallets.py    #   钱包管理 (NEW)
+│   │   │   ├── recharge.py   #   充值 (NEW)
+│   │   │   ├── channels.py   #   通知渠道 (NEW)
+│   │   │   ├── accounting.py #   账务统计 (NEW)
+│   │   │   ├── brand.py      #   品牌定制 (NEW)
+│   │   │   ├── system.py     #   系统配置 (NEW)
+│   │   │   ├── workers.py    #   Worker 管理
+│   │   │   ├── data.py       #   市场数据
+│   │   │   ├── metrics.py    #   Prometheus 指标
+│   │   │   ├── notifications.py # 通知
+│   │   │   ├── crypto.py     #   传输加密
+│   │   │   └── ws.py         #   WebSocket
+│   │   ├── db/repositories/  # Repository 层 (11 个)
+│   │   │   ├── account.py    #   账户 CRUD
+│   │   │   ├── agent.py      #   Agent CRUD (NEW)
+│   │   │   ├── strategy.py   #   策略 CRUD
+│   │   │   ├── quant_strategy.py # 量化策略 CRUD
+│   │   │   ├── decision.py   #   决策 CRUD
+│   │   │   ├── backtest.py   #   回测结果 CRUD (NEW)
+│   │   │   ├── channel.py    #   渠道 CRUD (NEW)
+│   │   │   ├── recharge.py   #   充值记录 CRUD (NEW)
+│   │   │   ├── wallet.py     #   钱包 CRUD (NEW)
+│   │   │   └── user.py       #   用户 CRUD
+│   │   ├── services/         # 业务逻辑层 (20 个)
+│   │   │   ├── ai/           #   AI 客户端 (9+ Provider)
+│   │   │   ├── strategy_engine.py    # AI 策略引擎
+│   │   │   ├── quant_engine.py       # 量化策略引擎
+│   │   │   ├── debate_engine.py      # 辩论引擎
+│   │   │   ├── order_manager.py      # 订单管理
+│   │   │   ├── position_service.py   # 持仓服务
+│   │   │   ├── agent_position_service.py # Agent 持仓 (NEW)
+│   │   │   ├── wallet_service.py     # 钱包服务 (NEW)
+│   │   │   ├── channel_service.py    # 渠道服务 (NEW)
+│   │   │   ├── invite_service.py     # 邀请服务 (NEW)
+│   │   │   ├── pnl_service.py        # 盈亏服务 (NEW)
+│   │   │   ├── worker_heartbeat.py   # Worker 心跳 (NEW)
+│   │   │   └── ...
 │   │   ├── traders/          # 交易所适配器
-│   │   └── workers/          # 后台 Worker
+│   │   └── workers/          # 后台 Worker (Unified 架构)
+│   │       ├── unified_manager.py  # 统一管理器
+│   │       ├── base_backend.py     # 抽象基类
+│   │       ├── ai_backend.py       # AI Backend
+│   │       ├── quant_backend.py    # Quant Backend
+│   │       ├── lifecycle.py        # 生命周期管理
+│   │       ├── queue.py            # ARQ 队列
+│   │       └── tasks.py            # 任务定义
 │   └── tests/                # 测试套件
 ├── frontend/                 # Next.js 前端
 │   ├── src/
 │   │   ├── app/[locale]/     # 国际化路由
+│   │   │   ├── (auth)/       #   登录
+│   │   │   ├── (dashboard)/  #   Dashboard 页面
+│   │   │   │   ├── overview/ #     首页
+│   │   │   │   ├── agents/   #     Agent 管理 (NEW)
+│   │   │   │   ├── strategies/ #    策略配置
+│   │   │   │   ├── accounts/ #     账户管理
+│   │   │   │   ├── models/   #     AI 模型
+│   │   │   │   ├── backtest/ #     回测
+│   │   │   │   ├── decisions/ #    决策记录
+│   │   │   │   ├── analytics/ #    数据分析 (NEW)
+│   │   │   │   ├── wallet/   #     钱包管理 (NEW)
+│   │   │   │   │   └── recharge/ # 充值 (NEW)
+│   │   │   │   ├── channel/  #     通知渠道 (NEW)
+│   │   │   │   ├── invite/   #     邀请系统 (NEW)
+│   │   │   │   ├── marketplace/ #   策略市场 (NEW)
+│   │   │   │   ├── settings/ #     设置
+│   │   │   │   └── admin/    #     管理后台 (NEW)
+│   │   │   │       ├── recharge/
+│   │   │   │       ├── accounting/
+│   │   │   │       └── channels/
+│   │   │   └── (landing)/    #   Landing 页面
 │   │   ├── components/       # React 组件
-│   │   ├── hooks/            # 自定义 Hooks
-│   │   ├── lib/api/          # API 客户端
-│   │   ├── stores/           # Zustand 状态
+│   │   ├── hooks/            # SWR Hooks
+│   │   ├── stores/           # Zustand 状态管理
 │   │   └── messages/         # i18n 翻译 (en.json/zh.json)
 │   └── e2e/                  # Playwright E2E
 └── docs/                     # 项目文档
@@ -200,6 +273,39 @@ pytest --cov=app            # 带覆盖率
 
 ---
 
+## 环境变量
+
+### 后端 Worker 配置
+
+```bash
+# Worker 错误处理
+WORKER_MAX_CONSECUTIVE_ERRORS=5
+WORKER_ERROR_WINDOW_SECONDS=600
+WORKER_RETRY_BASE_DELAY=2.0
+WORKER_RETRY_MAX_DELAY=60.0
+
+# Worker 心跳
+WORKER_HEARTBEAT_INTERVAL_SECONDS=60
+WORKER_HEARTBEAT_TIMEOUT_SECONDS=300
+WORKER_HEARTBEAT_RETRY_ATTEMPTS=3
+```
+
+### 生产环境
+
+```bash
+# 域名配置
+FRONTEND_DOMAIN=app.qemind.xyz
+BACKEND_DOMAIN=api.qemind.xyz
+
+# 安全密钥
+JWT_SECRET=<32+ 字符随机串>
+DATA_ENCRYPTION_KEY=<32 字节 base64>
+POSTGRES_PASSWORD=<强密码>
+REDIS_PASSWORD=<强密码>
+```
+
+---
+
 ## 关键文件
 
 | 文件                                | 用途             |
@@ -211,13 +317,19 @@ pytest --cov=app            # 带覆盖率
 | `frontend/src/stores/`              | Zustand 状态管理 |
 | `backend/app/services/`             | 业务逻辑层       |
 | `backend/app/api/routes/`           | API 路由         |
+| `backend/app/workers/unified_manager.py` | 统一 Worker 管理 (NEW) |
+| `backend/app/services/worker_heartbeat.py` | 心跳追踪 (NEW) |
+| `backend/app/api/routes/agents.py`  | Agent CRUD + Worker 控制 (NEW) |
+| `backend/app/api/routes/wallets.py` | 钱包 API (NEW) |
+| `backend/app/api/routes/channels.py` | 通知渠道 (NEW) |
+| `docs/deployment.md`                | 部署指南         |
 
 ---
 
 ## 访问地址
 
-| 服务     | 地址                              |
-| -------- | --------------------------------- |
-| 前端     | http://localhost:3000             |
-| 后端 API | http://localhost:8000             |
-| API 文档 | http://localhost:8000/api/v1/docs |
+| 服务     | 开发环境                    | 生产环境                         |
+| -------- | --------------------------- | -------------------------------- |
+| 前端     | http://localhost:3000       | https://app.qemind.xyz           |
+| 后端 API | http://localhost:8000       | https://api.qemind.xyz           |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |

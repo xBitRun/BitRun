@@ -7,6 +7,7 @@
 - **Prompt 驱动策略** — 用自然语言描述你的交易逻辑，AI 自动分析市场数据并生成交易决策
 - **多模型辩论引擎 (Debate Engine)** — 多个 AI 模型并行分析、投票表决，提升决策质量
 - **量化策略引擎** — 内置网格交易 (Grid)、定投 (DCA)、RSI 策略，无需 AI 即可运行
+- **Agent 执行实例** — 策略配置与执行实例分离，支持多账户、多交易类型
 - **AI 竞赛模式** — 多策略同台竞技，实时 ROI 排行榜对比各策略表现
 - **多交易所支持** — 通过 CCXT 统一接口对接 Binance、Bybit、OKX、Bitget、KuCoin、Gate.io，原生支持 Hyperliquid DEX
 - **传统市场支持 (Beta)** — 外汇 (Forex) 和贵金属 (XAU/XAG) 交易框架，支持 CCXT 兼容的经纪商
@@ -14,6 +15,12 @@
 - **策略工作室** — 可视化配置交易标的、技术指标、风控参数、自定义 Prompt
 - **实时监控** — WebSocket 推送交易决策、持仓变动、账户状态，Dashboard 一览全局
 - **9+ AI Provider** — DeepSeek、Qwen、Zhipu、MiniMax、Kimi、OpenAI、Gemini、Grok，以及自定义 OpenAI 兼容端点
+- **钱包/支付系统** — 用户余额管理、充值消费、交易记录、赠送调整
+- **通知渠道系统** — 支持 Telegram、Discord、Email (Resend) 多渠道告警通知
+- **数据分析模块** — 盈亏统计、日快照、账务报表
+- **品牌定制** — 支持白标部署，自定义品牌名称、Logo、主题
+- **邀请/推荐系统** — 邀请码生成、推荐佣金追踪
+- **策略市场** — 策略分享与发现
 - **国际化** — 完整的中英文双语界面
 
 ## 技术栈
@@ -50,6 +57,7 @@
 | 容器化 | Docker (多阶段构建) |
 | 编排 | Docker Compose (开发 / 生产) |
 | 反向代理 | Nginx (限流、安全头、WebSocket) |
+| CI/CD | GitHub Actions |
 | 错误追踪 | Sentry (前端 + 后端) |
 
 ## 项目结构
@@ -58,18 +66,18 @@
 bitrun/
 ├── backend/                  # FastAPI 后端应用
 │   ├── app/
-│   │   ├── api/              #   API 路由 + WebSocket
-│   │   │   └── routes/       #   各模块路由 (auth, strategies, accounts...)
+│   │   ├── api/              #   API 路由 + WebSocket (24 个模块)
+│   │   │   └── routes/       #   各模块路由
 │   │   ├── backtest/         #   回测引擎 (Engine + Simulator + DataProvider)
 │   │   ├── core/             #   配置、安全、依赖注入
-│   │   ├── db/               #   数据库模型 + Repository 层
+│   │   ├── db/               #   数据库模型 + Repository 层 (11 个)
 │   │   ├── models/           #   Pydantic 领域模型
 │   │   ├── monitoring/       #   Prometheus + Sentry
-│   │   ├── services/         #   业务逻辑层
+│   │   ├── services/         #   业务逻辑层 (20 个)
 │   │   │   └── ai/           #     AI 客户端实现 (9+ Provider)
 │   │   ├── traders/          #   交易所适配器 (CCXT / Hyperliquid)
-│   │   └── workers/          #   后台 Worker (AI 策略 + 量化策略)
-│   ├── alembic/              #   数据库迁移
+│   │   └── workers/          #   后台 Worker (Unified 架构)
+│   ├── alembic/              #   数据库迁移 (021 个)
 │   └── tests/                #   测试套件 (30+ 测试文件)
 ├── frontend/                 # Next.js 前端应用
 │   ├── src/
@@ -113,7 +121,7 @@ Railway 部署步骤:
    - `CORS_ORIGINS`: 前端 URL (如 `https://your-frontend.up.railway.app`)
 4. 前端服务需额外设置:
    - `NEXT_PUBLIC_API_URL`: 后端 API 地址 (如 `https://your-backend.up.railway.app/api`)
-   - `NEXT_PUBLIC_WS_URL`: WebSocket 地址 (如 `wss://your-backend.up.railway.app/api/ws`)
+   - `NEXT_PUBLIC_WS_URL`: WebSocket 地址 (如 `wss://your-backend.up.railway.app/api/v1/ws`)
 
 > 详细配置请查看 [Railway 部署指南](docs/deployment.md#railway-部署)
 
@@ -183,6 +191,9 @@ npm run dev
 | `JWT_SECRET` | JWT 签名密钥 (留空自动生成) |
 | `DATA_ENCRYPTION_KEY` | AES-256 数据加密密钥 (留空自动生成) |
 | `WORKER_ENABLED` | 是否启用策略执行 Worker (默认 `true`) |
+| `WORKER_MAX_CONSECUTIVE_ERRORS` | Worker 最大连续错误数 (默认 5) |
+| `WORKER_HEARTBEAT_INTERVAL_SECONDS` | 心跳间隔秒数 (默认 60) |
+| `WORKER_HEARTBEAT_TIMEOUT_SECONDS` | 心跳超时秒数 (默认 300) |
 | `PROXY_URL` | 代理地址 (用于受地域限制的交易所 API) |
 | `SENTRY_DSN` | Sentry 错误追踪 DSN |
 
@@ -199,6 +210,15 @@ AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密�
 
 完整变量列表请查看 `frontend/.env.local.example`。
 
+## 访问地址
+
+| 服务 | 开发环境 | 生产环境 |
+|------|---------|---------|
+| 前端 | http://localhost:3000 | https://app.qemind.xyz |
+| 后端 API | http://localhost:8000 | https://api.qemind.xyz |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |
+| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.qemind.xyz/api/v1/ws |
+
 ## 文档
 
 | 文档 | 说明 |
@@ -209,7 +229,7 @@ AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密�
 | [回测模块](docs/backtest-guide.md) | 回测引擎架构、配置运行、指标说明 |
 | [交易所对接](docs/exchange-setup.md) | API Key 获取、Hyperliquid 配置、代理设置 |
 | [AI 模型配置](docs/ai-models.md) | Provider 列表、API Key 获取、模型选择建议 |
-| [部署指南](docs/deployment.md) | Docker 部署、SSL/HTTPS、Nginx、监控告警 |
+| [部署指南](docs/deployment.md) | Docker 部署、SSL/HTTPS、Nginx、GitHub Actions、监控告警 |
 | [开发者指南](docs/development.md) | 本地开发、代码规范、测试、数据库迁移 |
 | [API 参考](docs/api-reference.md) | REST API、WebSocket API、认证机制 |
 | [Redis 备份与恢复](docs/redis-backup-recovery.md) | Redis 数据备份、恢复、自动备份配置 |

@@ -1,6 +1,41 @@
 # 部署指南
 
-本文档说明 BITRUN 的各种部署方式，包括 Docker 开发/生产部署、SSL 配置、Nginx 反向代理和监控告警。
+本文档说明 BITRUN 的各种部署方式，包括 Docker 开发/生产部署、SSL 配置、Nginx 反向代理、GitHub Actions CI/CD 和监控告警。
+
+## 生产环境架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        用户访问                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+    ┌──────────────────┐            ┌──────────────────┐
+    │ app.qemind.xyz   │            │ api.qemind.xyz   │
+    │   (Frontend)     │            │    (Backend)     │
+    │   Next.js 16     │            │    FastAPI       │
+    └──────────────────┘            └──────────────────┘
+              │                               │
+              └───────────────┬───────────────┘
+                              ▼
+    ┌─────────────────────────────────────────────────────┐
+    │                    Docker Network                    │
+    │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐ │
+    │  │ Nginx   │  │ Frontend│  │ Backend │  │Worker  │ │
+    │  │ :80/443 │  │  :3000  │  │  :8000  │  │ (后台) │ │
+    │  └─────────┘  └─────────┘  └─────────┘  └────────┘ │
+    │  ┌─────────┐  ┌─────────┐                          │
+    │  │Postgres │  │  Redis  │                          │
+    │  │  :5432  │  │  :6379  │                          │
+    │  └─────────┘  └─────────┘                          │
+    └─────────────────────────────────────────────────────┘
+```
+
+**前后端分离域名优势**：
+- 独立扩展：前后端可独立水平扩展
+- CDN 加速：前端静态资源可接入 CDN
+- 安全隔离：API 和页面分离，便于安全策略配置
 
 ## Docker 部署
 
@@ -102,6 +137,10 @@ POSTGRES_PASSWORD=<强密码>
 
 # 环境标识
 ENVIRONMENT=production
+
+# 域名配置
+FRONTEND_DOMAIN=app.qemind.xyz
+BACKEND_DOMAIN=api.qemind.xyz
 ```
 
 #### 资源限制
@@ -128,31 +167,117 @@ ENVIRONMENT=production
 | Frontend | 20 MB | 3 个 |
 | PostgreSQL / Redis / Nginx | 10 MB | 3 个 |
 
+## GitHub Actions CI/CD
+
+### 前置条件
+
+1. **服务器**: 阿里云 ECS (Ubuntu 20.04+) 或其他云服务器
+2. **DNS 配置**:
+   - `app.qemind.xyz` → 服务器 IP
+   - `api.qemind.xyz` → 服务器 IP
+3. **安全组**: 开放 22, 80, 443 端口
+
+### 配置 GitHub Secrets
+
+路径: `仓库 → Settings → Secrets → Actions`
+
+| Secret | 说明 |
+|--------|------|
+| `SERVER_HOST` | 服务器 IP |
+| `SERVER_USER` | SSH 用户 (如 `root`) |
+| `SSH_PRIVATE_KEY` | SSH 私钥 |
+| `FRONTEND_DOMAIN` | `app.qemind.xyz` |
+| `BACKEND_DOMAIN` | `api.qemind.xyz` |
+| `POSTGRES_PASSWORD` | 数据库密码 |
+| `JWT_SECRET` | JWT 密钥 |
+| `DATA_ENCRYPTION_KEY` | 加密密钥 |
+| `REDIS_PASSWORD` | Redis 密码 |
+
+> 密钥生成: `openssl rand -base64 32`
+
+### 自动部署流程
+
+推送到 `main` 分支 → GitHub Actions 自动部署：
+
+1. 检出代码
+2. 构建 Docker 镜像
+3. SSH 到服务器
+4. 拉取最新代码
+5. 重新构建并启动服务
+6. 运行数据库迁移
+7. 健康检查
+
+### 首次部署
+
+SSH 到服务器执行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/deploy-production.sh | bash
+```
+
+脚本会自动完成：
+- 安装 Docker
+- 申请 SSL 证书 (Let's Encrypt)
+- 生成所有密钥
+- 构建并启动服务
+
 ## Nginx 反向代理
 
 生产环境使用 Nginx 作为统一入口，提供反向代理、限流和安全防护。
 
-### 架构
-
-```
-客户端 → Nginx (:80/:443)
-            ├── /api/* → Backend (:8000)
-            ├── /ws   → Backend WebSocket (:8000)
-            └── /*    → Frontend (:3000)
-```
-
 ### 配置文件
 
-Nginx 配置位于 `nginx/nginx.conf`，主要功能：
+Nginx 配置位于 `nginx/nginx.prod.conf`，支持前后端分离域名：
 
-#### 速率限制
+```nginx
+# Frontend - app.qemind.xyz
+server {
+    listen 443 ssl http2;
+    server_name app.qemind.xyz;
+
+    ssl_certificate /etc/letsencrypt/live/app.qemind.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.qemind.xyz/privkey.pem;
+
+    location / {
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Backend - api.qemind.xyz
+server {
+    listen 443 ssl http2;
+    server_name api.qemind.xyz;
+
+    ssl_certificate /etc/letsencrypt/live/api.qemind.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.qemind.xyz/privkey.pem;
+
+    location /api/ {
+        proxy_pass http://backend:8000;
+        # ... 代理配置
+    }
+
+    location /api/v1/ws {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+### 速率限制
 
 | 区域 | 限制 | 突发 | 说明 |
 |------|------|------|------|
 | API | 30 req/s | 50 | 常规 API 请求 |
 | WebSocket | 5 req/s | 10 | WebSocket 连接 |
 
-#### 安全头
+### 安全头
 
 ```
 X-Content-Type-Options: nosniff
@@ -162,7 +287,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 Permissions-Policy: camera=(), microphone=(), geolocation=()
 ```
 
-#### 其他特性
+### 其他特性
 
 - Gzip 压缩 (text/html, CSS, JS, JSON)
 - 客户端请求体大小限制：10 MB
@@ -179,19 +304,26 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 # 安装 certbot
 apt install certbot
 
-# 获取证书
-certbot certonly --standalone -d your-domain.com
+# 获取证书 (前端域名)
+certbot certonly --webroot -w /var/www/certbot -d app.qemind.xyz
+
+# 获取证书 (后端域名)
+certbot certonly --webroot -w /var/www/certbot -d api.qemind.xyz
 ```
 
 证书文件：
-- 证书链：`/etc/letsencrypt/live/your-domain.com/fullchain.pem`
-- 私钥：`/etc/letsencrypt/live/your-domain.com/privkey.pem`
+- 证书链：`/etc/letsencrypt/live/<domain>/fullchain.pem`
+- 私钥：`/etc/letsencrypt/live/<domain>/privkey.pem`
 
-#### 商业证书
+#### 自动续期
 
-将证书文件放到 `nginx/ssl/` 目录：
-- `nginx/ssl/fullchain.pem`
-- `nginx/ssl/privkey.pem`
+```bash
+# 测试续期
+certbot renew --dry-run
+
+# 添加 cron 任务
+0 3 * * * certbot renew --quiet && docker compose -f /opt/bitrun/docker-compose.prod.yml restart nginx
+```
 
 ### 启用 HTTPS
 
@@ -199,28 +331,7 @@ certbot certonly --standalone -d your-domain.com
 
 #### 1. 取消 Nginx SSL 配置注释
 
-编辑 `nginx/nginx.conf`，取消以下注释：
-
-```nginx
-# HTTPS server
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate /etc/nginx/ssl/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-
-    # ... 其他配置
-}
-
-# HTTP to HTTPS redirect
-server {
-    listen 80;
-    server_name your-domain.com;
-    return 301 https://$host$request_uri;
-}
-```
+编辑 `nginx/nginx.prod.conf`，确保 SSL 配置正确。
 
 #### 2. 取消 Docker Compose SSL 配置注释
 
@@ -230,16 +341,16 @@ server {
 nginx:
   ports:
     - "${HTTP_PORT:-80}:80"
-    - "${HTTPS_PORT:-443}:443"  # 取消注释
+    - "${HTTPS_PORT:-443}:443"
   volumes:
-    - ./nginx/ssl:/etc/nginx/ssl:ro  # 取消注释
+    - /etc/letsencrypt:/etc/letsencrypt:ro
 ```
 
 #### 3. 更新前端环境变量
 
 ```bash
-NEXT_PUBLIC_API_URL=https://your-domain.com/api
-NEXT_PUBLIC_WS_URL=wss://your-domain.com/api/ws
+NEXT_PUBLIC_API_URL=https://api.qemind.xyz/api
+NEXT_PUBLIC_WS_URL=wss://api.qemind.xyz/api/v1/ws
 ```
 
 ## Railway 部署
@@ -315,7 +426,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 示例:
 ```bash
 NEXT_PUBLIC_API_URL=https://bitrun-backend.up.railway.app/api
-NEXT_PUBLIC_WS_URL=wss://bitrun-backend.up.railway.app/api/ws
+NEXT_PUBLIC_WS_URL=wss://bitrun-backend.up.railway.app/api/v1/ws
 ```
 
 ### 自动迁移
@@ -380,6 +491,15 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw enable
 ```
+
+## 访问地址
+
+| 服务 | 开发环境 | 生产环境 |
+|------|---------|---------|
+| 前端 | http://localhost:3000 | https://app.qemind.xyz |
+| 后端 API | http://localhost:8000 | https://api.qemind.xyz |
+| API 文档 | http://localhost:8000/api/v1/docs | https://api.qemind.xyz/api/v1/docs |
+| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.qemind.xyz/api/v1/ws |
 
 ## 监控与告警
 
@@ -499,6 +619,58 @@ docker compose exec -T postgres psql -U postgres -d bitrun < backups/bitrun_2025
 - PostgreSQL TCP 连接
 - Redis TCP 连接
 - Docker 容器运行状态
+
+## 故障排查
+
+### SSL 证书问题
+
+```bash
+# 查看证书状态
+certbot certificates
+
+# 手动续期
+certbot renew
+
+# 重新申请
+certbot certonly --webroot -w /var/www/certbot -d app.qemind.xyz
+certbot certonly --webroot -w /var/www/certbot -d api.qemind.xyz
+```
+
+### 服务无法启动
+
+```bash
+# 查看服务状态
+docker compose ps
+
+# 查看详细日志
+docker compose logs backend
+docker compose logs frontend
+docker compose logs nginx
+```
+
+### 数据库连接失败
+
+```bash
+# 检查数据库状态
+docker compose exec postgres pg_isready
+
+# 手动连接测试
+docker compose exec postgres psql -U bitrun -d bitrun
+```
+
+### Worker 不执行
+
+```bash
+# 检查 Worker 状态
+docker compose exec backend python -c "from app.workers.unified_manager import UnifiedWorkerManager; ..."
+
+# 查看心跳状态
+docker compose exec backend python -c "
+from app.db.database import get_db
+from app.db.models import Agent
+# 检查 Agent 状态
+"
+```
 
 ## 相关文档
 

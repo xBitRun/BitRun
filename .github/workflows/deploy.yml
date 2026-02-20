@@ -71,8 +71,12 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api.qemind.xyz/api/v1
-          NEXT_PUBLIC_WS_URL: wss://api.qemind.xyz/api/v1/ws
+          NEXT_PUBLIC_API_URL: https://${{ secrets.BACKEND_DOMAIN }}/api/v1
+          NEXT_PUBLIC_WS_URL: wss://${{ secrets.BACKEND_DOMAIN }}/api/v1/ws
+          NEXT_PUBLIC_BRAND_NAME: ${{ secrets.NEXT_PUBLIC_BRAND_NAME || 'BITRUN' }}
+          NEXT_PUBLIC_BRAND_SHORT_NAME: ${{ secrets.NEXT_PUBLIC_BRAND_SHORT_NAME || 'BITRUN' }}
+          NEXT_PUBLIC_BRAND_TAGLINE: ${{ secrets.NEXT_PUBLIC_BRAND_TAGLINE || 'AI-Powered Trading Agent' }}
+          NEXT_PUBLIC_BRAND_THEME_PRESET: ${{ secrets.NEXT_PUBLIC_BRAND_THEME_PRESET || 'bitrun' }}
 
   # Deploy to production server
   deploy:
@@ -99,9 +103,34 @@ jobs:
             JWT_SECRET,
             DATA_ENCRYPTION_KEY,
             REDIS_PASSWORD,
+            ADMIN_EMAIL,
+            ADMIN_PASSWORD,
+            ADMIN_NAME,
             TELEGRAM_BOT_TOKEN,
             TELEGRAM_CHAT_ID,
-            DISCORD_WEBHOOK_URL
+            DISCORD_WEBHOOK_URL,
+            RESEND_API_KEY,
+            RESEND_FROM,
+            PROXY_URL,
+            SENTRY_DSN,
+            BRAND_NAME,
+            BRAND_TAGLINE,
+            NEXT_PUBLIC_BRAND_NAME,
+            NEXT_PUBLIC_BRAND_SHORT_NAME,
+            NEXT_PUBLIC_BRAND_TAGLINE,
+            NEXT_PUBLIC_BRAND_DESCRIPTION,
+            NEXT_PUBLIC_BRAND_LOGO_DEFAULT,
+            NEXT_PUBLIC_BRAND_LOGO_COMPACT,
+            NEXT_PUBLIC_BRAND_LOGO_ICON,
+            NEXT_PUBLIC_BRAND_FAVICON,
+            NEXT_PUBLIC_BRAND_THEME_PRESET,
+            NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE,
+            NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER,
+            NEXT_PUBLIC_BRAND_TERMS_URL,
+            NEXT_PUBLIC_BRAND_PRIVACY_URL,
+            NEXT_PUBLIC_BRAND_HOMEPAGE_URL,
+            NEXT_PUBLIC_BRAND_DOCS_URL,
+            NEXT_PUBLIC_BRAND_SUPPORT_URL
           script: |
             set -e
 
@@ -126,9 +155,10 @@ jobs:
 
             # Generate .env from GitHub Secrets
             echo "🔐 Generating environment configuration..."
-            cat > .env << 'ENVEOF'
+            cat > .env << ENVEOF
             # BITRUN Production Configuration
             # Auto-generated from GitHub Secrets
+            # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
             # ==================== Domains ====================
             FRONTEND_DOMAIN=${{ secrets.FRONTEND_DOMAIN }}
@@ -156,10 +186,43 @@ jobs:
             # ==================== Worker ====================
             WORKER_ENABLED=true
 
-            # ==================== Notifications ====================
+            # ==================== Admin Account ====================
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            ADMIN_NAME=${{ secrets.ADMIN_NAME }}
+
+            # ==================== Frontend Brand Configuration ====================
+            NEXT_PUBLIC_BRAND_NAME=${{ secrets.NEXT_PUBLIC_BRAND_NAME }}
+            NEXT_PUBLIC_BRAND_SHORT_NAME=${{ secrets.NEXT_PUBLIC_BRAND_SHORT_NAME }}
+            NEXT_PUBLIC_BRAND_TAGLINE=${{ secrets.NEXT_PUBLIC_BRAND_TAGLINE }}
+            NEXT_PUBLIC_BRAND_DESCRIPTION=${{ secrets.NEXT_PUBLIC_BRAND_DESCRIPTION }}
+            NEXT_PUBLIC_BRAND_LOGO_DEFAULT=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_DEFAULT }}
+            NEXT_PUBLIC_BRAND_LOGO_COMPACT=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_COMPACT }}
+            NEXT_PUBLIC_BRAND_LOGO_ICON=${{ secrets.NEXT_PUBLIC_BRAND_LOGO_ICON }}
+            NEXT_PUBLIC_BRAND_FAVICON=${{ secrets.NEXT_PUBLIC_BRAND_FAVICON }}
+            NEXT_PUBLIC_BRAND_THEME_PRESET=${{ secrets.NEXT_PUBLIC_BRAND_THEME_PRESET }}
+            NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE=${{ secrets.NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE }}
+            NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER=${{ secrets.NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER }}
+            NEXT_PUBLIC_BRAND_TERMS_URL=${{ secrets.NEXT_PUBLIC_BRAND_TERMS_URL }}
+            NEXT_PUBLIC_BRAND_PRIVACY_URL=${{ secrets.NEXT_PUBLIC_BRAND_PRIVACY_URL }}
+            NEXT_PUBLIC_BRAND_HOMEPAGE_URL=${{ secrets.NEXT_PUBLIC_BRAND_HOMEPAGE_URL }}
+            NEXT_PUBLIC_BRAND_DOCS_URL=${{ secrets.NEXT_PUBLIC_BRAND_DOCS_URL }}
+            NEXT_PUBLIC_BRAND_SUPPORT_URL=${{ secrets.NEXT_PUBLIC_BRAND_SUPPORT_URL }}
+
+            # ==================== Notifications (Optional) ====================
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
             DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            RESEND_FROM=${{ secrets.RESEND_FROM }}
+
+            # ==================== Optional Features ====================
+            PROXY_URL=${{ secrets.PROXY_URL }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+
+            # ==================== Backend Brand (for notifications) ====================
+            BRAND_NAME=${{ secrets.BRAND_NAME }}
+            BRAND_TAGLINE=${{ secrets.BRAND_TAGLINE }}
 
             # ==================== System ====================
             TZ=Asia/Shanghai

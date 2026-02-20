@@ -39,7 +39,7 @@ POST /api/v1/auth/refresh
 |------|------|------|
 | `/auth/*` | 5 次/分钟/IP | 防止暴力破解 |
 | `/accounts` (POST) | 20 次/分钟/IP | 账户创建限制 |
-| `/strategies/*/status` (POST) | 10 次/分钟/IP | 策略状态变更限制 |
+| `/agents/*/status` (POST) | 10 次/分钟/IP | Agent 状态变更限制 |
 | 其他 API | 100 次/分钟/IP | 通用限制 |
 
 超过限制返回 `429 Too Many Requests`。
@@ -295,7 +295,185 @@ GET /api/v1/accounts/{account_id}/positions
 
 ---
 
+### Agents — 执行实例管理
+
+Agent 是策略的实际执行实例，由 Strategy 配置生成。
+
+#### 创建 Agent
+
+```
+POST /api/v1/agents
+```
+
+```json
+// 请求
+{
+  "strategy_id": "uuid",
+  "account_id": "uuid",
+  "name": "BTC 趋势 Agent",
+  "trade_type": "crypto_perp"  // crypto_perp / crypto_spot
+}
+
+// 响应 200
+{
+  "id": "uuid",
+  "strategy_id": "uuid",
+  "account_id": "uuid",
+  "name": "BTC 趋势 Agent",
+  "status": "stopped",
+  "trade_type": "crypto_perp",
+  "created_at": "2025-01-01T00:00:00Z"
+}
+```
+
+#### 列表
+
+```
+GET /api/v1/agents
+GET /api/v1/agents?status=active
+GET /api/v1/agents?account_id=uuid
+```
+
+#### 获取绑定账户信息
+
+```
+GET /api/v1/agents/bound-accounts
+```
+
+```json
+// 响应 200
+{
+  "accounts": [
+    { "id": "uuid", "name": "Binance 主账户", "exchange": "binance" }
+  ]
+}
+```
+
+#### 获取详情
+
+```
+GET /api/v1/agents/{id}
+```
+
+#### 更新
+
+```
+PATCH /api/v1/agents/{id}
+```
+
+```json
+// 请求
+{
+  "name": "更新名称",
+  "account_id": "uuid"
+}
+```
+
+#### 删除
+
+```
+DELETE /api/v1/agents/{id}
+```
+
+> 删除前必须先停止 Agent。
+
+#### 更新状态 (启动/暂停/停止)
+
+```
+POST /api/v1/agents/{id}/status
+```
+
+```json
+// 请求
+{ "status": "active" }  // active / paused / stopped
+
+// 响应 200
+{
+  "id": "uuid",
+  "status": "active",
+  "message": "Agent started"
+}
+```
+
+#### 手动触发 (Run Now)
+
+立即执行一次策略周期：
+
+```
+POST /api/v1/agents/{id}/trigger
+```
+
+```json
+// 响应 200
+{
+  "message": "Agent triggered",
+  "triggered_at": "2025-01-01T12:00:00Z"
+}
+```
+
+#### 获取持仓
+
+```
+GET /api/v1/agents/{id}/positions
+```
+
+```json
+// 响应 200
+{
+  "agent_id": "uuid",
+  "positions": [
+    {
+      "symbol": "BTC/USDT:USDT",
+      "side": "long",
+      "size": 0.1,
+      "entry_price": 100000,
+      "current_price": 102000,
+      "unrealized_pnl": 200,
+      "unrealized_pnl_percent": 2.0
+    }
+  ]
+}
+```
+
+#### 获取账户状态
+
+```
+GET /api/v1/agents/{id}/account-state
+```
+
+```json
+// 响应 200
+{
+  "equity": 10000.0,
+  "available_balance": 8000.0,
+  "total_margin_used": 2000.0,
+  "unrealized_pnl": 150.0
+}
+```
+
+#### 获取运行状态 (含心跳)
+
+```
+GET /api/v1/agents/{id}/runtime-status
+```
+
+```json
+// 响应 200
+{
+  "status": "active",
+  "worker_heartbeat_at": "2025-01-01T12:00:00Z",
+  "worker_instance_id": "worker-xxx",
+  "is_stale": false,
+  "last_run_at": "2025-01-01T11:55:00Z",
+  "error_count": 0
+}
+```
+
+---
+
 ### Strategies — AI Agent 策略
+
+策略是配置模板，Agent 是执行实例。
 
 #### 创建策略
 
@@ -322,7 +500,6 @@ POST /api/v1/strategies
       "rsi": { "enabled": true, "period": 14 }
     }
   },
-  "account_id": "uuid",
   "ai_model": "deepseek:deepseek-chat"
 }
 ```
@@ -350,17 +527,6 @@ PATCH /api/v1/strategies/{strategy_id}
 
 ```
 DELETE /api/v1/strategies/{strategy_id}
-```
-
-#### 更新状态 (激活/暂停/停止)
-
-```
-POST /api/v1/strategies/{strategy_id}/status
-```
-
-```json
-// 请求
-{ "status": "active" }  // active / paused / stopped
 ```
 
 #### 预览 Prompt
@@ -466,6 +632,12 @@ POST /api/v1/quant-strategies/{id}/status
 GET /api/v1/decisions/recent?limit=20
 ```
 
+#### Agent 决策 (分页)
+
+```
+GET /api/v1/decisions/agent/{agent_id}?limit=20&offset=0
+```
+
 #### 策略决策 (分页)
 
 ```
@@ -478,6 +650,7 @@ GET /api/v1/decisions/strategy/{strategy_id}?limit=20&offset=0
   "items": [
     {
       "id": "uuid",
+      "agent_id": "uuid",
       "strategy_id": "uuid",
       "timestamp": "2025-01-01T12:00:00Z",
       "chain_of_thought": "BTC 在 4h 级别形成金叉...",
@@ -490,7 +663,8 @@ GET /api/v1/decisions/strategy/{strategy_id}?limit=20&offset=0
       "tokens_used": 2500,
       "latency_ms": 3200,
       "market_snapshot": {...},
-      "account_snapshot": {...}
+      "account_snapshot": {...},
+      "debate_result": {...}
     }
   ],
   "total": 150,
@@ -502,7 +676,7 @@ GET /api/v1/decisions/strategy/{strategy_id}?limit=20&offset=0
 #### 决策统计
 
 ```
-GET /api/v1/decisions/strategy/{strategy_id}/stats
+GET /api/v1/decisions/agent/{agent_id}/stats
 ```
 
 ```json
@@ -525,6 +699,378 @@ GET /api/v1/decisions/strategy/{strategy_id}/stats
 
 ```
 GET /api/v1/decisions/{decision_id}
+```
+
+---
+
+### Wallets — 钱包管理
+
+#### 获取我的钱包
+
+```
+GET /api/v1/wallets/me
+```
+
+```json
+// 响应 200
+{
+  "balance": 100.00,
+  "currency": "USD",
+  "created_at": "2025-01-01T00:00:00Z"
+}
+```
+
+#### 获取交易记录
+
+```
+GET /api/v1/wallets/me/transactions?limit=50&offset=0&type=recharge
+```
+
+```json
+// 响应 200
+{
+  "items": [
+    {
+      "id": "uuid",
+      "type": "recharge",
+      "amount": 50.00,
+      "balance_after": 100.00,
+      "description": "充值成功",
+      "created_at": "2025-01-01T12:00:00Z"
+    }
+  ],
+  "total": 10,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+#### 获取交易摘要
+
+```
+GET /api/v1/wallets/me/summary
+```
+
+```json
+// 响应 200
+{
+  "total_recharge": 200.00,
+  "total_consume": 80.00,
+  "total_refund": 10.00,
+  "total_gift": 0.00,
+  "current_balance": 130.00
+}
+```
+
+#### 获取邀请信息
+
+```
+GET /api/v1/wallets/me/invite
+```
+
+```json
+// 响应 200
+{
+  "invite_code": "ABC123",
+  "total_invites": 5,
+  "total_commission": 25.00
+}
+```
+
+#### 赠送余额 (管理员)
+
+```
+POST /api/v1/wallets/gift
+```
+
+```json
+// 请求
+{
+  "user_id": "uuid",
+  "amount": 10.00,
+  "reason": "新用户奖励"
+}
+```
+
+#### 调整余额 (管理员)
+
+```
+POST /api/v1/wallets/adjust
+```
+
+```json
+// 请求
+{
+  "user_id": "uuid",
+  "amount": -5.00,  // 负数表示扣减
+  "reason": "补偿调整"
+}
+```
+
+---
+
+### Channels — 通知渠道
+
+#### 列表
+
+```
+GET /api/v1/channels
+```
+
+```json
+// 响应 200
+{
+  "items": [
+    {
+      "id": "uuid",
+      "channel_type": "telegram",
+      "name": "我的 Telegram",
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### 创建
+
+```
+POST /api/v1/channels
+```
+
+```json
+// 请求 (Telegram)
+{
+  "channel_type": "telegram",
+  "name": "我的 Telegram",
+  "config": {
+    "bot_token": "123456:ABC-DEF",
+    "chat_id": "-1001234567890"
+  }
+}
+
+// 请求 (Discord)
+{
+  "channel_type": "discord",
+  "name": "Discord 通知",
+  "config": {
+    "webhook_url": "https://discord.com/api/webhooks/xxx/yyy"
+  }
+}
+
+// 请求 (Email)
+{
+  "channel_type": "email",
+  "name": "邮件通知",
+  "config": {
+    "to_email": "user@example.com"
+  }
+}
+```
+
+#### 获取 / 更新 / 删除
+
+```
+GET    /api/v1/channels/{id}
+PATCH  /api/v1/channels/{id}
+DELETE /api/v1/channels/{id}
+```
+
+#### 测试连接
+
+```
+POST /api/v1/channels/{id}/test
+```
+
+```json
+// 响应 200
+{
+  "success": true,
+  "message": "Test notification sent"
+}
+```
+
+---
+
+### Analytics — 数据分析
+
+#### 盈亏分析
+
+```
+GET /api/v1/analytics/pnl?start_date=2025-01-01&end_date=2025-02-01
+```
+
+```json
+// 响应 200
+{
+  "total_pnl": 1500.00,
+  "realized_pnl": 1200.00,
+  "unrealized_pnl": 300.00,
+  "win_rate": 0.65,
+  "total_trades": 100,
+  "winning_trades": 65,
+  "losing_trades": 35,
+  "avg_win": 30.00,
+  "avg_loss": -15.00,
+  "profit_factor": 2.0
+}
+```
+
+#### 日快照
+
+```
+GET /api/v1/analytics/daily?limit=30
+```
+
+```json
+// 响应 200
+{
+  "items": [
+    {
+      "date": "2025-01-01",
+      "equity": 10000.00,
+      "daily_pnl": 150.00,
+      "daily_pnl_percent": 1.5,
+      "trades_count": 5
+    }
+  ]
+}
+```
+
+---
+
+### Recharge — 余额充值
+
+#### 创建充值订单
+
+```
+POST /api/v1/recharge
+```
+
+```json
+// 请求
+{
+  "amount": 50.00,
+  "payment_method": "crypto"  // crypto / alipay / wechat
+}
+
+// 响应 200
+{
+  "order_id": "uuid",
+  "amount": 50.00,
+  "status": "pending",
+  "payment_url": "https://...",
+  "created_at": "2025-01-01T12:00:00Z"
+}
+```
+
+#### 查询充值状态
+
+```
+GET /api/v1/recharge/{order_id}
+```
+
+```json
+// 响应 200
+{
+  "order_id": "uuid",
+  "amount": 50.00,
+  "status": "completed",  // pending / completed / failed / cancelled
+  "paid_at": "2025-01-01T12:05:00Z"
+}
+```
+
+#### 充值历史
+
+```
+GET /api/v1/recharge/history?limit=20
+```
+
+---
+
+### Brand — 品牌配置
+
+#### 获取品牌配置
+
+```
+GET /api/v1/brand
+```
+
+```json
+// 响应 200
+{
+  "brand_name": "BitRun",
+  "tagline": "AI 驱动的加密货币交易平台",
+  "logo_url": "https://...",
+  "favicon_url": "https://...",
+  "theme": {
+    "primary_color": "#3b82f6",
+    "accent_color": "#10b981"
+  },
+  "links": {
+    "terms": "/terms",
+    "privacy": "/privacy"
+  }
+}
+```
+
+#### 更新品牌配置 (管理员)
+
+```
+PATCH /api/v1/brand
+```
+
+```json
+// 请求
+{
+  "brand_name": "MyBrand",
+  "tagline": "我的交易平台"
+}
+```
+
+---
+
+### System — 系统配置
+
+#### 系统状态
+
+```
+GET /api/v1/system/status
+```
+
+```json
+// 响应 200
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "uptime_seconds": 86400,
+  "components": {
+    "database": "healthy",
+    "redis": "healthy",
+    "worker": "healthy"
+  }
+}
+```
+
+#### 系统公告
+
+```
+GET /api/v1/system/announcements
+```
+
+```json
+// 响应 200
+{
+  "items": [
+    {
+      "id": "uuid",
+      "title": "系统维护通知",
+      "content": "...",
+      "level": "warning",  // info / warning / error
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
 ```
 
 ---
@@ -590,8 +1136,8 @@ GET /api/v1/dashboard/stats
   "unrealized_pnl": 1200.0,
   "daily_pnl": 500.0,
   "daily_pnl_percent": 1.02,
-  "active_strategies": 3,
-  "total_strategies": 5,
+  "active_agents": 3,
+  "total_agents": 5,
   "open_positions": 2,
   "positions": [...],
   "today_decisions": 12,
@@ -708,15 +1254,14 @@ GET /api/v1/workers/status
 // 响应 200
 {
   "running": true,
-  "distributed": false,
   "total_workers": 3,
   "workers": [
     {
-      "strategy_id": "uuid",
+      "agent_id": "uuid",
       "running": true,
       "last_run": "2025-01-01T12:00:00Z",
       "error_count": 0,
-      "mode": "legacy"
+      "worker_heartbeat_at": "2025-01-01T12:00:00Z"
     }
   ]
 }
@@ -725,10 +1270,10 @@ GET /api/v1/workers/status
 #### 控制单个 Worker
 
 ```
-POST /api/v1/workers/{strategy_id}/start    # 启动
-POST /api/v1/workers/{strategy_id}/stop     # 停止
-POST /api/v1/workers/{strategy_id}/trigger  # 立即执行一次
-GET  /api/v1/workers/{strategy_id}/status   # 查看状态
+POST /api/v1/workers/{agent_id}/start    # 启动
+POST /api/v1/workers/{agent_id}/stop     # 停止
+POST /api/v1/workers/{agent_id}/trigger  # 立即执行一次
+GET  /api/v1/workers/{agent_id}/status   # 查看状态
 ```
 
 ---
@@ -854,7 +1399,7 @@ ws://localhost:8000/api/v1/ws?token=<access_token>
 
 生产环境 (Nginx + SSL):
 ```
-wss://your-domain.com/api/v1/ws?token=<access_token>
+wss://api.qemind.xyz/api/v1/ws?token=<access_token>
 ```
 
 ### 连接限制
@@ -882,13 +1427,13 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
 #### 订阅频道
 
 ```json
-{ "type": "subscribe", "channel": "strategy:uuid-xxx" }
+{ "type": "subscribe", "channel": "agent:uuid-xxx" }
 ```
 
 #### 取消订阅
 
 ```json
-{ "type": "unsubscribe", "channel": "strategy:uuid-xxx" }
+{ "type": "unsubscribe", "channel": "agent:uuid-xxx" }
 ```
 
 #### 心跳
@@ -902,7 +1447,7 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
 #### 订阅确认
 
 ```json
-{ "type": "subscribed", "channel": "strategy:uuid-xxx" }
+{ "type": "subscribed", "channel": "agent:uuid-xxx" }
 ```
 
 #### 心跳响应
@@ -916,9 +1461,9 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
 ```json
 {
   "type": "decision",
-  "channel": "strategy:uuid-xxx",
+  "channel": "agent:uuid-xxx",
   "data": {
-    "strategy_id": "uuid",
+    "agent_id": "uuid",
     "decision": {
       "chain_of_thought": "...",
       "overall_confidence": 0.75,
@@ -957,14 +1502,14 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
 }
 ```
 
-#### 策略状态变更
+#### Agent 状态变更
 
 ```json
 {
-  "type": "strategy_status",
-  "channel": "strategy:uuid-xxx",
+  "type": "agent_status",
+  "channel": "agent:uuid-xxx",
   "data": {
-    "strategy_id": "uuid",
+    "agent_id": "uuid",
     "status": "active",
     "error": null
   }
@@ -978,7 +1523,7 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
   "type": "notification",
   "data": {
     "title": "策略执行完成",
-    "message": "BTC 趋势跟踪已完成一轮分析",
+    "message": "BTC 趋势 Agent 已完成一轮分析",
     "level": "info"
   }
 }
@@ -1000,7 +1545,7 @@ wss://your-domain.com/api/v1/ws?token=<access_token>
 | 频道 | 格式 | 说明 |
 |------|------|------|
 | 系统 | `system` | 系统级通知 |
-| 策略 | `strategy:{strategy_id}` | 策略决策和状态变更 |
+| Agent | `agent:{agent_id}` | Agent 决策和状态变更 |
 | 账户 | `account:{account_id}` | 账户和持仓更新 |
 
 ### WebSocket 统计
@@ -1013,7 +1558,7 @@ GET /api/v1/ws/stats
 {
   "total_connections": 5,
   "channels": {
-    "strategy:uuid-1": 2,
+    "agent:uuid-1": 2,
     "system": 5
   }
 }
