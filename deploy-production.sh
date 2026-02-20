@@ -339,6 +339,9 @@ setup_bitrun() {
     POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')
     REDIS_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')
 
+    # Generate admin password (user should change this after first login)
+    ADMIN_PASSWORD=$(openssl rand -base64 12 | tr -d '/+=')
+
     cat > .env << EOF
 # BITRUN Production Configuration
 # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -374,6 +377,12 @@ NEXT_PUBLIC_WS_URL=wss://${BACKEND_DOMAIN}/api/v1/ws
 # ==================== Worker ====================
 WORKER_ENABLED=true
 
+# ==================== Admin Account ====================
+# Default admin credentials (CHANGE AFTER FIRST LOGIN!)
+ADMIN_EMAIL=admin@${FRONTEND_DOMAIN#*.}
+ADMIN_PASSWORD=${ADMIN_PASSWORD}
+ADMIN_NAME=Admin
+
 # ==================== System ====================
 TZ=Asia/Shanghai
 EOF
@@ -382,6 +391,14 @@ EOF
     chmod 600 .env
 
     echo -e "${GREEN}✓ Generated .env with secure random secrets${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}⚠️  IMPORTANT: Default Admin Credentials${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}  Email:    admin@${FRONTEND_DOMAIN#*.}${NC}"
+    echo -e "${CYAN}  Password: ${ADMIN_PASSWORD}${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}  Please change the password after first login!${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 # ==================== Obtain SSL Certificates ====================
