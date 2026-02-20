@@ -167,11 +167,19 @@ check_dns_resolution() {
     SERVER_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
     # Prompt for domains if not set
+    # Note: When run via 'curl | bash', stdin is piped, so read from /dev/tty
     if [ -z "$FRONTEND_DOMAIN" ] || [ -z "$BACKEND_DOMAIN" ]; then
         echo ""
         echo -e "  ${YELLOW}Please enter your domain names:${NC}"
-        read -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN
-        read -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN
+        if [ -t 0 ]; then
+            # stdin is a terminal, use normal read
+            read -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN
+            read -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN
+        else
+            # stdin is piped, read from /dev/tty
+            read -p "  Frontend domain (e.g., app.example.com): " FRONTEND_DOMAIN < /dev/tty
+            read -p "  Backend domain (e.g., api.example.com): " BACKEND_DOMAIN < /dev/tty
+        fi
 
         if [ -z "$FRONTEND_DOMAIN" ] || [ -z "$BACKEND_DOMAIN" ]; then
             log_error "Both domains are required for production mode"
@@ -211,7 +219,11 @@ check_dns_resolution() {
 
     if [ "$FRONTEND_IP" != "$SERVER_IP" ] || [ "$BACKEND_IP" != "$SERVER_IP" ]; then
         log_warn "DNS IPs don't match server IP ($SERVER_IP)"
-        read -p "  Continue anyway? (y/N) " -n 1 -r
+        if [ -t 0 ]; then
+            read -p "  Continue anyway? (y/N) " -n 1 -r
+        else
+            read -p "  Continue anyway? (y/N) " -n 1 -r < /dev/tty
+        fi
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit 1
