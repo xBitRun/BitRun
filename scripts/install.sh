@@ -301,56 +301,79 @@ install_docker() {
         if [ "$PRODUCTION_MODE" = true ]; then
             log_substep "Installing Docker..."
 
-            # Check for Alibaba Cloud Linux (alinux)
-            local os_id=""
+            # Detect OS type for Docker installation
+            local is_alinux=false
+            local os_id_like=""
+
+            # Check /etc/os-release
             if [ -f /etc/os-release ]; then
-                . /etc/os-release
-                os_id="$ID"
+                os_id_like=$(grep '^ID=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+                # Also check ID_LIKE for compatibility
+                local id_like=$(grep '^ID_LIKE=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+
+                # Alibaba Cloud Linux variants: alinux, alinux2, alinux3, etc.
+                case "$os_id_like" in
+                    alinux|alinux2|alinux3)
+                        is_alinux=true
+                        ;;
+                    *)
+                        # Also check if ID_LIKE contains rhel/centos (alinux4 case)
+                        if echo "$id_like" | grep -qiE 'rhel|centos|fedora'; then
+                            # Further check if it's alinux by name
+                            local pretty_name=$(grep '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+                            if echo "$pretty_name" | grep -qi 'alibaba\|alinux'; then
+                                is_alinux=true
+                            fi
+                        fi
+                        ;;
+                esac
             fi
 
-            if [ "$os_id" = "alinux" ] || [ "$os_id" = "alinux2" ] || [ "$os_id" = "alinux3" ]; then
+            if [ "$is_alinux" = true ]; then
                 # Alibaba Cloud Linux - use dnf/yum with Docker CE repo
                 log_substep "Detected Alibaba Cloud Linux, using dnf..."
 
-                # Add Docker CE repository
-                $PKG_INSTALL dnf-plugins-core 2>/dev/null || true
-                dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo 2>/dev/null || {
-                    # Fallback: manually add repo for alinux3 (based on CentOS 9)
-                    cat > /etc/yum.repos.d/docker-ce.repo << 'REPO'
+                # Determine CentOS version base (alinux3/4 uses CentOS 9 Stream packages)
+                local centos_ver=9
+                local alinux_ver=$(grep '^VERSION_ID=' /etc/os-release 2>/dev/null | cut -d'=' -f2 | tr -d '"' | cut -d'.' -f1)
+                if [ "$alinux_ver" = "2" ]; then
+                    centos_ver=7
+                elif [ "$alinux_ver" = "3" ]; then
+                    centos_ver=9
+                else
+                    centos_ver=9  # Default to 9 for alinux4+
+                fi
+
+                # Add Docker CE repository manually
+                cat > /etc/yum.repos.d/docker-ce.repo << REPO
 [docker-ce-stable]
-name=Docker CE Stable - $basearch
-baseurl=https://download.docker.com/linux/centos/9/$basearch/stable
+name=Docker CE Stable - \$basearch
+baseurl=https://download.docker.com/linux/centos/${centos_ver}/\$basearch/stable
 enabled=1
 gpgcheck=1
 gpgkey=https://download.docker.com/linux/centos/gpg
 
 [docker-ce-stable-debuginfo]
-name=Docker CE Stable - Debuginfo $basearch
-baseurl=https://download.docker.com/linux/centos/9/debug-$basearch/stable
+name=Docker CE Stable - Debuginfo \$basearch
+baseurl=https://download.docker.com/linux/centos/${centos_ver}/debug-\$basearch/stable
 enabled=0
 gpgcheck=1
 gpgkey=https://download.docker.com/linux/centos/gpg
 
 [docker-ce-stable-source]
 name=Docker CE Stable - Sources
-baseurl=https://download.docker.com/linux/centos/9/source/stable
+baseurl=https://download.docker.com/linux/centos/${centos_ver}/source/stable
 enabled=0
 gpgcheck=1
 gpgkey=https://download.docker.com/linux/centos/gpg
 REPO
-                }
 
-                # Install Docker CE
-                $PKG_INSTALL docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-            elif [ "$os_id" = "anolis" ] || [ "$os_id" = "openanolis" ]; then
-                # Anolis OS - similar approach
-                log_substep "Detected Anolis OS, using dnf..."
-                dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo 2>/dev/null || true
-                $PKG_INSTALL docker-ce docker-ce-cli containerd.io docker-compose-plugin
+                log_substep "Installing Docker CE packages..."
+                dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
             else
                 # Standard distributions - use official script
+                log_substep "Using Docker official installation script..."
                 curl -fsSL https://get.docker.com | sh
             fi
 
