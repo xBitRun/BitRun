@@ -300,7 +300,60 @@ install_docker() {
     else
         if [ "$PRODUCTION_MODE" = true ]; then
             log_substep "Installing Docker..."
-            curl -fsSL https://get.docker.com | sh
+
+            # Check for Alibaba Cloud Linux (alinux)
+            local os_id=""
+            if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                os_id="$ID"
+            fi
+
+            if [ "$os_id" = "alinux" ] || [ "$os_id" = "alinux2" ] || [ "$os_id" = "alinux3" ]; then
+                # Alibaba Cloud Linux - use dnf/yum with Docker CE repo
+                log_substep "Detected Alibaba Cloud Linux, using dnf..."
+
+                # Add Docker CE repository
+                $PKG_INSTALL dnf-plugins-core 2>/dev/null || true
+                dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo 2>/dev/null || {
+                    # Fallback: manually add repo for alinux3 (based on CentOS 9)
+                    cat > /etc/yum.repos.d/docker-ce.repo << 'REPO'
+[docker-ce-stable]
+name=Docker CE Stable - $basearch
+baseurl=https://download.docker.com/linux/centos/9/$basearch/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/centos/gpg
+
+[docker-ce-stable-debuginfo]
+name=Docker CE Stable - Debuginfo $basearch
+baseurl=https://download.docker.com/linux/centos/9/debug-$basearch/stable
+enabled=0
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/centos/gpg
+
+[docker-ce-stable-source]
+name=Docker CE Stable - Sources
+baseurl=https://download.docker.com/linux/centos/9/source/stable
+enabled=0
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/centos/gpg
+REPO
+                }
+
+                # Install Docker CE
+                $PKG_INSTALL docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+            elif [ "$os_id" = "anolis" ] || [ "$os_id" = "openanolis" ]; then
+                # Anolis OS - similar approach
+                log_substep "Detected Anolis OS, using dnf..."
+                dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo 2>/dev/null || true
+                $PKG_INSTALL docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+            else
+                # Standard distributions - use official script
+                curl -fsSL https://get.docker.com | sh
+            fi
+
             systemctl enable docker
             systemctl start docker
             log_info "Docker installed"
