@@ -59,8 +59,28 @@ preflight_checks() {
     echo -e "${YELLOW}Checking DNS resolution...${NC}"
     SERVER_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
-    FRONTEND_IP=$(dig +short $FRONTEND_DOMAIN | tail -1)
-    BACKEND_IP=$(dig +short $BACKEND_DOMAIN | tail -1)
+    # DNS resolution function - tries multiple methods
+    resolve_dns() {
+        local domain=$1
+        local ip=""
+        # Try dig first (most reliable)
+        if command -v dig &>/dev/null; then
+            ip=$(dig +short "$domain" 2>/dev/null | tail -1)
+        # Try host command
+        elif command -v host &>/dev/null; then
+            ip=$(host "$domain" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
+        # Try nslookup
+        elif command -v nslookup &>/dev/null; then
+            ip=$(nslookup "$domain" 2>/dev/null | grep "^Address:" | tail -1 | awk '{print $2}')
+        # Try getent (Linux)
+        elif command -v getent &>/dev/null; then
+            ip=$(getent hosts "$domain" 2>/dev/null | awk '{print $1}')
+        fi
+        echo "$ip"
+    }
+
+    FRONTEND_IP=$(resolve_dns $FRONTEND_DOMAIN)
+    BACKEND_IP=$(resolve_dns $BACKEND_DOMAIN)
 
     if [ -z "$FRONTEND_IP" ] || [ -z "$BACKEND_IP" ]; then
         echo -e "${RED}Error: DNS records not found for domains${NC}"
