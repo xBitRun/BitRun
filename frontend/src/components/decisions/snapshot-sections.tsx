@@ -4,8 +4,6 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  BarChart3,
-  Activity,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,7 +33,6 @@ export function AccountSnapshotSection({
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors w-full text-left">
           {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          <Activity className="w-4 h-4 text-primary" />
           {t("decisions.accountSnapshot.title")}
           <Badge variant="outline" className="ml-2 text-xs font-mono">
             ${snapshot.equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -73,14 +70,14 @@ export function AccountSnapshotSection({
           {/* Positions */}
           {snapshot.positions.length > 0 && (
             <div>
-              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 {t("decisions.accountSnapshot.positions")}
               </h5>
               <div className="space-y-2">
                 {snapshot.positions.map((pos, idx) => (
                   <div key={idx} className="p-3 rounded bg-muted/30 border border-border/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold">{pos.symbol}</span>
                         <Badge
                           variant="outline"
@@ -102,7 +99,7 @@ export function AccountSnapshotSection({
                         {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)} ({pos.unrealized_pnl_percent >= 0 ? "+" : ""}{pos.unrealized_pnl_percent.toFixed(2)}%)
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">{t("decisions.accountSnapshot.sizeValue")}</span>
                         <p className="font-mono">${pos.size_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -130,7 +127,7 @@ export function AccountSnapshotSection({
             </div>
           )}
           {snapshot.positions.length === 0 && (
-            <p className="text-xs text-muted-foreground">{t("decisions.accountSnapshot.noPositions")}</p>
+            <p className="text-sm text-muted-foreground">{t("decisions.accountSnapshot.noPositions")}</p>
           )}
         </div>
       </CollapsibleContent>
@@ -154,7 +151,6 @@ export function MarketSnapshotSection({
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors w-full text-left">
           {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          <BarChart3 className="w-4 h-4 text-primary" />
           {t("decisions.marketSnapshot.title")}
           <Badge variant="outline" className="ml-2 text-xs">
             {snapshot.length} {snapshot.length === 1 ? t("decisions.marketSnapshot.symbol") : t("decisions.marketSnapshot.symbols")}
@@ -182,7 +178,7 @@ export function MarketSnapshotSection({
               >
                 {/* Header: Symbol + Exchange */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-base font-bold">{item.symbol}</span>
                     {item.exchange_name && (
                       <Badge variant="outline" className="text-xs capitalize">
@@ -190,7 +186,7 @@ export function MarketSnapshotSection({
                       </Badge>
                     )}
                   </div>
-                  <span className="text-lg font-mono font-semibold">
+                  <span className="text-lg font-mono font-semibold break-all text-right">
                     ${item.current.mid_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -226,8 +222,8 @@ export function MarketSnapshotSection({
                       <span className="text-muted-foreground">{t("decisions.marketSnapshot.avgFunding24h")}</span>
                       <p className="font-mono">
                         {(avgFunding24h * 100).toFixed(4)}%{" "}
-                        <span className={cn(
-                          "text-xs",
+                          <span className={cn(
+                          "text-sm",
                           avgFunding24h > 0 ? "text-[var(--profit)]" : avgFunding24h < 0 ? "text-[var(--loss)]" : "text-muted-foreground"
                         )}>
                           ({avgFunding24h > 0 ? t("decisions.marketSnapshot.bullishBias") : avgFunding24h < 0 ? t("decisions.marketSnapshot.bearishBias") : t("decisions.marketSnapshot.neutral")})
@@ -240,7 +236,7 @@ export function MarketSnapshotSection({
                 {/* Technical Indicators by Timeframe */}
                 {Object.keys(item.indicators).length > 0 && (
                   <div>
-                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                       {t("decisions.marketSnapshot.indicators")}
                     </h5>
                     <div className="space-y-2">
@@ -290,7 +286,7 @@ export function MarketSnapshotSection({
                               MACD: {ind.macd_signal}
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                             {/* MACD Values */}
                             {ind.macd && (ind.macd.macd !== 0 || ind.macd.signal !== 0) && (
                               <>
@@ -354,11 +350,11 @@ export function MarketSnapshotSection({
 
                   return (
                     <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {t("decisions.marketSnapshot.recentKlines")} ({primaryTf.toUpperCase()})
                       </h5>
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
+                        <table className="w-full text-sm">
                           <thead>
                             <tr className="text-muted-foreground border-b border-border/30">
                               <th className="text-left py-1 pr-3 font-medium">{t("decisions.marketSnapshot.time")}</th>
@@ -399,14 +395,14 @@ export function MarketSnapshotSection({
                 {/* Funding Rate History */}
                 {item.funding_history && item.funding_history.length > 0 && (
                   <div>
-                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                       {t("decisions.marketSnapshot.fundingHistory")}
                     </h5>
                     <div className="flex flex-wrap gap-2">
                       {item.funding_history.slice(0, 8).map((fh, idx) => {
                         const timeStr = new Date(fh.timestamp).toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
                         return (
-                          <div key={idx} className="px-2 py-1 rounded bg-muted/30 border border-border/20 text-xs">
+                          <div key={idx} className="px-2 py-1 rounded bg-muted/30 border border-border/20 text-sm">
                             <span className="text-muted-foreground">{timeStr}</span>
                             <span className={cn("ml-2 font-mono", fh.rate > 0 ? "text-[var(--profit)]" : fh.rate < 0 ? "text-[var(--loss)]" : "text-muted-foreground")}>
                               {(fh.rate * 100).toFixed(4)}%

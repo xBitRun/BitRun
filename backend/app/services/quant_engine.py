@@ -11,17 +11,14 @@ by the QuantExecutionWorker.
 """
 
 import logging
-import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from typing import Optional
 
 from ..traders.base import BaseTrader, OrderResult, TradeError
-from .agent_position_service import (
-    AgentPositionService,
-    CapitalExceededError,
-    PositionConflictError,
-)
+from .agent_position_service import AgentPositionService
+from .execution_result import make_execution_result
+from .trade_execution_service import TradeExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -95,144 +92,34 @@ class QuantEngineBase(ABC):
                     error="Short selling is not supported in spot mode",
                 )
 
-        ps = self.position_service
-        claim = None
-        is_existing_position = False  # True when accumulating onto open record
+        if self._cached_account_equity is None and self.account_id:
+            account_state = await self.trader.get_account_state()
+            self._cached_account_equity = account_state.equity
 
-        if ps and self.account_id:
-            try:
-                if self.strategy and hasattr(self.strategy, "get_effective_capital"):
-                    # Use capital-checked claim when strategy object is
-                    # available (enforces allocated_capital limits).
-                    # Cache equity per engine instance (= per cycle) to
-                    # avoid hitting the exchange API on every grid level.
-                    if self._cached_account_equity is None:
-                        account_state = await self.trader.get_account_state()
-                        self._cached_account_equity = account_state.equity
-                    claim = await ps.claim_position_with_capital_check(
-                        agent_id=uuid.UUID(self.agent_id),
-                        account_id=uuid.UUID(self.account_id),
-                        symbol=self.symbol,
-                        side=side,
-                        leverage=leverage,
-                        account_equity=self._cached_account_equity,
-                        requested_size_usd=size_usd,
-                        agent=self.strategy,
-                    )
-                else:
-                    # Fallback: no capital check (backward compatible)
-                    claim = await ps.claim_position(
-                        agent_id=uuid.UUID(self.agent_id),
-                        account_id=uuid.UUID(self.account_id),
-                        symbol=self.symbol,
-                        side=side,
-                        leverage=leverage,
-                    )
-                # If the returned record is already open, this is an
-                # accumulation (e.g. DCA adding to position, Grid buying
-                # another level).  We must NOT release/delete it on failure.
-                is_existing_position = claim.status == "open"
-            except CapitalExceededError as e:
+        executor = TradeExecutionService(
+            trader=self.trader,
+            position_service=self.position_service,
+            agent_id=self.agent_id,
+            account_id=self.account_id,
+            capital_agent=self.strategy if self.account_id else None,
+        )
+        result = await executor.open_position(
+            symbol=self.symbol,
+            side=side,
+            size_usd=size_usd,
+            leverage=leverage,
+            account_equity=self._cached_account_equity,
+            allow_accumulate=True,
+        )
+        if not result.success and result.error:
+            if "Capital exceeded" in result.error:
                 logger.warning(
-                    f"Quant {self.agent_id}: capital exceeded for "
-                    f"{self.symbol}: {e}"
+                    f"Quant {self.agent_id}: capital exceeded for {self.symbol}: {result.error}"
                 )
-                return OrderResult(
-                    success=False,
-                    error=f"Capital exceeded: {e}",
-                )
-            except PositionConflictError as e:
+            elif "Symbol conflict" in result.error:
                 logger.warning(
-                    f"Quant {self.agent_id}: symbol conflict for " f"{self.symbol}: {e}"
+                    f"Quant {self.agent_id}: symbol conflict for {self.symbol}: {result.error}"
                 )
-                return OrderResult(
-                    success=False,
-                    error=f"Symbol conflict: {e}",
-                )
-
-        try:
-            if side == "long":
-                result = await self.trader.open_long(
-                    symbol=self.symbol,
-                    size_usd=size_usd,
-                    leverage=leverage,
-                )
-            else:
-                result = await self.trader.open_short(
-                    symbol=self.symbol,
-                    size_usd=size_usd,
-                    leverage=leverage,
-                )
-        except Exception:
-            if ps and claim and not is_existing_position:
-                should_release = True
-                try:
-                    pos = await self.trader.get_position(self.symbol)
-                    if pos and pos.size > 0:
-                        logger.warning(
-                            f"Quant {self.agent_id}: exception during order "
-                            f"for {self.symbol} but exchange shows position. "
-                            "Confirming claim."
-                        )
-                        try:
-                            await ps.confirm_position(
-                                position_id=claim.id,
-                                size=pos.size,
-                                size_usd=pos.size_usd,
-                                entry_price=pos.entry_price,
-                            )
-                        except Exception:
-                            logger.critical(
-                                f"Quant {self.agent_id}: failed to confirm "
-                                f"claim {claim.id} for {self.symbol}."
-                            )
-                        should_release = False
-                except Exception as inner_exc:
-                    logger.warning(
-                        f"Quant {self.agent_id}: failed to check position "
-                        f"for {self.symbol} after order exception: {inner_exc}"
-                    )
-                if should_release:
-                    await ps.release_claim(claim.id)
-            # For existing positions, do NOT release on exception –
-            # the position still exists on the exchange.
-            raise
-
-        if ps and claim:
-            if result.success:
-                estimated_size = result.filled_size or (
-                    size_usd / (result.filled_price or 1.0)
-                )
-                fill_price = result.filled_price or 0.0
-
-                try:
-                    if is_existing_position:
-                        # Accumulate: add to existing open record
-                        await ps.accumulate_position(
-                            position_id=claim.id,
-                            additional_size=result.filled_size or estimated_size,
-                            additional_size_usd=size_usd,
-                            fill_price=fill_price,
-                        )
-                    else:
-                        # First open: transition pending → open
-                        await ps.confirm_position(
-                            position_id=claim.id,
-                            size=result.filled_size or estimated_size,
-                            size_usd=size_usd,
-                            entry_price=fill_price,
-                        )
-                except Exception as confirm_err:
-                    logger.critical(
-                        f"Quant {self.agent_id}: position DB update FAILED "
-                        f"after successful order for {self.symbol} "
-                        f"(claim {claim.id}): {confirm_err}. "
-                        "Leaving for reconciliation."
-                    )
-            elif not is_existing_position:
-                # Only release pending claims – never delete open records
-                await ps.release_claim(claim.id)
-
         return result
 
     async def _close_with_isolation(self) -> OrderResult:
@@ -242,22 +129,14 @@ class QuantEngineBase(ABC):
         Returns the full OrderResult so callers have access to
         close price and other fill details.
         """
-        ps = self.position_service
-        pos_record = None
-
-        if ps:
-            pos_record = await ps.get_agent_position_for_symbol(
-                uuid.UUID(self.agent_id), self.symbol
-            )
-
-        result = await self.trader.close_position(symbol=self.symbol)
-
-        if ps and pos_record and result.success:
-            await ps.close_position_record(
-                position_id=pos_record.id,
-                close_price=result.filled_price or 0.0,
-            )
-
+        executor = TradeExecutionService(
+            trader=self.trader,
+            position_service=self.position_service,
+            agent_id=self.agent_id,
+            account_id=self.account_id,
+            capital_agent=self.strategy if self.account_id else None,
+        )
+        result, _, _ = await executor.close_position(symbol=self.symbol)
         return result
 
     @abstractmethod
@@ -289,6 +168,34 @@ class QuantEngineBase(ABC):
             )
         return price
 
+    def _empty_execution_payload(self) -> dict:
+        """Shared default payload for cycle return values."""
+        return {"executed": []}
+
+    def _make_exec(
+        self,
+        *,
+        action: str,
+        executed: bool,
+        reason: str,
+        requested_size_usd: Optional[float],
+        actual_size_usd: Optional[float],
+        order_result: Optional[OrderResult],
+        realized_pnl: Optional[float] = None,
+    ) -> dict:
+        """Create a normalized execution entry."""
+        return make_execution_result(
+            symbol=self.symbol,
+            action=action,
+            confidence=100,
+            executed=executed,
+            reason=reason,
+            requested_size_usd=requested_size_usd,
+            actual_size_usd=actual_size_usd,
+            order_result=order_result,
+            realized_pnl=realized_pnl,
+        )
+
 
 class GridEngine(QuantEngineBase):
     """
@@ -309,6 +216,7 @@ class GridEngine(QuantEngineBase):
         trades_executed = 0
         pnl_change = 0.0
         total_size_usd = 0.0  # Track total position size for this cycle
+        execution_results = []
 
         try:
             upper_price = self.config["upper_price"]
@@ -325,6 +233,7 @@ class GridEngine(QuantEngineBase):
                     "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Error: upper_price must be > lower_price",
+                    "executed": execution_results,
                 }
             if grid_count < 1:
                 return {
@@ -333,6 +242,7 @@ class GridEngine(QuantEngineBase):
                     "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Error: grid_count must be >= 1",
+                    "executed": execution_results,
                 }
 
             # Calculate grid spacing
@@ -391,8 +301,32 @@ class GridEngine(QuantEngineBase):
                                 f"filled@{open_result.filled_price or current_price:.2f}, "
                                 f"size: ${size_usd:.2f})"
                             )
+                        execution_results.append(
+                            self._make_exec(
+                                action="open_long",
+                                executed=open_result.success,
+                                reason=(
+                                    "grid_buy_signal"
+                                    if open_result.success
+                                    else (open_result.error or "order_failed")
+                                ),
+                                requested_size_usd=size_usd,
+                                actual_size_usd=size_usd if open_result.success else None,
+                                order_result=open_result,
+                            )
+                        )
                     except TradeError as e:
                         logger.warning(f"Grid trade error at level {level}: {e}")
+                        execution_results.append(
+                            self._make_exec(
+                                action="open_long",
+                                executed=False,
+                                reason=str(e),
+                                requested_size_usd=amount_per_grid,
+                                actual_size_usd=None,
+                                order_result=None,
+                            )
+                        )
 
                 # Sell signal: price rose above this grid level + one step, and was bought
                 elif (
@@ -414,8 +348,35 @@ class GridEngine(QuantEngineBase):
                                 f"Grid {self.agent_id}: SELL at grid level {level} "
                                 f"(current: {current_price}, profit: ${profit:.2f})"
                             )
+                        execution_results.append(
+                            self._make_exec(
+                                action="close_long",
+                                executed=close_result.success,
+                                reason=(
+                                    "grid_sell_signal"
+                                    if close_result.success
+                                    else (close_result.error or "order_failed")
+                                ),
+                                requested_size_usd=size_usd,
+                                actual_size_usd=size_usd if close_result.success else None,
+                                order_result=close_result,
+                                realized_pnl=(
+                                    profit if close_result.success and level > 0 else None
+                                ),
+                            )
+                        )
                     except TradeError as e:
                         logger.warning(f"Grid sell error at level {level}: {e}")
+                        execution_results.append(
+                            self._make_exec(
+                                action="close_long",
+                                executed=False,
+                                reason=str(e),
+                                requested_size_usd=amount_per_grid,
+                                actual_size_usd=None,
+                                order_result=None,
+                            )
+                        )
 
             # Update runtime state
             self.runtime_state["filled_buys"] = list(filled_buys)
@@ -430,6 +391,7 @@ class GridEngine(QuantEngineBase):
                 "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"Grid check: price={current_price:.2f}, trades={trades_executed}",
+                "executed": execution_results,
             }
 
         except Exception as e:
@@ -441,6 +403,7 @@ class GridEngine(QuantEngineBase):
                 "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
+                "executed": execution_results,
             }
 
 
@@ -463,6 +426,7 @@ class DCAEngine(QuantEngineBase):
         trades_executed = 0
         pnl_change = 0.0
         total_size_usd = 0.0  # Track total position size for this cycle
+        execution_results = []
 
         try:
             order_amount = self.config["order_amount"]
@@ -511,6 +475,17 @@ class DCAEngine(QuantEngineBase):
                         self.runtime_state["total_quantity"] = 0.0
                         self.runtime_state["avg_cost"] = 0.0
                         self.runtime_state["last_check"] = datetime.now(UTC).isoformat()
+                        execution_results.append(
+                            self._make_exec(
+                                action="close_long",
+                                executed=True,
+                                reason="take_profit",
+                                requested_size_usd=sell_value,
+                                actual_size_usd=sell_value,
+                                order_result=close_result,
+                                realized_pnl=pnl_change,
+                            )
+                        )
                         return {
                             "success": True,
                             "trades_executed": trades_executed,
@@ -518,9 +493,20 @@ class DCAEngine(QuantEngineBase):
                             "total_size_usd": total_size_usd,
                             "updated_state": self.runtime_state,
                             "message": f"Take profit: +{current_pnl_pct:.1f}%, P/L: ${pnl_change:.2f}",
+                            "executed": execution_results,
                         }
                     except TradeError as e:
                         logger.warning(f"DCA take profit error: {e}")
+                        execution_results.append(
+                            self._make_exec(
+                                action="close_long",
+                                executed=False,
+                                reason=str(e),
+                                requested_size_usd=total_quantity * current_price,
+                                actual_size_usd=None,
+                                order_result=None,
+                            )
+                        )
 
             # Check budget and order limits
             if total_budget > 0 and total_invested >= total_budget:
@@ -530,6 +516,7 @@ class DCAEngine(QuantEngineBase):
                     "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Budget limit reached, waiting for take profit",
+                    "executed": execution_results,
                 }
 
             if max_orders > 0 and orders_placed >= max_orders:
@@ -539,6 +526,7 @@ class DCAEngine(QuantEngineBase):
                     "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Max orders reached, waiting for take profit",
+                    "executed": execution_results,
                 }
 
             # Enforce interval: skip if last order was too recent
@@ -559,6 +547,7 @@ class DCAEngine(QuantEngineBase):
                             "updated_state": self.runtime_state,
                             "message": f"Waiting for interval ({interval_minutes}min), "
                             f"elapsed={elapsed/60:.1f}min",
+                            "executed": execution_results,
                         }
                 except (ValueError, TypeError):
                     pass  # Malformed timestamp, proceed with order
@@ -598,9 +587,29 @@ class DCAEngine(QuantEngineBase):
                     f"DCA {self.agent_id}: BUY ${order_amount} at {current_price:.2f} "
                     f"(avg_cost: {new_avg_cost:.2f}, total: ${new_total_invested:.2f})"
                 )
+                execution_results.append(
+                    self._make_exec(
+                        action="open_long",
+                        executed=True,
+                        reason="dca_buy_signal",
+                        requested_size_usd=order_amount,
+                        actual_size_usd=order_amount,
+                        order_result=open_result,
+                    )
+                )
 
             except TradeError as e:
                 logger.warning(f"DCA buy error: {e}")
+                execution_results.append(
+                    self._make_exec(
+                        action="open_long",
+                        executed=False,
+                        reason=str(e),
+                        requested_size_usd=order_amount,
+                        actual_size_usd=None,
+                        order_result=None,
+                    )
+                )
 
             self.runtime_state["last_check"] = datetime.now(UTC).isoformat()
 
@@ -611,6 +620,7 @@ class DCAEngine(QuantEngineBase):
                 "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"DCA cycle: price={current_price:.2f}, orders={orders_placed + trades_executed}",
+                "executed": execution_results,
             }
 
         except Exception as e:
@@ -622,6 +632,7 @@ class DCAEngine(QuantEngineBase):
                 "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
+                "executed": execution_results,
             }
 
 
@@ -645,6 +656,7 @@ class RSIEngine(QuantEngineBase):
         trades_executed = 0
         pnl_change = 0.0
         total_size_usd = 0.0  # Track total position size for this cycle
+        execution_results = []
 
         try:
             rsi_period = self.config.get("rsi_period", 14)
@@ -677,6 +689,7 @@ class RSIEngine(QuantEngineBase):
                     "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Insufficient data for RSI calculation",
+                    "executed": execution_results,
                 }
 
             has_position = self.runtime_state.get("has_position", False)
@@ -729,8 +742,32 @@ class RSIEngine(QuantEngineBase):
                             f"RSI {self.agent_id}: BUY signal (RSI={rsi_value:.1f} <= {oversold}) "
                             f"at {current_price:.2f} (filled@{actual_entry:.2f}), size=${order_amount}"
                         )
+                    execution_results.append(
+                        self._make_exec(
+                            action="open_long",
+                            executed=open_result.success,
+                            reason=(
+                                "rsi_oversold_buy"
+                                if open_result.success
+                                else (open_result.error or "order_failed")
+                            ),
+                            requested_size_usd=order_amount,
+                            actual_size_usd=order_amount if open_result.success else None,
+                            order_result=open_result,
+                        )
+                    )
                 except TradeError as e:
                     logger.warning(f"RSI buy error: {e}")
+                    execution_results.append(
+                        self._make_exec(
+                            action="open_long",
+                            executed=False,
+                            reason=str(e),
+                            requested_size_usd=order_amount,
+                            actual_size_usd=None,
+                            order_result=None,
+                        )
+                    )
 
             # Sell signal: RSI above overbought and has position
             elif rsi_value >= overbought and has_position:
@@ -761,8 +798,35 @@ class RSIEngine(QuantEngineBase):
                             f"RSI {self.agent_id}: SELL signal (RSI={rsi_value:.1f} >= {overbought}) "
                             f"at {current_price:.2f}, P/L=${pnl_change:.2f}"
                         )
+                    execution_results.append(
+                        self._make_exec(
+                            action="close_long",
+                            executed=close_result.success,
+                            reason=(
+                                "rsi_overbought_sell"
+                                if close_result.success
+                                else (close_result.error or "order_failed")
+                            ),
+                            requested_size_usd=position_size,
+                            actual_size_usd=position_size if close_result.success else None,
+                            order_result=close_result,
+                            realized_pnl=pnl_change if close_result.success else None,
+                        )
+                    )
                 except TradeError as e:
                     logger.warning(f"RSI sell error: {e}")
+                    execution_results.append(
+                        self._make_exec(
+                            action="close_long",
+                            executed=False,
+                            reason=str(e),
+                            requested_size_usd=self.runtime_state.get(
+                                "position_size_usd", order_amount
+                            ),
+                            actual_size_usd=None,
+                            order_result=None,
+                        )
+                    )
 
             self.runtime_state["last_check"] = datetime.now(UTC).isoformat()
             self.runtime_state["last_price"] = current_price
@@ -774,6 +838,7 @@ class RSIEngine(QuantEngineBase):
                 "total_size_usd": total_size_usd,
                 "updated_state": self.runtime_state,
                 "message": f"RSI={rsi_value:.1f}, price={current_price:.2f}, trades={trades_executed}",
+                "executed": execution_results,
             }
 
         except Exception as e:
@@ -785,6 +850,7 @@ class RSIEngine(QuantEngineBase):
                 "total_size_usd": 0.0,
                 "updated_state": self.runtime_state,
                 "message": f"Error: {str(e)}",
+                "executed": execution_results,
             }
 
     async def _calculate_rsi(self, timeframe: str, period: int) -> Optional[float]:

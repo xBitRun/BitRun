@@ -16,6 +16,7 @@ from ...db.repositories.account import AccountRepository
 from ...db.repositories.decision import DecisionRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...services.redis_service import get_redis_service
+from ...services.decision_record_normalizer import normalize_decisions
 from ...traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP
 
 # Import shared utility from agents route
@@ -644,14 +645,15 @@ async def get_activity_feed(
             agent_execution_modes[str(a.id)] = a.execution_mode
 
     for decision in decisions:
+        normalized_decisions = normalize_decisions(decision.decisions)
         strategy_name = agent_strategy_names.get(
             str(decision.agent_id), "Unknown Strategy"
         )
 
         # Determine title based on decisions
         main_action = "Analysis"
-        if decision.decisions:
-            actions = [d.get("action", "hold") for d in decision.decisions]
+        if normalized_decisions:
+            actions = [d.get("action", "hold") for d in normalized_decisions]
             if "open_long" in actions or "open_short" in actions:
                 main_action = "Trade Signal"
             elif "close_long" in actions or "close_short" in actions:
@@ -668,7 +670,7 @@ async def get_activity_feed(
             desc_prefix = "Analyzed"
 
         symbols = list(
-            set(d.get("symbol", "") for d in decision.decisions if d.get("symbol"))
+            set(d.get("symbol", "") for d in normalized_decisions if d.get("symbol"))
         )
         symbol_str = ", ".join(symbols[:3]) if symbols else "Market"
 
@@ -683,7 +685,7 @@ async def get_activity_feed(
                     "agent_id": str(decision.agent_id),
                     "confidence": decision.overall_confidence,
                     "executed": decision.executed,
-                    "decisions_count": len(decision.decisions),
+                    "decisions_count": len(normalized_decisions),
                     "execution_mode": agent_execution_modes.get(
                         str(decision.agent_id), "mock"
                     ),

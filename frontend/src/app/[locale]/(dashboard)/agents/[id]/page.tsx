@@ -94,12 +94,13 @@ import type { AgentStatus } from "@/types";
 
 // Backward compat alias used throughout this file
 type StrategyStatus = AgentStatus;
-import {
-  MarketSnapshotSection,
-  AccountSnapshotSection,
-} from "@/components/decisions/snapshot-sections";
 import { MarkdownToggle } from "@/components/ui/markdown-toggle";
 import { DetailPageHeader } from "@/components/layout";
+import { DecisionDetailContent } from "@/components/decisions/decision-detail-content";
+import {
+  buildDecisionTradeRows,
+  resolveDecisionDisplay,
+} from "@/lib/decision-view-model";
 
 function getStatusColor(status: StrategyStatus) {
   switch (status) {
@@ -433,69 +434,9 @@ function OverviewTab({
   );
 
   // Build trade rows from execution_results, matched with decision data and account snapshot
-  const tradeRows = tradeDecisions.flatMap((decision) => {
-    const snapshotPositions = (
-      decision.account_snapshot as Record<string, unknown> | null
-    )?.positions as
-      | Array<{
-          symbol: string;
-          side: string;
-          size: number;
-          size_usd: number;
-          entry_price: number;
-          mark_price: number;
-          leverage: number;
-          unrealized_pnl: number;
-          unrealized_pnl_percent: number;
-          liquidation_price?: number | null;
-        }>
-      | undefined;
-    const execResults =
-      (decision.execution_results as Array<Record<string, unknown>>) ?? [];
-
-    return execResults
-      .filter((er) => er.executed === true)
-      .map((er, idx) => {
-        const symbol = er.symbol as string;
-        const action = er.action as string;
-        const orderResult = er.order_result as Record<string, unknown> | null;
-        const aiDecision = decision.decisions.find(
-          (d) => d.symbol === symbol && d.action === action,
-        );
-        const position = snapshotPositions?.find((p) => p.symbol === symbol);
-        const side = action.includes("long") ? "long" : "short";
-        const isClose = action.startsWith("close");
-
-        return {
-          key: `${decision.id}-exec-${idx}`,
-          symbol,
-          action,
-          side: side as "long" | "short",
-          isClose,
-          // For close actions: prefer position_leverage from exec_result (backend enriched),
-          // then fallback to account_snapshot position, then AI decision
-          leverage: isClose
-            ? ((er.position_leverage as number) ??
-              position?.leverage ??
-              aiDecision?.leverage ??
-              0)
-            : (aiDecision?.leverage ?? position?.leverage ?? 0),
-          entryPrice: isClose
-            ? (position?.entry_price ?? aiDecision?.entry_price)
-            : (aiDecision?.entry_price ?? position?.entry_price),
-          filledPrice: orderResult?.filled_price as number | undefined,
-          filledSize: orderResult?.filled_size as number | undefined,
-          sizeUsd: isClose
-            ? ((er.position_size_usd as number) ?? position?.size_usd)
-            : (er.actual_size_usd as number | undefined),
-          markPrice: position?.mark_price,
-          unrealizedPnl: position?.unrealized_pnl,
-          unrealizedPnlPercent: position?.unrealized_pnl_percent,
-          realizedPnl: er.realized_pnl as number | undefined,
-          timestamp: decision.timestamp,
-        };
-      });
-  });
+  const tradeRows = tradeDecisions.flatMap((decision) =>
+    buildDecisionTradeRows(decision),
+  );
 
   const handleTradeActionFilterChange = (value: string) => {
     setTradeActionFilter(value);
@@ -1481,401 +1422,68 @@ function DecisionsTab({
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0 space-y-6">
-                      {/* Market Assessment */}
-                      <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
-                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-primary" />
-                          {t("decisions.marketAssessment")}
-                        </h4>
-                        <MarkdownToggle content={decision.market_assessment} />
-                      </div>
-
-                      {/* Account Snapshot */}
-                      {decision.account_snapshot && (
-                        <AccountSnapshotSection
-                          snapshot={decision.account_snapshot}
-                          t={t}
-                        />
-                      )}
-
-                      {/* Market Data Snapshot */}
-                      {decision.market_snapshot &&
-                        decision.market_snapshot.length > 0 && (
-                          <MarketSnapshotSection
-                            snapshot={decision.market_snapshot}
-                            t={t}
-                          />
+                      <DecisionDetailContent
+                        decision={decision}
+                        snapshotT={t}
+                        getActionColor={getActionColor}
+                        marketAssessmentTitle={t("decisions.marketAssessment")}
+                        chainTitleKey={
+                          decision.ai_model?.startsWith("quant:")
+                            ? "executionReasoning"
+                            : "chainOfThought"
+                        }
+                        tradingLabels={{
+                          title: t("decisions.tradingDecisions"),
+                          leverage: t("decisions.leverage"),
+                          size: t("decisions.size"),
+                          stopLoss: t("decisions.stopLoss"),
+                          takeProfit: t("decisions.takeProfit"),
+                        }}
+                        executionLabels={{
+                          title: t("decisions.executionRecords"),
+                          success: t("decisions.execution.success"),
+                          failed: t("decisions.execution.failed"),
+                          skipped: t("decisions.execution.skipped"),
+                          reason: t("decisions.execution.reason"),
+                          orderId: t("decisions.execution.orderId"),
+                          filledSize: t("decisions.execution.filledSize"),
+                          filledPrice: t("decisions.execution.filledPrice"),
+                          status: t("decisions.execution.status"),
+                          requestedSize: t("decisions.execution.requestedSize"),
+                          actualSize: t("decisions.execution.actualSize"),
+                        }}
+                        metaLabels={{
+                          strategyType: t("decisions.strategyType"),
+                          model: t("decisions.model"),
+                          tokens: t("decisions.tokens"),
+                          latency: t("decisions.latency"),
+                        }}
+                        metaMode="auto"
+                        resolveDisplay={(d) => resolveDecisionDisplay(decision, d)}
+                        renderMarketAssessmentContent={(text) => (
+                          <MarkdownToggle content={text} />
                         )}
-
-                      {/* Chain of Thought */}
-                      <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
-                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                          <Brain className="w-4 h-4 text-primary" />
-                          {decision.ai_model?.startsWith("quant:")
-                            ? t("decisions.executionReasoning")
-                            : t("decisions.chainOfThought")}
-                        </h4>
-                        <MarkdownToggle content={decision.chain_of_thought} />
-                      </div>
-
-                      {/* Trading Decisions */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-3">
-                          {t("decisions.tradingDecisions")}
-                        </h4>
-                        <div className="space-y-3">
-                          {decision.decisions.map((d, i) => {
-                            // For close actions, resolve real leverage/size from account_snapshot or execution_results
-                            const isCloseAction =
-                              d.action === "close_long" ||
-                              d.action === "close_short";
-                            const snapshotPos = isCloseAction
-                              ? (
-                                  (
-                                    decision.account_snapshot as Record<
-                                      string,
-                                      unknown
-                                    > | null
-                                  )?.positions as
-                                    | Array<{
-                                        symbol: string;
-                                        leverage: number;
-                                        size_usd: number;
-                                      }>
-                                    | undefined
-                                )?.find((p) => p.symbol === d.symbol)
-                              : undefined;
-                            const execRes = isCloseAction
-                              ? (
-                                  decision.execution_results as
-                                    | Array<Record<string, unknown>>
-                                    | undefined
-                                )?.find(
-                                  (er) =>
-                                    er.symbol === d.symbol &&
-                                    er.action === d.action,
-                                )
-                              : undefined;
-                            const displayLeverage = isCloseAction
-                              ? ((execRes?.position_leverage as number) ??
-                                snapshotPos?.leverage ??
-                                d.leverage ??
-                                1)
-                              : (d.leverage ?? 1);
-                            const displaySize = isCloseAction
-                              ? ((execRes?.position_size_usd as number) ??
-                                snapshotPos?.size_usd ??
-                                d.position_size_usd ??
-                                0)
-                              : (d.position_size_usd ?? 0);
-
-                            return (
-                              <div
-                                key={i}
-                                className="p-4 rounded-lg bg-muted/30 border border-border/30"
-                              >
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold">
-                                      {d.symbol}
-                                    </span>
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(getActionColor(d.action))}
-                                    >
-                                      {d.action.replace("_", " ").toUpperCase()}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className={cn(
-                                          "h-full rounded-full",
-                                          d.confidence >= 80
-                                            ? "bg-[var(--profit)]"
-                                            : d.confidence >= 60
-                                              ? "bg-[var(--warning)]"
-                                              : "bg-muted-foreground",
-                                        )}
-                                        style={{ width: `${d.confidence}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-sm font-medium">
-                                      {d.confidence}%
-                                    </span>
-                                  </div>
-                                </div>
-                                {d.action !== "hold" && d.action !== "wait" && (
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                    <div>
-                                      <span className="text-muted-foreground">
-                                        {t("decisions.leverage")}
-                                      </span>
-                                      <p className="font-mono font-semibold">
-                                        {displayLeverage}x
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">
-                                        {t("decisions.size")}
-                                      </span>
-                                      <p className="font-mono font-semibold">
-                                        ${displaySize.toLocaleString()}
-                                      </p>
-                                    </div>
-                                    {d.stop_loss && (
-                                      <div>
-                                        <span className="text-muted-foreground">
-                                          {t("decisions.stopLoss")}
-                                        </span>
-                                        <p className="font-mono font-semibold text-[var(--loss)]">
-                                          ${d.stop_loss.toLocaleString()}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {d.take_profit && (
-                                      <div>
-                                        <span className="text-muted-foreground">
-                                          {t("decisions.takeProfit")}
-                                        </span>
-                                        <p className="font-mono font-semibold text-[var(--profit)]">
-                                          ${d.take_profit.toLocaleString()}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-border/30">
-                                  {d.reasoning}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Execution Records */}
-                      {decision.execution_results &&
-                        decision.execution_results.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                              <Activity className="w-4 h-4 text-primary" />
-                              {t("decisions.executionRecords")}
+                        renderChainSection={(currentDecision) => (
+                          <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
+                            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                              <Brain className="w-4 h-4 text-primary" />
+                              {currentDecision.ai_model?.startsWith("quant:")
+                                ? t("decisions.executionReasoning")
+                                : t("decisions.chainOfThought")}
                             </h4>
-                            <div className="space-y-2">
-                              {(
-                                decision.execution_results as Array<
-                                  Record<string, unknown>
-                                >
-                              ).map((er, i) => {
-                                const wasExecuted = er.executed === true;
-                                const orderResult = er.order_result as Record<
-                                  string,
-                                  unknown
-                                > | null;
-                                const hasFailed =
-                                  wasExecuted === false &&
-                                  orderResult?.error != null;
-                                return (
-                                  <div
-                                    key={i}
-                                    className={`p-3 rounded-lg border ${
-                                      wasExecuted
-                                        ? "bg-[var(--profit)]/5 border-[var(--profit)]/20"
-                                        : hasFailed
-                                          ? "bg-[var(--loss)]/5 border-[var(--loss)]/20"
-                                          : "bg-muted/30 border-border/30"
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between mb-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-sm">
-                                          {er.symbol as string}
-                                        </span>
-                                        <Badge
-                                          variant="outline"
-                                          className={cn(
-                                            "text-xs",
-                                            getActionColor(er.action as string),
-                                          )}
-                                        >
-                                          {(er.action as string)
-                                            ?.replace("_", " ")
-                                            .toUpperCase()}
-                                        </Badge>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        {wasExecuted ? (
-                                          <>
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--profit)]" />
-                                            <span className="text-xs font-medium text-[var(--profit)]">
-                                              {t("decisions.execution.success")}
-                                            </span>
-                                          </>
-                                        ) : hasFailed ? (
-                                          <>
-                                            <XCircle className="w-3.5 h-3.5 text-[var(--loss)]" />
-                                            <span className="text-xs font-medium text-[var(--loss)]">
-                                              {t("decisions.execution.failed")}
-                                            </span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                              {t("decisions.execution.skipped")}
-                                            </span>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {wasExecuted && orderResult && (
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                                        {orderResult.order_id != null && (
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t("decisions.execution.orderId")}
-                                            </span>
-                                            <p className="font-mono font-medium truncate">
-                                              {String(orderResult.order_id)}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {orderResult.filled_size != null && (
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t(
-                                                "decisions.execution.filledSize",
-                                              )}
-                                            </span>
-                                            <p className="font-mono font-medium">
-                                              {Number(orderResult.filled_size)}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {orderResult.filled_price != null && (
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t(
-                                                "decisions.execution.filledPrice",
-                                              )}
-                                            </span>
-                                            <p className="font-mono font-medium">
-                                              $
-                                              {Number(
-                                                orderResult.filled_price,
-                                              ).toLocaleString()}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {orderResult.status != null && (
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t("decisions.execution.status")}
-                                            </span>
-                                            <p className="font-mono font-medium">
-                                              {String(orderResult.status)}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    {wasExecuted &&
-                                      er.requested_size_usd != null &&
-                                      er.actual_size_usd != null && (
-                                        <div className="flex gap-4 mt-2 text-xs">
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t(
-                                                "decisions.execution.requestedSize",
-                                              )}
-                                            </span>
-                                            <span className="font-mono font-medium ml-1">
-                                              $
-                                              {Number(
-                                                er.requested_size_usd,
-                                              ).toLocaleString()}
-                                            </span>
-                                          </div>
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              {t(
-                                                "decisions.execution.actualSize",
-                                              )}
-                                            </span>
-                                            <span className="font-mono font-medium ml-1">
-                                              $
-                                              {Number(
-                                                er.actual_size_usd,
-                                              ).toLocaleString()}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )}
-                                    {!wasExecuted && er.reason != null && (
-                                      <div className="text-xs mt-1">
-                                        <span className="text-muted-foreground">
-                                          {t("decisions.execution.reason")}
-                                          :{" "}
-                                        </span>
-                                        <span className="text-muted-foreground/80">
-                                          {String(er.reason)}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {hasFailed &&
-                                      orderResult?.error != null && (
-                                        <div className="text-xs mt-1">
-                                          <span className="text-[var(--loss)]">
-                                            {t("decisions.execution.reason")}
-                                            :{" "}
-                                          </span>
-                                          <span className="text-[var(--loss)]/80">
-                                            {String(orderResult.error)}
-                                          </span>
-                                        </div>
-                                      )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                            <MarkdownToggle content={currentDecision.chain_of_thought} />
                           </div>
                         )}
-
-                      {/* Raw AI Response / Execution Log */}
-                      {decision.raw_response && (
-                        <RawResponseViewer
-                          rawResponse={decision.raw_response}
-                          t={t}
-                          isQuant={decision.ai_model?.startsWith("quant:")}
-                        />
-                      )}
-
-                      {/* AI Info / Strategy Info */}
-                      {decision.ai_model?.startsWith("quant:") ? (
-                        // Quant strategy: only show strategy type
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
-                          <span>
-                            {t("decisions.strategyType")}:{" "}
-                            {decision.ai_model
-                              .replace("quant:", "")
-                              .toUpperCase()}
-                          </span>
-                        </div>
-                      ) : (
-                        // AI strategy: show full info
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
-                          <span>
-                            {t("decisions.model")}: {decision.ai_model}
-                          </span>
-                          <span>
-                            {t("decisions.tokens")}: {decision.tokens_used}
-                          </span>
-                          <span>
-                            {t("decisions.latency")}: {decision.latency_ms}ms
-                          </span>
-                        </div>
-                      )}
+                        rawSection={
+                          decision.raw_response ? (
+                            <RawResponseViewer
+                              rawResponse={decision.raw_response}
+                              t={t}
+                              isQuant={decision.ai_model?.startsWith("quant:")}
+                            />
+                          ) : undefined
+                        }
+                      />
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

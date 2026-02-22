@@ -13,6 +13,10 @@ from pydantic import BaseModel
 from ...core.dependencies import CurrentUserDep, DbSessionDep
 from ...db.repositories.agent import AgentRepository
 from ...db.repositories.decision import DecisionRepository
+from ...services.decision_record_normalizer import (
+    normalize_decisions,
+    normalize_execution_results,
+)
 
 router = APIRouter(prefix="/decisions", tags=["Decisions"])
 
@@ -211,16 +215,18 @@ def _decision_to_response(decision) -> DecisionResponse:
     """Convert decision DB model to response"""
     ts = decision.timestamp
     timestamp = ts.isoformat() + ("Z" if ts.tzinfo is None else "")
+    decisions = normalize_decisions(decision.decisions)
+    execution_results = normalize_execution_results(decision.execution_results)
     return DecisionResponse(
         id=str(decision.id),
         agent_id=str(decision.agent_id),
         timestamp=timestamp,
         chain_of_thought=decision.chain_of_thought,
         market_assessment=decision.market_assessment,
-        decisions=decision.decisions,
+        decisions=decisions,
         overall_confidence=decision.overall_confidence,
         executed=decision.executed,
-        execution_results=decision.execution_results,
+        execution_results=execution_results,
         ai_model=decision.ai_model,
         tokens_used=decision.tokens_used,
         latency_ms=decision.latency_ms,

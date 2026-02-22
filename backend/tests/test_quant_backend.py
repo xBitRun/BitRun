@@ -301,12 +301,12 @@ class TestQuantWorkerBackend:
 
         backend = QuantWorkerBackend()
 
-        with patch("app.db.database.AsyncSessionLocal") as mock_session_local:
+        with patch("app.workers.quant_backend.AsyncSessionLocal") as mock_session_local:
             mock_session = AsyncMock()
             mock_session_local.return_value.__aenter__.return_value = mock_session
 
             with patch(
-                "app.db.repositories.quant_strategy.QuantStrategyRepository"
+                "app.workers.quant_backend.QuantStrategyRepository"
             ) as mock_repo_class:
                 mock_repo = MagicMock()
                 mock_repo.get_by_id = AsyncMock(return_value=None)
@@ -328,12 +328,12 @@ class TestQuantWorkerBackend:
         mock_strategy.id = uuid.uuid4()
         mock_strategy.status = "paused"
 
-        with patch("app.db.database.AsyncSessionLocal") as mock_session_local:
+        with patch("app.workers.quant_backend.AsyncSessionLocal") as mock_session_local:
             mock_session = AsyncMock()
             mock_session_local.return_value.__aenter__.return_value = mock_session
 
             with patch(
-                "app.db.repositories.quant_strategy.QuantStrategyRepository"
+                "app.workers.quant_backend.QuantStrategyRepository"
             ) as mock_repo_class:
                 mock_repo = MagicMock()
                 # Return strategy for get_by_id
@@ -356,7 +356,7 @@ class TestQuantWorkerBackend:
         # Use a completely mocked approach
         agent_id = str(uuid.uuid4())
 
-        with patch("app.db.database.AsyncSessionLocal") as mock_session_local:
+        with patch("app.workers.quant_backend.AsyncSessionLocal") as mock_session_local:
             mock_session = AsyncMock()
             mock_session_local.return_value.__aenter__.return_value = mock_session
 
@@ -369,7 +369,7 @@ class TestQuantWorkerBackend:
             mock_strategy.symbol = "BTC"
 
             with patch(
-                "app.db.repositories.quant_strategy.QuantStrategyRepository"
+                "app.workers.quant_backend.QuantStrategyRepository"
             ) as mock_repo_class:
                 mock_repo = MagicMock()
                 mock_repo.get_by_id = AsyncMock(return_value=mock_strategy)
@@ -434,12 +434,12 @@ class TestLoadActiveStrategies:
 
         backend = QuantWorkerBackend()
 
-        with patch("app.db.database.AsyncSessionLocal") as mock_session_local:
+        with patch("app.workers.quant_backend.AsyncSessionLocal") as mock_session_local:
             mock_session = AsyncMock()
             mock_session_local.return_value.__aenter__.return_value = mock_session
 
             with patch(
-                "app.db.repositories.quant_strategy.QuantStrategyRepository"
+                "app.workers.quant_backend.QuantStrategyRepository"
             ) as mock_repo_class:
                 mock_repo = MagicMock()
                 mock_repo.get_active_strategies = AsyncMock(return_value=[])
@@ -448,3 +448,73 @@ class TestLoadActiveStrategies:
                 await backend._load_active_strategies()
 
                 assert backend._workers == {}
+
+
+@pytest.mark.unit
+class TestQuantDecisionRecordMapping:
+    """Tests for quant decision record payload mapping."""
+
+    @pytest.mark.asyncio
+    async def test_save_decision_record_prefers_executed_payload(self):
+        """Should map result['executed'] entries directly into decision payload."""
+        from app.workers.quant_backend import QuantExecutionWorker
+
+        worker = QuantExecutionWorker(
+            agent_id=str(uuid.uuid4()),
+            strategy_type="grid",
+            trader=MagicMock(),
+            interval_minutes=1,
+        )
+
+        strategy = MagicMock()
+        strategy.id = uuid.uuid4()
+        strategy.strategy_type = "grid"
+        strategy.symbol = "BTC"
+        strategy.config = {"leverage": 3}
+
+        result = {
+            "success": True,
+            "message": "Grid cycle done",
+            "trades_executed": 2,
+            "pnl_change": 12.5,
+            "total_size_usd": 200.0,
+            "executed": [
+                {
+                    "symbol": "BTC",
+                    "action": "open_long",
+                    "executed": True,
+                    "confidence": 100,
+                    "reason": "grid_buy_signal",
+                    "requested_size_usd": 100.0,
+                    "actual_size_usd": 100.0,
+                },
+                {
+                    "symbol": "BTC",
+                    "action": "close_long",
+                    "executed": True,
+                    "confidence": 100,
+                    "reason": "grid_sell_signal",
+                    "requested_size_usd": 100.0,
+                    "actual_size_usd": 100.0,
+                },
+            ],
+        }
+
+        with patch("app.workers.quant_backend.DecisionRepository") as mock_repo_cls:
+            mock_repo = MagicMock()
+            mock_repo.create = AsyncMock()
+            mock_created = MagicMock()
+            mock_created.id = uuid.uuid4()
+            mock_repo.create = AsyncMock(return_value=mock_created)
+            mock_repo.mark_executed = AsyncMock()
+            mock_repo_cls.return_value = mock_repo
+
+            await worker._save_decision_record(AsyncMock(), strategy, result)
+
+            mock_repo.create.assert_called_once()
+            kwargs = mock_repo.create.call_args.kwargs
+            assert "decisions" in kwargs
+            assert len(kwargs["decisions"]) == 2
+            assert kwargs["decisions"][0]["action"] == "open_long"
+            assert kwargs["decisions"][1]["action"] == "close_long"
+            mock_repo.mark_executed.assert_called_once()

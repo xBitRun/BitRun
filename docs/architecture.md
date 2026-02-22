@@ -443,3 +443,4 @@ sequenceDiagram
 - [开发者指南](development.md) — 本地开发、代码规范、测试
 - [API 参考](api-reference.md) — REST API、WebSocket API
 - [部署指南](deployment.md) — 生产环境部署
+- [Live / Mock 统一架构](live-mock-unified-architecture.md) — 实盘/模拟盘统一执行链路与扩展规范

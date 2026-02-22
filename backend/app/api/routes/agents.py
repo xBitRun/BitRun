@@ -29,6 +29,7 @@ from ...models.agent import (
     ExecutionMode,
 )
 from ...traders.exchange_capabilities import supports_asset, AssetType
+from ...services.quant_decision_mapper import build_quant_decision_record_payload
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 logger = logging.getLogger(__name__)
@@ -1098,65 +1099,29 @@ async def _save_quant_decision_record(
     """
     decision_repo = DecisionRepository(db)
 
-    # Build chain of thought from quant result
-    trades_executed = quant_result.get("trades_executed", 0)
-    pnl_change = quant_result.get("pnl_change", 0.0)
-    message = quant_result.get("message", "")
-    success = quant_result.get("success", False)
-
-    # Determine action based on strategy type and execution
-    if trades_executed > 0:
-        if pnl_change > 0:
-            action = "close_long"
-            action_desc = "卖出平仓获利"
-        else:
-            action = "open_long"
-            action_desc = "买入开仓"
-    else:
-        action = "hold"
-        action_desc = "持有/观望"
-
-    # Build strategy-specific chain of thought
-    strategy_names = {
-        "grid": "网格交易策略",
-        "dca": "定投策略",
-        "rsi": "RSI指标策略",
-    }
-    strategy_name = strategy_names.get(strategy_type, strategy_type.upper())
-
-    chain_of_thought = f"[{strategy_name}] {message}"
-    if trades_executed > 0:
-        chain_of_thought += f"\n执行了 {trades_executed} 笔交易"
-    if pnl_change != 0:
-        chain_of_thought += f"\n盈亏变化: ${pnl_change:.2f}"
-
-    # Build market assessment
-    market_assessment = f"交易对: {symbol}\n执行状态: {'成功' if success else '失败'}"
-
-    # Build decisions list (rule-based, so confidence is 100)
-    decisions = [
-        {
-            "action": action,
-            "symbol": symbol,
-            "confidence": 100,
-            "reasoning": action_desc,
-            "size_usd": 0,  # Quant doesn't track per-decision size
-        }
-    ]
+    payload = build_quant_decision_record_payload(
+        strategy_type=strategy_type,
+        symbol=symbol,
+        quant_result=quant_result,
+        config=agent.config or {},
+    )
 
     record = await decision_repo.create(
         agent_id=agent.id,
-        system_prompt=f"Quant Strategy: {strategy_name}",
+        system_prompt=f"Quant Strategy: {payload['strategy_name']}",
         user_prompt=f"Symbol: {symbol}, Config: {agent.config}",
         raw_response=str(quant_result),
-        chain_of_thought=chain_of_thought,
-        market_assessment=market_assessment,
-        decisions=decisions,
+        chain_of_thought=payload["chain_of_thought"],
+        market_assessment=payload["market_assessment"],
+        decisions=payload["decisions"],
         overall_confidence=100,
         ai_model=f"quant:{strategy_type}",
         tokens_used=0,
         latency_ms=0,
     )
+
+    if payload["has_actual_execution"]:
+        await decision_repo.mark_executed(record.id, payload["executed_results"])
 
     logger.info(f"Saved quant decision record {record.id} for agent {agent.id}")
     return record.id

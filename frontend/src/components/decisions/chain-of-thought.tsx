@@ -293,7 +293,7 @@ export function ChainOfThought({
                   </div>
                   <div
                     className={cn(
-                      "text-foreground/80 whitespace-pre-wrap text-xs leading-relaxed",
+                      "text-foreground/80 whitespace-pre-wrap text-sm leading-relaxed",
                       shouldTruncate &&
                         "max-h-[4.5rem] overflow-hidden relative",
                     )}

@@ -92,6 +92,10 @@ class TestGridEngine:
         # 88 <= all 5 levels → 5 buys
         assert result["trades_executed"] == 5
         assert trader.open_long.call_count == 5
+        assert "executed" in result
+        assert isinstance(result["executed"], list)
+        assert result["executed"][0]["symbol"] == "BTC"
+        assert "order_result" in result["executed"][0]
 
     @pytest.mark.asyncio
     async def test_sell_signal_triggered(self, grid_config):
@@ -845,13 +849,48 @@ class TestQuantEngineBaseIsolation:
         mock_position_service.claim_position.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_open_with_isolation_mock_without_account_claims_position(
+        self, mock_position_service, mock_strategy
+    ):
+        """Mock mode (no account_id) should still claim position for lifecycle tracking."""
+        trader = _mock_trader(mark_price=50000.0)
+        claim_mock = MagicMock()
+        claim_mock.status = "pending"
+        claim_mock.id = "mock-claim-id"
+        mock_position_service.claim_position = AsyncMock(return_value=claim_mock)
+
+        engine = GridEngine(
+            agent_id="00000000-0000-0000-0000-000000000001",
+            trader=trader,
+            symbol="BTC",
+            config={
+                "upper_price": 110.0,
+                "lower_price": 90.0,
+                "grid_count": 4,
+                "total_investment": 400.0,
+                "leverage": 2.0,
+            },
+            runtime_state={},
+            account_id=None,  # mock mode path
+            position_service=mock_position_service,
+            strategy=mock_strategy,
+        )
+
+        result = await engine._open_with_isolation(size_usd=100.0, leverage=2)
+
+        assert result.success is True
+        mock_position_service.claim_position.assert_called_once()
+        _, kwargs = mock_position_service.claim_position.call_args
+        assert kwargs["account_id"] is None
+
+    @pytest.mark.asyncio
     async def test_close_with_isolation_success(self, mock_position_service, mock_strategy):
         """Test _close_with_isolation marks position as closed."""
         trader = _mock_trader(mark_price=55000.0)
         claim_mock = MagicMock()
         claim_mock.status = "open"
         claim_mock.id = "test-claim-id"
-        mock_position_service.get_open_position = AsyncMock(return_value=claim_mock)
+        mock_position_service.get_agent_position_for_symbol = AsyncMock(return_value=claim_mock)
         
         engine = RSIEngine(
             agent_id="00000000-0000-0000-0000-000000000001",
@@ -1337,4 +1376,3 @@ class TestCCXTTraderSymbolFormatting:
 
             result = trader_instance._to_ccxt_symbol("XAU")
             assert result == "XAU/USD"
-

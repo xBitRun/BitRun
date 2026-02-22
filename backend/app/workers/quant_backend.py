@@ -39,6 +39,7 @@ from ..db.repositories.account import AccountRepository
 from ..db.repositories.quant_strategy import QuantStrategyRepository
 from ..db.repositories.decision import DecisionRepository
 from ..services.quant_engine import create_engine
+from ..services.quant_decision_mapper import build_quant_decision_record_payload
 from ..services.worker_heartbeat import get_worker_instance_id
 from ..traders.base import BaseTrader
 from ..traders.ccxt_trader import create_trader_from_account
@@ -388,59 +389,30 @@ class QuantExecutionWorker:
         """Save a decision record for the quant execution."""
         try:
             decision_repo = DecisionRepository(session)
-            trades_executed = result.get("trades_executed", 0)
-            pnl_change = result.get("pnl_change", 0.0)
-            total_size_usd = result.get("total_size_usd", 0.0)
-            message = result.get("message", "")
-            success = result.get("success", False)
-
-            # Determine action
-            if trades_executed > 0:
-                action = "close_long" if pnl_change > 0 else "open_long"
-                action_desc = "卖出平仓" if pnl_change > 0 else "买入开仓"
-            else:
-                action = "hold"
-                action_desc = "持有/观望"
-
-            strategy_names = {"grid": "网格交易", "dca": "定投", "rsi": "RSI指标"}
-            strategy_name = strategy_names.get(
-                strategy.strategy_type, strategy.strategy_type
+            payload = build_quant_decision_record_payload(
+                strategy_type=strategy.strategy_type,
+                symbol=strategy.symbol,
+                quant_result=result,
+                config=strategy.config or {},
             )
 
-            chain_of_thought = f"[{strategy_name}] {message}"
-            if trades_executed > 0:
-                chain_of_thought += f"\n执行了 {trades_executed} 笔交易"
-            if pnl_change != 0:
-                chain_of_thought += f"\n盈亏变化: ${pnl_change:.2f}"
-
-            leverage = strategy.config.get("leverage", 1) if strategy.config else 1
-
-            await decision_repo.create(
+            record = await decision_repo.create(
                 agent_id=strategy.id,
-                system_prompt=f"Quant Strategy: {strategy_name}",
+                system_prompt=f"Quant Strategy: {payload['strategy_name']}",
                 user_prompt=f"Symbol: {strategy.symbol}, Config: {strategy.config}",
                 raw_response=str(result),
-                chain_of_thought=chain_of_thought,
-                market_assessment=(
-                    f"交易对: {strategy.symbol}\n"
-                    f"执行状态: {'成功' if success else '失败'}"
-                ),
-                decisions=[
-                    {
-                        "action": action,
-                        "symbol": strategy.symbol,
-                        "confidence": 100,
-                        "reasoning": action_desc,
-                        "leverage": leverage,
-                        "position_size_usd": total_size_usd,
-                        "risk_usd": 0,
-                    }
-                ],
+                chain_of_thought=payload["chain_of_thought"],
+                market_assessment=payload["market_assessment"],
+                decisions=payload["decisions"],
                 overall_confidence=100,
                 ai_model=f"quant:{strategy.strategy_type}",
                 tokens_used=0,
                 latency_ms=0,
             )
+            # Align quant records with AI records for dashboard/analytics:
+            # populate executed flag + execution_results when actual execution occurred.
+            if payload["has_actual_execution"]:
+                await decision_repo.mark_executed(record.id, payload["executed_results"])
         except Exception as e:
             logger.warning(f"Failed to save quant decision record: {e}")
 

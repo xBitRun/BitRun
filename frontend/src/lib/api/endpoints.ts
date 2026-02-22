@@ -761,6 +761,7 @@ export interface DecisionResponse {
     action: string;
     leverage: number;
     position_size_usd: number;
+    size_usd?: number;
     entry_price?: number;
     stop_loss?: number;
     take_profit?: number;
@@ -770,13 +771,35 @@ export interface DecisionResponse {
   }>;
   overall_confidence: number;
   executed: boolean;
-  execution_results: unknown[]; // Backend uses execution_results (array)
+  execution_results: DecisionExecutionResult[];
   ai_model: string;
   tokens_used: number;
   latency_ms: number;
   raw_response?: string | null;
   market_snapshot?: MarketSnapshotItem[] | null;
   account_snapshot?: AccountSnapshotItem | null;
+}
+
+export interface DecisionExecutionResult {
+  symbol: string;
+  action: string;
+  confidence?: number;
+  executed: boolean;
+  reason: string;
+  reasoning: string;
+  requested_size_usd?: number | null;
+  actual_size_usd?: number | null;
+  position_size_usd: number;
+  size_usd: number;
+  position_leverage?: number | null;
+  realized_pnl?: number | null;
+  order_result?: {
+    order_id?: string | null;
+    filled_size?: number | null;
+    filled_price?: number | null;
+    status?: string | null;
+    error?: string | null;
+  } | null;
 }
 
 export interface AccountSnapshotItem {
@@ -818,7 +841,9 @@ export interface DecisionStatsResponse {
 
 export const decisionsApi = {
   listRecent: (limit: number = 20) =>
-    api.get<DecisionResponse[]>("/decisions/recent", { params: { limit } }),
+    api
+      .get<DecisionResponse[]>("/decisions/recent", { params: { limit } })
+      .then((items) => items.map(normalizeDecisionResponse)),
 
   /** List decisions by agent (new primary endpoint) */
   listByAgent: (
@@ -828,14 +853,21 @@ export const decisionsApi = {
     executionFilter: string = "all",
     action?: string,
   ) =>
-    api.get<PaginatedDecisionResponse>(`/decisions/agent/${agentId}`, {
-      params: {
-        limit,
-        offset,
-        execution_filter: executionFilter,
-        ...(action ? { action } : {}),
-      },
-    }),
+    api
+      .get<PaginatedDecisionResponse>(`/decisions/agent/${agentId}`, {
+        params: {
+          limit,
+          offset,
+          execution_filter: executionFilter,
+          ...(action ? { action } : {}),
+        },
+      })
+      .then((resp) => ({
+        ...resp,
+        items: Array.isArray(resp.items)
+          ? resp.items.map(normalizeDecisionResponse)
+          : [],
+      })),
 
   /** @deprecated Use listByAgent instead */
   listByStrategy: (
@@ -845,16 +877,24 @@ export const decisionsApi = {
     executionFilter: string = "all",
     action?: string,
   ) =>
-    api.get<PaginatedDecisionResponse>(`/decisions/strategy/${strategyId}`, {
-      params: {
-        limit,
-        offset,
-        execution_filter: executionFilter,
-        ...(action ? { action } : {}),
-      },
-    }),
+    api
+      .get<PaginatedDecisionResponse>(`/decisions/strategy/${strategyId}`, {
+        params: {
+          limit,
+          offset,
+          execution_filter: executionFilter,
+          ...(action ? { action } : {}),
+        },
+      })
+      .then((resp) => ({
+        ...resp,
+        items: Array.isArray(resp.items)
+          ? resp.items.map(normalizeDecisionResponse)
+          : [],
+      })),
 
-  get: (id: string) => api.get<DecisionResponse>(`/decisions/${id}`),
+  get: (id: string) =>
+    api.get<DecisionResponse>(`/decisions/${id}`).then(normalizeDecisionResponse),
 
   /** Get stats by agent (new primary endpoint) */
   getStatsByAgent: (agentId: string) =>
@@ -864,6 +904,40 @@ export const decisionsApi = {
   getStats: (strategyId: string) =>
     api.get<DecisionStatsResponse>(`/decisions/strategy/${strategyId}/stats`),
 };
+
+function normalizeDecisionResponse(raw: DecisionResponse): DecisionResponse {
+  return {
+    ...raw,
+    decisions: Array.isArray(raw.decisions)
+      ? raw.decisions.map((d) => {
+          const size = d.position_size_usd ?? d.size_usd ?? 0;
+          return {
+            ...d,
+            position_size_usd: size,
+          };
+        })
+      : [],
+    execution_results: Array.isArray(raw.execution_results)
+      ? raw.execution_results.map((er) => {
+          const size =
+            er.position_size_usd ??
+            er.actual_size_usd ??
+            er.requested_size_usd ??
+            er.size_usd ??
+            0;
+          const reason = er.reason ?? er.reasoning ?? "";
+          return {
+            ...er,
+            position_size_usd: size,
+            size_usd: size,
+            reason,
+            reasoning: er.reasoning ?? reason,
+            executed: er.executed === true,
+          };
+        })
+      : [],
+  };
+}
 
 // ==================== Backtest ====================
 

@@ -33,11 +33,11 @@ from .debate_engine import DebateEngine
 from .decision_parser import DecisionParser, DecisionParseError
 from .agent_position_service import (
     AgentPositionService,
-    PositionConflictError,
-    CapitalExceededError,
 )
+from .trade_execution_service import TradeExecutionService
 from .prompt_builder import PromptBuilder
 from .notifications import get_notification_service
+from .execution_result import make_execution_result
 from ..api.websocket import publish_decision, publish_position_update
 
 logger = logging.getLogger(__name__)
@@ -1042,19 +1042,19 @@ class StrategyEngine:
             # Validate symbol is in strategy's configured watchlist
             if configured_symbols and d.symbol.upper() not in configured_symbols:
                 results.append(
-                    {
-                        "symbol": d.symbol,
-                        "action": d.action.value,
-                        "confidence": d.confidence,
-                        "executed": False,
-                        "reason": (
+                    make_execution_result(
+                        symbol=d.symbol,
+                        action=d.action.value,
+                        confidence=d.confidence,
+                        executed=False,
+                        reason=(
                             f"Symbol {d.symbol} not in strategy watchlist "
                             f"({', '.join(sorted(configured_symbols))})"
                         ),
-                        "requested_size_usd": d.position_size_usd,
-                        "actual_size_usd": None,
-                        "order_result": None,
-                    }
+                        requested_size_usd=d.position_size_usd,
+                        actual_size_usd=None,
+                        order_result=None,
+                    )
                 )
                 logger.warning(
                     f"[Execution] SKIP {d.symbol} {d.action.value}: "
@@ -1065,16 +1065,16 @@ class StrategyEngine:
             # Check if should execute
             should_exec, reason = self.decision_parser.should_execute(d)
 
-            exec_result = {
-                "symbol": d.symbol,
-                "action": d.action.value,
-                "confidence": d.confidence,
-                "executed": False,
-                "reason": reason,
-                "requested_size_usd": d.position_size_usd,
-                "actual_size_usd": None,
-                "order_result": None,
-            }
+            exec_result = make_execution_result(
+                symbol=d.symbol,
+                action=d.action.value,
+                confidence=d.confidence,
+                executed=False,
+                reason=reason,
+                requested_size_usd=d.position_size_usd,
+                actual_size_usd=None,
+                order_result=None,
+            )
 
             is_open_action = d.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT)
 
@@ -1328,182 +1328,42 @@ class StrategyEngine:
           3. Mark the record as closed
         """
         symbol = decision.symbol
-        ps = self.position_service  # may be None (backward compatible)
-
-        # Get account_id from agent (None for mock agents)
         account_id = (
             self.agent.account_id
             if self.agent
             else getattr(self.strategy, "account_id", None)
         )
         agent_id = self.agent.id if self.agent else self.strategy.id
+        executor = TradeExecutionService(
+            trader=self.trader,
+            position_service=self.position_service,
+            agent_id=agent_id,
+            account_id=account_id,
+            capital_agent=self.agent,
+        )
 
         # ------ OPEN LONG / SHORT ------
         if decision.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT):
             side = "long" if decision.action == ActionType.OPEN_LONG else "short"
-            claim = None
-
-            # Step 1: Atomically check capital + claim symbol slot
-            # For mock agents, account_id is None but we still track positions
-            if ps:
-                try:
-                    claim = await ps.claim_position_with_capital_check(
-                        agent_id=agent_id,
-                        account_id=account_id,
-                        symbol=symbol,
-                        side=side,
-                        leverage=decision.leverage,
-                        account_equity=account.equity,
-                        requested_size_usd=position_size,
-                        agent=self.agent,
-                    )
-                except CapitalExceededError as e:
-                    return OrderResult(
-                        success=False,
-                        error=f"Capital allocation rejected: {e}",
-                    )
-                except PositionConflictError as e:
-                    return OrderResult(
-                        success=False,
-                        error=f"Symbol conflict: {e}",
-                    )
-
-            # Step 2: Place the order
-            try:
-                if decision.action == ActionType.OPEN_LONG:
-                    result = await self.trader.open_long(
-                        symbol=symbol,
-                        size_usd=position_size,
-                        leverage=decision.leverage,
-                        stop_loss=decision.stop_loss,
-                        take_profit=decision.take_profit,
-                    )
-                else:
-                    result = await self.trader.open_short(
-                        symbol=symbol,
-                        size_usd=position_size,
-                        leverage=decision.leverage,
-                        stop_loss=decision.stop_loss,
-                        take_profit=decision.take_profit,
-                    )
-            except Exception:
-                # Before releasing the claim, check if the order might have
-                # actually executed on the exchange (network timeout scenario).
-                if ps and claim:
-                    should_release = True
-                    try:
-                        pos = await self.trader.get_position(symbol)
-                        if pos and pos.size > 0:
-                            # Position exists on exchange – the order DID execute
-                            # despite the exception. Confirm instead of releasing.
-                            logger.warning(
-                                f"[Execution] Exception during order for {symbol} "
-                                f"but exchange shows position (size={pos.size}). "
-                                "Confirming claim instead of releasing."
-                            )
-                            try:
-                                await ps.confirm_position(
-                                    position_id=claim.id,
-                                    size=pos.size,
-                                    size_usd=pos.size_usd,
-                                    entry_price=pos.entry_price,
-                                )
-                            except Exception:
-                                logger.critical(
-                                    f"[Execution] Failed to confirm claim {claim.id} "
-                                    f"for {symbol} after detecting exchange position."
-                                )
-                            should_release = False
-                    except Exception:
-                        pass  # Can't check – safer to release
-
-                    if should_release:
-                        await ps.release_claim(claim.id)
-                raise
-
-            # Step 3: Confirm or release
-            if ps and claim:
-                if result.success:
-                    # If the exchange returned success, confirm the position even
-                    # if filled_size is None (some exchanges report fills async).
-                    # Use the estimated size as fallback so the claim isn't released
-                    # for a position that actually exists on the exchange.
-                    estimated_size = result.filled_size or (
-                        position_size / (result.filled_price or 1.0)
-                    )
-                    try:
-                        await ps.confirm_position(
-                            position_id=claim.id,
-                            size=result.filled_size or estimated_size,
-                            size_usd=position_size,
-                            entry_price=result.filled_price or 0.0,
-                        )
-                    except Exception as confirm_err:
-                        # CRITICAL: Order succeeded on exchange but DB confirm
-                        # failed. Do NOT release the claim – the reconciliation
-                        # job will fix the pending record within 5 minutes.
-                        logger.critical(
-                            f"[Execution] confirm_position FAILED after successful "
-                            f"order for {symbol} (claim {claim.id}): {confirm_err}. "
-                            "Leaving claim as pending for reconciliation."
-                        )
-                else:
-                    await ps.release_claim(claim.id)
-
-            return result
+            return await executor.open_position(
+                symbol=symbol,
+                side=side,
+                size_usd=position_size,
+                leverage=decision.leverage,
+                stop_loss=decision.stop_loss,
+                take_profit=decision.take_profit,
+                account_equity=account.equity,
+                allow_accumulate=False,
+            )
 
         # ------ CLOSE LONG / SHORT ------
         elif decision.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT):
-            # Look up the agent's position record (if isolation is enabled)
-            pos_record = None
-            if ps:
-                pos_record = await ps.get_agent_position_for_symbol(agent_id, symbol)
-                if not pos_record:
-                    logger.warning(
-                        f"[Execution] No position record for {symbol} owned by "
-                        f"agent {agent_id} – closing anyway"
-                    )
-
-            result = await self.trader.close_position(symbol=symbol)
-
-            # Mark record as closed - ALWAYS use actual fill price for realized_pnl
-            if ps and pos_record and result.success:
-                # Calculate realized_pnl using the ACTUAL fill price from the close order
-                # This ensures accuracy even when market data API is rate-limited
-                close_price = result.filled_price or 0.0
-                realized_pnl = 0.0
-
-                if (
-                    close_price > 0
-                    and pos_record.entry_price > 0
-                    and pos_record.size > 0
-                ):
-                    if pos_record.side == "long":
-                        realized_pnl = (
-                            close_price - pos_record.entry_price
-                        ) * pos_record.size
-                    else:
-                        realized_pnl = (
-                            pos_record.entry_price - close_price
-                        ) * pos_record.size
-                    logger.info(
-                        f"[Execution] Calculated realized_pnl for {symbol}: "
-                        f"${realized_pnl:.2f} (entry={pos_record.entry_price:.2f}, "
-                        f"close={close_price:.2f}, size={pos_record.size:.6f})"
-                    )
-                else:
-                    logger.warning(
-                        f"[Execution] Cannot calculate realized_pnl for {symbol}: "
-                        f"close_price={close_price}, entry_price={pos_record.entry_price}, "
-                        f"size={pos_record.size}"
-                    )
-
-                await ps.close_position_record(
-                    position_id=pos_record.id,
-                    close_price=result.filled_price or 0.0,
-                    realized_pnl=realized_pnl,
+            result, _, pos_record = await executor.close_position(symbol=symbol)
+            if self.position_service and not pos_record:
+                logger.warning(
+                    f"[Execution] No position record for {symbol} owned by "
+                    f"agent {agent_id} – closing anyway"
                 )
-
             return result
 
         else:

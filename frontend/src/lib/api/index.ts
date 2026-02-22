@@ -49,6 +49,7 @@ export type {
   AccountBalanceResponse,
   // Decisions
   DecisionResponse,
+  DecisionExecutionResult,
   PaginatedDecisionResponse,
   DecisionStatsResponse,
   // Dashboard
