@@ -7,8 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, EmailStr, Field
 
-from ...core.dependencies import CurrentUserDep, DbSessionDep
-from ...db.repositories import UserRepository
+from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep, ChannelAdminDep
 from ...services.channel_service import ChannelService
 
 router = APIRouter(prefix="/channels", tags=["Channels"])
@@ -94,42 +93,6 @@ class ChannelStatisticsResponse(BaseModel):
     pending_commission: float
     available_balance: float
     frozen_balance: float
-
-
-# ==================== Dependencies ====================
-
-async def require_platform_admin(
-    db: DbSessionDep,
-    user_id: CurrentUserDep,
-):
-    """Dependency that requires platform admin role"""
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    if not user or user.role != "platform_admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Platform admin access required"
-        )
-    return user
-
-
-async def require_channel_admin(
-    db: DbSessionDep,
-    user_id: CurrentUserDep,
-):
-    """Dependency that requires channel admin role"""
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    if not user or user.role not in ("channel_admin", "platform_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Channel admin access required"
-        )
-    return user
-
-
-PlatformAdminDep = Depends(require_platform_admin)
-ChannelAdminDep = Depends(require_channel_admin)
 
 
 # ==================== Platform Admin Routes ====================

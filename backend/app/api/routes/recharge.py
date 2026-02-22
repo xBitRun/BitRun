@@ -7,8 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from ...core.dependencies import CurrentUserDep, DbSessionDep
-from ...db.repositories import UserRepository
+from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep
 from ...services.wallet_service import WalletService
 
 router = APIRouter(prefix="/recharge", tags=["Recharge"])
@@ -185,23 +184,6 @@ async def get_my_order(
 
 
 # ==================== Admin Routes ====================
-
-async def require_platform_admin(
-    db: DbSessionDep,
-    user_id: CurrentUserDep,
-):
-    """Dependency that requires platform admin role"""
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    if not user or user.role != "platform_admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Platform admin access required"
-        )
-    return user
-
-
-PlatformAdminDep = Depends(require_platform_admin)
 
 
 @router.get("/admin/orders", response_model=List[RechargeOrderListResponse])

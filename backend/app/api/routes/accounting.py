@@ -7,8 +7,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from ...core.dependencies import CurrentUserDep, DbSessionDep
-from ...db.repositories import UserRepository
+from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep, ChannelAdminDep
 from ...services.channel_service import ChannelService
 from ...services.wallet_service import WalletService
 
@@ -95,23 +94,6 @@ async def get_user_accounting_overview(
 
 
 # ==================== Channel Accounting ====================
-
-async def require_channel_admin(
-    db: DbSessionDep,
-    user_id: CurrentUserDep,
-):
-    """Dependency that requires channel admin role"""
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    if not user or user.role not in ("channel_admin", "platform_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Channel admin access required"
-        )
-    return user
-
-
-ChannelAdminDep = Depends(require_channel_admin)
 
 
 @router.get("/channels/{channel_id}/overview", response_model=ChannelAccountingOverview)
@@ -202,23 +184,6 @@ async def get_my_channel_accounting_overview(
 
 
 # ==================== Platform Accounting ====================
-
-async def require_platform_admin(
-    db: DbSessionDep,
-    user_id: CurrentUserDep,
-):
-    """Dependency that requires platform admin role"""
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    if not user or user.role != "platform_admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Platform admin access required"
-        )
-    return user
-
-
-PlatformAdminDep = Depends(require_platform_admin)
 
 
 @router.get("/platform/overview", response_model=PlatformAccountingOverview)

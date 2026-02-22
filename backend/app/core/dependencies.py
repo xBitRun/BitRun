@@ -1,6 +1,7 @@
 """FastAPI dependencies for dependency injection"""
 
 import logging
+import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -12,6 +13,8 @@ from .config import Settings, get_settings
 from .errors import ErrorCode, auth_error
 from .security import CryptoService, TokenData, get_crypto_service, verify_token
 from ..db.database import get_db
+from ..db.repositories import UserRepository
+from ..db.models import UserDB
 from ..services.redis_service import get_redis_service
 
 logger = logging.getLogger(__name__)
@@ -274,3 +277,50 @@ CurrentUserDep = Annotated[str, Depends(get_current_user_id)]
 OptionalUserDep = Annotated[Optional[str], Depends(get_optional_user_id)]
 CurrentTokenDep = Annotated[TokenData, Depends(get_current_token_data)]
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+
+# ==================== Admin Role Dependencies ====================
+
+async def require_platform_admin(
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Dependency that requires platform_admin role.
+
+    Raises:
+        HTTPException 403: If user is not a platform admin
+    """
+    repo = UserRepository(db)
+    user = await repo.get_by_id(uuid.UUID(user_id))
+    if not user or user.role != "platform_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform admin access required"
+        )
+    return user
+
+
+async def require_channel_admin(
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+):
+    """
+    Dependency that requires channel_admin or platform_admin role.
+
+    Raises:
+        HTTPException 403: If user is not a channel or platform admin
+    """
+    repo = UserRepository(db)
+    user = await repo.get_by_id(uuid.UUID(user_id))
+    if not user or user.role not in ("channel_admin", "platform_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Channel admin access required"
+        )
+    return user
+
+
+# Type aliases for admin dependencies
+PlatformAdminDep = Annotated[UserDB, Depends(require_platform_admin)]
+ChannelAdminDep = Annotated[UserDB, Depends(require_channel_admin)]
