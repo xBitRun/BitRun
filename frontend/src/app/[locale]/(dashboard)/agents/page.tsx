@@ -54,6 +54,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -458,6 +468,18 @@ export default function AgentsPage() {
   const t = useTranslations('agents');
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    agent: AgentResponse | null;
+    hasOpenPositions: boolean;
+    openPositionCount: number;
+  }>({
+    show: false,
+    agent: null,
+    hasOpenPositions: false,
+    openPositionCount: 0,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { agents, error, isLoading, refresh } = useAgents();
   const toast = useToast();
@@ -477,17 +499,65 @@ export default function AgentsPage() {
     }
   };
 
-  // Delete handler
+  // Delete handler - checks for open positions first
   const handleDelete = async (id: string) => {
     try {
       const { agentsApi } = await import('@/lib/api');
-      await agentsApi.delete(id);
-      refresh();
-      toast.success(t('toast.deleteSuccess'));
+      // Get positions to check for open positions
+      const positions = await agentsApi.getPositions(id);
+      const openPositions = positions.filter(
+        (p) => p.status === 'open' || p.status === 'pending'
+      );
+
+      if (openPositions.length > 0) {
+        // Has open positions, show confirmation dialog
+        setDeleteConfirm({
+          show: true,
+          agent: agents.find((a) => a.id === id) ?? null,
+          hasOpenPositions: true,
+          openPositionCount: openPositions.length,
+        });
+      } else {
+        // No open positions, delete directly
+        await agentsApi.delete(id, false);
+        refresh();
+        toast.success(t('toast.deleteSuccess'));
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t('toast.deleteFailed');
       toast.error(t('toast.deleteFailed'), message);
+    }
+  };
+
+  // Confirm delete handler
+  const confirmDelete = async () => {
+    if (!deleteConfirm.agent) return;
+
+    setIsDeleting(true);
+    try {
+      const { agentsApi } = await import('@/lib/api');
+      const result = await agentsApi.delete(
+        deleteConfirm.agent.id,
+        deleteConfirm.hasOpenPositions
+      );
+      const description = deleteConfirm.hasOpenPositions
+        ? t('toast.positionsClosed', { count: result.positions_closed })
+        : undefined;
+      toast.success(t('toast.deleteSuccess'), description);
+      setDeleteConfirm({
+        show: false,
+        agent: null,
+        hasOpenPositions: false,
+        openPositionCount: 0,
+      });
+      refresh();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t('toast.deleteFailed');
+      toast.error(t('toast.deleteFailed'), message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -605,6 +675,47 @@ export default function AgentsPage() {
           )}
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirm.show}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirm({ ...deleteConfirm, show: false });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirm.hasOpenPositions ? (
+                <span className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+                  {t('deleteConfirm.hasOpenPositionsWarning', {
+                    count: deleteConfirm.openPositionCount,
+                  })}
+                </span>
+              ) : (
+                t('deleteConfirm.description')
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t('deleteConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t('deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

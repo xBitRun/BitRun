@@ -42,6 +42,7 @@ export type {
   AgentPositionResponse,
   AgentAccountStateResponse,
   BoundAccountInfo,
+  DeleteAgentResponse,
   // Accounts
   CreateAccountRequest,
   AccountResponse,

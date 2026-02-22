@@ -15,6 +15,7 @@ import type {
   BoundAccountInfo,
   CreateAgentRequest,
   UpdateAgentRequest,
+  DeleteAgentResponse,
 } from "@/lib/api";
 import type { AgentStatus, StrategyType } from "@/types";
 
@@ -95,11 +96,15 @@ export function useUpdateAgent(id: string) {
 
 /**
  * Delete agent mutation
+ * @param forceClosePositions - If true, automatically close all positions before deletion
  */
 export function useDeleteAgent(id: string) {
-  return useSWRMutation<void, Error, string>(agentKey(id), async () => {
-    return agentsApi.delete(id);
-  });
+  return useSWRMutation<DeleteAgentResponse, Error, string, boolean | undefined>(
+    agentKey(id),
+    async (_, { arg: forceClosePositions }) => {
+      return agentsApi.delete(id, forceClosePositions);
+    },
+  );
 }
 
 /**

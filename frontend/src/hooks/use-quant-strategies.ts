@@ -25,6 +25,7 @@ import { agentsApi } from '@/lib/api';
 import type {
   AgentResponse,
   UpdateAgentRequest,
+  DeleteAgentResponse,
 } from '@/lib/api';
 import type { AgentStatus, StrategyType } from '@/types';
 
@@ -97,7 +98,7 @@ export function useUpdateQuantStrategy(id: string) {
  * @deprecated Use useDeleteAgent instead.
  */
 export function useDeleteQuantStrategy(id: string) {
-  return useSWRMutation<void, Error, string>(
+  return useSWRMutation<DeleteAgentResponse, Error, string>(
     quantStrategyKey(id),
     async () => {
       return agentsApi.delete(id);

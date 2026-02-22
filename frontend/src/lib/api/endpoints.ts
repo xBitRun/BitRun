@@ -457,6 +457,13 @@ export interface BoundAccountInfo {
   allocation_mode?: "percent" | "fixed" | null;
 }
 
+export interface DeleteAgentResponse {
+  id: string;
+  deleted: boolean;
+  positions_closed: number;
+  close_errors: string[];
+}
+
 export const agentsApi = {
   list: (params?: {
     status_filter?: AgentStatus;
@@ -479,7 +486,14 @@ export const agentsApi = {
   update: (id: string, data: UpdateAgentRequest) =>
     api.patch<AgentResponse>(`/agents/${id}`, data),
 
-  delete: (id: string) => api.delete<void>(`/agents/${id}`),
+  delete: (id: string, forceClosePositions?: boolean) => {
+    const params = new URLSearchParams();
+    if (forceClosePositions) {
+      params.set("force_close_positions", "true");
+    }
+    const query = params.toString();
+    return api.delete<DeleteAgentResponse>(`/agents/${id}${query ? `?${query}` : ""}`);
+  },
 
   updateStatus: (id: string, status: AgentStatus, close_positions?: boolean) =>
     api.post<AgentResponse>(`/agents/${id}/status`, {

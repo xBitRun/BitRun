@@ -286,7 +286,15 @@
       "updateSuccess": "Agent updated successfully",
       "deleteSuccess": "Agent deleted",
       "deleteFailed": "Failed to delete agent",
-      "createFailed": "Failed to create agent"
+      "createFailed": "Failed to create agent",
+      "positionsClosed": "{count} positions closed automatically"
+    },
+    "deleteConfirm": {
+      "title": "Confirm Delete",
+      "description": "Are you sure you want to delete this agent? This action cannot be undone.",
+      "hasOpenPositionsWarning": "This agent has {count} open positions that will be closed automatically.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     },
     "error": {
       "loadFailed": "Failed to load agents"
@@ -1729,6 +1737,8 @@
       "deleteAgent": "Delete Agent",
       "deleteConfirm": "Are you sure you want to delete this agent? This action cannot be undone.",
       "deleteRequireStopped": "Running agent must be stopped before it can be deleted",
+      "hasOpenPositionsWarning": "This agent has {count} open position(s)",
+      "positionsWillBeClosed": "Deleting this agent will also close all positions. This action cannot be undone.",
       "cancel": "Cancel",
       "confirmDelete": "Yes, Delete Agent"
     }

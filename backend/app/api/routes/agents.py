@@ -35,6 +35,76 @@ router = APIRouter(prefix="/agents", tags=["Agents"])
 logger = logging.getLogger(__name__)
 
 
+# ==================== Helper Functions ====================
+
+async def _fetch_public_prices(
+    symbols: list[str],
+    exchange_id: str = "hyperliquid",
+) -> dict[str, float]:
+    """Fetch current prices from public API (no auth required).
+
+    Uses CCXT's public ticker endpoint without credentials to get
+    real-time prices for calculating unrealized PnL in mock mode.
+
+    Args:
+        symbols: List of symbols to fetch prices for (e.g. ["BTC", "ETH"])
+        exchange_id: CCXT exchange identifier (default: hyperliquid)
+
+    Returns:
+        Dict mapping symbol to current price. Symbols not found are omitted.
+    """
+    import ccxt.async_support as ccxt
+    from ...core.config import get_ccxt_proxy_config
+
+    prices: dict[str, float] = {}
+    exchange = None
+
+    try:
+        exchange_class = getattr(ccxt, exchange_id, None)
+        if exchange_class is None:
+            exchange_class = ccxt.hyperliquid
+
+        exchange = exchange_class({
+            "enableRateLimit": True,
+            "options": {"defaultType": "swap"},  # perpetual futures
+            **get_ccxt_proxy_config(),
+        })
+
+        # Convert symbols to CCXT format (e.g., "BTC" -> "BTC/USDC:USDC")
+        for symbol in symbols:
+            try:
+                # Determine market type and format symbol
+                if "/" in symbol:
+                    ccxt_symbol = symbol
+                else:
+                    # Assume it's a coin symbol like "BTC", convert to perpetual format
+                    from ...traders.base import detect_market_type, MarketType
+                    mtype = detect_market_type(symbol)
+                    if mtype == MarketType.SPOT:
+                        ccxt_symbol = f"{symbol}/USDC"
+                    else:
+                        # Perpetual: BTC -> BTC/USDC:USDC
+                        ccxt_symbol = f"{symbol}/USDC:USDC"
+
+                ticker = await exchange.fetch_ticker(ccxt_symbol)
+                if ticker and ticker.get("last"):
+                    prices[symbol] = float(ticker["last"])
+            except Exception as e:
+                logger.debug(f"Failed to fetch price for {symbol}: {e}")
+                # Continue with other symbols
+
+    except Exception as e:
+        logger.warning(f"Failed to initialize exchange for price fetching: {e}")
+    finally:
+        if exchange:
+            try:
+                await exchange.close()
+            except Exception:
+                pass
+
+    return prices
+
+
 # ==================== Response Models ====================
 
 class AgentResponse(BaseModel):
@@ -549,44 +619,17 @@ async def update_agent_status(
     # Close positions if requested
     if new == "stopped" and data.close_positions:
         try:
-            from ...services.agent_position_service import AgentPositionService
-            ps = AgentPositionService(db=db)
-            open_positions = await ps.get_agent_positions(
-                uuid.UUID(agent_id), "open"
+            closed_count, errors = await _close_agent_positions(
+                agent=agent,
+                db=db,
+                user_id=user_id,
             )
-
-            if open_positions and agent.account_id:
-                account_repo = AccountRepository(db)
-                account = await account_repo.get_by_id(agent.account_id)
-                credentials = await account_repo.get_decrypted_credentials(
-                    agent.account_id, agent.user_id
+            if closed_count > 0:
+                logger.info(f"Closed {closed_count} positions for agent {agent_id}")
+            if errors:
+                logger.warning(
+                    f"Errors while closing positions for agent {agent_id}: {errors}"
                 )
-                if account and credentials:
-                    from ...traders.ccxt_trader import create_trader_from_account
-                    trader = create_trader_from_account(account, credentials)
-                    await trader.initialize()
-                    try:
-                        for pos_record in open_positions:
-                            try:
-                                result = await trader.close_position(
-                                    symbol=pos_record.symbol
-                                )
-                                if result.success:
-                                    await ps.close_position_record(
-                                        position_id=pos_record.id,
-                                        close_price=result.filled_price or 0.0,
-                                    )
-                                    logger.info(
-                                        f"Closed position {pos_record.symbol} "
-                                        f"for agent {agent_id}"
-                                    )
-                            except Exception as close_err:
-                                logger.error(
-                                    f"Error closing position {pos_record.symbol}: {close_err}"
-                                )
-                    finally:
-                        await trader.close()
-                    await db.commit()
         except Exception as e:
             logger.error(f"Error closing positions for agent {agent_id}: {e}")
 
@@ -666,12 +709,44 @@ async def get_agent_positions(
         except Exception as e:
             logger.warning(f"Failed to fetch exchange positions for agent {agent_id}: {e}")
 
+    # For mock mode, fetch prices from public API to calculate unrealized PnL
+    mock_prices: dict[str, float] = {}
+    if agent.execution_mode == "mock" and positions:
+        try:
+            symbols = list({p.symbol for p in positions})
+            mock_prices = await _fetch_public_prices(symbols)
+        except Exception as e:
+            logger.warning(f"Failed to fetch mock prices for agent {agent_id}: {e}")
+
     # Build response, merging exchange data for live mode
     result = []
     for p in positions:
-        # Try to get real-time data from exchange
+        # Try to get real-time data from exchange (live mode)
         key = f"{p.symbol}_{p.side}"
         exchange_data = exchange_positions.get(key, {})
+
+        # Calculate unrealized PnL for mock mode
+        mark_price: Optional[float] = None
+        unrealized_pnl: Optional[float] = None
+        unrealized_pnl_percent: Optional[float] = None
+
+        if agent.execution_mode == "live":
+            # Use exchange data for live mode
+            mark_price = exchange_data.get("mark_price")
+            unrealized_pnl = exchange_data.get("unrealized_pnl")
+            unrealized_pnl_percent = exchange_data.get("unrealized_pnl_percent")
+        elif agent.execution_mode == "mock" and p.symbol in mock_prices:
+            # Calculate from public API prices for mock mode
+            mark_price = mock_prices[p.symbol]
+            # PnL calculation: Long = (mark - entry) * size, Short = (entry - mark) * size
+            if p.side == "long":
+                unrealized_pnl = (mark_price - p.entry_price) * p.size
+            else:
+                unrealized_pnl = (p.entry_price - mark_price) * p.size
+            # Calculate percentage based on position value
+            if p.entry_price > 0 and p.size > 0:
+                position_value = p.entry_price * p.size
+                unrealized_pnl_percent = (unrealized_pnl / position_value) * 100 if position_value else 0
 
         response = AgentPositionResponse(
             id=str(p.id),
@@ -688,10 +763,10 @@ async def get_agent_positions(
             close_price=p.close_price,
             opened_at=p.opened_at.isoformat() if p.opened_at else None,
             closed_at=p.closed_at.isoformat() if p.closed_at else None,
-            # Real-time fields from exchange (only in live mode)
-            mark_price=exchange_data.get("mark_price"),
-            unrealized_pnl=exchange_data.get("unrealized_pnl"),
-            unrealized_pnl_percent=exchange_data.get("unrealized_pnl_percent"),
+            # Real-time fields (from exchange in live mode, calculated in mock mode)
+            mark_price=mark_price,
+            unrealized_pnl=unrealized_pnl,
+            unrealized_pnl_percent=unrealized_pnl_percent,
         )
         result.append(response)
 
@@ -782,8 +857,18 @@ async def get_agent_account_state(
     current_prices: Optional[dict[str, float]] = None
     account_equity: Optional[float] = None
 
-    # Get current prices for unrealized P&L calculation (optional for mock)
-    if agent.account_id and agent.execution_mode != "mock":
+    # Mock mode: fetch prices from public API for unrealized PnL calculation
+    if agent.execution_mode == "mock":
+        try:
+            positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
+            if positions:
+                symbols = list({p.symbol for p in positions})
+                current_prices = await _fetch_public_prices(symbols)
+        except Exception as e:
+            logger.warning(f"Failed to get mock prices for agent {agent_id}: {e}")
+
+    # Live mode fallback: get prices from exchange (with credentials)
+    elif agent.account_id:
         try:
             from ...db.repositories.account import AccountRepository
             from ...traders.ccxt_trader import create_trader_from_account
@@ -1131,13 +1216,33 @@ async def _trigger_quant_cycle(
         return {"success": False, "error": str(e)}
 
 
-@router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
+class DeleteAgentResponse(BaseModel):
+    """Response model for agent deletion"""
+    id: str
+    deleted: bool
+    positions_closed: int = 0
+    close_errors: list[str] = []
+
+
+@router.delete("/{agent_id}", response_model=DeleteAgentResponse)
 async def delete_agent(
     agent_id: str,
     db: DbSessionDep,
     user_id: CurrentUserDep,
+    force_close_positions: bool = False,
 ):
-    """Delete an agent. Must be stopped/draft and have no open positions."""
+    """
+    Delete an agent.
+
+    Agent must be in 'draft' or 'stopped' status.
+
+    If agent has open positions:
+    - force_close_positions=False (default): Returns error, user must close positions first
+    - force_close_positions=True: Automatically closes all positions before deletion
+
+    For live agents with exchange accounts, positions are closed on the exchange.
+    For mock agents, positions are marked as closed in the database only.
+    """
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
 
@@ -1156,11 +1261,32 @@ async def delete_agent(
     from ...services.agent_position_service import AgentPositionService
     ps = AgentPositionService(db=db)
     has_positions = await ps.has_open_positions(uuid.UUID(agent_id))
+
+    positions_closed = 0
+    close_errors = []
+
     if has_positions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete agent with open positions. Close all positions first."
+        if not force_close_positions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete agent with open positions. "
+                       "Set force_close_positions=true to close them automatically, "
+                       "or close all positions first."
+            )
+
+        # Close all positions automatically
+        positions_closed, close_errors = await _close_agent_positions(
+            agent=agent,
+            db=db,
+            user_id=user_id,
         )
+
+        # If there were critical errors and nothing closed, abort deletion
+        if positions_closed == 0 and close_errors:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to close positions: {'; '.join(close_errors)}"
+            )
 
     deleted = await agent_repo.delete(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not deleted:
@@ -1169,8 +1295,108 @@ async def delete_agent(
             detail="Agent not found"
         )
 
+    return DeleteAgentResponse(
+        id=agent_id,
+        deleted=True,
+        positions_closed=positions_closed,
+        close_errors=close_errors,
+    )
+
 
 # ==================== Helper Functions ====================
+
+async def _close_agent_positions(
+    agent,
+    db: DbSessionDep,
+    user_id: str,
+) -> tuple[int, list[str]]:
+    """
+    Close all open positions for an agent.
+
+    Args:
+        agent: AgentDB instance
+        db: Database session
+        user_id: User ID for credential verification
+
+    Returns:
+        Tuple of (closed_count, errors_list)
+    """
+    from ...services.agent_position_service import AgentPositionService
+
+    ps = AgentPositionService(db=db)
+    open_positions = await ps.get_agent_positions(agent.id, "open")
+
+    if not open_positions:
+        return 0, []
+
+    closed_count = 0
+    errors = []
+
+    # For live mode with exchange account, close on exchange
+    if agent.account_id and agent.execution_mode == "live":
+        account_repo = AccountRepository(db)
+        account = await account_repo.get_by_id(agent.account_id)
+        credentials = await account_repo.get_decrypted_credentials(
+            agent.account_id, uuid.UUID(user_id)
+        )
+
+        if account and credentials:
+            from ...traders.ccxt_trader import create_trader_from_account
+            trader = create_trader_from_account(account, credentials)
+            await trader.initialize()
+            try:
+                for pos_record in open_positions:
+                    try:
+                        result = await trader.close_position(
+                            symbol=pos_record.symbol
+                        )
+                        if result.success:
+                            await ps.close_position_record(
+                                position_id=pos_record.id,
+                                close_price=result.filled_price or 0.0,
+                            )
+                            closed_count += 1
+                            logger.info(
+                                f"Closed position {pos_record.symbol} "
+                                f"for agent {agent.id}"
+                            )
+                        else:
+                            errors.append(
+                                f"Failed to close {pos_record.symbol}: {result.error}"
+                            )
+                    except Exception as close_err:
+                        errors.append(
+                            f"Error closing {pos_record.symbol}: {close_err}"
+                        )
+                        logger.error(
+                            f"Error closing position {pos_record.symbol}: {close_err}"
+                        )
+            finally:
+                await trader.close()
+            await db.commit()
+    else:
+        # Mock mode or no exchange account - just mark positions as closed
+        for pos_record in open_positions:
+            try:
+                await ps.close_position_record(
+                    position_id=pos_record.id,
+                    close_price=0.0,  # No actual close price in mock
+                )
+                closed_count += 1
+                logger.info(
+                    f"Closed mock position {pos_record.symbol} for agent {agent.id}"
+                )
+            except Exception as close_err:
+                errors.append(
+                    f"Error closing {pos_record.symbol}: {close_err}"
+                )
+                logger.error(
+                    f"Error closing mock position {pos_record.symbol}: {close_err}"
+                )
+        await db.commit()
+
+    return closed_count, errors
+
 
 def _agent_to_response(agent) -> AgentResponse:
     """Convert agent DB model to response"""

@@ -1971,6 +1971,13 @@ function SettingsTab({
   const { models } = useUserModels();
   const groupedModels = groupModelsByProvider(models);
 
+  // Get positions to check if agent has open positions
+  const { data: positions, mutate: mutatePositions } = useAgentPositions(agentId);
+  const openPositionCount =
+    positions?.filter((p) => p.status === "open" || p.status === "pending")
+      .length ?? 0;
+  const hasOpenPositions = openPositionCount > 0;
+
   const config = agent.config as Record<string, unknown>;
 
   // Quick settings form (only editable fields)
@@ -2012,7 +2019,18 @@ function SettingsTab({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await agentsApi.delete(agentId);
+      // Fetch fresh positions data before deleting to ensure accuracy
+      const freshPositions = await mutatePositions();
+      const hasOpen = freshPositions?.some(
+        (p) => p.status === "open" || p.status === "pending"
+      ) ?? false;
+
+      // Delete with force_close_positions based on actual position state
+      const result = await agentsApi.delete(agentId, hasOpen);
+      // If positions were closed, show a message
+      if (result.positions_closed > 0) {
+        console.log(`Closed ${result.positions_closed} positions`);
+      }
       window.location.href = "/agents";
     } catch (err) {
       const message =
@@ -2197,14 +2215,36 @@ function SettingsTab({
             <Button
               variant="outline"
               className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={async () => {
+                // Refresh positions data before showing confirm dialog
+                await mutatePositions();
+                setShowDeleteConfirm(true);
+              }}
             >
               <Trash2 className="w-4 h-4 mr-2" />
               {t("settings.deleteAgent")}
             </Button>
           ) : (
             <div className="p-4 rounded-lg bg-[var(--loss)]/10 border border-[var(--loss)]/30 space-y-4">
-              <p className="text-sm">{t("settings.deleteConfirm")}</p>
+              {/* Show different message based on whether agent has open positions */}
+              {hasOpenPositions ? (
+                <>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-500">
+                        {t("settings.hasOpenPositionsWarning", { count: openPositionCount })}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {t("settings.positionsWillBeClosed")}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm">{t("settings.deleteConfirm")}</p>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
