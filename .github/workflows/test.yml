@@ -57,16 +57,7 @@ jobs:
           if [ -f coverage.xml ]; then
             echo "## 📊 Backend Coverage Report" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            python -c "
-import xml.etree.ElementTree as ET
-root = ET.parse('coverage.xml').getroot()
-line_rate = float(root.attrib.get('line-rate', 0)) * 100
-branch_rate = float(root.attrib.get('branch-rate', 0)) * 100
-print(f'| Metric | Coverage |')
-print(f'|--------|----------|')
-print(f'| Lines | {line_rate:.1f}% |')
-print(f'| Branches | {branch_rate:.1f}% |')
-" >> $GITHUB_STEP_SUMMARY
+            python -c "import xml.etree.ElementTree as ET; r=ET.parse('coverage.xml').getroot(); lr=float(r.attrib.get('line-rate',0))*100; br=float(r.attrib.get('branch-rate',0))*100; print('| Metric | Coverage |'); print('|--------|----------|'); print(f'| Lines | {lr:.1f}% |'); print(f'| Branches | {br:.1f}% |')" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload test report
@@ -128,17 +119,7 @@ print(f'| Branches | {branch_rate:.1f}% |')
           if [ -f coverage/coverage-summary.json ]; then
             echo "## 📊 Frontend Coverage Report" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            node -e "
-const fs = require('fs');
-const cov = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
-const total = cov.total;
-console.log('| Metric | Coverage |');
-console.log('|--------|----------|');
-console.log('| Lines | ' + total.lines.pct + '% |');
-console.log('| Statements | ' + total.statements.pct + '% |');
-console.log('| Branches | ' + total.branches.pct + '% |');
-console.log('| Functions | ' + total.functions.pct + '% |');
-" >> $GITHUB_STEP_SUMMARY
+            node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('coverage/coverage-summary.json','utf8')).total;console.log('| Metric | Coverage |');console.log('|--------|----------|');console.log('| Lines | '+c.lines.pct+'% |');console.log('| Statements | '+c.statements.pct+'% |');console.log('| Branches | '+c.branches.pct+'% |');console.log('| Functions | '+c.functions.pct+'% |')" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload test report
