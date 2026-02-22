@@ -10,7 +10,6 @@ import useSWRMutation from "swr/mutation";
 import { backtestApi } from "@/lib/api";
 import type {
   BacktestRequest,
-  BacktestExchange,
   QuickBacktestRequest,
   BacktestResponse,
   BacktestListResponse,

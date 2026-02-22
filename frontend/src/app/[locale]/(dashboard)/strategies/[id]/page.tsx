@@ -18,15 +18,11 @@ import {
   Pencil,
   Copy,
   Share2,
-  Calendar,
   Settings,
   FileText,
-  Clock,
   Users,
   Globe,
   Lock,
-  DollarSign,
-  Tag,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -46,13 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useStrategy, useDeleteStrategy, useStrategyVersions, useDuplicateStrategy } from "@/hooks";

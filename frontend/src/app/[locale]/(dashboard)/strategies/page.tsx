@@ -59,7 +59,7 @@ import { useStrategies } from '@/hooks';
 import { useRouter } from '@/i18n/navigation';
 import { useToast } from '@/components/ui/toast';
 import type { StrategyResponse } from '@/lib/api';
-import type { StrategyType } from '@/types';
+
 
 function getTypeIcon(type: string): LucideIcon {
   switch (type) {

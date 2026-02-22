@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
-  Loader2,
   RefreshCw,
   Bot,
   AlertTriangle,
@@ -713,19 +712,9 @@ export default function DashboardPage() {
             <CardTitle className="text-lg font-semibold">
               {tPositions("title")}
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => refreshStats()}
-                className="h-8 w-8"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-              <Badge variant="outline" className="text-muted-foreground">
-                {positions?.length ?? 0} {tPositions("active")}
-              </Badge>
-            </div>
+            <Badge variant="outline" className="text-muted-foreground">
+              {positions?.length ?? 0} {tPositions("active")}
+            </Badge>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
             <PositionsGroupedByAgent

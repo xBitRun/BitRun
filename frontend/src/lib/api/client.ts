@@ -137,6 +137,12 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  if (process.env.NODE_ENV === "test") return;
+  window.location.href = "/login";
+}
+
 /**
  * Main fetch wrapper with auth and error handling
  */
@@ -215,17 +221,13 @@ async function fetchApi<T>(
 
       // Refresh failed, clear tokens and redirect to login
       TokenManager.clearTokens();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      redirectToLogin();
       throw new AuthError(message);
     }
 
     if (response.status === 401) {
       TokenManager.clearTokens();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      redirectToLogin();
       throw new AuthError(message);
     }
 

@@ -18,7 +18,6 @@ import {
   Trash2,
   AlertCircle,
   Trophy,
-  ArrowUpDown,
 } from "lucide-react";
 import {
   Card,
@@ -27,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -42,7 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useBacktest, useDeleteBacktest } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import type { BacktestDetailResponse, TradeRecord } from "@/lib/api";
+import type { BacktestDetailResponse } from "@/lib/api";
 import {
   AreaChart,
   Area,
@@ -108,6 +107,16 @@ function formatPrice(v: number): string {
   if (Math.abs(v) >= 1) return `$${v.toFixed(2)}`;
   return `$${v.toFixed(4)}`;
 }
+
+const WEEKDAY_KEYS = [
+  "sun",
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+] as const;
 
 // ===================== Tab: Overview =====================
 
@@ -728,16 +737,6 @@ function TradeAnalysisTab({ data }: { data: BacktestDetailResponse }) {
 function TimeAnalysisTab({ data }: { data: BacktestDetailResponse }) {
   const t = useTranslations("backtest");
 
-  const weekdayKeys = [
-    "sun",
-    "mon",
-    "tue",
-    "wed",
-    "thu",
-    "fri",
-    "sat",
-  ] as const;
-
   const monthlyData = useMemo(() => {
     const raw = data.monthly_returns || [];
 
@@ -774,22 +773,25 @@ function TimeAnalysisTab({ data }: { data: BacktestDetailResponse }) {
 
   // Cumulative returns
   const cumulativeData = useMemo(() => {
-    let cum = 0;
-    return monthlyData.map((m) => {
-      cum += m.return_percent;
-      return { month: m.month, cumulative: parseFloat(cum.toFixed(2)) };
-    });
+    return monthlyData.reduce<Array<{ month: string; cumulative: number }>>(
+      (acc, m) => {
+        const prev = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
+        const cumulative = parseFloat((prev + m.return_percent).toFixed(2));
+        return [...acc, { month: m.month, cumulative }];
+      },
+      []
+    );
   }, [monthlyData]);
 
   // P&L by day of week (computed from trades)
   const pnlByWeekday = useMemo(() => {
-    const buckets = weekdayKeys.map(() => 0);
+    const buckets = WEEKDAY_KEYS.map(() => 0);
     for (const trade of data.trades) {
       if (!trade.opened_at) continue;
       const day = new Date(trade.opened_at).getDay(); // 0=Sun..6=Sat
       buckets[day] += trade.pnl;
     }
-    return weekdayKeys.map((key, i) => ({
+    return WEEKDAY_KEYS.map((key, i) => ({
       name: t(`timeAnalysis.${key}`),
       pnl: parseFloat(buckets[i].toFixed(2)),
       isPositive: buckets[i] >= 0,

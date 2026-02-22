@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -17,7 +17,6 @@ import {
   Square,
   Settings,
   TrendingUp,
-  TrendingDown,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
@@ -33,8 +32,6 @@ import {
   Code,
   Copy,
   Check,
-  Wallet,
-  CircleDot,
 } from "lucide-react";
 import {
   Card,
@@ -1125,7 +1122,7 @@ function DecisionsTab({
   } = useAgentDecisions(agentId, page, DECISIONS_PAGE_SIZE, filters);
   const { data: stats } = useAgentDecisionStats(agentId);
 
-  const decisions = pageData?.items ?? [];
+  const decisions = useMemo(() => pageData?.items ?? [], [pageData?.items]);
   const totalItems = pageData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / DECISIONS_PAGE_SIZE));
 

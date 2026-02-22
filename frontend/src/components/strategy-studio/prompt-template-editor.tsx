@@ -5,7 +5,6 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  AlertTriangle,
   Code2,
   Layers,
 } from "lucide-react";
@@ -48,17 +47,15 @@ const SECTION_CONFIGS: PromptSectionConfig[] = [
   { key: "decisionProcess", icon: "🧠", rows: 5 },
 ];
 
-export function PromptTemplateEditor({
-  promptMode,
-  onPromptModeChange,
-  value,
-  onChange,
-  customPrompt,
-  onCustomPromptChange,
-  advancedPrompt,
-  onAdvancedPromptChange,
-  tradingMode,
-}: PromptTemplateEditorProps) {
+export function PromptTemplateEditor(props: PromptTemplateEditorProps) {
+  const {
+    promptMode,
+    onPromptModeChange,
+    value,
+    onChange,
+    advancedPrompt,
+    onAdvancedPromptChange,
+  } = props;
   const t = useTranslations("strategyStudio");
   const locale = useLocale();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(

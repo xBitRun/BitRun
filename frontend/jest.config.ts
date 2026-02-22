@@ -69,8 +69,11 @@ const config: Config = {
   testPathIgnorePatterns: [
     "<rootDir>/node_modules/",
     "<rootDir>/.next/",
+    "<rootDir>/.next/standalone/",
     "<rootDir>/e2e/",
   ],
+
+  modulePathIgnorePatterns: ["<rootDir>/.next/standalone/"],
   
   // Transform ignore patterns
   transformIgnorePatterns: [

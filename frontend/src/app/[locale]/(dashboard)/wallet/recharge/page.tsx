@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRechargeOrders, useCreateRechargeOrder, useWallet } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { formatDistanceToNow, format } from "date-fns";
+import {  format } from "date-fns";
 import { zhCN, enUS } from "date-fns/locale";
 import { useLocale } from "next-intl";
 
@@ -115,7 +115,7 @@ export default function RechargePage() {
     }
 
     try {
-      const result = await createOrder({
+      await createOrder({
         amount: amountNum,
         bonus_amount: parseFloat(bonusAmount) || 0,
       });
@@ -124,7 +124,7 @@ export default function RechargePage() {
       setAmount("");
       setBonusAmount("0");
       refreshOrders();
-    } catch (err) {
+    } catch {
       error(commonT("failed"));
     }
   };

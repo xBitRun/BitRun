@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import Link from "next/link";
@@ -38,7 +38,6 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import {
-  useAccount,
   useAccounts,
   useUserModels,
   groupModelsByProvider,
@@ -75,7 +74,6 @@ export default function EditAgentPage() {
   const agentId = params.id as string;
 
   const { data: agent, isLoading, error } = useAgent(agentId);
-  const { data: account } = useAccount(agent?.account_id ?? null);
   const { data: strategy } = useStrategy(agent?.strategy_id ?? null);
   const { accounts } = useAccounts();
   const { models } = useUserModels();
@@ -121,8 +119,6 @@ export default function EditAgentPage() {
     setSubmitError(null);
 
     try {
-      const { agentsApi } = await import("@/lib/api");
-
       if (!name.trim()) {
         throw new Error(t("create.nameRequired"));
       }

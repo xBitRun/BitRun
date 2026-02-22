@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+
 import { useTranslations } from "next-intl";
 import {
   Building2,
@@ -21,7 +21,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -70,7 +70,6 @@ function getStatusBadge(status: string) {
 
 export default function ChannelPage() {
   const t = useTranslations("channel");
-  const commonT = useTranslations("common");
   const locale = useLocale();
   const dateLocale = locale === "zh" ? zhCN : enUS;
 
@@ -78,23 +77,17 @@ export default function ChannelPage() {
   const {
     channel,
     isLoading: channelLoading,
-    refresh: refreshChannel,
   } = useMyChannel();
   const {
     users,
     isLoading: usersLoading,
-    refresh: refreshUsers,
   } = useMyChannelUsers({ limit: 50 });
   const {
     wallet,
     isLoading: walletLoading,
-    refresh: refreshWallet,
   } = useMyChannelWallet();
-  const { statistics, isLoading: statsLoading } = useMyChannelStatistics();
+  const { statistics } = useMyChannelStatistics();
   const { overview, isLoading: accountingLoading } = useMyChannelAccounting();
-
-  // Loading states
-  const isLoading = channelLoading || usersLoading || walletLoading;
 
   // No channel access
   if (!channelLoading && !channel) {

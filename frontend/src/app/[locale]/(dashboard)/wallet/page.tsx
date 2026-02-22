@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Wallet,
   ArrowUpRight,
-  ArrowDownLeft,
   Copy,
   Check,
   History,
@@ -25,7 +24,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -78,14 +77,12 @@ export default function WalletPage() {
   const {
     wallet,
     isLoading: walletLoading,
-    refresh: refreshWallet,
   } = useWallet();
-  const { inviteInfo, isLoading: inviteLoading } = useInviteInfo();
+  const { inviteInfo } = useInviteInfo();
   const [transactionType, setTransactionType] = useState<string>("all");
   const {
     transactions,
     isLoading: transactionsLoading,
-    refresh: refreshTransactions,
   } = useWalletTransactions({
     types: transactionType === "all" ? undefined : transactionType,
     limit: 20,
@@ -95,8 +92,6 @@ export default function WalletPage() {
   const [copied, setCopied] = useState(false);
 
   // Loading states
-  const isLoading = walletLoading || inviteLoading;
-
   // Copy invite code
   const handleCopyInviteCode = async () => {
     if (inviteInfo?.invite_code) {

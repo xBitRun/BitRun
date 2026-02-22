@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PromptTemplateEditor } from "@/components/strategy-studio/prompt-template-editor";
-import { PromptSections, DEFAULT_PROMPT_SECTIONS } from "@/types";
+import { PromptSections } from "@/types";
 
 // Mock next-intl
 jest.mock("next-intl", () => ({

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter, Link } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import {
   ArrowLeft,
   Grid3X3,
@@ -83,7 +83,6 @@ const STRATEGY_TYPES: {
 
 export default function CreateStrategyPage() {
   const t = useTranslations('quantStrategies');
-  const tStudio = useTranslations('agents');
   const locale = useLocale();
   const router = useRouter();
   const toast = useToast();

@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { RiskControlsPanel } from "@/components/strategy-studio/risk-controls-panel";
-import { RiskControlsConfig, TradingMode, RiskProfile, TimeHorizon } from "@/types";
+import { RiskControlsConfig } from "@/types";
 
 // Mock next-intl
 jest.mock("next-intl", () => ({

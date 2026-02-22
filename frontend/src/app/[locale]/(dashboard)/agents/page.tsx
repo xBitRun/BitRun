@@ -16,7 +16,6 @@ import {
   Square,
   Pencil,
   RotateCcw,
-  Zap,
   Eye,
   AlertTriangle,
   AlertCircle,

@@ -22,7 +22,7 @@ const locales: { code: Locale; name: string; flag: string }[] = [
 export function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const handleLocaleChange = (newLocale: Locale) => {
     // Set NEXT_LOCALE cookie so middleware resolves the correct locale

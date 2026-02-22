@@ -56,7 +56,6 @@ import {
   useChannels,
   useCreateChannel,
   useAdminUsers,
-  useSetUserChannel,
 } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { format } from "date-fns";
@@ -117,17 +116,12 @@ export default function AdminChannelsPage() {
   const {
     users,
     isLoading: usersLoading,
-    refresh: refreshUsers,
   } = useAdminUsers({
     search: searchQuery || undefined,
     role: roleFilter === "all" ? undefined : roleFilter,
     limit: 50,
   });
   const { trigger: createChannel, isMutating: isCreating } = useCreateChannel();
-  const { trigger: setUserChannel } = useSetUserChannel();
-
-  // Loading state
-  const isLoading = channelsLoading || usersLoading;
 
   // Calculate platform statistics
   const platformStats = {

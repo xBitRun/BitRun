@@ -10,7 +10,6 @@ interface PnLSummaryCardProps {
   percent?: number;
   subtitle?: string;
   icon?: React.ReactNode;
-  trend?: "up" | "down" | "neutral";
   className?: string;
 }
 
@@ -20,7 +19,6 @@ export function PnLSummaryCard({
   percent,
   subtitle,
   icon,
-  trend,
   className,
 }: PnLSummaryCardProps) {
   return (

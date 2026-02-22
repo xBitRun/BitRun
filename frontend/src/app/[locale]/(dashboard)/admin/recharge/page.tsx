@@ -17,7 +17,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRechargeOrders, useAdminRechargeOrders } from "@/hooks";
+import {  useAdminRechargeOrders } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { format } from "date-fns";
 import { zhCN, enUS } from "date-fns/locale";
@@ -142,7 +141,7 @@ export default function AdminRechargePage() {
       setConfirmDialogOpen(false);
       setSelectedOrder(null);
       refresh();
-    } catch (err) {
+    } catch {
       error(commonT("failed"));
     } finally {
       setIsConfirming(false);

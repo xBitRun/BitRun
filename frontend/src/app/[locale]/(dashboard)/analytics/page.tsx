@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { useToast } from "@/components/ui/toast";
 import {
   useAccounts,
@@ -29,19 +29,8 @@ import {
   EquityCurveTable,
   PnLSummaryCard,
   AgentPerformanceTable,
-  TimeRangeSelector,
-  TradeHistoryTable,
 } from "@/components/analytics";
 import type { TimeRange } from "@/components/analytics";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
@@ -104,13 +93,6 @@ export default function AnalyticsPage() {
       error(t("sync.error"));
     }
   };
-
-  // Calculate total equity across all accounts
-  const totalEquity = useMemo(() => {
-    // This would need to be calculated from account balances
-    // For now, use accountPnL data if available
-    return accountPnL?.current_equity ?? 0;
-  }, [accountPnL]);
 
   return (
     <div className="space-y-6">

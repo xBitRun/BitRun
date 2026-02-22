@@ -33,7 +33,7 @@ jest.mock("@/lib/api/client", () => ({
 const mockedApi = api as jest.Mocked<typeof api>;
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
 });
 
 // ==================== Auth ====================
@@ -572,8 +572,7 @@ describe("dashboardApi", () => {
 
   it("getStats should fallback to local aggregation on error", async () => {
     mockedApi.get.mockRejectedValueOnce(new Error("API error"));
-    mockedApi.get.mockResolvedValueOnce([]); // accountsApi.list
-    mockedApi.get.mockResolvedValueOnce([]); // strategiesApi.list
+    mockedApi.get.mockResolvedValueOnce([]); // agentsApi.list
 
     const result = await dashboardApi.getStats();
 
@@ -589,12 +588,11 @@ describe("dashboardApi", () => {
 
   it("getStats should count active strategies in fallback", async () => {
     mockedApi.get.mockRejectedValueOnce(new Error("API error"));
-    mockedApi.get.mockResolvedValueOnce([]); // accountsApi.list
     mockedApi.get.mockResolvedValueOnce([
       { id: "s1", status: "active" },
       { id: "s2", status: "paused" },
       { id: "s3", status: "active" },
-    ]); // strategiesApi.list
+    ]); // agentsApi.list
 
     const result = await dashboardApi.getStats();
 

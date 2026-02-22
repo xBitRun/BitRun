@@ -85,12 +85,27 @@ global.fetch = jest.fn();
 const originalError = console.error;
 beforeAll(() => {
   console.error = (...args: unknown[]) => {
+    if (
+      args[0] instanceof Error &&
+      args[0].message.includes("Not implemented: navigation (except hash changes)")
+    ) {
+      return;
+    }
+
     // Filter out known React warnings during tests
     if (
       typeof args[0] === "string" &&
       (args[0].includes("Warning: ReactDOM.render") ||
         args[0].includes("Warning: An update to") ||
-        args[0].includes("act(...)"))
+        args[0].includes("act(...)") ||
+        args[0].includes("You called act(async () => ...) without await") ||
+        args[0].includes("cannot be a child of <tr>") ||
+        args[0].includes("cannot contain a nested <div>") ||
+        args[0].includes("cannot be a descendant of <button>") ||
+        args[0].includes("cannot contain a nested <button>") ||
+        args[0].includes("Not implemented: navigation (except hash changes)") ||
+        args[0].includes("Failed to fetch exchange capabilities:") ||
+        args[0].includes("Failed to fetch symbols for"))
     ) {
       return;
     }

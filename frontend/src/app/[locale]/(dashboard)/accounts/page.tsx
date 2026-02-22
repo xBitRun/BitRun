@@ -90,7 +90,6 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
     data: balance,
     isLoading: isLoadingBalance,
     error: balanceError,
-    mutate: refreshBalance,
   } = useAccountBalance(account.is_connected ? account.id : null);
 
   const handleTest = async () => {
@@ -99,12 +98,6 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
       await onTest(account.id);
     } finally {
       setIsTesting(false);
-    }
-  };
-
-  const handleRefreshBalance = async () => {
-    if (account.is_connected) {
-      await refreshBalance();
     }
   };
 
@@ -146,13 +139,6 @@ function AccountCard({ account, onDelete, onTest, t }: AccountCardProps) {
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
                 {t("menu.testConnection")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleRefreshBalance}
-                disabled={!account.is_connected}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                {t("menu.refreshBalance")}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <ExternalLink className="w-4 h-4 mr-2" />

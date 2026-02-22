@@ -135,11 +135,13 @@ export function EquityCurveTable({
                       <TableCell className="text-right font-mono">
                         {formatPnL(point.equity, false)}
                       </TableCell>
-                      <PnLCell
-                        value={point.daily_pnl}
-                        showTrendIcon
-                        size="sm"
-                      />
+                      <TableCell className="text-right">
+                        <PnLCell
+                          value={point.daily_pnl}
+                          showTrendIcon
+                          size="sm"
+                        />
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         <PnLValue
                           value={point.daily_pnl}
@@ -148,7 +150,9 @@ export function EquityCurveTable({
                           size="sm"
                         />
                       </TableCell>
-                      <PnLCell value={point.cumulative_pnl} size="sm" />
+                      <TableCell className="text-right">
+                        <PnLCell value={point.cumulative_pnl} size="sm" />
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         <PnLValue
                           value={point.cumulative_pnl}

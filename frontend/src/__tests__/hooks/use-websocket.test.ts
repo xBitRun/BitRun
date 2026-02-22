@@ -2,7 +2,7 @@
  * Tests for useWebSocket hook
  */
 
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useWebSocket } from "@/hooks/use-websocket";
 
 // Mock dependencies

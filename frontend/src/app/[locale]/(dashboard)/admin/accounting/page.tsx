@@ -15,7 +15,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import { useChannels } from "@/hooks";
 import {
   accountingApi,
@@ -39,14 +39,12 @@ function formatPercent(value: number): string {
 
 export default function AdminAccountingPage() {
   const t = useTranslations("admin.accounting");
-  const commonT = useTranslations("common");
   const { channels, isLoading: channelsLoading } = useChannels();
 
   // Platform overview
   const {
     data: platformOverview,
     isLoading: platformLoading,
-    mutate: refreshPlatform,
   } = useSWR<PlatformAccountingOverview | null>(
     "/accounting/platform/overview",
     async () => {
@@ -56,9 +54,6 @@ export default function AdminAccountingPage() {
       revalidateOnFocus: false,
     },
   );
-
-  // Loading state
-  const isLoading = platformLoading || channelsLoading;
 
   return (
     <div className="space-y-6">

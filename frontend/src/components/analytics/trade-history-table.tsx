@@ -130,7 +130,9 @@ export function TradeHistoryTable({
                 <TableCell className="text-right font-mono">
                   ${formatPrice(trade.size_usd)}
                 </TableCell>
-                <PnLCell value={trade.realized_pnl} weight="semibold" />
+                <TableCell className="text-right">
+                  <PnLCell value={trade.realized_pnl} weight="semibold" />
+                </TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">
                   {formatDuration(trade.duration_minutes)}
                 </TableCell>

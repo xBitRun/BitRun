@@ -133,8 +133,12 @@ export function AgentPerformanceTable({
                   {tStatus(agent.status)}
                 </Badge>
               </TableCell>
-              <PnLCell value={agent.total_pnl} weight="semibold" />
-              <PnLCell value={agent.daily_pnl} showTrendIcon size="sm" />
+              <TableCell className="text-right">
+                <PnLCell value={agent.total_pnl} weight="semibold" />
+              </TableCell>
+              <TableCell className="text-right">
+                <PnLCell value={agent.daily_pnl} showTrendIcon size="sm" />
+              </TableCell>
               <TableCell className="text-right font-mono">
                 {formatPnLPercent(agent.win_rate, false, 1)}
               </TableCell>

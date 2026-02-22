@@ -6,7 +6,6 @@ import {
   formatPnL,
   formatPnLPercent,
   getPnLTrend,
-  type PnLTrend,
 } from "@/lib/pnl-utils";
 
 // ==================== PnLValue 组件 ====================

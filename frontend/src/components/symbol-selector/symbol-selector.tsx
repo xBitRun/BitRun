@@ -5,7 +5,6 @@ import {
   Check,
   ChevronsUpDown,
   X,
-  Search,
   Loader2,
   TrendingUp,
   DollarSign,
@@ -28,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { useSymbolsList } from "@/hooks/use-symbols";
@@ -37,7 +36,6 @@ import {
   POPULAR_CRYPTO_SYMBOLS,
   FOREX_SYMBOLS,
   METALS_SYMBOLS,
-  extractBaseSymbol,
   detectMarketType,
 } from "./constants";
 import type {
@@ -70,7 +68,6 @@ export function SymbolSelector({
   size = "md",
   className,
   allowCustomInput = true,
-  showPopularSymbols = false,
 }: SymbolSelectorProps) {
   const t = useTranslations("symbolSelector");
   const [open, setOpen] = useState(false);
@@ -270,15 +267,24 @@ export function SymbolSelector({
                 >
                   {symbol}
                   {mode === "multiple" && (
-                    <button
+                    <span
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemove(symbol);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemove(symbol);
+                        }
+                      }}
                       className="ml-0.5 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </span>
                   )}
                 </Badge>
               ))}

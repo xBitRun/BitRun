@@ -26,7 +26,6 @@ import { useBrand } from "@/lib/brand-context";
 
 export default function InvitePage() {
   const t = useTranslations("wallet");
-  const commonT = useTranslations("common");
   const { success } = useToast();
   const { shortName } = useBrand();
 

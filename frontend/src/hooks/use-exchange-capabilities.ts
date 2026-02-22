@@ -8,7 +8,6 @@ import useSWR from "swr";
 import { dataApi } from "@/lib/api";
 import type {
   AssetType,
-  ExchangeCapabilities,
   SettlementCurrency,
 } from "@/types";
 
@@ -54,7 +53,7 @@ export function useExchangeCapability(
 ) {
   const { exchanges, isLoading, error } = useExchangeCapabilities();
 
-  const exchange = exchangeId
+  const exchange = enabled && exchangeId
     ? exchanges.find((e) => e.id === exchangeId.toLowerCase())
     : undefined;
 
