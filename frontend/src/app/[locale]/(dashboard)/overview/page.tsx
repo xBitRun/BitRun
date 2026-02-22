@@ -130,7 +130,10 @@ function ActivityFeedSkeleton() {
   return (
     <div className="space-y-3">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+        <div
+          key={i}
+          className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
+        >
           <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
@@ -181,7 +184,10 @@ function AccountsOverviewSection({
     const onlineAccounts = accounts.filter((a) => a.status === "online");
     return {
       totalEquity: onlineAccounts.reduce((sum, a) => sum + a.totalEquity, 0),
-      totalAvailable: onlineAccounts.reduce((sum, a) => sum + a.availableBalance, 0),
+      totalAvailable: onlineAccounts.reduce(
+        (sum, a) => sum + a.availableBalance,
+        0,
+      ),
       dailyPnl: onlineAccounts.reduce((sum, a) => sum + a.dailyPnl, 0),
     };
   }, [accounts]);
@@ -247,19 +253,27 @@ function AccountsOverviewSection({
           <span className="text-muted-foreground">{t("total")}:</span>
           <div className="flex items-center gap-4 flex-wrap">
             <span>
-              <span className="text-muted-foreground">{t("totalEquity")}: </span>
-              <span className="font-semibold">{formatCurrency(totals.totalEquity)}</span>
+              <span className="text-muted-foreground">
+                {t("totalEquity")}:{" "}
+              </span>
+              <span className="font-semibold">
+                {formatCurrency(totals.totalEquity)}
+              </span>
             </span>
             <span>
               <span className="text-muted-foreground">{t("available")}: </span>
-              <span className="font-semibold">{formatCurrency(totals.totalAvailable)}</span>
+              <span className="font-semibold">
+                {formatCurrency(totals.totalAvailable)}
+              </span>
             </span>
             <span>
               <span className="text-muted-foreground">{t("todayPL")}: </span>
               <span
                 className={cn(
                   "font-semibold",
-                  totals.dailyPnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
+                  totals.dailyPnl >= 0
+                    ? "text-[var(--profit)]"
+                    : "text-[var(--loss)]",
                 )}
               >
                 {formatCurrency(totals.dailyPnl, true)}
@@ -287,7 +301,7 @@ function AccountCard({
         "flex-shrink-0 w-52 p-4 rounded-lg border transition-colors",
         isOnline
           ? "bg-muted/30 border-border/30 hover:bg-muted/50"
-          : "bg-muted/20 border-border/20 opacity-60"
+          : "bg-muted/20 border-border/20 opacity-60",
       )}
     >
       {/* Header: Status + Name */}
@@ -295,19 +309,25 @@ function AccountCard({
         <div
           className={cn(
             "w-2 h-2 rounded-full",
-            isOnline ? "bg-green-500" : "bg-red-500"
+            isOnline ? "bg-green-500" : "bg-red-500",
           )}
         />
-        <span className="font-medium text-sm truncate">{account.accountName}</span>
+        <span className="font-medium text-sm truncate">
+          {account.accountName}
+        </span>
       </div>
 
       {/* Exchange */}
-      <div className="text-xs text-muted-foreground mb-2">{account.exchange}</div>
+      <div className="text-xs text-muted-foreground mb-2">
+        {account.exchange}
+      </div>
 
       {isOnline ? (
         <>
           {/* Total Equity */}
-          <div className="text-lg font-bold">{formatCurrency(account.totalEquity)}</div>
+          <div className="text-lg font-bold">
+            {formatCurrency(account.totalEquity)}
+          </div>
 
           {/* Available */}
           <div className="text-sm text-muted-foreground">
@@ -318,7 +338,9 @@ function AccountCard({
           <div
             className={cn(
               "text-sm font-medium mt-1",
-              account.dailyPnl >= 0 ? "text-[var(--profit)]" : "text-[var(--loss)]"
+              account.dailyPnl >= 0
+                ? "text-[var(--profit)]"
+                : "text-[var(--loss)]",
             )}
           >
             {t("todayPL")}: {formatCurrency(account.dailyPnl, true)}
@@ -359,7 +381,10 @@ function OperationalCardsSection({
       trend: stats.dailyPnl >= 0 ? "up" : "down",
       subItems: [
         { label: t("weeklyPL"), value: formatCurrency(stats.weeklyPnl, true) },
-        { label: t("monthlyPL"), value: formatCurrency(stats.monthlyPnl, true) },
+        {
+          label: t("monthlyPL"),
+          value: formatCurrency(stats.monthlyPnl, true),
+        },
       ],
     },
     {
@@ -412,7 +437,7 @@ function OperationalCardsSection({
                       ? "text-[var(--profit)]"
                       : card.trend === "down"
                         ? "text-[var(--loss)]"
-                        : "text-primary"
+                        : "text-primary",
                   )}
                 />
               </div>
@@ -423,7 +448,7 @@ function OperationalCardsSection({
                     "text-xs",
                     card.trend === "up"
                       ? "text-[var(--profit)] border-[var(--profit)]/30"
-                      : "text-[var(--loss)] border-[var(--loss)]/30"
+                      : "text-[var(--loss)] border-[var(--loss)]/30",
                   )}
                 >
                   {card.trend === "up" ? (
@@ -435,20 +460,21 @@ function OperationalCardsSection({
                     card.trend === "up"
                       ? stats.dailyPnlPercent
                       : stats.dailyPnlPercent,
-                    true
+                    true,
                   )}
                 </Badge>
               )}
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold">{card.mainValue}</p>
-              <p className="text-sm text-muted-foreground">
-                {card.mainLabel}
-              </p>
+              <p className="text-sm text-muted-foreground">{card.mainLabel}</p>
             </div>
             <div className="mt-3 pt-3 border-t border-border/30 space-y-1">
               {card.subItems.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between text-sm"
+                >
                   <span className="text-muted-foreground">{item.label}</span>
                   <span className="font-mono">{item.value}</span>
                 </div>
@@ -461,61 +487,66 @@ function OperationalCardsSection({
   );
 }
 
-// ==================== Positions Grouped by Account ====================
+// ==================== Positions Grouped by Agent ====================
 
-function PositionsGroupedByAccount({
+interface AgentGroup {
+  agentId: string;
+  agentName: string;
+  executionMode: "mock" | "live" | "unknown";
+  positions: Position[];
+}
+
+function PositionsGroupedByAgent({
   positions,
-  accounts,
   isLoading,
   tPositions,
 }: {
   positions: Position[];
-  accounts: AccountSummary[];
   isLoading: boolean;
   tPositions: ReturnType<typeof useTranslations<"dashboard.positions">>;
 }) {
-  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
 
-  // Group positions by account
-  const positionsByAccount = useMemo(() => {
-    const grouped = new Map<string, { account: AccountSummary | undefined; positions: Position[] }>();
+  // Group positions by Agent
+  const positionsByAgent = useMemo(() => {
+    const grouped = new Map<string, AgentGroup>();
 
-    // First, add all accounts (even those without positions)
-    for (const account of accounts) {
-      grouped.set(account.accountId, { account, positions: [] });
-    }
-
-    // Then, add positions to their accounts
     for (const position of positions) {
-      const existing = grouped.get(position.accountId);
+      // Use agentId if available, otherwise fall back to accountId
+      const groupId = position.agentId || position.accountId || "unknown";
+      const groupName = position.agentName || position.accountName || "Unknown";
+      const executionMode =
+        position.executionMode ||
+        (position.exchange === "mock" ? "mock" : "live");
+
+      const existing = grouped.get(groupId);
       if (existing) {
         existing.positions.push(position);
       } else {
-        // Account not in the list (might be a legacy position), create a virtual entry
-        grouped.set(position.accountId, {
-          account: undefined,
+        grouped.set(groupId, {
+          agentId: groupId,
+          agentName: groupName,
+          executionMode: executionMode as "mock" | "live" | "unknown",
           positions: [position],
         });
       }
     }
 
-    // Convert to array and sort: online accounts with positions first
-    return Array.from(grouped.entries())
-      .filter(([, data]) => data.positions.length > 0)
-      .sort((a, b) => {
-        const aOffline = a[1].account?.status === "offline" ? 1 : 0;
-        const bOffline = b[1].account?.status === "offline" ? 1 : 0;
-        return aOffline - bOffline;
-      });
-  }, [positions, accounts]);
+    // Convert to array and sort: live agents first, then mock
+    return Array.from(grouped.values()).sort((a, b) => {
+      if (a.executionMode === "live" && b.executionMode !== "live") return -1;
+      if (a.executionMode !== "live" && b.executionMode === "live") return 1;
+      return a.agentName.localeCompare(b.agentName);
+    });
+  }, [positions]);
 
-  const toggleAccount = (accountId: string) => {
-    setExpandedAccounts((prev) => {
+  const toggleAgent = (agentId: string) => {
+    setExpandedAgents((prev) => {
       const next = new Set(prev);
-      if (next.has(accountId)) {
-        next.delete(accountId);
+      if (next.has(agentId)) {
+        next.delete(agentId);
       } else {
-        next.add(accountId);
+        next.add(agentId);
       }
       return next;
     });
@@ -525,7 +556,7 @@ function PositionsGroupedByAccount({
     return <PositionsSkeleton />;
   }
 
-  if (positionsByAccount.length === 0) {
+  if (positionsByAgent.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p>{tPositions("empty")}</p>
@@ -535,44 +566,42 @@ function PositionsGroupedByAccount({
 
   return (
     <div className="space-y-4">
-      {positionsByAccount.map(([accountId, data]) => {
-        const isExpanded = expandedAccounts.has(accountId) || expandedAccounts.size === 0;
-        const isOffline = data.account?.status === "offline";
+      {positionsByAgent.map((group) => {
+        const isExpanded =
+          expandedAgents.has(group.agentId) || expandedAgents.size === 0;
+        const isMock = group.executionMode === "mock";
 
         return (
-          <div key={accountId} className="space-y-2">
-            {/* Account Header */}
+          <div key={group.agentId} className="space-y-2">
+            {/* Agent Header */}
             <button
-              onClick={() => toggleAccount(accountId)}
+              onClick={() => toggleAgent(group.agentId)}
               className="w-full flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-center gap-2 flex-wrap">
                 <div
                   className={cn(
                     "w-2 h-2 rounded-full",
-                    isOffline ? "bg-red-500" : "bg-green-500"
+                    isMock ? "bg-orange-500" : "bg-green-500",
                   )}
                 />
-                <span className="font-medium text-sm">
-                  {data.account?.accountName || accountId}
-                </span>
-                {data.account && (
-                  <span className="text-xs text-muted-foreground">
-                    ({data.account.exchange})
-                  </span>
-                )}
-                <Badge variant="outline" className="text-xs">
-                  {tPositions("positionsCount", { count: data.positions.length })}
+                <span className="font-medium text-sm">{group.agentName}</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    isMock
+                      ? "bg-orange-500/10 text-orange-500 border-orange-500/30"
+                      : "bg-green-500/10 text-green-500 border-green-500/30",
+                  )}
+                >
+                  {isMock ? "Mock" : "Live"}
                 </Badge>
-                {isOffline && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs text-red-500 border-red-500/30"
-                  >
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    {tPositions("offlineWarning")}
-                  </Badge>
-                )}
+                <Badge variant="outline" className="text-xs">
+                  {tPositions("positionsCount", {
+                    count: group.positions.length,
+                  })}
+                </Badge>
               </div>
               {isExpanded ? (
                 <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -584,9 +613,9 @@ function PositionsGroupedByAccount({
             {/* Positions List */}
             {isExpanded && (
               <div className="space-y-2 pl-4">
-                {data.positions.map((position, index) => (
+                {group.positions.map((position, index) => (
                   <div
-                    key={`${position.accountId}-${position.symbol}-${index}`}
+                    key={`${position.agentId || position.accountId}-${position.symbol}-${index}`}
                     className="p-4 rounded-lg bg-muted/20 border border-border/30"
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -606,7 +635,7 @@ function PositionsGroupedByAccount({
                           "font-mono font-semibold",
                           position.unrealizedPnl >= 0
                             ? "text-[var(--profit)]"
-                            : "text-[var(--loss)]"
+                            : "text-[var(--loss)]",
                         )}
                       >
                         {formatPercent(position.unrealizedPnlPercent, true)}
@@ -644,7 +673,7 @@ function PositionsGroupedByAccount({
                             "font-mono font-medium",
                             position.unrealizedPnl >= 0
                               ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]"
+                              : "text-[var(--loss)]",
                           )}
                         >
                           {formatCurrency(position.unrealizedPnl, true)}
@@ -751,9 +780,8 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
-            <PositionsGroupedByAccount
+            <PositionsGroupedByAgent
               positions={positions ?? []}
-              accounts={stats?.accounts ?? []}
               isLoading={statsLoading}
               tPositions={tPositions}
             />
@@ -805,7 +833,7 @@ function ActivityFeed({
     <Card
       className={cn(
         "bg-card/50 backdrop-blur-sm border-border/50 flex flex-col",
-        className
+        className,
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-4">
@@ -831,7 +859,9 @@ function ActivityFeed({
               const agentId = (item.data?.agent_id ||
                 item.data?.strategy_id) as string | undefined;
               const isClickable = !!agentId;
-              const executionMode = item.data?.execution_mode as string | undefined;
+              const executionMode = item.data?.execution_mode as
+                | string
+                | undefined;
               const isLive = executionMode === "live";
 
               const content = (
@@ -862,7 +892,7 @@ function ActivityFeed({
                             "text-xs shrink-0",
                             isLive
                               ? "bg-green-500/10 text-green-500 border-green-500/30"
-                              : "bg-orange-500/10 text-orange-500 border-orange-500/30"
+                              : "bg-orange-500/10 text-orange-500 border-orange-500/30",
                           )}
                         >
                           {t(`activity.${isLive ? "live" : "mock"}`)}
@@ -889,7 +919,7 @@ function ActivityFeed({
 
               const sharedClassName = cn(
                 "flex items-start gap-3 p-3 rounded-lg bg-muted/30 transition-colors group hover:bg-muted/50",
-                isClickable && "cursor-pointer"
+                isClickable && "cursor-pointer",
               );
 
               return isClickable ? (

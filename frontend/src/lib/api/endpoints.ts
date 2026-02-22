@@ -245,7 +245,10 @@ export const strategiesApi = {
 
   /** Duplicate a user's own strategy (creates independent copy) */
   duplicate: (id: string, name?: string) =>
-    api.post<StrategyResponse>(`/strategies/${id}/duplicate`, name ? { name } : {}),
+    api.post<StrategyResponse>(
+      `/strategies/${id}/duplicate`,
+      name ? { name } : {},
+    ),
 
   /** Browse public strategies (marketplace) */
   marketplace: (params?: {
@@ -500,7 +503,9 @@ export const agentsApi = {
       params.set("force_close_positions", "true");
     }
     const query = params.toString();
-    return api.delete<DeleteAgentResponse>(`/agents/${id}${query ? `?${query}` : ""}`);
+    return api.delete<DeleteAgentResponse>(
+      `/agents/${id}${query ? `?${query}` : ""}`,
+    );
   },
 
   updateStatus: (id: string, status: AgentStatus, close_positions?: boolean) =>
@@ -1100,7 +1105,13 @@ export interface DashboardStatsResponse {
     liquidation_price?: number | null;
     account_name: string;
     exchange: string;
-    account_id?: string;
+    account_id?: string | null;
+    // Agent fields (for positions from agent_positions table)
+    agent_id?: string | null;
+    agent_name?: string | null;
+    execution_mode?: string | null;
+    position_id?: string | null;
+    opened_at?: string | null;
   }>;
   // Today's decisions
   today_decisions: number;

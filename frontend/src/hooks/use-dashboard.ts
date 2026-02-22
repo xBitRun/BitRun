@@ -85,6 +85,12 @@ export interface Position {
   unrealizedPnl: number;
   unrealizedPnlPercent: number;
   liquidationPrice?: number;
+  // Agent fields (for positions from agent_positions table)
+  agentId?: string;
+  agentName?: string;
+  executionMode?: "mock" | "live";
+  positionId?: string;
+  openedAt?: string;
 }
 
 // ==================== Internal Types ====================
@@ -101,7 +107,7 @@ interface DashboardData {
  * Helper: convert backend position summary to frontend Position type.
  */
 function mapBackendPositions(
-  positions: DashboardStatsResponse["positions"]
+  positions: DashboardStatsResponse["positions"],
 ): Position[] {
   return positions
     .map((p) => ({
@@ -118,6 +124,12 @@ function mapBackendPositions(
       unrealizedPnl: p.unrealized_pnl,
       unrealizedPnlPercent: p.unrealized_pnl_percent,
       liquidationPrice: p.liquidation_price ?? undefined,
+      // Agent fields
+      agentId: p.agent_id ?? undefined,
+      agentName: p.agent_name ?? undefined,
+      executionMode: p.execution_mode as "mock" | "live" | undefined,
+      positionId: p.position_id ?? undefined,
+      openedAt: p.opened_at ?? undefined,
     }))
     .sort((a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl));
 }
@@ -126,7 +138,7 @@ function mapBackendPositions(
  * Helper: convert backend account summary to frontend AccountSummary type.
  */
 function mapBackendAccounts(
-  accounts: DashboardStatsResponse["accounts"]
+  accounts: DashboardStatsResponse["accounts"],
 ): AccountSummary[] {
   return accounts.map((a) => ({
     accountId: a.account_id,
@@ -160,7 +172,7 @@ export function useDashboardStats() {
 
         // Count profitable positions from the response
         const profitablePositions = response.positions.filter(
-          (p) => p.unrealized_pnl > 0
+          (p) => p.unrealized_pnl > 0,
         ).length;
 
         const positions = mapBackendPositions(response.positions);
@@ -171,12 +183,14 @@ export function useDashboardStats() {
           accounts,
           // Equity & PnL
           totalEquity: response.total_equity,
-          totalAvailable: response.total_available ?? response.available_balance,
+          totalAvailable:
+            response.total_available ?? response.available_balance,
           availableBalance: response.available_balance,
           unrealizedPnl: response.unrealized_pnl,
-          unrealizedPnlPercent: response.total_equity > 0
-            ? (response.unrealized_pnl / response.total_equity) * 100
-            : 0,
+          unrealizedPnlPercent:
+            response.total_equity > 0
+              ? (response.unrealized_pnl / response.total_equity) * 100
+              : 0,
           // Daily P/L
           dailyPnl: response.daily_pnl,
           dailyPnlPercent: response.daily_pnl_percent,
@@ -217,7 +231,10 @@ export function useDashboardStats() {
         accountsApi
           .getBalance(acc.id)
           .then((balance) => ({ account: acc, balance }))
-          .catch(() => ({ account: acc, balance: null as AccountBalanceResponse | null }))
+          .catch(() => ({
+            account: acc,
+            balance: null as AccountBalanceResponse | null,
+          })),
       );
       const balanceResults = await Promise.all(balancePromises);
 
@@ -236,7 +253,7 @@ export function useDashboardStats() {
           unrealizedPnl += balance.unrealized_pnl;
           openPositions += balance.positions.length;
           profitablePositions += balance.positions.filter(
-            (p) => p.unrealized_pnl > 0
+            (p) => p.unrealized_pnl > 0,
           ).length;
 
           // Build positions from per-account balances
@@ -262,35 +279,44 @@ export function useDashboardStats() {
 
       // Sort positions by absolute PnL descending
       allPositions.sort(
-        (a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl)
+        (a, b) => Math.abs(b.unrealizedPnl) - Math.abs(a.unrealizedPnl),
       );
 
       // Calculate percentages
       const unrealizedPnlPercent =
-        totalEquity > 0 ? (unrealizedPnl / (totalEquity - unrealizedPnl)) * 100 : 0;
+        totalEquity > 0
+          ? (unrealizedPnl / (totalEquity - unrealizedPnl)) * 100
+          : 0;
 
       // Count agents (execution instances)
       const activeStrategies = agents.filter(
-        (a) => a.status === "active"
+        (a) => a.status === "active",
       ).length;
 
       // Count accounts
       const connectedAccounts = connectedAccts.length;
 
       // Build account summaries from balance results
-      const accountSummaries: AccountSummary[] = balanceResults.map(({ account, balance }) => ({
-        accountId: account.id,
-        accountName: account.name,
-        exchange: account.exchange,
-        status: account.is_connected ? (balance ? "online" : "error") : "offline",
-        totalEquity: balance?.equity ?? 0,
-        availableBalance: balance?.available_balance ?? 0,
-        dailyPnl: balance?.unrealized_pnl ?? 0, // Fallback to unrealized PnL
-        dailyPnlPercent: balance && balance.equity > 0
-          ? (balance.unrealized_pnl / balance.equity) * 100
-          : 0,
-        openPositions: balance?.positions.length ?? 0,
-      }));
+      const accountSummaries: AccountSummary[] = balanceResults.map(
+        ({ account, balance }) => ({
+          accountId: account.id,
+          accountName: account.name,
+          exchange: account.exchange,
+          status: account.is_connected
+            ? balance
+              ? "online"
+              : "error"
+            : "offline",
+          totalEquity: balance?.equity ?? 0,
+          availableBalance: balance?.available_balance ?? 0,
+          dailyPnl: balance?.unrealized_pnl ?? 0, // Fallback to unrealized PnL
+          dailyPnlPercent:
+            balance && balance.equity > 0
+              ? (balance.unrealized_pnl / balance.equity) * 100
+              : 0,
+          openPositions: balance?.positions.length ?? 0,
+        }),
+      );
 
       const stats: DashboardStats = {
         // Account summaries
@@ -330,7 +356,7 @@ export function useDashboardStats() {
       refreshInterval: 30000, // Refresh every 30 seconds
       revalidateOnFocus: true,
       dedupingInterval: 5000,
-    }
+    },
   );
 
   return {
@@ -384,10 +410,11 @@ export function useAccountsWithBalances() {
             return {
               account,
               balance: null,
-              error: err instanceof Error ? err.message : "Failed to fetch balance",
+              error:
+                err instanceof Error ? err.message : "Failed to fetch balance",
             };
           }
-        })
+        }),
       );
 
       return results;
@@ -395,7 +422,7 @@ export function useAccountsWithBalances() {
     {
       refreshInterval: 30000,
       revalidateOnFocus: true,
-    }
+    },
   );
 }
 
@@ -447,7 +474,7 @@ export function usePerformanceStats() {
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
-    }
+    },
   );
 }
 
@@ -464,6 +491,6 @@ export function useActivityFeed(limit: number = 20) {
       refreshInterval: 30000, // Refresh every 30 seconds
       revalidateOnFocus: true,
       dedupingInterval: 5000,
-    }
+    },
   );
 }

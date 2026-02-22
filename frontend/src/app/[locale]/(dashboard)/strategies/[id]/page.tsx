@@ -19,12 +19,14 @@ import {
   Copy,
   Share2,
   Calendar,
-  TrendingUp,
-  BarChart3,
   Settings,
   FileText,
   Clock,
   Users,
+  Globe,
+  Lock,
+  DollarSign,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -52,7 +54,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useStrategy, useDeleteStrategy, useStrategyVersions, useDuplicateStrategy } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -156,6 +157,24 @@ function formatDate(dateString: string, locale: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// Info row component for consistent styling
+function InfoRow({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-center justify-between py-2", className)}>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="text-sm">{children}</div>
+    </div>
+  );
 }
 
 export default function StrategyDetailPage({
@@ -328,37 +347,44 @@ export default function StrategyDetailPage({
         ]}
       />
 
-      {/* Main Layout: Tabs + Sidebar */}
-      <div className="flex flex-col gap-6 lg:flex-row">
-        {/* Main Content Area */}
-        <div className="flex-1 min-w-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="overview">
-                <BarChart3 className="w-4 h-4 mr-1.5" />
-                {t("detail.tabs.overview")}
-              </TabsTrigger>
-              <TabsTrigger value="config">
-                <Settings className="w-4 h-4 mr-1.5" />
-                {t("detail.tabs.config")}
-              </TabsTrigger>
-              <TabsTrigger value="settings">
-                <FileText className="w-4 h-4 mr-1.5" />
-                {t("detail.tabs.settings")}
-              </TabsTrigger>
-            </TabsList>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">
+            <FileText className="w-4 h-4 mr-1.5" />
+            {t("detail.tabs.overview")}
+          </TabsTrigger>
+          <TabsTrigger value="config">
+            <Settings className="w-4 h-4 mr-1.5" />
+            {t("detail.tabs.config")}
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="w-4 h-4 mr-1.5" />
+            {t("detail.tabs.settings")}
+          </TabsTrigger>
+        </TabsList>
 
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-4">
-              {/* Trading Symbols */}
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("detail.overview.symbols")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6">
+          <>
+            {/* Strategy Info Card */}
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">
+                  {t("detail.overview.strategyInfo")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <InfoRow label={t("detail.overview.strategyType")}>
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs", getTypeColor(strategy.type))}
+                  >
+                    {tType(strategy.type)}
+                  </Badge>
+                </InfoRow>
+                <InfoRow label={t("detail.overview.symbols")}>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
                     {strategy.symbols.length > 0 ? (
                       strategy.symbols.map((symbol) => (
                         <Badge
@@ -370,363 +396,244 @@ export default function StrategyDetailPage({
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-muted-foreground">
                         {t("empty.noSymbol")}
                       </span>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </InfoRow>
+                <InfoRow label={t("detail.sidebar.created")}>
+                  <span className="font-mono text-xs">
+                    {formatDate(strategy.created_at, locale)}
+                  </span>
+                </InfoRow>
+                <InfoRow label={t("detail.sidebar.updated")}>
+                  <span className="font-mono text-xs">
+                    {formatDate(strategy.updated_at, locale)}
+                  </span>
+                </InfoRow>
+              </CardContent>
+            </Card>
 
-              {/* Strategy Summary */}
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("detail.overview.summary")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground text-sm">
-                        {t("detail.overview.strategyType")}
-                      </p>
-                      <p className="font-medium">{tType(strategy.type)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground text-sm">
-                        {t("detail.overview.visibility")}
-                      </p>
-                      <p className="font-medium">
-                        {t(`visibility.${strategy.visibility}`)}
-                      </p>
-                    </div>
+            {/* Marketplace Info Card */}
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50 mt-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">
+                  {t("edit.marketplaceSection")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <InfoRow label={t("detail.overview.visibility")}>
+                  <div className="flex items-center gap-1.5">
+                    {strategy.visibility === "public" ? (
+                      <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                    <span>{t(`visibility.${strategy.visibility}`)}</span>
                   </div>
-                  {strategy.description && (
-                    <div className="pt-2 border-t border-border/50">
-                      <p className="text-muted-foreground text-sm">
-                        {strategy.description}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Quick Stats */}
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("detail.overview.quickStats")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                      <Users className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground text-xs">
-                          {t("stats.forkCount")}
-                        </p>
-                        <p className="font-semibold text-lg">
-                          {strategy.fork_count}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                      <TagIcon className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground text-xs">
-                          {t("detail.overview.tags")}
-                        </p>
-                        <p className="font-semibold text-lg">
-                          {strategy.tags.length}
-                        </p>
-                      </div>
-                    </div>
+                </InfoRow>
+                {strategy.category && (
+                  <InfoRow label={t("edit.category")}>
+                    <Badge variant="outline" className="text-xs">
+                      {strategy.category}
+                    </Badge>
+                  </InfoRow>
+                )}
+                <InfoRow label={t("edit.tags")}>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {strategy.tags.length > 0 ? (
+                      strategy.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {t("edit.noTags")}
+                      </span>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Config Tab */}
-            <TabsContent value="config" className="space-y-4">
-              <>
-                {/* Common Parameters - Filter out prompt for AI strategies (shown separately) */}
-                {hasCommonParams && (
-                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">
-                        {t("detail.config.commonParams")}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {Object.entries(config)
-                          .filter(
-                            ([key]) =>
-                              key !== "riskControls" && key !== "prompt",
-                          )
-                          .map(([key, value]) => (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
-                            >
-                              <span className="text-muted-foreground text-sm shrink-0">
-                                {getConfigKeyLabel(key, tConfigKeys)}
-                              </span>
-                              <span className="font-mono text-sm text-right">
-                                {renderConfigValue(value)}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Prompt Preview (AI Strategy Only) */}
-                {strategy.type === "ai" && config.prompt && (
-                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">
-                        {t("detail.config.promptPreview")}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="p-4 rounded-lg bg-muted/30 max-h-64 overflow-auto">
-                        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                          {config.prompt as string}
-                        </pre>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Risk Controls (if exists) */}
-                {config.riskControls &&
-                  typeof config.riskControls === "object" && (
-                    <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">
-                          {t("detail.config.riskControls")}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {Object.entries(
-                            config.riskControls as Record<string, unknown>,
-                          ).map(([key, value]) => (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between p-3 rounded-lg bg-muted/30 gap-2"
-                            >
-                              <span className="text-muted-foreground text-sm shrink-0">
-                                {getConfigKeyLabel(key, tConfigKeys)}
-                              </span>
-                              <span className="font-mono text-sm text-right">
-                                {renderConfigValue(value)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                {/* No config message */}
-                {Object.keys(config).length === 0 && (
-                  <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                    <CardContent className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
-                        {t("detail.config.noConfig")}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            </TabsContent>
-
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-4">
-              {/* Basic Info Edit */}
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("detail.settings.basicInfo")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="font-medium">{strategy.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {strategy.description || t("empty.noDescription")}
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/strategies/${strategy.id}/edit`}>
-                          <Pencil className="w-3 h-3 mr-1.5" />
-                          {t("detail.settings.edit")}
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Visibility */}
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {t("detail.settings.visibility")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          getVisibilityColor(strategy.visibility),
-                        )}
-                      >
-                        {t(`visibility.${strategy.visibility}`)}
+                </InfoRow>
+                {strategy.visibility === "public" && (
+                  <>
+                    <InfoRow label={t("edit.isPaid")}>
+                      <Badge variant={strategy.is_paid ? "default" : "outline"} className="text-xs">
+                        {strategy.is_paid ? tConfigKeys("yes") : tConfigKeys("no")}
                       </Badge>
-                      <p className="text-sm text-muted-foreground">
-                        {strategy.visibility === "public"
-                          ? t("detail.settings.publicHint")
-                          : t("detail.settings.privateHint")}
-                      </p>
+                    </InfoRow>
+                    {strategy.is_paid && strategy.price_monthly && (
+                      <InfoRow label={t("pricing.monthlyPrice")}>
+                        <span className="font-semibold">
+                          ${strategy.price_monthly}
+                        </span>
+                      </InfoRow>
+                    )}
+                  </>
+                )}
+                <div className="pt-2 border-t border-border/50 mt-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {t("stats.forkCount")}:
+                      </span>
+                      <span className="text-sm font-medium">{strategy.fork_count}</span>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/strategies/${strategy.id}/edit`}>
-                        {t("detail.settings.change")}
-                      </Link>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {t("stats.agentCount")}:
+                      </span>
+                      <span className="text-sm font-medium">{strategy.agent_count}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Version History */}
+            {versions && versions.length > 0 && (
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 mt-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t("versions.title")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    {versions.slice(0, 5).map((version) => (
+                      <div
+                        key={version.version}
+                        className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-medium">
+                            v{version.version}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(version.created_at, locale)}
+                          </span>
+                        </div>
+                        {version.change_note && (
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {version.change_note}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
+            )}
+          </>
+        </TabsContent>
 
-              {/* Version History */}
-              {versions && versions.length > 0 && (
-                <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">
-                      {t("versions.title")}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {versions.slice(0, 5).map((version) => (
-                        <div
-                          key={version.version}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-sm font-medium">
-                              v{version.version}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {formatDate(version.created_at, locale)}
-                            </span>
-                          </div>
-                          {version.change_note && (
-                            <span className="text-sm text-muted-foreground">
-                              {version.change_note}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Danger Zone */}
-              <Card className="bg-card/50 border-[var(--loss)]/30">
-                <CardHeader>
-                  <CardTitle className="text-lg text-[var(--loss)]">
-                    {t("detail.settings.dangerZone")}
+        {/* Config Tab */}
+        <TabsContent value="config" className="mt-6">
+          <>
+            {/* Common Parameters */}
+            {hasCommonParams && (
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t("detail.config.commonParams")}
                   </CardTitle>
-                  <CardDescription>
-                    {t("detail.settings.deleteConfirm")}
-                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button
-                    variant="outline"
-                    className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {t("detail.settings.deleteStrategy")}
-                  </Button>
+                <CardContent className="space-y-1">
+                  {Object.entries(config)
+                    .filter(
+                      ([key]) => key !== "riskControls" && key !== "prompt",
+                    )
+                    .map(([key, value]) => (
+                      <InfoRow key={key} label={getConfigKeyLabel(key, tConfigKeys)}>
+                        <span className="font-mono text-xs">
+                          {renderConfigValue(value)}
+                        </span>
+                      </InfoRow>
+                    ))}
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+            )}
 
-        {/* Sidebar */}
-        <div className="w-full lg:w-80 space-y-4">
-          {/* Strategy Info */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                {t("detail.sidebar.info")}
+            {/* Prompt Preview (AI Strategy Only) */}
+            {strategy.type === "ai" && config.prompt && (
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 mt-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t("detail.config.promptPreview")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-3 rounded-lg bg-muted/30 max-h-64 overflow-auto">
+                    <pre className="text-xs whitespace-pre-wrap break-words font-mono">
+                      {config.prompt as string}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Risk Controls */}
+            {config.riskControls && typeof config.riskControls === "object" && (
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 mt-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t("detail.config.riskControls")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {Object.entries(
+                    config.riskControls as Record<string, unknown>,
+                  ).map(([key, value]) => (
+                    <InfoRow key={key} label={getConfigKeyLabel(key, tConfigKeys)}>
+                      <span className="font-mono text-xs">
+                        {renderConfigValue(value)}
+                      </span>
+                    </InfoRow>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* No config message */}
+            {Object.keys(config).length === 0 && (
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                <CardContent className="flex items-center justify-center py-12">
+                  <p className="text-sm text-muted-foreground">
+                    {t("detail.config.noConfig")}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="mt-6">
+          <Card className="bg-card/50 border-[var(--loss)]/30">
+            <CardHeader>
+              <CardTitle className="text-base text-[var(--loss)]">
+                {t("detail.settings.dangerZone")}
               </CardTitle>
+              <CardDescription className="text-sm">
+                {t("detail.settings.deleteConfirm")}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {t("detail.sidebar.created")}
-                </span>
-                <span className="font-mono">
-                  {formatDate(strategy.created_at, locale)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  {t("detail.sidebar.updated")}
-                </span>
-                <span className="font-mono">
-                  {formatDate(strategy.updated_at, locale)}
-                </span>
-              </div>
+            <CardContent>
+              <Button
+                variant="outline"
+                className="border-[var(--loss)]/50 text-[var(--loss)] hover:bg-[var(--loss)]/10"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {t("detail.settings.deleteStrategy")}
+              </Button>
             </CardContent>
           </Card>
-
-          {/* Statistics */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                {t("detail.sidebar.stats")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t("stats.forkCount")}
-                </span>
-                <span className="font-semibold">{strategy.fork_count}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t("stats.agentCount")}
-                </span>
-                <span className="font-semibold">{strategy.agent_count}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Confirm Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -763,23 +670,5 @@ export default function StrategyDetailPage({
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-// Simple icon component for tag
-function TagIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
-      <path d="M7 7h.01" />
-    </svg>
   );
 }

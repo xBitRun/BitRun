@@ -1144,6 +1144,7 @@
     "detail": {
       "backToStrategies": "Back to Strategies",
       "notFound": "Strategy not found",
+      "strategyInfoDesc": "Basic strategy information and parameters",
       "idCopied": "Strategy ID copied",
       "linkCopied": "Link copied",
       "duplicateSuccess": "Strategy duplicated, redirecting to edit...",
@@ -1152,7 +1153,7 @@
       "tabs": {
         "overview": "Overview",
         "config": "Configuration",
-        "trades": "Trades",
+        "marketplace": "Marketplace",
         "settings": "Settings"
       },
       "actions": {
@@ -1240,7 +1241,7 @@
       "add": "Add",
       "saveChanges": "Save Changes",
       "notFound": "Strategy not found",
-      "strategyConfigSection": "Strategy Config",
+      "strategyConfigSection": "Strategy Info",
       "strategyConfigDesc": "Core strategy parameters (locked when agents are active)",
       "marketplaceSection": "Marketplace Info",
       "marketplaceDesc": "Information shown when published to marketplace",
@@ -1257,7 +1258,18 @@
       "isPaidHint": "Enable to set monthly price",
       "pricingModel": "Pricing Model",
       "agentsPaused": "Paused {count} agent(s)",
-      "pauseAgentsError": "Failed to pause agents"
+      "pauseAgentsError": "Failed to pause agents",
+      "configEditor": {
+        "title": "Strategy Config",
+        "aiConfigDesc": "Edit trading parameters, technical indicators, and risk controls for your AI strategy",
+        "gridConfigDesc": "Set price range and parameters for grid trading",
+        "dcaConfigDesc": "Configure order amount and frequency for DCA strategy",
+        "rsiConfigDesc": "Adjust RSI indicator parameters and trading settings"
+      },
+      "validation": {
+        "upperPriceGreaterThanLower": "Upper price must be greater than lower price",
+        "overboughtGreaterThanOversold": "Overbought threshold must be greater than oversold threshold"
+      }
     },
     "editDecision": {
       "title": "How would you like to modify this strategy?",

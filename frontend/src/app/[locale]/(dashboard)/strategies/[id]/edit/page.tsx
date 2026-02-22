@@ -14,6 +14,9 @@ import {
   Lock,
   AlertTriangle,
   DollarSign,
+  Settings,
+  FileText,
+  Store,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,13 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -37,9 +33,15 @@ import {
 import { cn } from "@/lib/utils";
 import { useStrategy, useUpdateStrategy, useStrategyAgents } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import type { StrategyVisibility } from "@/types";
+import type { StrategyVisibility, GridConfig, DCAConfig, RSIConfig } from "@/types";
 import { ApiError, agentsApi } from "@/lib/api";
 import { StrategyEditDecisionDialog } from "@/components/strategies/StrategyEditDecisionDialog";
+import {
+  GridStrategyForm,
+  DCAStrategyForm,
+  RSIStrategyForm,
+  AIStrategyConfigEditor,
+} from "@/components/strategies";
 
 export default function StrategyEditPage({
   params,
@@ -59,7 +61,7 @@ export default function StrategyEditPage({
   // Decision dialog state
   const [showDecisionDialog, setShowDecisionDialog] = useState(false);
   const [configUnlocked, setConfigUnlocked] = useState(false);
-  const [isPausingAgents, setIsPausingAgents] = useState(false);
+  const [, setIsPausingAgents] = useState(false);
 
   // Determine if config should be locked
   const configLocked = hasActiveAgents && !configUnlocked;
@@ -86,6 +88,31 @@ export default function StrategyEditPage({
   const [priceMonthly, setPriceMonthly] = useState<string>("");
   const [pricingModel, setPricingModel] = useState<"free" | "monthly">("free");
 
+  // Form state - Type-specific Config
+  const [aiConfig, setAiConfig] = useState<Record<string, unknown>>({});
+  const [gridConfig, setGridConfig] = useState<GridConfig>({
+    upper_price: 50000,
+    lower_price: 40000,
+    grid_count: 10,
+    total_investment: 1000,
+    leverage: 1,
+  });
+  const [dcaConfig, setDcaConfig] = useState<DCAConfig>({
+    order_amount: 100,
+    interval_minutes: 60,
+    take_profit_percent: 5,
+    total_budget: 0,
+    max_orders: 0,
+  });
+  const [rsiConfig, setRsiConfig] = useState<RSIConfig>({
+    rsi_period: 14,
+    overbought_threshold: 70,
+    oversold_threshold: 30,
+    order_amount: 100,
+    timeframe: "1h",
+    leverage: 1,
+  });
+
   // Initialize form from strategy data
   useEffect(() => {
     if (strategy) {
@@ -111,6 +138,37 @@ export default function StrategyEditPage({
       }
       if (pricingModel !== (strategy.pricing_model || "free")) {
         setPricingModel(strategy.pricing_model === "monthly" ? "monthly" : "free");
+      }
+
+      // Initialize type-specific config
+      const strategyConfig = strategy.config as Record<string, unknown> || {};
+      if (strategy.type === "ai") {
+        setAiConfig(strategyConfig);
+      } else if (strategy.type === "grid") {
+        setGridConfig({
+          upper_price: (strategyConfig.upper_price as number) || 50000,
+          lower_price: (strategyConfig.lower_price as number) || 40000,
+          grid_count: (strategyConfig.grid_count as number) || 10,
+          total_investment: (strategyConfig.total_investment as number) || 1000,
+          leverage: (strategyConfig.leverage as number) || 1,
+        });
+      } else if (strategy.type === "dca") {
+        setDcaConfig({
+          order_amount: (strategyConfig.order_amount as number) || 100,
+          interval_minutes: (strategyConfig.interval_minutes as number) || 60,
+          take_profit_percent: (strategyConfig.take_profit_percent as number) || 5,
+          total_budget: (strategyConfig.total_budget as number) || 0,
+          max_orders: (strategyConfig.max_orders as number) || 0,
+        });
+      } else if (strategy.type === "rsi") {
+        setRsiConfig({
+          rsi_period: (strategyConfig.rsi_period as number) || 14,
+          overbought_threshold: (strategyConfig.overbought_threshold as number) || 70,
+          oversold_threshold: (strategyConfig.oversold_threshold as number) || 30,
+          order_amount: (strategyConfig.order_amount as number) || 100,
+          timeframe: (strategyConfig.timeframe as string) || "1h",
+          leverage: (strategyConfig.leverage as number) || 1,
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,10 +217,26 @@ export default function StrategyEditPage({
     }
   };
 
+  // Determine strategy type
+  const strategyType = strategy?.type;
+  const isAiType = strategyType === "ai";
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error(t("edit.nameRequired"));
       return;
+    }
+
+    // Build type-specific config
+    let config: Record<string, unknown> | undefined;
+    if (isAiType) {
+      config = aiConfig;
+    } else if (strategyType === "grid") {
+      config = { ...gridConfig } as Record<string, unknown>;
+    } else if (strategyType === "dca") {
+      config = { ...dcaConfig } as Record<string, unknown>;
+    } else if (strategyType === "rsi") {
+      config = { ...rsiConfig } as Record<string, unknown>;
     }
 
     try {
@@ -176,6 +250,7 @@ export default function StrategyEditPage({
         is_paid: isPaid,
         price_monthly: isPaid && priceMonthly ? parseFloat(priceMonthly) : null,
         pricing_model: isPaid ? "monthly" : "free",
+        config,
       });
       toast.success(t("toast.updated"));
       router.push(`/strategies/${id}`);
@@ -268,12 +343,15 @@ export default function StrategyEditPage({
         />
       )}
 
-      {/* Strategy Config Section */}
+      {/* Strategy Info Section */}
       <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>{t("edit.strategyConfigSection")}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                {t("edit.strategyConfigSection")}
+              </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {t("edit.strategyConfigDesc")}
               </p>
@@ -361,10 +439,77 @@ export default function StrategyEditPage({
         </CardContent>
       </Card>
 
+      {/* Strategy Config Editor Section */}
+      {strategy && (
+        <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  {t("edit.configEditor.title")}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isAiType && t("edit.configEditor.aiConfigDesc")}
+                  {strategyType === "grid" && t("edit.configEditor.gridConfigDesc")}
+                  {strategyType === "dca" && t("edit.configEditor.dcaConfigDesc")}
+                  {strategyType === "rsi" && t("edit.configEditor.rsiConfigDesc")}
+                </p>
+              </div>
+              {configLocked && (
+                <Badge variant="outline" className="border-orange-500/50 text-orange-400">
+                  {t("edit.pauseAgentFirst")}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className={cn(configLocked && "opacity-50 pointer-events-none")}>
+            {/* AI Strategy Config */}
+            {isAiType && (
+              <AIStrategyConfigEditor
+                initialConfig={aiConfig}
+                onConfigChange={setAiConfig}
+                disabled={configLocked}
+              />
+            )}
+
+            {/* Grid Strategy Config */}
+            {strategyType === "grid" && (
+              <GridStrategyForm
+                value={gridConfig}
+                onChange={setGridConfig}
+                disabled={configLocked}
+              />
+            )}
+
+            {/* DCA Strategy Config */}
+            {strategyType === "dca" && (
+              <DCAStrategyForm
+                value={dcaConfig}
+                onChange={setDcaConfig}
+                disabled={configLocked}
+              />
+            )}
+
+            {/* RSI Strategy Config */}
+            {strategyType === "rsi" && (
+              <RSIStrategyForm
+                value={rsiConfig}
+                onChange={setRsiConfig}
+                disabled={configLocked}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Marketplace Section */}
       <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle>{t("edit.marketplaceSection")}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="w-5 h-5" />
+            {t("edit.marketplaceSection")}
+          </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             {t("edit.marketplaceDesc")}
           </p>

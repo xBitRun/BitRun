@@ -19,6 +19,9 @@ from ...services.redis_service import get_redis_service
 from ...traders import TradeError
 from ...traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP
 
+# Import shared utility from agents route
+from .agents import _fetch_public_prices
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -41,6 +44,12 @@ class PositionSummary(BaseModel):
     account_name: str
     exchange: str
     account_id: Optional[str] = None
+    # Agent fields (for positions from agent_positions table)
+    agent_id: Optional[str] = None
+    agent_name: Optional[str] = None
+    execution_mode: Optional[str] = None  # "mock" or "live"
+    position_id: Optional[str] = None  # id from agent_positions
+    opened_at: Optional[str] = None
 
 
 class AccountBalanceSummary(BaseModel):
@@ -437,6 +446,71 @@ async def get_dashboard_stats(
 
     except Exception as e:
         logger.debug(f"Failed to calculate weekly/monthly P/L: {e}")
+
+    # Fetch Agent positions from agent_positions table
+    from ...db.repositories.agent import AgentRepository
+    from ...services.agent_position_service import AgentPositionService
+
+    agent_repo = AgentRepository(db)
+    user_agents = await agent_repo.get_by_user(uuid.UUID(user_id))
+    ps = AgentPositionService(db=db)
+
+    # Collect all open Agent positions
+    agent_positions_symbols = set()
+    agent_position_records = []  # (agent, position)
+
+    for agent in user_agents:
+        positions = await ps.get_agent_positions(agent.id, status_filter="open")
+        for pos in positions:
+            agent_positions_symbols.add(pos.symbol)
+            agent_position_records.append((agent, pos))
+
+    # Fetch current prices for Agent positions
+    agent_prices: dict[str, float] = {}
+    if agent_positions_symbols:
+        try:
+            agent_prices = await _fetch_public_prices(list(agent_positions_symbols))
+        except Exception as e:
+            logger.warning(f"Failed to fetch prices for agent positions: {e}")
+
+    # Add Agent positions to all_positions
+    for agent, pos in agent_position_records:
+        mark_price = agent_prices.get(pos.symbol, 0.0)
+        unrealized_pnl = 0.0
+        unrealized_pnl_percent = 0.0
+
+        if mark_price > 0 and pos.entry_price > 0 and pos.size > 0:
+            if pos.side == "long":
+                unrealized_pnl = (mark_price - pos.entry_price) * pos.size
+            else:
+                unrealized_pnl = (pos.entry_price - mark_price) * pos.size
+            position_value = pos.entry_price * pos.size
+            if position_value > 0:
+                unrealized_pnl_percent = (unrealized_pnl / position_value) * 100
+
+        # Determine exchange name for the agent
+        exchange_name = "mock" if agent.execution_mode == "mock" else (agent.account.exchange if agent.account else "unknown")
+
+        all_positions.append(PositionSummary(
+            symbol=pos.symbol,
+            side=pos.side,
+            size=pos.size,
+            size_usd=pos.size_usd,
+            entry_price=pos.entry_price,
+            mark_price=mark_price,
+            leverage=float(pos.leverage),
+            unrealized_pnl=unrealized_pnl,
+            unrealized_pnl_percent=unrealized_pnl_percent,
+            liquidation_price=None,
+            account_name=agent.account.name if agent.account else agent.name,
+            exchange=exchange_name,
+            account_id=str(agent.account_id) if agent.account_id else None,
+            agent_id=str(agent.id),
+            agent_name=agent.name,
+            execution_mode=agent.execution_mode,
+            position_id=str(pos.id),
+            opened_at=pos.opened_at.isoformat() if pos.opened_at else None,
+        ))
 
     # Get today's decisions
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)

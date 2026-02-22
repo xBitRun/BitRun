@@ -1244,7 +1244,7 @@
       "add": "添加",
       "saveChanges": "保存更改",
       "notFound": "策略未找到",
-      "strategyConfigSection": "策略配置",
+      "strategyConfigSection": "策略信息",
       "strategyConfigDesc": "核心策略参数（有代理运行时不可修改）",
       "marketplaceSection": "市场信息",
       "marketplaceDesc": "发布到策略市场时显示的信息",
@@ -1261,7 +1261,18 @@
       "isPaidHint": "开启后可设置月费价格",
       "pricingModel": "定价模式",
       "agentsPaused": "已暂停 {count} 个代理",
-      "pauseAgentsError": "暂停代理失败"
+      "pauseAgentsError": "暂停代理失败",
+      "configEditor": {
+        "title": "策略配置",
+        "aiConfigDesc": "编辑 AI 策略的交易参数、技术指标和风险控制设置",
+        "gridConfigDesc": "设置网格交易的价格区间和参数",
+        "dcaConfigDesc": "配置定投策略的金额和频率",
+        "rsiConfigDesc": "调整 RSI 指标参数和交易设置"
+      },
+      "validation": {
+        "upperPriceGreaterThanLower": "价格上限必须大于价格下限",
+        "overboughtGreaterThanOversold": "超买阈值必须大于超卖阈值"
+      }
     },
     "editDecision": {
       "title": "如何修改此策略？",
@@ -1282,6 +1293,7 @@
     "detail": {
       "backToStrategies": "返回策略列表",
       "notFound": "策略未找到",
+      "strategyInfoDesc": "策略基本信息和参数配置",
       "idCopied": "策略 ID 已复制",
       "linkCopied": "链接已复制",
       "duplicateSuccess": "策略复制成功，正在跳转到编辑页面...",
@@ -1290,7 +1302,7 @@
       "tabs": {
         "overview": "概览",
         "config": "配置",
-        "trades": "交易",
+        "marketplace": "市场",
         "settings": "设置"
       },
       "actions": {
