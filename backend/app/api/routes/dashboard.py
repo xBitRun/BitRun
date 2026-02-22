@@ -11,13 +11,14 @@ from pydantic import BaseModel, field_serializer
 from sqlalchemy import func, select
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
-from ...db.models import DailyAccountSnapshotDB
+from ...db.models import DailyAccountSnapshotDB, DailyAgentSnapshotDB
 from ...db.repositories.account import AccountRepository
 from ...db.repositories.decision import DecisionRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...services.redis_service import get_redis_service
 from ...services.decision_record_normalizer import normalize_decisions
 from ...traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP
+from ...traders.base import calculate_unrealized_pnl_percent
 
 # Import shared utility from agents route
 from .agents import _fetch_public_prices
@@ -440,7 +441,7 @@ async def get_dashboard_stats(
     monthly_pnl_percent = 0.0
 
     try:
-        from datetime import date
+        from datetime import UTC, date, datetime
 
         today_date = date.today()
 
@@ -540,6 +541,8 @@ async def get_dashboard_stats(
             logger.warning(f"Failed to fetch prices for agent positions: {e}")
 
     # Add Agent positions to all_positions
+    mock_agent_unrealized: dict[str, float] = {}
+    mock_agent_margin_used: dict[str, float] = {}
     for agent, pos in agent_position_records:
         mark_price = agent_prices.get(pos.symbol, 0.0)
         unrealized_pnl = 0.0
@@ -550,9 +553,22 @@ async def get_dashboard_stats(
                 unrealized_pnl = (mark_price - pos.entry_price) * pos.size
             else:
                 unrealized_pnl = (pos.entry_price - mark_price) * pos.size
-            position_value = pos.entry_price * pos.size
-            if position_value > 0:
-                unrealized_pnl_percent = (unrealized_pnl / position_value) * 100
+            margin_used = pos.size_usd / max(pos.leverage, 1)
+            unrealized_pnl_percent = calculate_unrealized_pnl_percent(
+                unrealized_pnl,
+                margin_used=margin_used,
+                size_usd=pos.size_usd,
+                leverage=pos.leverage,
+            )
+
+        if agent.execution_mode == "mock":
+            aid = str(agent.id)
+            mock_agent_unrealized[aid] = (
+                mock_agent_unrealized.get(aid, 0.0) + unrealized_pnl
+            )
+            mock_agent_margin_used[aid] = mock_agent_margin_used.get(aid, 0.0) + (
+                pos.size_usd / max(float(pos.leverage), 1.0)
+            )
 
         # Determine exchange name for the agent
         exchange_name = (
@@ -583,6 +599,126 @@ async def get_dashboard_stats(
                 opened_at=pos.opened_at.isoformat() if pos.opened_at else None,
             )
         )
+
+    # Mock mode: build dashboard aggregates from mock agents (overall paper view).
+    if mode == "mock":
+        from datetime import date
+
+        mock_agents = [a for a in user_agents if a.execution_mode == "mock"]
+        mock_agent_ids = [a.id for a in mock_agents]
+        daily_by_agent: dict[str, float] = {}
+        weekly_pnl = 0.0
+        monthly_pnl = 0.0
+        weekly_pnl_percent = 0.0
+        monthly_pnl_percent = 0.0
+
+        if mock_agent_ids:
+            today_date = date.today()
+            week_start = today_date - timedelta(days=today_date.weekday())
+            month_start = today_date.replace(day=1)
+            today_start_dt = datetime.combine(today_date, datetime.min.time()).replace(
+                tzinfo=UTC
+            )
+            tomorrow_start_dt = today_start_dt + timedelta(days=1)
+
+            try:
+                today_stmt = select(
+                    DailyAgentSnapshotDB.agent_id,
+                    DailyAgentSnapshotDB.daily_pnl,
+                ).where(
+                    DailyAgentSnapshotDB.user_id == uuid.UUID(user_id),
+                    DailyAgentSnapshotDB.agent_id.in_(mock_agent_ids),
+                    DailyAgentSnapshotDB.snapshot_date >= today_start_dt,
+                    DailyAgentSnapshotDB.snapshot_date < tomorrow_start_dt,
+                )
+                today_rows = (await db.execute(today_stmt)).all()
+                daily_by_agent = {
+                    str(row.agent_id): row.daily_pnl or 0.0 for row in today_rows
+                }
+            except Exception as e:
+                logger.debug(f"Failed to fetch mock daily pnl snapshots: {e}")
+
+            try:
+                weekly_stmt = select(
+                    func.sum(DailyAgentSnapshotDB.daily_pnl).label("weekly_pnl"),
+                ).where(
+                    DailyAgentSnapshotDB.user_id == uuid.UUID(user_id),
+                    DailyAgentSnapshotDB.agent_id.in_(mock_agent_ids),
+                    DailyAgentSnapshotDB.snapshot_date >= week_start,
+                    DailyAgentSnapshotDB.snapshot_date <= today_date,
+                )
+                weekly_row = (await db.execute(weekly_stmt)).one_or_none()
+                if weekly_row:
+                    weekly_pnl = float(weekly_row.weekly_pnl or 0.0)
+
+                monthly_stmt = select(
+                    func.sum(DailyAgentSnapshotDB.daily_pnl).label("monthly_pnl"),
+                ).where(
+                    DailyAgentSnapshotDB.user_id == uuid.UUID(user_id),
+                    DailyAgentSnapshotDB.agent_id.in_(mock_agent_ids),
+                    DailyAgentSnapshotDB.snapshot_date >= month_start,
+                    DailyAgentSnapshotDB.snapshot_date <= today_date,
+                )
+                monthly_row = (await db.execute(monthly_stmt)).one_or_none()
+                if monthly_row:
+                    monthly_pnl = float(monthly_row.monthly_pnl or 0.0)
+            except Exception as e:
+                logger.debug(f"Failed to calculate mock weekly/monthly pnl: {e}")
+
+        total_equity = 0.0
+        available_balance = 0.0
+        unrealized_pnl = 0.0
+        accounts_connected = len(mock_agents)
+        account_summaries = []
+
+        for agent in mock_agents:
+            aid = str(agent.id)
+            base_capital = float(agent.mock_initial_balance or 10000.0)
+            agent_unrealized = mock_agent_unrealized.get(aid, 0.0)
+            agent_margin = mock_agent_margin_used.get(aid, 0.0)
+            agent_total_pnl = float(agent.total_pnl or 0.0)
+            agent_equity = base_capital + agent_total_pnl + agent_unrealized
+            agent_available = max(agent_equity - agent_margin, 0.0)
+            agent_daily_pnl = float(daily_by_agent.get(aid, agent_total_pnl))
+            agent_start_equity = agent_equity - agent_daily_pnl
+            agent_daily_pnl_percent = (
+                (agent_daily_pnl / agent_start_equity) * 100 if agent_start_equity > 0 else 0.0
+            )
+
+            total_equity += agent_equity
+            available_balance += agent_available
+            unrealized_pnl += agent_unrealized
+
+            account_summaries.append(
+                AccountBalanceSummary(
+                    account_id=aid,
+                    account_name=agent.name,
+                    exchange="mock",
+                    status="online" if agent.status == "active" else "offline",
+                    total_equity=round(agent_equity, 2),
+                    available_balance=round(agent_available, 2),
+                    daily_pnl=round(agent_daily_pnl, 2),
+                    daily_pnl_percent=round(agent_daily_pnl_percent, 2),
+                    open_positions=sum(
+                        1
+                        for pos_agent, _ in agent_position_records
+                        if pos_agent.id == agent.id
+                    ),
+                )
+            )
+
+        daily_pnl = sum(
+            daily_by_agent.get(str(a.id), float(a.total_pnl or 0.0))
+            for a in mock_agents
+        )
+        start_equity = total_equity - daily_pnl
+        daily_pnl_percent = (daily_pnl / start_equity * 100) if start_equity > 0 else 0.0
+        week_start_equity = total_equity - weekly_pnl
+        if week_start_equity > 0:
+            weekly_pnl_percent = (weekly_pnl / week_start_equity) * 100
+        month_start_equity = total_equity - monthly_pnl
+        if month_start_equity > 0:
+            monthly_pnl_percent = (monthly_pnl / month_start_equity) * 100
 
     # Get today's decisions
     today_start = datetime.now(timezone.utc).replace(

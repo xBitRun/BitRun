@@ -28,6 +28,7 @@ from ...models.agent import (
     AgentUpdate,
     ExecutionMode,
 )
+from ...traders.base import calculate_unrealized_pnl_percent
 from ...traders.exchange_capabilities import supports_asset, AssetType
 from ...services.quant_decision_mapper import build_quant_decision_record_payload
 
@@ -798,12 +799,13 @@ async def get_agent_positions(
                 unrealized_pnl = (mark_price - p.entry_price) * p.size
             else:
                 unrealized_pnl = (p.entry_price - mark_price) * p.size
-            # Calculate percentage based on position value
-            if p.entry_price > 0 and p.size > 0:
-                position_value = p.entry_price * p.size
-                unrealized_pnl_percent = (
-                    (unrealized_pnl / position_value) * 100 if position_value else 0
-                )
+            margin_used = p.size_usd / max(p.leverage, 1)
+            unrealized_pnl_percent = calculate_unrealized_pnl_percent(
+                unrealized_pnl,
+                margin_used=margin_used,
+                size_usd=p.size_usd,
+                leverage=p.leverage,
+            )
 
         response = AgentPositionResponse(
             id=str(p.id),

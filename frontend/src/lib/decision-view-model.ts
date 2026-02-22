@@ -28,7 +28,24 @@ export interface DecisionTradeRow {
   unrealizedPnl?: number;
   unrealizedPnlPercent?: number;
   realizedPnl?: number | null;
+  realizedPnlPercent?: number;
   timestamp: string;
+}
+
+function calculateRealizedPnlPercent(params: {
+  realizedPnl?: number | null;
+  sizeUsd?: number;
+  leverage?: number;
+}): number | undefined {
+  const { realizedPnl, sizeUsd, leverage } = params;
+  if (realizedPnl == null) return undefined;
+  if (sizeUsd == null || sizeUsd <= 0) return undefined;
+  if (leverage == null || leverage <= 0) return undefined;
+
+  const marginUsed = sizeUsd / leverage;
+  if (marginUsed <= 0) return undefined;
+
+  return (realizedPnl / marginUsed) * 100;
 }
 
 export function executionReason(er: DecisionExecutionResult): string {
@@ -82,6 +99,12 @@ export function buildDecisionTradeRows(
       const position = snapshotPositions.find((p) => p.symbol === symbol);
       const side = action.includes("long") ? "long" : "short";
       const isClose = action.startsWith("close");
+      const leverage = isClose
+        ? (er.position_leverage ?? position?.leverage ?? aiDecision?.leverage ?? 0)
+        : (aiDecision?.leverage ?? position?.leverage ?? 0);
+      const sizeUsd = isClose
+        ? (er.position_size_usd ?? position?.size_usd)
+        : (er.actual_size_usd ?? undefined);
 
       return {
         key: `${decision.id}-exec-${idx}`,
@@ -89,23 +112,25 @@ export function buildDecisionTradeRows(
         action,
         side: side as "long" | "short",
         isClose,
-        leverage: isClose
-          ? (er.position_leverage ?? position?.leverage ?? aiDecision?.leverage ?? 0)
-          : (aiDecision?.leverage ?? position?.leverage ?? 0),
+        leverage,
         entryPrice: isClose
           ? (position?.entry_price ?? aiDecision?.entry_price)
           : (aiDecision?.entry_price ?? position?.entry_price),
         filledPrice: er.order_result?.filled_price ?? undefined,
         filledSize: er.order_result?.filled_size ?? undefined,
-        sizeUsd: isClose
-          ? (er.position_size_usd ?? position?.size_usd)
-          : (er.actual_size_usd ?? undefined),
+        sizeUsd,
         markPrice: position?.mark_price,
         unrealizedPnl: position?.unrealized_pnl,
         unrealizedPnlPercent: position?.unrealized_pnl_percent,
         realizedPnl: er.realized_pnl,
+        realizedPnlPercent: isClose
+          ? calculateRealizedPnlPercent({
+              realizedPnl: er.realized_pnl,
+              sizeUsd,
+              leverage,
+            })
+          : undefined,
         timestamp: decision.timestamp,
       };
     });
 }
-

@@ -15,6 +15,29 @@ from typing import Literal, Optional
 logger = logging.getLogger(__name__)
 
 
+def calculate_unrealized_pnl_percent(
+    unrealized_pnl: float,
+    *,
+    margin_used: float = 0.0,
+    size_usd: float = 0.0,
+    leverage: int = 1,
+) -> float:
+    """
+    Calculate unrealized PnL percentage using margin (ROI) as denominator.
+
+    Preferred denominator is `margin_used` when available.
+    Fallback computes margin from `size_usd / leverage`.
+    """
+    if margin_used > 0:
+        return (unrealized_pnl / margin_used) * 100
+
+    effective_leverage = max(int(leverage or 1), 1)
+    if size_usd > 0:
+        return (unrealized_pnl / (size_usd / effective_leverage)) * 100
+
+    return 0.0
+
+
 class MarketType(str, Enum):
     """Market / asset class type"""
 

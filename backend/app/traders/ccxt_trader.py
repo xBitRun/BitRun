@@ -25,6 +25,7 @@ from .base import (
     OrderResult,
     Position,
     TradeError,
+    calculate_unrealized_pnl_percent,
     detect_market_type,
 )
 from .exchange_pool import ExchangePool
@@ -424,8 +425,11 @@ class CCXTTrader(BaseTrader):
                         mark_price=mark_price,
                         leverage=int(pos.get("leverage", 1) or 1),
                         unrealized_pnl=unrealized_pnl,
-                        unrealized_pnl_percent=(
-                            (unrealized_pnl / abs(notional)) * 100 if notional else 0
+                        unrealized_pnl_percent=calculate_unrealized_pnl_percent(
+                            unrealized_pnl,
+                            margin_used=margin_used,
+                            size_usd=abs(notional) if notional else abs(size) * mark_price,
+                            leverage=int(pos.get("leverage", 1) or 1),
                         ),
                         liquidation_price=(
                             float(pos.get("liquidationPrice", 0) or 0) or None

@@ -15,6 +15,7 @@ from ..traders.base import (
     OrderResult,
     Position,
     TradeError,
+    calculate_unrealized_pnl_percent,
 )
 
 
@@ -39,22 +40,17 @@ class SimulatedPosition:
             return (self.entry_price - current_price) * self.size
 
     def calculate_pnl_percent(self, current_price: float) -> float:
-        """Calculate unrealized P&L percentage"""
+        """Calculate unrealized P&L percentage (margin ROI)."""
         if self.entry_price == 0:
             return 0
-
-        if self.side == "long":
-            return (
-                ((current_price - self.entry_price) / self.entry_price)
-                * 100
-                * self.leverage
-            )
-        else:
-            return (
-                ((self.entry_price - current_price) / self.entry_price)
-                * 100
-                * self.leverage
-            )
+        pnl = self.calculate_pnl(current_price)
+        margin_used = (self.size * self.entry_price) / max(self.leverage, 1)
+        return calculate_unrealized_pnl_percent(
+            pnl,
+            margin_used=margin_used,
+            size_usd=self.size * self.entry_price,
+            leverage=self.leverage,
+        )
 
     def check_stop_loss(self, current_price: float) -> bool:
         """Check if stop loss triggered"""
@@ -440,7 +436,12 @@ class SimulatedTrader(BaseTrader):
         else:
             pnl = (pos.entry_price - price) * close_size
 
-        pnl_percent = (pnl / (close_size * pos.entry_price)) * 100 * pos.leverage
+        pnl_percent = calculate_unrealized_pnl_percent(
+            pnl,
+            margin_used=(close_size * pos.entry_price) / max(pos.leverage, 1),
+            size_usd=close_size * pos.entry_price,
+            leverage=pos.leverage,
+        )
 
         # Record trade
         self._trades.append(

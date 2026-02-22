@@ -788,7 +788,7 @@ function OverviewTab({
                         ? row.realizedPnl
                         : row.unrealizedPnl;
                       const pnlPct = row.isClose
-                        ? undefined
+                        ? row.realizedPnlPercent
                         : row.unrealizedPnlPercent;
 
                       return (

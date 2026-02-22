@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from ..traders.base import calculate_unrealized_pnl_percent
 from ..traders.exchange_capabilities import AssetType
 
 if TYPE_CHECKING:
@@ -307,8 +308,13 @@ class AgentAccountState(BaseModel):
                 unrealized = (mark - pos.entry_price) * pos.size
             else:
                 unrealized = (pos.entry_price - mark) * pos.size
-            pnl_pct = (unrealized / pos.size_usd * 100) if pos.size_usd else 0.0
             margin = pos.size_usd / max(pos.leverage, 1)
+            pnl_pct = calculate_unrealized_pnl_percent(
+                unrealized,
+                margin_used=margin,
+                size_usd=pos.size_usd,
+                leverage=pos.leverage,
+            )
             total_margin_used += margin
 
             trader_positions.append(

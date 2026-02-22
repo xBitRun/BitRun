@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
+  FlaskConical,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -764,29 +766,33 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <div className="inline-flex items-center rounded-lg border border-border/60 bg-muted/30 p-1">
+        <div className="inline-flex items-center rounded-xl border border-border/60 bg-muted/20 p-1.5 shadow-sm">
           <button
             type="button"
             onClick={() => updateMode("live")}
+            aria-pressed={executionMode === "live"}
             className={cn(
-              "px-3 py-1.5 text-xs rounded-md transition-colors",
+              "inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg transition-all",
               executionMode === "live"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 shadow-sm"
+                : "text-muted-foreground border border-transparent hover:text-foreground hover:bg-background/70",
             )}
           >
+            <ShieldCheck className="w-3.5 h-3.5" />
             {t("activity.live")}
           </button>
           <button
             type="button"
             onClick={() => updateMode("mock")}
+            aria-pressed={executionMode === "mock"}
             className={cn(
-              "px-3 py-1.5 text-xs rounded-md transition-colors",
+              "inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg transition-all",
               executionMode === "mock"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-amber-500/15 text-amber-600 border border-amber-500/30 shadow-sm"
+                : "text-muted-foreground border border-transparent hover:text-foreground hover:bg-background/70",
             )}
           >
+            <FlaskConical className="w-3.5 h-3.5" />
             {t("activity.mock")}
           </button>
         </div>
