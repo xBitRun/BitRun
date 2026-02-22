@@ -887,24 +887,53 @@ class BaseTrader(ABC):
         result = await self.place_market_order(symbol, "buy", size, leverage, price=price)
         
         if result.success and result.filled_size:
+            filled_price = result.filled_price or price
+            adjusted_sl = stop_loss
+            adjusted_tp = take_profit
+
+            # Validate SL/TP relative to actual fill price
+            # For LONG: SL < filled_price, TP > filled_price
+            if stop_loss and stop_loss >= filled_price:
+                # Calculate SL based on leverage to avoid liquidation
+                # SL should be placed before liquidation price
+                # Liquidation price for long = entry * (1 - 1/leverage)
+                # Use 50% of max loss to stay safe
+                max_loss_pct = 0.5 / leverage  # 50% of margin
+                adjusted_sl = filled_price * (1 - max_loss_pct)
+                logger.warning(
+                    f"[open_long] Invalid stop_loss {stop_loss} >= fill_price {filled_price} "
+                    f"for {symbol} (leverage={leverage}x), adjusted to {adjusted_sl:.2f} "
+                    f"(liquidation at {filled_price * (1 - 1/leverage):.2f})"
+                )
+            if take_profit and take_profit <= filled_price:
+                # Calculate TP based on risk-reward ratio (1:1.5)
+                # Use the SL distance to determine TP distance
+                sl_distance = (filled_price - (adjusted_sl or filled_price * 0.99)) / filled_price
+                risk_reward_ratio = 1.5
+                adjusted_tp = filled_price * (1 + sl_distance * risk_reward_ratio)
+                logger.warning(
+                    f"[open_long] Invalid take_profit {take_profit} <= fill_price {filled_price} "
+                    f"for {symbol}, adjusted to {adjusted_tp:.2f} (RR={risk_reward_ratio})"
+                )
+
             # Place SL/TP if specified — errors must not affect the main order
-            if stop_loss:
+            if adjusted_sl:
                 try:
-                    await self.place_stop_loss(symbol, "sell", result.filled_size, stop_loss)
+                    await self.place_stop_loss(symbol, "sell", result.filled_size, adjusted_sl)
                 except Exception as e:
                     logger.error(
                         f"[open_long] Failed to place stop-loss for {symbol} "
-                        f"at {stop_loss}: {e}  (entry order succeeded)"
+                        f"at {adjusted_sl}: {e}  (entry order succeeded)"
                     )
-            if take_profit:
+            if adjusted_tp:
                 try:
-                    await self.place_take_profit(symbol, "sell", result.filled_size, take_profit)
+                    await self.place_take_profit(symbol, "sell", result.filled_size, adjusted_tp)
                 except Exception as e:
                     logger.error(
                         f"[open_long] Failed to place take-profit for {symbol} "
-                        f"at {take_profit}: {e}  (entry order succeeded)"
+                        f"at {adjusted_tp}: {e}  (entry order succeeded)"
                     )
-        
+
         return result
     
     async def open_short(
@@ -933,24 +962,51 @@ class BaseTrader(ABC):
         result = await self.place_market_order(symbol, "sell", size, leverage, price=price)
         
         if result.success and result.filled_size:
+            filled_price = result.filled_price or price
+            adjusted_sl = stop_loss
+            adjusted_tp = take_profit
+
+            # Validate SL/TP relative to actual fill price
+            # For SHORT: SL > filled_price, TP < filled_price
+            if stop_loss and stop_loss <= filled_price:
+                # Calculate SL based on leverage to avoid liquidation
+                # Liquidation price for short = entry * (1 + 1/leverage)
+                # Use 50% of max loss to stay safe
+                max_loss_pct = 0.5 / leverage  # 50% of margin
+                adjusted_sl = filled_price * (1 + max_loss_pct)
+                logger.warning(
+                    f"[open_short] Invalid stop_loss {stop_loss} <= fill_price {filled_price} "
+                    f"for {symbol} (leverage={leverage}x), adjusted to {adjusted_sl:.2f} "
+                    f"(liquidation at {filled_price * (1 + 1/leverage):.2f})"
+                )
+            if take_profit and take_profit >= filled_price:
+                # Calculate TP based on risk-reward ratio (1:1.5)
+                sl_distance = ((adjusted_sl or filled_price * 1.01) - filled_price) / filled_price
+                risk_reward_ratio = 1.5
+                adjusted_tp = filled_price * (1 - sl_distance * risk_reward_ratio)
+                logger.warning(
+                    f"[open_short] Invalid take_profit {take_profit} >= fill_price {filled_price} "
+                    f"for {symbol}, adjusted to {adjusted_tp:.2f} (RR={risk_reward_ratio})"
+                )
+
             # Place SL/TP if specified — errors must not affect the main order
-            if stop_loss:
+            if adjusted_sl:
                 try:
-                    await self.place_stop_loss(symbol, "buy", result.filled_size, stop_loss)
+                    await self.place_stop_loss(symbol, "buy", result.filled_size, adjusted_sl)
                 except Exception as e:
                     logger.error(
                         f"[open_short] Failed to place stop-loss for {symbol} "
-                        f"at {stop_loss}: {e}  (entry order succeeded)"
+                        f"at {adjusted_sl}: {e}  (entry order succeeded)"
                     )
-            if take_profit:
+            if adjusted_tp:
                 try:
-                    await self.place_take_profit(symbol, "buy", result.filled_size, take_profit)
+                    await self.place_take_profit(symbol, "buy", result.filled_size, adjusted_tp)
                 except Exception as e:
                     logger.error(
                         f"[open_short] Failed to place take-profit for {symbol} "
-                        f"at {take_profit}: {e}  (entry order succeeded)"
+                        f"at {adjusted_tp}: {e}  (entry order succeeded)"
                     )
-        
+
         return result
     
     def _validate_symbol(self, symbol: str) -> str:

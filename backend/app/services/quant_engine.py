@@ -18,10 +18,10 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from ..traders.base import BaseTrader, OrderResult, TradeError
-from .position_service import (
+from .agent_position_service import (
+    AgentPositionService,
     CapitalExceededError,
     PositionConflictError,
-    PositionService,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class QuantEngineBase(ABC):
         config: dict,
         runtime_state: dict,
         account_id: Optional[str] = None,
-        position_service: Optional[PositionService] = None,
+        position_service: Optional[AgentPositionService] = None,
         strategy: Optional[object] = None,
         trade_type: str = "crypto_perp",
     ):
@@ -111,21 +111,19 @@ class QuantEngineBase(ABC):
                         account_state = await self.trader.get_account_state()
                         self._cached_account_equity = account_state.equity
                     claim = await ps.claim_position_with_capital_check(
-                        strategy_id=uuid.UUID(self.agent_id),
-                        strategy_type="quant",
+                        agent_id=uuid.UUID(self.agent_id),
                         account_id=uuid.UUID(self.account_id),
                         symbol=self.symbol,
                         side=side,
                         leverage=leverage,
                         account_equity=self._cached_account_equity,
                         requested_size_usd=size_usd,
-                        strategy=self.strategy,
+                        agent=self.strategy,
                     )
                 else:
                     # Fallback: no capital check (backward compatible)
                     claim = await ps.claim_position(
-                        strategy_id=uuid.UUID(self.agent_id),
-                        strategy_type="quant",
+                        agent_id=uuid.UUID(self.agent_id),
                         account_id=uuid.UUID(self.account_id),
                         symbol=self.symbol,
                         side=side,
@@ -250,7 +248,7 @@ class QuantEngineBase(ABC):
         pos_record = None
 
         if ps:
-            pos_record = await ps.get_strategy_position_for_symbol(
+            pos_record = await ps.get_agent_position_for_symbol(
                 uuid.UUID(self.agent_id), self.symbol
             )
 
@@ -824,7 +822,7 @@ def create_engine(
     config: dict,
     runtime_state: dict,
     account_id: Optional[str] = None,
-    position_service: Optional[PositionService] = None,
+    position_service: Optional[AgentPositionService] = None,
     strategy: Optional[object] = None,
     trade_type: str = "crypto_perp",
 ) -> QuantEngineBase:

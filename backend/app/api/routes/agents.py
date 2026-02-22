@@ -1111,7 +1111,7 @@ async def _trigger_quant_cycle(
 ) -> dict:
     """Trigger a single execution cycle for a quant strategy."""
     from ...services.quant_engine import create_engine
-    from ...services.position_service import PositionService
+    from ...services.agent_position_service import AgentPositionService
     from ...services.redis_service import get_redis_service
     from ...traders.mock_trader import MockTrader
     from ...traders.ccxt_trader import create_trader_from_account
@@ -1154,7 +1154,7 @@ async def _trigger_quant_cycle(
             redis_service = await get_redis_service()
         except Exception:
             redis_service = None
-        position_service = PositionService(db=db, redis=redis_service)
+        position_service = AgentPositionService(db=db, redis=redis_service)
 
         # Create engine and run one cycle
         strategy_type = agent.strategy_type

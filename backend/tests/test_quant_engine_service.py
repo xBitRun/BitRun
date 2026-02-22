@@ -237,7 +237,7 @@ class TestGridEngine:
     @pytest.mark.asyncio
     async def test_capital_exceeded_on_buy(self, grid_config):
         """CapitalExceededError during open_with_isolation returns failed order."""
-        from app.services.position_service import CapitalExceededError
+        from app.services.agent_position_service import CapitalExceededError
 
         trader = _mock_trader(mark_price=88.0)
         # Patch _open_with_isolation to simulate CapitalExceededError
@@ -770,7 +770,7 @@ class TestQuantEngineBaseIsolation:
     @pytest.mark.asyncio
     async def test_open_with_isolation_capital_exceeded(self, mock_position_service, mock_strategy):
         """Test _open_with_isolation returns failure on CapitalExceededError."""
-        from app.services.position_service import CapitalExceededError
+        from app.services.agent_position_service import CapitalExceededError
         
         trader = _mock_trader(mark_price=50000.0)
         mock_position_service.claim_position_with_capital_check = AsyncMock(
@@ -797,7 +797,7 @@ class TestQuantEngineBaseIsolation:
     async def test_open_with_isolation_position_conflict(self, mock_position_service, mock_strategy):
         """Test _open_with_isolation returns failure on PositionConflictError."""
         from uuid import UUID
-        from app.services.position_service import PositionConflictError
+        from app.services.agent_position_service import PositionConflictError
         
         trader = _mock_trader(mark_price=50000.0)
         mock_position_service.claim_position_with_capital_check = AsyncMock(

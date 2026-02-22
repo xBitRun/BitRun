@@ -298,7 +298,7 @@ class QuantExecutionWorker:
 
     async def _run_cycle_inner(self, redis_service=None) -> None:
         """Inner cycle logic after lock is acquired."""
-        from ..services.position_service import PositionService
+        from ..services.agent_position_service import AgentPositionService
 
         async with AsyncSessionLocal() as session:
             # Update heartbeat at start of cycle with retry
@@ -321,7 +321,7 @@ class QuantExecutionWorker:
                 return
 
             # Create position service for strategy isolation
-            position_service = PositionService(db=session, redis=redis_service)
+            position_service = AgentPositionService(db=session, redis=redis_service)
 
             # Create appropriate engine with position isolation
             engine = create_engine(
@@ -659,7 +659,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
         user_id: Optional[str] = None,
     ) -> dict:
         """Trigger a single execution cycle for a quant strategy."""
-        from ..services.position_service import PositionService
+        from ..services.agent_position_service import AgentPositionService
         from ..services.redis_service import get_redis_service
         from ..traders.mock_trader import MockTrader
 
@@ -718,7 +718,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
                     redis_service = await get_redis_service()
                 except Exception:
                     redis_service = None
-                position_service = PositionService(db=session, redis=redis_service)
+                position_service = AgentPositionService(db=session, redis=redis_service)
 
                 # Create engine and run one cycle
                 strategy_type = strategy.strategy_type

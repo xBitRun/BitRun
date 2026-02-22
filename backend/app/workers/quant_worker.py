@@ -262,7 +262,7 @@ class QuantExecutionWorker:
 
     async def _run_cycle_inner(self, redis_service=None) -> None:
         """Inner cycle logic after lock is acquired."""
-        from ..services.position_service import PositionService
+        from ..services.agent_position_service import AgentPositionService
 
         async with AsyncSessionLocal() as session:
             # Update heartbeat at start of cycle (same as ExecutionWorker)
@@ -277,7 +277,7 @@ class QuantExecutionWorker:
                 return
 
             # Create position service for strategy isolation
-            position_service = PositionService(db=session, redis=redis_service)
+            position_service = AgentPositionService(db=session, redis=redis_service)
 
             # Create appropriate engine with position isolation
             engine = create_engine(

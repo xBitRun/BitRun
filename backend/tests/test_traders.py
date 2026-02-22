@@ -1122,3 +1122,193 @@ class TestBaseTraderOpenLongShort:
 
     def test_validate_symbol(self, base_trader):
         assert base_trader._validate_symbol("  btc  ") == "BTC"
+
+
+class TestSLTPValidation:
+    """Tests for Stop Loss / Take Profit validation logic with leverage awareness."""
+
+    @pytest_asyncio.fixture
+    async def base_trader(self):
+        """Create a BaseTrader with mocked abstract methods."""
+        trader = MagicMock(spec=BaseTrader)
+        trader._initialized = True
+        trader.get_market_price = AsyncMock(return_value=68000.0)
+        trader.set_leverage = AsyncMock(return_value=True)
+        trader.place_market_order = AsyncMock(
+            return_value=OrderResult(
+                success=True,
+                order_id="test_order",
+                filled_size=0.1,
+                filled_price=68122.55,  # Simulate different fill price
+                status="filled",
+            )
+        )
+        trader.place_stop_loss = AsyncMock(
+            return_value=OrderResult(success=True, order_id="sl_order", status="open")
+        )
+        trader.place_take_profit = AsyncMock(
+            return_value=OrderResult(success=True, order_id="tp_order", status="open")
+        )
+        # Use real open_long/open_short from BaseTrader
+        trader.open_long = BaseTrader.open_long.__get__(trader, type(trader))
+        trader.open_short = BaseTrader.open_short.__get__(trader, type(trader))
+        return trader
+
+    @pytest.mark.asyncio
+    async def test_open_long_adjusts_invalid_tp_below_fill_price(self, base_trader):
+        """TP below fill price for LONG should be auto-adjusted with risk-reward ratio."""
+        # With leverage=5, valid SL is 67900 (below fill)
+        # TP is invalid (68091 < 68122.55), should be adjusted based on SL distance
+        result = await base_trader.open_long(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=5,
+            stop_loss=67900.0,  # Valid: SL < fill
+            take_profit=68091.0,  # Invalid: TP < fill
+        )
+
+        assert result.success is True
+        # SL distance = (68122.55 - 67900) / 68122.55 ≈ 0.327%
+        # TP should be = fill * (1 + sl_distance * 1.5)
+        sl_distance = (68122.55 - 67900.0) / 68122.55
+        expected_adjusted_tp = 68122.55 * (1 + sl_distance * 1.5)
+        base_trader.place_take_profit.assert_called_once()
+        call_args = base_trader.place_take_profit.call_args
+        assert abs(call_args[0][3] - expected_adjusted_tp) < 1
+
+    @pytest.mark.asyncio
+    async def test_open_long_adjusts_invalid_sl_above_fill_price(self, base_trader):
+        """SL above fill price for LONG should be adjusted based on leverage."""
+        leverage = 5
+        result = await base_trader.open_long(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=leverage,
+            stop_loss=68500.0,  # Invalid: SL > fill
+            take_profit=69000.0,  # Valid: TP > fill
+        )
+
+        assert result.success is True
+        # SL = fill * (1 - 0.5 / leverage) = 68122.55 * (1 - 0.1) = 61310.30
+        max_loss_pct = 0.5 / leverage
+        expected_adjusted_sl = 68122.55 * (1 - max_loss_pct)
+        base_trader.place_stop_loss.assert_called_once()
+        call_args = base_trader.place_stop_loss.call_args
+        assert abs(call_args[0][3] - expected_adjusted_sl) < 1
+
+    @pytest.mark.asyncio
+    async def test_open_long_valid_sl_tp_unchanged(self, base_trader):
+        """Valid SL/TP for LONG should remain unchanged."""
+        result = await base_trader.open_long(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=5,
+            stop_loss=67000.0,  # Valid: SL < fill
+            take_profit=70000.0,  # Valid: TP > fill
+        )
+
+        assert result.success is True
+        base_trader.place_stop_loss.assert_called_once()
+        base_trader.place_take_profit.assert_called_once()
+        sl_call = base_trader.place_stop_loss.call_args
+        tp_call = base_trader.place_take_profit.call_args
+        assert sl_call[0][3] == 67000.0
+        assert tp_call[0][3] == 70000.0
+
+    @pytest.mark.asyncio
+    async def test_open_short_adjusts_invalid_tp_above_fill_price(self, base_trader):
+        """TP above fill price for SHORT should be adjusted with risk-reward ratio."""
+        result = await base_trader.open_short(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=5,
+            stop_loss=69000.0,  # Valid: SL > fill for short
+            take_profit=68500.0,  # Invalid: TP > fill for short
+        )
+
+        assert result.success is True
+        # SL distance = (69000 - 68122.55) / 68122.55 ≈ 1.29%
+        # TP should be = fill * (1 - sl_distance * 1.5)
+        sl_distance = (69000.0 - 68122.55) / 68122.55
+        expected_adjusted_tp = 68122.55 * (1 - sl_distance * 1.5)
+        base_trader.place_take_profit.assert_called_once()
+        call_args = base_trader.place_take_profit.call_args
+        assert abs(call_args[0][3] - expected_adjusted_tp) < 1
+
+    @pytest.mark.asyncio
+    async def test_open_short_adjusts_invalid_sl_below_fill_price(self, base_trader):
+        """SL below fill price for SHORT should be adjusted based on leverage."""
+        leverage = 5
+        result = await base_trader.open_short(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=leverage,
+            stop_loss=67000.0,  # Invalid: SL < fill for short
+            take_profit=66000.0,  # Valid: TP < fill for short
+        )
+
+        assert result.success is True
+        # SL = fill * (1 + 0.5 / leverage) = 68122.55 * (1 + 0.1)
+        max_loss_pct = 0.5 / leverage
+        expected_adjusted_sl = 68122.55 * (1 + max_loss_pct)
+        base_trader.place_stop_loss.assert_called_once()
+        call_args = base_trader.place_stop_loss.call_args
+        assert abs(call_args[0][3] - expected_adjusted_sl) < 1
+
+    @pytest.mark.asyncio
+    async def test_open_short_valid_sl_tp_unchanged(self, base_trader):
+        """Valid SL/TP for SHORT should remain unchanged."""
+        result = await base_trader.open_short(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=5,
+            stop_loss=70000.0,  # Valid: SL > fill for short
+            take_profit=66000.0,  # Valid: TP < fill for short
+        )
+
+        assert result.success is True
+        base_trader.place_stop_loss.assert_called_once()
+        base_trader.place_take_profit.assert_called_once()
+        sl_call = base_trader.place_stop_loss.call_args
+        tp_call = base_trader.place_take_profit.call_args
+        assert sl_call[0][3] == 70000.0
+        assert tp_call[0][3] == 66000.0
+
+    @pytest.mark.asyncio
+    async def test_open_long_without_sl_tp(self, base_trader):
+        """Opening position without SL/TP should work."""
+        result = await base_trader.open_long(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=5,
+            stop_loss=None,
+            take_profit=None,
+        )
+
+        assert result.success is True
+        base_trader.place_stop_loss.assert_not_called()
+        base_trader.place_take_profit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_open_long_high_leverage_tighter_sl(self, base_trader):
+        """Higher leverage should result in tighter SL (closer to fill price)."""
+        high_leverage = 50
+        result = await base_trader.open_long(
+            symbol="BTC",
+            size_usd=5000.0,
+            leverage=high_leverage,
+            stop_loss=68500.0,  # Invalid: SL > fill
+            take_profit=69000.0,
+        )
+
+        assert result.success is True
+        # With 50x leverage, max_loss_pct = 0.5/50 = 1%
+        # SL = 68122.55 * 0.99 = 67441.32
+        max_loss_pct = 0.5 / high_leverage
+        expected_adjusted_sl = 68122.55 * (1 - max_loss_pct)
+        base_trader.place_stop_loss.assert_called_once()
+        call_args = base_trader.place_stop_loss.call_args
+        assert abs(call_args[0][3] - expected_adjusted_sl) < 1
+        # Verify SL is tighter than low leverage
+        low_leverage_sl = 68122.55 * (1 - 0.5 / 5)  # 10% loss at 5x
+        assert expected_adjusted_sl > low_leverage_sl  # Higher leverage = SL closer to entry

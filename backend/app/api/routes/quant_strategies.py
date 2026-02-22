@@ -177,8 +177,8 @@ async def update_quant_strategy(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    from ...services.position_service import PositionService
-    ps = PositionService(db=db)
+    from ...services.agent_position_service import AgentPositionService
+    ps = AgentPositionService(db=db)
 
     # Validate account ownership + protect account changes when positions exist
     if "account_id" in update_data and update_data["account_id"]:
@@ -370,11 +370,11 @@ async def update_quant_strategy_status(
     # Close open positions if requested when stopping
     if new == "stopped" and data.close_positions:
         try:
-            from ...services.position_service import PositionService
+            from ...services.agent_position_service import AgentPositionService
             from ...traders.ccxt_trader import create_trader_from_account
 
-            ps = PositionService(db=db)
-            open_positions = await ps.get_strategy_positions(
+            ps = AgentPositionService(db=db)
+            open_positions = await ps.get_agent_positions(
                 uuid.UUID(strategy_id), "open"
             )
 
@@ -446,8 +446,8 @@ async def delete_quant_strategy(
         )
 
     # Check for open positions
-    from ...services.position_service import PositionService
-    ps = PositionService(db=db)
+    from ...services.agent_position_service import AgentPositionService
+    ps = AgentPositionService(db=db)
     has_positions = await ps.has_open_positions(uuid.UUID(strategy_id))
     if has_positions:
         raise HTTPException(
