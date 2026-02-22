@@ -1,313 +1,429 @@
 """
-Tests for PricePrefetchService - Background price preloading.
+Shared Price Cache Service - Global price caching across all traders.
+
+Provides:
+- Local in-memory L1 cache (microsecond access)
+- Redis L2 cache for cross-Agent/cross-process sharing
+- Request coalescing to prevent thundering herd
+- Automatic TTL-based expiration
+
+Architecture:
+                    +------------------+
+                    |  L1 Memory Cache |
+                    |  (per-instance)  |
+                    +--------+---------+
+                             ^ (miss)
+         +-------------------+-------------------+
+         |                   |                   |
+    MockTrader          CCXTTrader          CCXTTrader
+    (Agent 1)           (Agent 2)           (Agent N)
+         |                   |                   |
+         v                   v                   v
+    +----------------------------------------------+
+    |              L2 Redis Cache                  |
+    |         (cross-Agent shared)                 |
+    +----------------------+-----------------------+
+                           ^ (miss)
+                           |
+    +----------------------+-----------------------+
+    |              Exchange API                   |
+    +----------------------------------------------+
 """
 
 import asyncio
+import json
+import logging
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Callable, Dict, Optional, Tuple
 
-import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from app.services.price_prefetch import (
-    PricePrefetchService,
-    SymbolSubscription,
-    get_price_prefetch_service,
-    reset_price_prefetch_service,
-    PREFETCH_INTERVAL,
-)
+logger = logging.getLogger(__name__)
 
 
-class TestSymbolSubscription:
-    """Tests for SymbolSubscription dataclass."""
+@dataclass
+class CachedPrice:
+    """Cached price entry with metadata."""
+    price: float
+    timestamp: float  # monotonic time for TTL checks
+    exchange: str
+    symbol: str
+    bid: Optional[float] = None
+    ask: Optional[float] = None
 
-    def test_creation(self):
-        """Test creating a SymbolSubscription."""
-        sub = SymbolSubscription(
-            symbol="BTC",
-            exchange="hyperliquid",
-            subscriber_count=2,
+
+class SharedPriceCache:
+    """
+    Global price cache with L1 (memory) and L2 (Redis) tiers.
+
+    Features:
+    - L1 in-memory cache for ultra-fast access (<1μs)
+    - L2 Redis cache for cross-Agent sharing (~1ms)
+    - Request coalescing: concurrent requests share a single API call
+    - Configurable TTL per data type
+    - Graceful degradation when Redis unavailable
+    """
+
+    # Default TTLs in seconds
+    DEFAULT_PRICE_TTL = 5.0  # Price ticker TTL
+    DEFAULT_KLINE_TTL = 60.0  # K-line data TTL
+
+    # Cache key prefixes
+    PRICE_KEY_PREFIX = "price_cache:"
+
+    def __init__(
+        self,
+        price_ttl: float = DEFAULT_PRICE_TTL,
+        enable_l2: bool = True,
+    ):
+        """
+        Initialize the shared price cache.
+
+        Args:
+            price_ttl: TTL for price data in seconds (default: 5s)
+            enable_l2: Whether to use Redis L2 cache (default: True)
+        """
+        self._price_ttl = price_ttl
+        self._enable_l2 = enable_l2
+
+        # L1 cache: symbol -> CachedPrice
+        self._l1_cache: Dict[str, CachedPrice] = {}
+
+        # Request coalescing: symbol -> asyncio.Future
+        # Prevents multiple concurrent requests for the same symbol
+        self._pending_requests: Dict[str, asyncio.Future] = {}
+
+        # Redis client (lazy initialization)
+        self._redis = None
+
+        # Metrics
+        self._l1_hits = 0
+        self._l1_misses = 0
+        self._l2_hits = 0
+        self._l2_misses = 0
+        self._api_calls = 0
+
+    async def _get_redis(self):
+        """Get Redis connection lazily."""
+        if self._redis is None and self._enable_l2:
+            try:
+                from .redis_service import get_redis_service
+                self._redis = await get_redis_service()
+            except Exception as e:
+                logger.warning(f"Redis unavailable, using L1 cache only: {e}")
+                self._enable_l2 = False
+        return self._redis
+
+    def _make_key(self, exchange: str, symbol: str) -> str:
+        """Generate cache key for a symbol."""
+        return f"{self.PRICE_KEY_PREFIX}{exchange}:{symbol.upper()}"
+
+    # =========================================================================
+    # Public API
+    # =========================================================================
+
+    async def get_price(
+        self,
+        exchange: str,
+        symbol: str,
+        fetcher: Optional[Callable[[], Tuple[float, Optional[float], Optional[float]]]] = None,
+    ) -> Optional[float]:
+        """
+        Get cached price, optionally fetching if not cached.
+
+        Args:
+            exchange: Exchange identifier (e.g., "hyperliquid")
+            symbol: Trading symbol (e.g., "BTC")
+            fetcher: Async function to fetch price if not cached.
+                     Returns (price, bid, ask) tuple.
+
+        Returns:
+            Cached price or None if unavailable
+        """
+        symbol = symbol.upper()
+        key = self._make_key(exchange, symbol)
+
+        # 1. Check L1 cache
+        cached = self._l1_cache.get(key)
+        now = time.monotonic()
+
+        if cached and (now - cached.timestamp) < self._price_ttl:
+            self._l1_hits += 1
+            logger.debug(f"L1 cache HIT for {exchange}:{symbol}")
+            return cached.price
+
+        self._l1_misses += 1
+
+        # 2. Check L2 cache (Redis)
+        if self._enable_l2:
+            l2_price = await self._get_from_l2(key)
+            if l2_price is not None:
+                self._l2_hits += 1
+                # Promote to L1
+                self._l1_cache[key] = CachedPrice(
+                    price=l2_price["price"],
+                    timestamp=now,
+                    exchange=exchange,
+                    symbol=symbol,
+                    bid=l2_price.get("bid"),
+                    ask=l2_price.get("ask"),
+                )
+                logger.debug(f"L2 cache HIT for {exchange}:{symbol}")
+                return l2_price["price"]
+
+        self._l2_misses += 1
+
+        # 3. Fetch if provider available
+        if fetcher is not None:
+            return await self._fetch_with_coalescing(exchange, symbol, key, fetcher)
+
+        # 4. Return stale L1 data if available (graceful degradation)
+        if cached:
+            logger.debug(f"Using stale L1 cache for {exchange}:{symbol}")
+            return cached.price
+
+        return None
+
+    async def set_price(
+        self,
+        exchange: str,
+        symbol: str,
+        price: float,
+        bid: Optional[float] = None,
+        ask: Optional[float] = None,
+    ) -> None:
+        """
+        Cache a price value.
+
+        Args:
+            exchange: Exchange identifier
+            symbol: Trading symbol
+            price: Current price
+            bid: Bid price (optional)
+            ask: Ask price (optional)
+        """
+        symbol = symbol.upper()
+        key = self._make_key(exchange, symbol)
+        now = time.monotonic()
+
+        # Update L1
+        self._l1_cache[key] = CachedPrice(
+            price=price,
+            timestamp=now,
+            exchange=exchange,
+            symbol=symbol,
+            bid=bid,
+            ask=ask,
         )
-        assert sub.symbol == "BTC"
-        assert sub.exchange == "hyperliquid"
-        assert sub.subscriber_count == 2
-        assert sub.last_fetch is None
 
-    def test_default_subscriber_count(self):
-        """Test default subscriber count."""
-        sub = SymbolSubscription(symbol="BTC", exchange="hyperliquid")
-        assert sub.subscriber_count == 1
+        # Update L2
+        if self._enable_l2:
+            await self._set_in_l2(key, {
+                "price": price,
+                "bid": bid,
+                "ask": ask,
+                "timestamp": datetime.now(UTC).isoformat(),
+            })
 
+        logger.debug(f"Cached price for {exchange}:{symbol}: {price}")
 
-class TestPricePrefetchService:
-    """Tests for PricePrefetchService class."""
+    async def get_prices_batch(
+        self,
+        exchange: str,
+        symbols: list[str],
+        fetcher: Optional[Callable[[list[str]], Dict[str, Tuple[float, Optional[float], Optional[float]]]]] = None,
+    ) -> Dict[str, float]:
+        """
+        Get prices for multiple symbols efficiently.
 
-    @pytest.fixture
-    def service(self):
-        """Create a fresh service for each test."""
-        return PricePrefetchService(prefetch_interval=0.5)
+        Args:
+            exchange: Exchange identifier
+            symbols: List of symbols to fetch
+            fetcher: Async function to fetch multiple prices at once
 
-    @pytest.fixture
-    def service_with_mocks(self):
-        """Create a service with mocked dependencies."""
-        service = PricePrefetchService(prefetch_interval=0.1)
+        Returns:
+            Dict mapping symbol -> price
+        """
+        results = {}
+        uncached = []
 
-        # Mock Redis
-        service._redis = MagicMock()
-        service._redis.set = AsyncMock(return_value=True)
-        service._redis.get = AsyncMock(return_value=b"test_instance")
-        service._redis.expire = AsyncMock(return_value=True)
-        service._redis.delete = AsyncMock(return_value=True)
+        for symbol in symbols:
+            price = await self.get_price(exchange, symbol)
+            if price is not None:
+                results[symbol] = price
+            else:
+                uncached.append(symbol)
 
-        # Mock price cache
-        service._price_cache = MagicMock()
-        service._price_cache.set_price = AsyncMock(return_value=True)
+        # Fetch uncached symbols
+        if uncached and fetcher is not None:
+            try:
+                fetched = await fetcher(uncached)
+                for symbol, (price, bid, ask) in fetched.items():
+                    await self.set_price(exchange, symbol, price, bid, ask)
+                    results[symbol] = price
+            except Exception as e:
+                logger.warning(f"Batch fetch failed: {e}")
 
-        return service
+        return results
 
-    # =========================================================================
-    # Lifecycle Tests
-    # =========================================================================
+    def invalidate(self, exchange: str, symbol: Optional[str] = None) -> int:
+        """
+        Invalidate cached entries.
 
-    @pytest.mark.asyncio
-    async def test_start_and_stop(self, service):
-        """Test starting and stopping the service."""
-        await service.start()
-        assert service._running is True
-        assert service._leader_task is not None
+        Args:
+            exchange: Exchange to invalidate
+            symbol: Specific symbol or None for all
 
-        await service.stop()
-        assert service._running is False
+        Returns:
+            Number of entries invalidated
+        """
+        count = 0
+        prefix = self._make_key(exchange, symbol or "*")
 
-    @pytest.mark.asyncio
-    async def test_double_start_is_idempotent(self, service):
-        """Test that double start is idempotent."""
-        await service.start()
-        task1 = service._leader_task
+        # Invalidate L1
+        keys_to_remove = [
+            k for k in self._l1_cache
+            if symbol is None or k == prefix.replace("*", symbol.upper())
+        ]
+        for k in keys_to_remove:
+            del self._l1_cache[k]
+            count += 1
 
-        await service.start()  # Second start
-        assert service._leader_task is task1  # Same task
+        # Note: L2 invalidation is async and happens lazily via TTL
+        logger.debug(f"Invalidated {count} L1 entries for {exchange}:{symbol or '*'}")
+        return count
 
-        await service.stop()
+    def get_stats(self) -> dict:
+        """Get cache statistics."""
+        total_requests = self._l1_hits + self._l1_misses
+        l1_hit_rate = self._l1_hits / total_requests if total_requests > 0 else 0
 
-    # =========================================================================
-    # Leader Election Tests
-    # =========================================================================
+        l2_requests = self._l2_hits + self._l2_misses
+        l2_hit_rate = self._l2_hits / l2_requests if l2_requests > 0 else 0
 
-    @pytest.mark.asyncio
-    async def test_becomes_leader_without_redis(self, service):
-        """Test that service becomes leader when Redis unavailable."""
-        # No Redis means single instance mode
-        service._redis = None
-
-        await service.start()
-        await asyncio.sleep(0.1)  # Let leader loop run
-
-        assert service._is_leader is True
-
-        await service.stop()
-
-    @pytest.mark.asyncio
-    async def test_acquires_leadership_from_redis(self, service_with_mocks):
-        """Test acquiring leadership via Redis."""
-        service = service_with_mocks
-        service._redis.set = AsyncMock(return_value=True)  # Successfully acquire
-
-        await service.start()
-        await asyncio.sleep(0.15)  # Let leader loop run
-
-        assert service._is_leader is True
-
-        await service.stop()
-
-    @pytest.mark.asyncio
-    async def test_does_not_become_leader_if_taken(self, service_with_mocks):
-        """Test that service doesn't become leader if another instance holds it."""
-        service = service_with_mocks
-        service._redis.set = AsyncMock(return_value=None)  # Failed to acquire
-        service._redis.get = AsyncMock(return_value=b"other_instance")  # Different owner
-
-        await service.start()
-        await asyncio.sleep(0.15)
-
-        assert service._is_leader is False
-
-        await service.stop()
+        return {
+            "l1_entries": len(self._l1_cache),
+            "l1_hits": self._l1_hits,
+            "l1_misses": self._l1_misses,
+            "l1_hit_rate": l1_hit_rate,
+            "l2_hits": self._l2_hits,
+            "l2_misses": self._l2_misses,
+            "l2_hit_rate": l2_hit_rate,
+            "api_calls": self._api_calls,
+            "pending_requests": len(self._pending_requests),
+        }
 
     # =========================================================================
-    # Symbol Registration Tests
+    # Internal Methods
     # =========================================================================
 
-    @pytest.mark.asyncio
-    async def test_register_symbol(self, service):
-        """Test registering a symbol."""
-        await service.register_symbol("hyperliquid", "BTC", "agent-1")
-
-        assert "hyperliquid:BTC" in service._subscriptions
-        assert service._subscriptions["hyperliquid:BTC"].subscriber_count == 1
-        assert "agent-1" in service._agent_symbols
-
-    @pytest.mark.asyncio
-    async def test_register_same_symbol_multiple_agents(self, service):
-        """Test registering same symbol from multiple agents."""
-        await service.register_symbol("hyperliquid", "BTC", "agent-1")
-        await service.register_symbol("hyperliquid", "BTC", "agent-2")
-        await service.register_symbol("hyperliquid", "BTC", "agent-3")
-
-        assert service._subscriptions["hyperliquid:BTC"].subscriber_count == 3
-
-    @pytest.mark.asyncio
-    async def test_unregister_symbol(self, service):
-        """Test that symbol is normalized to uppercase."""
-        service.register_symbol("btc", "binance")
-        assert "BTC/BINANCE" in service._symbols
-
-
-class TestPriceCacheIntegration:
-    """Integration tests for price caching with real components."""
-
-    @pytest.mark.asyncio
-    async def test_full_price_fetch_cycle(self, mock_redis):
-        """Test a complete price fetch cycle with cache."""
-        service = PriceCacheService(redis_url="redis://localhost:6379/0")
-
-        # Mock the fetcher
-        original_fetch = service._fetcher.fetch_price
-        fetch_count = 0
-
-        async def counting_fetch(symbol: str) -> Optional[float]:
-            nonlocal fetch_count
-            fetch_count += 1
-            return await original_fetch(symbol)
-
-        service._fetcher.fetch_price = counting_fetch
+    async def _get_from_l2(self, key: str) -> Optional[dict]:
+        """Get price from L2 (Redis) cache."""
+        redis = await self._get_redis()
+        if redis is None:
+            return None
 
         try:
-            # First fetch - should call API
-            price1 = await service.get_price("BTC", "binance")
-            assert price1 is not None
-            assert fetch_count == 1
+            data = await redis.get(key)
+            if data:
+                return json.loads(data)
+        except Exception as e:
+            logger.debug(f"L2 get failed for {key}: {e}")
 
-            # Second fetch - should use cache
-            price2 = await service.get_price("BTC", "binance")
-            assert price2 == price1
-            assert fetch_count == 1  # No additional fetch
+        return None
 
-            # After TTL expiry - should refetch
-            await asyncio.sleep(0.15)  # Wait for cache to expire
-            price3 = await service.get_price("BTC", "binance")
-            assert fetch_count == 2  # New fetch occurred
-        finally:
-            await service.close()
-
-    @pytest.mark.asyncio
-    async def test_concurrent_requests_share_single_fetch(self, mock_redis):
-        """Test that concurrent requests for same symbol share one API call."""
-        service = PriceCacheService(redis_url="redis://localhost:6379/0")
-
-        fetch_count = 0
-
-        async def counting_fetch(symbol: str) -> Optional[float]:
-            nonlocal fetch_count
-            fetch_count += 1
-            await asyncio.sleep(0.05)  # Simulate network delay
-            return 50000.0
-
-        service._fetcher.fetch_price = counting_fetch
+    async def _set_in_l2(self, key: str, data: dict) -> bool:
+        """Set price in L2 (Redis) cache."""
+        redis = await self._get_redis()
+        if redis is None:
+            return False
 
         try:
-            # Make 10 concurrent requests
-            tasks = [service.get_price("BTC", "binance") for _ in range(10)]
-            prices = await asyncio.gather(*tasks)
+            await redis.set(key, json.dumps(data), ex=int(self._price_ttl * 2))
+            return True
+        except Exception as e:
+            logger.debug(f"L2 set failed for {key}: {e}")
+            return False
 
-            # All should get the same price
-            assert all(p == 50000.0 for p in prices)
-            # But only one API call should have been made
-            assert fetch_count == 1
+    async def _fetch_with_coalescing(
+        self,
+        exchange: str,
+        symbol: str,
+        key: str,
+        fetcher: Callable,
+    ) -> Optional[float]:
+        """
+        Fetch price with request coalescing.
+
+        Multiple concurrent requests for the same symbol share a single API call.
+        """
+        # Check if there's already a pending request for this symbol
+        if key in self._pending_requests:
+            logger.debug(f"Coalescing request for {exchange}:{symbol}")
+            try:
+                # Wait for the existing request to complete
+                return await self._pending_requests[key]
+            except Exception:
+                return None
+
+        # Create a future for this request
+        future = asyncio.get_event_loop().create_future()
+        self._pending_requests[key] = future
+
+        try:
+            self._api_calls += 1
+            result = await fetcher()
+
+            if result is not None:
+                price, bid, ask = result if len(result) == 3 else (result[0], None, None)
+                await self.set_price(exchange, symbol, price, bid, ask)
+                future.set_result(price)
+                return price
+            else:
+                future.set_result(None)
+                return None
+
+        except Exception as e:
+            logger.warning(f"Fetch failed for {exchange}:{symbol}: {e}")
+            future.set_exception(e)
+            return None
+
         finally:
-            await service.close()
-```
+            # Clean up pending request
+            self._pending_requests.pop(key, None)
 
-The implementation is complete. Let me summarize what was created:
 
-## Summary of Implementation
+# =============================================================================
+# Singleton Instance
+# =============================================================================
 
-### Phase 1: Local TTL Cache in MockTrader
-Modified `backend/app/traders/mock_trader.py` to add:
-- `PRICE_CACHE_TTL = 5` seconds class constant
-- `_price_cache: Dict[str, Tuple[float, float]]` for storing (price, timestamp)
-- Modified `_refresh_prices()` to check cache before making API calls
-- Added `clear_price_cache()` method for manual cache clearing
-- Added `get_price_cache_stats()` for monitoring
+_shared_price_cache: Optional[SharedPriceCache] = None
 
-### Phase 2: Global Redis Price Cache
-Created `backend/app/services/shared_price_cache.py` with:
-- **Two-tier caching**: In-memory L1 cache + Redis L2 cache
-- **Request coalescing**: Concurrent requests for the same symbol share a single API call
-- **TTL management**: Configurable per-exchange TTLs (Hyperliquid: 3s, others: 5s)
-- **Leader election**: Only one instance performs the actual API fetch
-- **Graceful degradation**: Falls back to direct fetch if Redis is unavailable
-- **Metrics**: Cache hit/miss tracking, API call count
 
-### Key Files Modified/Created:
-1. `backend/app/traders/mock_trader.py` - Added local TTL cache
-2. `backend/app/services/shared_price_cache.py` - NEW: Global shared cache service
+def get_shared_price_cache(
+    price_ttl: float = SharedPriceCache.DEFAULT_PRICE_TTL,
+    enable_l2: bool = True,
+) -> SharedPriceCache:
+    """
+    Get or create the shared price cache singleton.
 
-### Test Coverage:
-- Unit tests for local cache (in `test_mock_trader.py`)
-- Unit tests for shared cache (in `test_shared_price_cache.py`)
-- Integration tests for request coalescing and cache expiration
+    Args:
+        price_ttl: TTL for price data in seconds
+        enable_l2: Whether to enable Redis L2 cache
 
-### Expected Performance Improvement:
-| Scenario | Before | After Phase 1 | After Phase 2 |
-|----------|--------|---------------|---------------|
-| Single AI Agent (3 symbols, 3 timeframes) | ~18 calls | ~6 calls | ~3 calls |
-| 10 Concurrent AI Agents | ~180 calls | ~60 calls | ~15 calls |
-| Single Quant Agent | 2-3 calls | 1-2 calls | 1 call |
-| 10 Concurrent Quant Agents | 20-30 calls | 10-20 calls | 2-3 calls |
+    Returns:
+        SharedPriceCache singleton instance
+    """
+    global _shared_price_cache
+    if _shared_price_cache is None:
+        _shared_price_cache = SharedPriceCache(
+            price_ttl=price_ttl,
+            enable_l2=enable_l2,
+        )
+    return _shared_price_cache
 
-This implementation should significantly reduce the Hyperliquid API 429 rate limit errors while maintaining data freshness.4. **Error Handling**:
-   - Clear separation between "no data" and "error" conditions
-   - Proper exception propagation
-   - Graceful degradation on failures
 
-### Usage Example
-
-```python
-from app.services.shared_price_cache import SharedPriceCache
-
-# Initialize
-cache = SharedPriceCache(redis_client, default_ttl_seconds=5)
-await cache.initialize()
-
-# Get price (fetches from cache or API)
-price = await cache.get_price("hyperliquid", "BTC/USDC:USDC")
-
-# Get multiple prices at once
-prices = await cache.get_prices("hyperliquid", [
-    "BTC/USDC:USDC",
-    "ETH/USDC:USDC",
-    "SOL/USDC:USDC"
-])
-
-# Register a custom price fetcher
-async def my_fetcher(exchange: str, symbols: List[str]) -> Dict[str, float]:
-    # Custom logic here
-    return {"BTC/USDC:USDC": 50000.0}
-
-cache.register_fetcher(my_fetcher)
-```
-
-### Integration Points
-
-The `SharedPriceCache` can be integrated into:
-
-1. **MockTrader**: Replace direct CCXT calls with cached lookups
-2. **CCXTTrader**: Add caching layer for real trading accounts
-3. **StrategyEngine**: Use bulk price fetching for multiple symbols
-4. **Worker processes**: All workers share the same Redis cache
-
-This architecture significantly reduces API calls by:
-- Sharing cached prices across all agents/workers
-- Batching multiple symbol requests into single API calls
-- Using Redis pub/sub for real-time cache invalidation
-- Applying appropriate TTLs based on data freshness requirements
+def reset_shared_price_cache() -> None:
+    """Reset the shared price cache (for testing)."""
+    global _shared_price_cache
+    _shared_price_cache = None

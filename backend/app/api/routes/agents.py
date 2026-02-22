@@ -41,10 +41,14 @@ async def _fetch_public_prices(
     symbols: list[str],
     exchange_id: str = "hyperliquid",
 ) -> dict[str, float]:
-    """Fetch current prices from public API (no auth required).
+    """Fetch current prices using shared cache (no auth required).
 
-    Uses CCXT's public ticker endpoint without credentials to get
-    real-time prices for calculating unrealized PnL in mock mode.
+    Uses SharedPriceCache for:
+    - L1 in-memory cache (sub-millisecond access)
+    - L2 Redis cache (cross-process sharing)
+    - Request coalescing (prevent thundering herd)
+
+    Falls back to direct CCXT API calls when cache misses.
 
     Args:
         symbols: List of symbols to fetch prices for (e.g. ["BTC", "ETH"])
@@ -53,56 +57,71 @@ async def _fetch_public_prices(
     Returns:
         Dict mapping symbol to current price. Symbols not found are omitted.
     """
-    import ccxt.async_support as ccxt
-    from ...core.config import get_ccxt_proxy_config
+    if not symbols:
+        return {}
 
-    prices: dict[str, float] = {}
-    exchange = None
+    from ..services.shared_price_cache import get_shared_price_cache
 
-    try:
-        exchange_class = getattr(ccxt, exchange_id, None)
-        if exchange_class is None:
-            exchange_class = ccxt.hyperliquid
+    cache = get_shared_price_cache()
 
-        exchange = exchange_class({
-            "enableRateLimit": True,
-            "options": {"defaultType": "swap"},  # perpetual futures
-            **get_ccxt_proxy_config(),
-        })
+    async def fetcher(uncached_symbols: list[str]) -> dict[str, tuple[float, float | None, float | None]]:
+        """Fetch prices from CCXT for uncached symbols."""
+        import ccxt.async_support as ccxt
+        from ...core.config import get_ccxt_proxy_config
 
-        # Convert symbols to CCXT format (e.g., "BTC" -> "BTC/USDC:USDC")
-        for symbol in symbols:
-            try:
-                # Determine market type and format symbol
-                if "/" in symbol:
-                    ccxt_symbol = symbol
-                else:
-                    # Assume it's a coin symbol like "BTC", convert to perpetual format
-                    from ...traders.base import detect_market_type, MarketType
-                    mtype = detect_market_type(symbol)
-                    if mtype == MarketType.SPOT:
-                        ccxt_symbol = f"{symbol}/USDC"
+        results: dict[str, tuple[float, float | None, float | None]] = {}
+        exchange = None
+
+        try:
+            exchange_class = getattr(ccxt, exchange_id, None)
+            if exchange_class is None:
+                exchange_class = ccxt.hyperliquid
+
+            exchange = exchange_class({
+                "enableRateLimit": True,
+                "options": {"defaultType": "swap"},  # perpetual futures
+                **get_ccxt_proxy_config(),
+            })
+
+            for symbol in uncached_symbols:
+                try:
+                    # Determine market type and format symbol
+                    if "/" in symbol:
+                        ccxt_symbol = symbol
                     else:
-                        # Perpetual: BTC -> BTC/USDC:USDC
-                        ccxt_symbol = f"{symbol}/USDC:USDC"
+                        from ...traders.base import detect_market_type, MarketType
+                        mtype = detect_market_type(symbol)
+                        if mtype == MarketType.SPOT:
+                            ccxt_symbol = f"{symbol}/USDC"
+                        else:
+                            ccxt_symbol = f"{symbol}/USDC:USDC"
 
-                ticker = await exchange.fetch_ticker(ccxt_symbol)
-                if ticker and ticker.get("last"):
-                    prices[symbol] = float(ticker["last"])
-            except Exception as e:
-                logger.debug(f"Failed to fetch price for {symbol}: {e}")
-                # Continue with other symbols
+                    ticker = await exchange.fetch_ticker(ccxt_symbol)
+                    if ticker and ticker.get("last"):
+                        price = float(ticker["last"])
+                        bid = ticker.get("bid")
+                        ask = ticker.get("ask")
+                        results[symbol] = (
+                            price,
+                            float(bid) if bid else None,
+                            float(ask) if ask else None,
+                        )
+                except Exception as e:
+                    logger.debug(f"Failed to fetch price for {symbol}: {e}")
 
-    except Exception as e:
-        logger.warning(f"Failed to initialize exchange for price fetching: {e}")
-    finally:
-        if exchange:
-            try:
-                await exchange.close()
-            except Exception:
-                pass
+        except Exception as e:
+            logger.warning(f"Failed to initialize exchange for price fetching: {e}")
+        finally:
+            if exchange:
+                try:
+                    await exchange.close()
+                except Exception:
+                    pass
 
-    return prices
+        return results
+
+    # Use batch fetch with cache - only fetch uncached symbols
+    return await cache.get_prices_batch(exchange_id, symbols, fetcher)
 
 
 # ==================== Response Models ====================
