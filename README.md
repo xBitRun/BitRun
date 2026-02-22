@@ -4,61 +4,67 @@
 
 ## 核心特性
 
-- **Prompt 驱动策略** — 用自然语言描述你的交易逻辑，AI 自动分析市场数据并生成交易决策
-- **多模型辩论引擎 (Debate Engine)** — 多个 AI 模型并行分析、投票表决，提升决策质量
-- **量化策略引擎** — 内置网格交易 (Grid)、定投 (DCA)、RSI 策略，无需 AI 即可运行
-- **Agent 执行实例** — 策略配置与执行实例分离，支持多账户、多交易类型
-- **AI 竞赛模式** — 多策略同台竞技，实时 ROI 排行榜对比各策略表现
-- **多交易所支持** — 通过 CCXT 统一接口对接 Binance、Bybit、OKX、Bitget、KuCoin、Gate.io，原生支持 Hyperliquid DEX
-- **传统市场支持 (Beta)** — 外汇 (Forex) 和贵金属 (XAU/XAG) 交易框架，支持 CCXT 兼容的经纪商
-- **回测系统** — 基于历史数据验证策略表现，支持收益曲线、最大回撤、夏普比率等指标
-- **策略工作室** — 可视化配置交易标的、技术指标、风控参数、自定义 Prompt
-- **实时监控** — WebSocket 推送交易决策、持仓变动、账户状态，Dashboard 一览全局
-- **9+ AI Provider** — DeepSeek、Qwen、Zhipu、MiniMax、Kimi、OpenAI、Gemini、Grok，以及自定义 OpenAI 兼容端点
-- **钱包/支付系统** — 用户余额管理、充值消费、交易记录、赠送调整
-- **通知渠道系统** — 支持 Telegram、Discord、Email (Resend) 多渠道告警通知
-- **数据分析模块** — 盈亏统计、日快照、账务报表
-- **品牌定制** — 支持白标部署，自定义品牌名称、Logo、主题
-- **邀请/推荐系统** — 邀请码生成、推荐佣金追踪
-- **策略市场** — 策略分享与发现
-- **国际化** — 完整的中英文双语界面
+### 🎯 AI 驱动交易
+
+- **Prompt 驱动策略** — 用自然语言描述交易逻辑，AI 自动分析市场并生成决策
+- **多模型辩论引擎** — 多个 AI 模型并行分析、投票表决，提升决策质量
+- **9+ AI Provider** — DeepSeek、Qwen、OpenAI、Gemini、Grok 等，支持自定义端点
+
+### 📈 多市场支持
+
+- **6+ 加密交易所** — Binance、Bybit、OKX、Bitget、KuCoin、Gate.io (CCXT 统一接口)
+- **DEX 支持** — Hyperliquid 原生集成
+- **传统市场 (Beta)** — 外汇 (Forex) 和贵金属 (XAU/XAG)
+
+### ⚙️ 策略与执行
+
+- **量化策略引擎** — 内置 Grid、DCA、RSI 策略，无需 AI 即可运行
+- **回测系统** — 历史数据验证，支持收益曲线、最大回撤、夏普比率
+- **Agent 实例管理** — 策略与执行分离，多账户、多交易类型
+
+### 📊 平台能力
+
+- **实时监控** — WebSocket 推送决策、持仓、账户状态
+- **多渠道通知** — Telegram、Discord、Email
+- **白标定制** — 自定义品牌名称、Logo、主题
+- **完整国际化** — 中英文双语界面
 
 ## 技术栈
 
 ### 后端
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | FastAPI (Python 3.12) |
-| 数据库 | PostgreSQL 16 + SQLAlchemy 2.0 (asyncpg) |
-| 缓存 | Redis 7 (AOF 持久化) |
-| 任务队列 | ARQ (异步 Redis 队列) |
-| AI 集成 | DeepSeek / Qwen / Zhipu / MiniMax / Kimi / OpenAI / Gemini / Grok / Custom |
-| 交易对接 | CCXT (统一多交易所) + Hyperliquid SDK |
-| 认证 | JWT (access + refresh token) + bcrypt |
-| 监控 | Prometheus + Sentry |
+| 类别     | 技术                                                                       |
+| -------- | -------------------------------------------------------------------------- |
+| 框架     | FastAPI (Python 3.12)                                                      |
+| 数据库   | PostgreSQL 16 + SQLAlchemy 2.0 (asyncpg)                                   |
+| 缓存     | Redis 7 (AOF 持久化)                                                       |
+| 任务队列 | ARQ (异步 Redis 队列)                                                      |
+| AI 集成  | DeepSeek / Qwen / Zhipu / MiniMax / Kimi / OpenAI / Gemini / Grok / Custom |
+| 交易对接 | CCXT (统一多交易所) + Hyperliquid SDK                                      |
+| 认证     | JWT (access + refresh token) + bcrypt                                      |
+| 监控     | Prometheus + Sentry                                                        |
 
 ### 前端
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | Next.js 16 (App Router) |
-| 语言 | TypeScript 5 |
-| UI | React 19 + Tailwind CSS 4 + Radix UI (shadcn/ui) |
-| 状态管理 | Zustand + SWR |
-| 国际化 | next-intl (中文 / English) |
-| 图表 | Recharts |
-| 测试 | Jest + Playwright (E2E) |
+| 类别     | 技术                                             |
+| -------- | ------------------------------------------------ |
+| 框架     | Next.js 16 (App Router)                          |
+| 语言     | TypeScript 5                                     |
+| UI       | React 19 + Tailwind CSS 4 + Radix UI (shadcn/ui) |
+| 状态管理 | Zustand + SWR                                    |
+| 国际化   | next-intl (中文 / English)                       |
+| 图表     | Recharts                                         |
+| 测试     | Jest + Playwright (E2E)                          |
 
 ### 基础设施
 
-| 类别 | 技术 |
-|------|------|
-| 容器化 | Docker (多阶段构建) |
-| 编排 | Docker Compose (开发 / 生产) |
+| 类别     | 技术                            |
+| -------- | ------------------------------- |
+| 容器化   | Docker (多阶段构建)             |
+| 编排     | Docker Compose (开发 / 生产)    |
 | 反向代理 | Nginx (限流、安全头、WebSocket) |
-| CI/CD | GitHub Actions |
-| 错误追踪 | Sentry (前端 + 后端) |
+| CI/CD    | GitHub Actions                  |
+| 错误追踪 | Sentry (前端 + 后端)            |
 
 ## 项目结构
 
@@ -108,24 +114,54 @@ bitrun/
 
 ### Railway 一键部署 (云端)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/bitrun)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/GNLLo_?referralCode=Lg6be0&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 Railway 部署步骤:
 
 1. 点击上方按钮，创建新项目
 2. Railway 会自动添加 PostgreSQL 和 Redis 服务
-3. 设置以下环境变量:
-   - `JWT_SECRET`: 运行 `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成
-   - `DATA_ENCRYPTION_KEY`: 同上方式生成
-   - `ENVIRONMENT`: 设置为 `production`
-   - `CORS_ORIGINS`: 前端 URL (如 `https://your-frontend.up.railway.app`)
-4. 前端服务需额外设置:
-   - `NEXT_PUBLIC_API_URL`: 后端 API 地址 (如 `https://your-backend.up.railway.app/api`)
-   - `NEXT_PUBLIC_WS_URL`: WebSocket 地址 (如 `wss://your-backend.up.railway.app/api/v1/ws`)
+3. **后端服务** 设置以下环境变量:
+
+   **必填变量:**
+
+   | 变量                  | 说明                    | 示例                                                                     |
+   | --------------------- | ----------------------- | ------------------------------------------------------------------------ |
+   | `JWT_SECRET`          | JWT 签名密钥 (32+ 字符) | 运行 `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成 |
+   | `DATA_ENCRYPTION_KEY` | 数据加密密钥            | 同上方式生成                                                             |
+   | `ENVIRONMENT`         | 运行环境                | `production`                                                             |
+   | `CORS_ORIGINS`        | 前端域名                | `https://your-frontend.up.railway.app`                                   |
+   | `DATABASE_URL`        | PostgreSQL 连接         | Railway 自动注入                                                         |
+   | `REDIS_URL`           | Redis 连接              | Railway 自动注入                                                         |
+
+   **品牌定制 (可选):**
+
+   | 变量            | 说明     | 默认值                     |
+   | --------------- | -------- | -------------------------- |
+   | `BRAND_NAME`    | 品牌名称 | `BITRUN`                   |
+   | `BRAND_TAGLINE` | 品牌标语 | `AI-Powered Trading Agent` |
+
+4. **前端服务** 设置以下环境变量:
+
+   **必填变量:**
+
+   | 变量                  | 说明           | 示例                                          |
+   | --------------------- | -------------- | --------------------------------------------- |
+   | `NEXT_PUBLIC_API_URL` | 后端 API 地址  | `https://your-backend.up.railway.app/api`     |
+   | `NEXT_PUBLIC_WS_URL`  | WebSocket 地址 | `wss://your-backend.up.railway.app/api/v1/ws` |
+
+   **品牌与主题 (可选):**
+
+   | 变量                             | 说明          | 默认值                     |
+   | -------------------------------- | ------------- | -------------------------- |
+   | `NEXT_PUBLIC_BRAND_NAME`         | 品牌名称      | `BITRUN`                   |
+   | `NEXT_PUBLIC_BRAND_TAGLINE`      | 品牌标语      | `AI-Powered Trading Agent` |
+   | `NEXT_PUBLIC_BRAND_THEME_PRESET` | 主题预设      | `bitrun` / `binance`       |
+   | `NEXT_PUBLIC_BRAND_LOGO_DEFAULT` | 默认 Logo URL | -                          |
+   | `NEXT_PUBLIC_BRAND_LOGO_ICON`    | 图标 Logo URL | -                          |
 
 > 详细配置请查看 [Railway 部署指南](docs/deployment.md#railway-部署)
 
-### 一键安装
+### 一键部署（云服务器）
 
 ```bash
 # 本地/开发环境 (localhost, 无 SSL)
@@ -190,71 +226,71 @@ npm run dev
 
 #### 基础配置
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `ENVIRONMENT` | 运行环境 | `development` |
-| `HOST` | 服务监听地址 | `0.0.0.0` |
-| `PORT` | 服务监听端口 | `8000` |
+| 变量          | 说明         | 默认值        |
+| ------------- | ------------ | ------------- |
+| `ENVIRONMENT` | 运行环境     | `development` |
+| `HOST`        | 服务监听地址 | `0.0.0.0`     |
+| `PORT`        | 服务监听端口 | `8000`        |
 
 #### 数据库
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
+| 变量           | 说明                  | 默认值                                                         |
+| -------------- | --------------------- | -------------------------------------------------------------- |
 | `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql+asyncpg://postgres:postgres@localhost:5432/bitrun` |
-| `REDIS_URL` | Redis 连接字符串 | `redis://localhost:6379/0` |
+| `REDIS_URL`    | Redis 连接字符串      | `redis://localhost:6379/0`                                     |
 
 #### 安全
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `JWT_SECRET` | JWT 签名密钥 | 留空自动生成 (重启后失效) |
-| `DATA_ENCRYPTION_KEY` | AES-256 数据加密密钥 | 留空自动生成 (重启后失效) |
-| `TRANSPORT_ENCRYPTION_ENABLED` | 启用传输加密 (RSA+AES) | `false` |
-| `CORS_ORIGINS` | CORS 允许的源 (逗号分隔) | `http://localhost:3000` |
+| 变量                           | 说明                     | 默认值                    |
+| ------------------------------ | ------------------------ | ------------------------- |
+| `JWT_SECRET`                   | JWT 签名密钥             | 留空自动生成 (重启后失效) |
+| `DATA_ENCRYPTION_KEY`          | AES-256 数据加密密钥     | 留空自动生成 (重启后失效) |
+| `TRANSPORT_ENCRYPTION_ENABLED` | 启用传输加密 (RSA+AES)   | `false`                   |
+| `CORS_ORIGINS`                 | CORS 允许的源 (逗号分隔) | `http://localhost:3000`   |
 
 #### Worker 配置
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
+| 变量             | 说明                    | 默认值 |
+| ---------------- | ----------------------- | ------ |
 | `WORKER_ENABLED` | 是否启用策略执行 Worker | `true` |
 
 #### 通知配置
 
-| 变量 | 说明 |
-|------|------|
-| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token (从 @BotFather 获取) |
-| `TELEGRAM_CHAT_ID` | Telegram Chat ID (从 @userinfobot 获取) |
-| `DISCORD_WEBHOOK_URL` | Discord Webhook URL |
-| `RESEND_API_KEY` | Resend 邮件 API Key |
-| `RESEND_FROM` | 发件人邮箱 (需在 Resend 验证域名) |
+| 变量                  | 说明                                    |
+| --------------------- | --------------------------------------- |
+| `TELEGRAM_BOT_TOKEN`  | Telegram Bot Token (从 @BotFather 获取) |
+| `TELEGRAM_CHAT_ID`    | Telegram Chat ID (从 @userinfobot 获取) |
+| `DISCORD_WEBHOOK_URL` | Discord Webhook URL                     |
+| `RESEND_API_KEY`      | Resend 邮件 API Key                     |
+| `RESEND_FROM`         | 发件人邮箱 (需在 Resend 验证域名)       |
 
 #### 代理配置
 
-| 变量 | 说明 |
-|------|------|
+| 变量        | 说明                                                |
+| ----------- | --------------------------------------------------- |
 | `PROXY_URL` | 代理地址 (用于 Bybit、OKX 等受地域限制的交易所 API) |
 
 #### 监控
 
-| 变量 | 说明 |
-|------|------|
+| 变量         | 说明                |
+| ------------ | ------------------- |
 | `SENTRY_DSN` | Sentry 错误追踪 DSN |
 
 #### 品牌配置 (后端通知用)
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `BRAND_NAME` | 品牌名称 | `BITRUN` |
-| `BRAND_TAGLINE` | 品牌标语 | `AI-Powered Trading Agent` |
+| 变量                | 说明     | 默认值                               |
+| ------------------- | -------- | ------------------------------------ |
+| `BRAND_NAME`        | 品牌名称 | `BITRUN`                             |
+| `BRAND_TAGLINE`     | 品牌标语 | `AI-Powered Trading Agent`           |
 | `BRAND_DESCRIPTION` | 品牌描述 | `Prompt-driven automated trading...` |
 
 #### 管理员账户 (首次启动自动创建)
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `ADMIN_EMAIL` | 管理员邮箱 | `admin@example.com` |
+| 变量             | 说明       | 默认值              |
+| ---------------- | ---------- | ------------------- |
+| `ADMIN_EMAIL`    | 管理员邮箱 | `admin@example.com` |
 | `ADMIN_PASSWORD` | 管理员密码 | ⚠️ 生产环境必须修改 |
-| `ADMIN_NAME` | 管理员名称 | `Admin` |
+| `ADMIN_NAME`     | 管理员名称 | `Admin`             |
 
 > AI Provider 的 API Key 通过应用内「模型管理」页面配置，加密存储在数据库中。
 
@@ -262,80 +298,80 @@ npm run dev
 
 #### API 配置
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `NEXT_PUBLIC_API_URL` | 后端 API 地址 | `http://localhost:8000/api/v1` |
-| `NEXT_PUBLIC_WS_URL` | WebSocket 地址 | `ws://localhost:8000/api/v1/ws` |
+| 变量                  | 说明           | 默认值                          |
+| --------------------- | -------------- | ------------------------------- |
+| `NEXT_PUBLIC_API_URL` | 后端 API 地址  | `http://localhost:8000/api/v1`  |
+| `NEXT_PUBLIC_WS_URL`  | WebSocket 地址 | `ws://localhost:8000/api/v1/ws` |
 
 #### 品牌配置
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `NEXT_PUBLIC_BRAND_NAME` | 品牌名称 | `BITRUN` |
-| `NEXT_PUBLIC_BRAND_SHORT_NAME` | 品牌简称 | `BITRUN` |
-| `NEXT_PUBLIC_BRAND_TAGLINE` | 品牌标语 | `AI-Powered Trading Agent` |
-| `NEXT_PUBLIC_BRAND_DESCRIPTION` | 品牌描述 | - |
+| 变量                            | 说明     | 默认值                     |
+| ------------------------------- | -------- | -------------------------- |
+| `NEXT_PUBLIC_BRAND_NAME`        | 品牌名称 | `BITRUN`                   |
+| `NEXT_PUBLIC_BRAND_SHORT_NAME`  | 品牌简称 | `BITRUN`                   |
+| `NEXT_PUBLIC_BRAND_TAGLINE`     | 品牌标语 | `AI-Powered Trading Agent` |
+| `NEXT_PUBLIC_BRAND_DESCRIPTION` | 品牌描述 | -                          |
 
 #### 品牌资源
 
-| 变量 | 说明 |
-|------|------|
-| `NEXT_PUBLIC_BRAND_LOGO_DEFAULT` | 默认 Logo URL |
-| `NEXT_PUBLIC_BRAND_LOGO_COMPACT` | 紧凑 Logo URL |
-| `NEXT_PUBLIC_BRAND_LOGO_ICON` | 图标 Logo URL |
-| `NEXT_PUBLIC_BRAND_FAVICON` | Favicon 路径 |
-| `NEXT_PUBLIC_BRAND_THEME_PRESET` | 主题预设 (`bitrun` / `ocean` / `binance`) |
-| `NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE` | 主题颜色覆盖 (JSON 格式) |
+| 变量                                      | 说明                            |
+| ----------------------------------------- | ------------------------------- |
+| `NEXT_PUBLIC_BRAND_LOGO_DEFAULT`          | 默认 Logo URL                   |
+| `NEXT_PUBLIC_BRAND_LOGO_COMPACT`          | 紧凑 Logo URL                   |
+| `NEXT_PUBLIC_BRAND_LOGO_ICON`             | 图标 Logo URL                   |
+| `NEXT_PUBLIC_BRAND_FAVICON`               | Favicon 路径                    |
+| `NEXT_PUBLIC_BRAND_THEME_PRESET`          | 主题预设 (`bitrun` / `binance`) |
+| `NEXT_PUBLIC_BRAND_THEME_COLORS_OVERRIDE` | 主题颜色覆盖 (JSON 格式)        |
 
 #### 法律与链接
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER` | 版权持有者 | `BITRUN` |
-| `NEXT_PUBLIC_BRAND_TERMS_URL` | 服务条款 URL | `/terms` |
-| `NEXT_PUBLIC_BRAND_PRIVACY_URL` | 隐私政策 URL | `/privacy` |
-| `NEXT_PUBLIC_BRAND_HOMEPAGE_URL` | 官网 URL | - |
-| `NEXT_PUBLIC_BRAND_DOCS_URL` | 文档 URL | - |
-| `NEXT_PUBLIC_BRAND_SUPPORT_URL` | 支持 URL | - |
+| 变量                                 | 说明         | 默认值     |
+| ------------------------------------ | ------------ | ---------- |
+| `NEXT_PUBLIC_BRAND_COPYRIGHT_HOLDER` | 版权持有者   | `BITRUN`   |
+| `NEXT_PUBLIC_BRAND_TERMS_URL`        | 服务条款 URL | `/terms`   |
+| `NEXT_PUBLIC_BRAND_PRIVACY_URL`      | 隐私政策 URL | `/privacy` |
+| `NEXT_PUBLIC_BRAND_HOMEPAGE_URL`     | 官网 URL     | -          |
+| `NEXT_PUBLIC_BRAND_DOCS_URL`         | 文档 URL     | -          |
+| `NEXT_PUBLIC_BRAND_SUPPORT_URL`      | 支持 URL     | -          |
 
 ### 生产环境 (docker-compose.prod.yml)
 
 生产环境需要额外配置以下变量：
 
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `POSTGRES_DB` | 数据库名称 | 否 (默认 `bitrun`) |
-| `POSTGRES_USER` | 数据库用户 | 否 (默认 `bitrun`) |
-| `POSTGRES_PASSWORD` | 数据库密码 | **是** |
-| `REDIS_PASSWORD` | Redis 密码 | **是** |
-| `FRONTEND_DOMAIN` | 前端域名 (如 `app.example.com`) | **是** |
-| `BACKEND_DOMAIN` | 后端域名 (如 `api.example.com`) | **是** |
+| 变量                | 说明                            | 必填               |
+| ------------------- | ------------------------------- | ------------------ |
+| `POSTGRES_DB`       | 数据库名称                      | 否 (默认 `bitrun`) |
+| `POSTGRES_USER`     | 数据库用户                      | 否 (默认 `bitrun`) |
+| `POSTGRES_PASSWORD` | 数据库密码                      | **是**             |
+| `REDIS_PASSWORD`    | Redis 密码                      | **是**             |
+| `FRONTEND_DOMAIN`   | 前端域名 (如 `app.example.com`) | **是**             |
+| `BACKEND_DOMAIN`    | 后端域名 (如 `api.example.com`) | **是**             |
 
 > 完整变量列表请查看 `backend/.env.example` 和 `frontend/.env.local.example`。
 
 ## 访问地址
 
-| 服务 | 开发环境 | 生产环境 |
-|------|---------|---------|
-| 前端 | http://localhost:3000 | https://app.example.com |
-| 后端 API | http://localhost:8000 | https://api.example.com |
-| API 文档 | http://localhost:8000/api/v1/docs | https://api.example.com/api/v1/docs |
-| WebSocket | ws://localhost:8000/api/v1/ws | wss://api.example.com/api/v1/ws |
+| 服务      | 开发环境                          | 生产环境                            |
+| --------- | --------------------------------- | ----------------------------------- |
+| 前端      | http://localhost:3000             | https://app.example.com             |
+| 后端 API  | http://localhost:8000             | https://api.example.com             |
+| API 文档  | http://localhost:8000/api/v1/docs | https://api.example.com/api/v1/docs |
+| WebSocket | ws://localhost:8000/api/v1/ws     | wss://api.example.com/api/v1/ws     |
 
 ## 文档
 
-| 文档 | 说明 |
-|------|------|
-| [架构概览](docs/architecture.md) | 系统架构图、模块职责、数据流、技术选型 |
-| [快速开始](docs/getting-started.md) | 环境要求、安装步骤、首次配置、常见问题 |
-| [策略模块](docs/strategy-guide.md) | AI 策略原理、策略工作室、量化策略、Debate Engine |
-| [回测模块](docs/backtest-guide.md) | 回测引擎架构、配置运行、指标说明 |
-| [交易所对接](docs/exchange-setup.md) | API Key 获取、Hyperliquid 配置、代理设置 |
-| [AI 模型配置](docs/ai-models.md) | Provider 列表、API Key 获取、模型选择建议 |
-| [部署指南](docs/deployment.md) | Docker 部署、SSL/HTTPS、Nginx、GitHub Actions、监控告警 |
-| [开发者指南](docs/development.md) | 本地开发、代码规范、测试、数据库迁移 |
-| [API 参考](docs/api-reference.md) | REST API、WebSocket API、认证机制 |
-| [Redis 备份与恢复](docs/redis-backup-recovery.md) | Redis 数据备份、恢复、自动备份配置 |
+| 文档                                              | 说明                                                    |
+| ------------------------------------------------- | ------------------------------------------------------- |
+| [架构概览](docs/architecture.md)                  | 系统架构图、模块职责、数据流、技术选型                  |
+| [快速开始](docs/getting-started.md)               | 环境要求、安装步骤、首次配置、常见问题                  |
+| [策略模块](docs/strategy-guide.md)                | AI 策略原理、策略工作室、量化策略、Debate Engine        |
+| [回测模块](docs/backtest-guide.md)                | 回测引擎架构、配置运行、指标说明                        |
+| [交易所对接](docs/exchange-setup.md)              | API Key 获取、Hyperliquid 配置、代理设置                |
+| [AI 模型配置](docs/ai-models.md)                  | Provider 列表、API Key 获取、模型选择建议               |
+| [部署指南](docs/deployment.md)                    | Docker 部署、SSL/HTTPS、Nginx、GitHub Actions、监控告警 |
+| [开发者指南](docs/development.md)                 | 本地开发、代码规范、测试、数据库迁移                    |
+| [API 参考](docs/api-reference.md)                 | REST API、WebSocket API、认证机制                       |
+| [Redis 备份与恢复](docs/redis-backup-recovery.md) | Redis 数据备份、恢复、自动备份配置                      |
 
 ## License
 
