@@ -2501,9 +2501,9 @@
     "hero": {
       "badgeTag": "AI",
       "badgeText": "Powered Trading Platform",
-      "titleLine1": "AI-Powered Trading",
+      "titleLine1": "AI Consensus-Driven Trading",
       "titleLine2": "For Crypto",
-      "subtitle": "Connect to global leading exchanges with one click, intelligent strategies execute automatically, reach optimal trading decisions through multi-model consensus algorithms, empowering your trading with AI.",
+      "subtitle": "Define strategies in natural language, multi-model debate decisions, unified execution across 7 exchanges. No coding required.",
       "cta": "Get Started"
     },
     "bento": {
@@ -2511,7 +2511,7 @@
       "sectionSubtitle": "Quick overview of core capabilities",
       "exchanges": {
         "title": "Multi-Exchange Support",
-        "desc": "Connect to Binance, Bybit, OKX, Hyperliquid with one click"
+        "desc": "Connect to Binance, OKX, Bybit, Bitget, KuCoin, Gate.io, Hyperliquid and more"
       },
       "models": {
         "title": "AI Models",
@@ -2521,9 +2521,9 @@
         "title": "24/7 Automated Trading",
         "desc": "Continuous execution and monitoring"
       },
-      "consensus": {
-        "title": "Consensus Modes",
-        "desc": "Vote, Confidence, Weighted, Unanimous"
+      "strategies": {
+        "title": "Strategy Ecosystem",
+        "desc": "AI-generated, quality strategies shared"
       }
     },
     "coreCapabilities": {
@@ -2531,15 +2531,15 @@
       "subtitle": "Three core engines building intelligent trading system",
       "nlp": {
         "title": "Intelligent Strategy Generation Engine",
-        "desc": "Natural language-based strategy definition engine. AI deeply understands trading intent, transforming natural language into executable strategies through 8-segment Prompt building mechanism, enabling complex trading logic without coding"
+        "desc": "Describe strategies in natural language, AI understands and generates executable strategies without coding"
       },
       "debate": {
         "title": "Multi-Model Consensus Decision Engine",
-        "desc": "Multi-model parallel analysis engine. Through consensus algorithms including vote, confidence, weighted, unanimous, it aggregates wisdom from multiple AI models to reach optimal trading decisions, significantly enhancing accuracy and reliability"
+        "desc": "Multiple AI models analyze in parallel, reaching optimal decisions through consensus algorithms"
       },
       "backtest": {
-        "title": "Quantitative Backtesting Validation Engine",
-        "desc": "Historical data-based strategy validation engine. Through simulated execution and multi-dimensional performance analysis, provides professional metrics including Sharpe ratio, max drawdown, win rate, ensuring thorough validation before live trading"
+        "title": "Quantitative Backtesting Engine",
+        "desc": "Historical simulation with Sharpe ratio, max drawdown metrics to ensure strategy reliability"
       }
     },
     "capabilities": {
@@ -2563,7 +2563,7 @@
       },
       "execution": {
         "title": "Multi-Exchange Unified Execution",
-        "desc": "Submit decisions to Binance, Bybit, OKX, Hyperliquid through unified API interface, automatically manage orders"
+        "desc": "Unified API interface, supports major exchanges, automatically manages order lifecycle"
       },
       "backtest": {
         "title": "Historical Backtesting & Performance Analysis",

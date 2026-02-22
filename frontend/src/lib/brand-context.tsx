@@ -8,7 +8,6 @@ import type {
 } from "@/config/brand";
 import { getBrandConfig } from "@/config/brand-loader";
 import { getThemePreset } from "@/config/themes";
-import { generateThemeCss } from "./theme-css";
 
 const BrandContext = createContext<BrandContextValue | null>(null);
 
@@ -59,19 +58,8 @@ export function BrandProvider({ children, config, theme }: BrandProviderProps) {
     };
   }, [config, theme]);
 
-  // Inject theme CSS at runtime (only on client)
-  useMemo(() => {
-    if (typeof document !== "undefined") {
-      const styleId = "brand-theme-styles";
-      let styleEl = document.getElementById(styleId);
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = styleId;
-        document.head.appendChild(styleEl);
-      }
-      styleEl.textContent = generateThemeCss(value.theme);
-    }
-  }, [value.theme]);
+  // Theme CSS is now injected at SSR time in layout.tsx
+  // No client-side injection needed
 
   return (
     <BrandContext.Provider value={value}>{children}</BrandContext.Provider>

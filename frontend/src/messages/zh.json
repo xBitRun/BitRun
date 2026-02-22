@@ -2547,9 +2547,9 @@
     "hero": {
       "badgeTag": "AI",
       "badgeText": "驱动的智能交易平台",
-      "titleLine1": "AI 驱动的智能交易",
+      "titleLine1": "AI 共识驱动的智能交易",
       "titleLine2": "加密货币新时代",
-      "subtitle": "一键连接全球主流交易所，智能策略自动执行，通过多模型共识算法达成最优交易决策，让 AI 为您的交易赋能。",
+      "subtitle": "一句话定义策略，多模型辩论决策，7 家交易所统一执行。无需编程，让 AI 为您的交易赋能。",
       "cta": "立即开始"
     },
     "bento": {
@@ -2557,7 +2557,7 @@
       "sectionSubtitle": "快速了解核心能力",
       "exchanges": {
         "title": "多交易所支持",
-        "desc": "一键连接 Binance、Bybit、OKX、Hyperliquid"
+        "desc": "一键连接 Binance、OKX、Bybit、Bitget、KuCoin、Gate.io、Hyperliquid 等"
       },
       "models": {
         "title": "AI 大模型",
@@ -2567,9 +2567,9 @@
         "title": "全天候自动交易",
         "desc": "7×24 小时持续执行与监控"
       },
-      "consensus": {
-        "title": "共识模式",
-        "desc": "投票、信心、加权、全票通过"
+      "strategies": {
+        "title": "策略生态",
+        "desc": "AI 智能生成，优质策略共享"
       }
     },
     "coreCapabilities": {
@@ -2577,15 +2577,15 @@
       "subtitle": "三大核心引擎，构建智能交易体系",
       "nlp": {
         "title": "智能策略生成引擎",
-        "desc": "基于自然语言的策略定义引擎，AI 深度理解交易意图，通过 8 段式 Prompt 构建机制，将自然语言转化为可执行的交易策略，无需编程即可构建复杂交易逻辑"
+        "desc": "用自然语言描述策略，AI 理解意图并生成可执行策略，无需编程"
       },
       "debate": {
         "title": "多模型共识决策引擎",
-        "desc": "多模型并行分析引擎，通过投票、信心、加权、全票通过等共识算法，汇聚多个 AI 模型的智慧，达成最优交易决策，显著提升决策准确性与可靠性"
+        "desc": "多个 AI 模型并行分析，通过共识算法汇聚智慧，达成最优决策"
       },
       "backtest": {
         "title": "量化回测验证引擎",
-        "desc": "基于历史数据的策略验证引擎，通过模拟交易执行与多维度绩效分析，提供夏普比率、最大回撤、胜率等专业指标，确保策略在实盘前的充分验证"
+        "desc": "历史数据模拟验证，提供夏普比率、最大回撤等指标，确保策略可靠"
       }
     },
     "capabilities": {
@@ -2609,7 +2609,7 @@
       },
       "execution": {
         "title": "多交易所统一执行",
-        "desc": "通过统一 API 接口将决策提交到 Binance、Bybit、OKX、Hyperliquid，自动管理订单"
+        "desc": "统一 API 接口，支持多家主流交易所，自动管理订单生命周期"
       },
       "backtest": {
         "title": "历史回测与绩效分析",

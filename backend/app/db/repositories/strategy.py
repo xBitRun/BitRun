@@ -101,7 +101,8 @@ class StrategyRepository:
         # Eager load agents to avoid lazy loading in async context
         query = query.options(selectinload(StrategyDB.agents))
 
-        query = query.order_by(StrategyDB.updated_at.desc())
+        # Secondary sort by id for stable ordering when updated_at is equal
+        query = query.order_by(StrategyDB.updated_at.desc(), StrategyDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
@@ -145,12 +146,13 @@ class StrategyRepository:
             .options(selectinload(StrategyDB.user))
         )
 
+        # Secondary sort by id for stable ordering when primary sort field is equal
         if sort_by == "fork_count":
-            query = query.order_by(StrategyDB.fork_count.desc())
+            query = query.order_by(StrategyDB.fork_count.desc(), StrategyDB.id.desc())
         elif sort_by == "newest":
-            query = query.order_by(StrategyDB.created_at.desc())
+            query = query.order_by(StrategyDB.created_at.desc(), StrategyDB.id.desc())
         else:
-            query = query.order_by(StrategyDB.updated_at.desc())
+            query = query.order_by(StrategyDB.updated_at.desc(), StrategyDB.id.desc())
 
         query = query.limit(limit).offset(offset)
 

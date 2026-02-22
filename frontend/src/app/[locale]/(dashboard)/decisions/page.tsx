@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useRecentDecisions } from "@/hooks";
+import { useRecentDecisions, useModels, getModelDisplayName } from "@/hooks";
 import {
   MarketSnapshotSection,
   AccountSnapshotSection,
@@ -85,6 +85,8 @@ export default function DecisionsPage() {
 
   // Fetch real decisions from API
   const { data: decisions, error, isLoading, mutate } = useRecentDecisions(50);
+  // Fetch models for display name resolution
+  const { models } = useModels();
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -556,7 +558,7 @@ export default function DecisionsPage() {
                       {/* AI Info */}
                       <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/30">
                         <span>
-                          {tAgent("decisions.model")}: {decision.ai_model}
+                          {tAgent("decisions.model")}: {getModelDisplayName(decision.ai_model, models)}
                         </span>
                         <span>
                           {tAgent("decisions.tokens")}: {decision.tokens_used}

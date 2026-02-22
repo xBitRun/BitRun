@@ -115,7 +115,8 @@ class AgentRepository:
         if strategy_type:
             query = query.join(StrategyDB).where(StrategyDB.type == strategy_type)
 
-        query = query.order_by(AgentDB.updated_at.desc())
+        # Secondary sort by id for stable ordering when updated_at is equal
+        query = query.order_by(AgentDB.updated_at.desc(), AgentDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)

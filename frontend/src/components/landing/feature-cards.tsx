@@ -28,8 +28,11 @@ const aiModels = [
 
 const exchanges = [
   { name: "Binance", accent: "#f0b90b" },
-  { name: "Bybit", accent: "#ff6b35" },
   { name: "OKX", accent: "#e5e5e5" },
+  { name: "Bybit", accent: "#ff6b35" },
+  { name: "Bitget", accent: "#00d084" },
+  { name: "KuCoin", accent: "#01bc8d" },
+  { name: "Gate.io", accent: "#00a4db" },
   { name: "Hyperliquid", accent: "#a3e635" },
 ];
 
@@ -47,7 +50,7 @@ function BrandPill({ name, accent }: { name: string; accent: string }) {
 
 const cards: CardData[] = [
   {
-    target: 4,
+    target: 7,
     suffix: "+",
     titleKey: "bento.exchanges.title",
     descKey: "bento.exchanges.desc",
@@ -70,10 +73,10 @@ const cards: CardData[] = [
     gridClass: "bento-card-3",
   },
   {
-    target: 4,
-    suffix: "",
-    titleKey: "bento.consensus.title",
-    descKey: "bento.consensus.desc",
+    target: 0,
+    suffix: "+",
+    titleKey: "bento.strategies.title",
+    descKey: "bento.strategies.desc",
     gridClass: "bento-card-4",
   },
 ];

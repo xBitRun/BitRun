@@ -22,6 +22,8 @@ import {
 import { DebateParticipant, DebateResultSummary, ConsensusMode } from "@/types";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { getModelDisplayName } from "@/hooks";
+import type { AIModelInfoResponse } from "@/lib/api/endpoints";
 
 interface DebateResultCardProps {
   summary: DebateResultSummary;
@@ -32,6 +34,8 @@ interface DebateResultCardProps {
     action: string;
     confidence: number;
   }[];
+  /** Models list for resolving display names */
+  models?: AIModelInfoResponse[];
 }
 
 export function DebateResultCard({
@@ -39,6 +43,7 @@ export function DebateResultCard({
   participants,
   consensusReasoning,
   finalDecisions = [],
+  models = [],
 }: DebateResultCardProps) {
   const t = useTranslations("strategyStudio");
 
@@ -209,11 +214,8 @@ export function DebateResultCard({
                       <AlertCircle className="h-4 w-4 text-loss" />
                     )}
                     <span className="font-medium text-sm">
-                      {participant.modelId.split(":")[1] || participant.modelId}
+                      {getModelDisplayName(participant.modelId, models)}
                     </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {participant.modelId.split(":")[0]}
-                    </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">

@@ -85,7 +85,7 @@ export const binanceTheme: ThemePreset = {
   },
 
   effects: {
-    darkVeilHueShift: 145, // Shift purple to gold/yellow
+    darkVeilHueShift: 195, // Shift purple (280°) to gold (85°)
   },
 };
 

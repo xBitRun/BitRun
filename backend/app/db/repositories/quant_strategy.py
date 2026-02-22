@@ -146,7 +146,8 @@ class QuantStrategyRepository:
             query = query.join(StrategyDB, QuantStrategyDB.strategy_id == StrategyDB.id)
             query = query.where(StrategyDB.type == strategy_type)
 
-        query = query.order_by(QuantStrategyDB.updated_at.desc())
+        # Secondary sort by id for stable ordering when updated_at is equal
+        query = query.order_by(QuantStrategyDB.updated_at.desc(), QuantStrategyDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)

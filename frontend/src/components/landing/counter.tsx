@@ -26,6 +26,9 @@ export function AnimatedCounter({
   const [hasAnimated, setHasAnimated] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
+  // Special case: target 0 with "+" suffix means "N+" (infinite)
+  const isInfinite = target === 0 && suffix === "+";
+
   const animate = useCallback(() => {
     if (hasAnimated) return;
     setHasAnimated(true);
@@ -63,6 +66,15 @@ export function AnimatedCounter({
     observer.observe(el);
     return () => observer.disconnect();
   }, [animate]);
+
+  // For "N+" case, show immediately without animation
+  if (isInfinite) {
+    return (
+      <span ref={ref} className={className}>
+        N+
+      </span>
+    );
+  }
 
   return (
     <span ref={ref} className={className}>

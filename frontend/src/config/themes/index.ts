@@ -1,7 +1,6 @@
 import type { ThemePreset } from "../brand";
 import { binanceTheme } from "./binance.theme";
 import { bitrunTheme } from "./bitrun.theme";
-import { oceanTheme } from "./ocean.theme";
 
 /**
  * Theme Registry
@@ -9,7 +8,6 @@ import { oceanTheme } from "./ocean.theme";
  */
 export const themes: Record<string, ThemePreset> = {
   bitrun: bitrunTheme,
-  ocean: oceanTheme,
   binance: binanceTheme,
 };
 
@@ -29,4 +27,4 @@ export function getAvailableThemes(): string[] {
 }
 
 // Re-export individual themes
-export { binanceTheme, bitrunTheme, oceanTheme };
+export { binanceTheme, bitrunTheme };
