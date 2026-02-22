@@ -428,7 +428,9 @@ class CCXTTrader(BaseTrader):
                         unrealized_pnl_percent=calculate_unrealized_pnl_percent(
                             unrealized_pnl,
                             margin_used=margin_used,
-                            size_usd=abs(notional) if notional else abs(size) * mark_price,
+                            size_usd=(
+                                abs(notional) if notional else abs(size) * mark_price
+                            ),
                             leverage=int(pos.get("leverage", 1) or 1),
                         ),
                         liquidation_price=(

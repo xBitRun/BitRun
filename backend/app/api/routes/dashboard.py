@@ -678,7 +678,9 @@ async def get_dashboard_stats(
             agent_daily_pnl = float(daily_by_agent.get(aid, agent_total_pnl))
             agent_start_equity = agent_equity - agent_daily_pnl
             agent_daily_pnl_percent = (
-                (agent_daily_pnl / agent_start_equity) * 100 if agent_start_equity > 0 else 0.0
+                (agent_daily_pnl / agent_start_equity) * 100
+                if agent_start_equity > 0
+                else 0.0
             )
 
             total_equity += agent_equity
@@ -708,7 +710,9 @@ async def get_dashboard_stats(
             for a in mock_agents
         )
         start_equity = total_equity - daily_pnl
-        daily_pnl_percent = (daily_pnl / start_equity * 100) if start_equity > 0 else 0.0
+        daily_pnl_percent = (
+            (daily_pnl / start_equity * 100) if start_equity > 0 else 0.0
+        )
         week_start_equity = total_equity - weekly_pnl
         if week_start_equity > 0:
             weekly_pnl_percent = (weekly_pnl / week_start_equity) * 100

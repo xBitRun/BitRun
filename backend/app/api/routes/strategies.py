@@ -20,6 +20,7 @@ from ...core.dependencies import (
     DbSessionDep,
     RateLimitApiDep,
 )
+from ...db.repositories.agent import AgentRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...models.strategy import (
     AIStrategyConfig,
@@ -201,7 +202,6 @@ async def update_strategy(
 ):
     """Update a strategy's logic (name, config, symbols, etc.)"""
     from ...services.name_check_service import NameCheckService
-    from ...db.repositories.agent import AgentRepository
 
     repo = StrategyRepository(db)
 
@@ -486,8 +486,6 @@ async def delete_strategy(
         )
 
     # Check if any agents reference this strategy
-    from ...db.repositories.agent import AgentRepository
-
     agent_repo = AgentRepository(db)
     agents = await agent_repo.get_by_user(uuid.UUID(user_id))
     refs = [a for a in agents if str(a.strategy_id) == strategy_id]
@@ -607,8 +605,6 @@ async def restore_version(
     Creates a snapshot of the current state, then applies the
     selected version's config, symbols, and description.
     """
-    from ...db.repositories.agent import AgentRepository
-
     # Check for active agents before restoring version
     agent_repo = AgentRepository(db)
     active_agents = await agent_repo.get_active_agents_by_strategy(

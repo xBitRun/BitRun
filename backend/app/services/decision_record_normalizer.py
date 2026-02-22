@@ -68,4 +68,3 @@ def _normalize_execution_item(item: dict[str, Any]) -> dict[str, Any]:
     if "reasoning" not in out and "reason" in out:
         out["reasoning"] = out.get("reason")
     return out
-

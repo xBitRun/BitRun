@@ -70,10 +70,7 @@ class TradeExecutionService:
 
         if ps:
             try:
-                if (
-                    self.account_id is not None
-                    and self.capital_agent is not None
-                ):
+                if self.account_id is not None and self.capital_agent is not None:
                     normalized_equity = (
                         account_equity
                         if isinstance(account_equity, (int, float))
@@ -141,7 +138,9 @@ class TradeExecutionService:
 
         if ps and claim:
             if result.success:
-                estimated_size = result.filled_size or (size_usd / (result.filled_price or 1.0))
+                estimated_size = result.filled_size or (
+                    size_usd / (result.filled_price or 1.0)
+                )
                 fill_price = result.filled_price or 0.0
                 try:
                     if allow_accumulate and is_existing_position:
@@ -192,9 +191,13 @@ class TradeExecutionService:
             realized_pnl = 0.0
             if close_price > 0 and pos_record.entry_price > 0 and pos_record.size > 0:
                 if pos_record.side == "long":
-                    realized_pnl = (close_price - pos_record.entry_price) * pos_record.size
+                    realized_pnl = (
+                        close_price - pos_record.entry_price
+                    ) * pos_record.size
                 else:
-                    realized_pnl = (pos_record.entry_price - close_price) * pos_record.size
+                    realized_pnl = (
+                        pos_record.entry_price - close_price
+                    ) * pos_record.size
 
             await ps.close_position_record(
                 position_id=pos_record.id,

@@ -311,7 +311,9 @@ class GridEngine(QuantEngineBase):
                                     else (open_result.error or "order_failed")
                                 ),
                                 requested_size_usd=size_usd,
-                                actual_size_usd=size_usd if open_result.success else None,
+                                actual_size_usd=(
+                                    size_usd if open_result.success else None
+                                ),
                                 order_result=open_result,
                             )
                         )
@@ -358,10 +360,14 @@ class GridEngine(QuantEngineBase):
                                     else (close_result.error or "order_failed")
                                 ),
                                 requested_size_usd=size_usd,
-                                actual_size_usd=size_usd if close_result.success else None,
+                                actual_size_usd=(
+                                    size_usd if close_result.success else None
+                                ),
                                 order_result=close_result,
                                 realized_pnl=(
-                                    profit if close_result.success and level > 0 else None
+                                    profit
+                                    if close_result.success and level > 0
+                                    else None
                                 ),
                             )
                         )
@@ -752,7 +758,9 @@ class RSIEngine(QuantEngineBase):
                                 else (open_result.error or "order_failed")
                             ),
                             requested_size_usd=order_amount,
-                            actual_size_usd=order_amount if open_result.success else None,
+                            actual_size_usd=(
+                                order_amount if open_result.success else None
+                            ),
                             order_result=open_result,
                         )
                     )
@@ -808,7 +816,9 @@ class RSIEngine(QuantEngineBase):
                                 else (close_result.error or "order_failed")
                             ),
                             requested_size_usd=position_size,
-                            actual_size_usd=position_size if close_result.success else None,
+                            actual_size_usd=(
+                                position_size if close_result.success else None
+                            ),
                             order_result=close_result,
                             realized_pnl=pnl_change if close_result.success else None,
                         )

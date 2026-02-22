@@ -104,4 +104,3 @@ def build_quant_decision_record_payload(
         "executed_results": executed_results,
         "has_actual_execution": has_actual_execution,
     }
-

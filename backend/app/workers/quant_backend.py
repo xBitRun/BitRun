@@ -414,7 +414,9 @@ class QuantExecutionWorker:
             # Align quant records with AI records for dashboard/analytics:
             # populate executed flag + execution_results when actual execution occurred.
             if payload["has_actual_execution"]:
-                await decision_repo.mark_executed(record.id, payload["executed_results"])
+                await decision_repo.mark_executed(
+                    record.id, payload["executed_results"]
+                )
         except Exception as e:
             logger.warning(f"Failed to save quant decision record: {e}")
 

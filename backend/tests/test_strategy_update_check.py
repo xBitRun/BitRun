@@ -7,6 +7,7 @@ This module tests that:
 """
 
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,6 +15,31 @@ from fastapi import HTTPException, status
 
 from app.api.routes.strategies import restore_version, update_strategy
 from app.models.strategy import StrategyUpdate, StrategyVisibility
+
+
+def _build_mock_strategy(strategy_id: str, user_id: str, strategy_type: str = "ai"):
+    """Create a strategy-like mock object with concrete scalar fields."""
+    strategy = MagicMock()
+    strategy.id = uuid.UUID(strategy_id)
+    strategy.user_id = uuid.UUID(user_id)
+    strategy.type = strategy_type
+    strategy.name = "Test Strategy"
+    strategy.description = "Strategy description"
+    strategy.symbols = ["BTCUSDT"]
+    strategy.config = {}
+    strategy.visibility = "private"
+    strategy.category = None
+    strategy.tags = []
+    strategy.forked_from = None
+    strategy.fork_count = 0
+    strategy.user = None
+    strategy.agents = []
+    strategy.is_paid = False
+    strategy.price_monthly = None
+    strategy.pricing_model = "free"
+    strategy.created_at = datetime.now(UTC)
+    strategy.updated_at = datetime.now(UTC)
+    return strategy
 
 
 @pytest.fixture
@@ -65,19 +91,17 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating visibility (marketplace field) should succeed even with active agent."""
         with (
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
             patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+                "app.services.name_check_service.NameCheckService.market_name_exists",
+                new=AsyncMock(return_value=False),
+            ),
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
-            mock_strategy = MagicMock()
-            mock_strategy.id = uuid.UUID(mock_strategy_id)
-            mock_strategy.type = "ai"
+            mock_strategy = _build_mock_strategy(mock_strategy_id, mock_user_id)
             mock_repo.get_by_id.return_value = mock_strategy
             mock_repo.update.return_value = mock_strategy
 
@@ -90,7 +114,7 @@ class TestUpdateStrategyWithActiveAgents:
             update_data = StrategyUpdate(visibility=StrategyVisibility.PUBLIC)
 
             # Should NOT raise - marketplace fields can be updated
-            result = await update_strategy(
+            await update_strategy(
                 strategy_id=mock_strategy_id,
                 data=update_data,
                 db=mock_db,
@@ -106,12 +130,8 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating config (strategy config field) should fail with active agent."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -145,12 +165,8 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating name (strategy config field) should fail with active agent."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -182,12 +198,8 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating symbols (strategy config field) should fail with active agent."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -219,19 +231,13 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating config should succeed when agent is paused (not active)."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
-            mock_strategy = MagicMock()
-            mock_strategy.id = uuid.UUID(mock_strategy_id)
-            mock_strategy.type = "ai"
+            mock_strategy = _build_mock_strategy(mock_strategy_id, mock_user_id)
             mock_repo.get_by_id.return_value = mock_strategy
             mock_repo.update.return_value = mock_strategy
 
@@ -244,7 +250,7 @@ class TestUpdateStrategyWithActiveAgents:
             update_data = StrategyUpdate(config={"key": "value"})
 
             # Should NOT raise - no active agents
-            result = await update_strategy(
+            await update_strategy(
                 strategy_id=mock_strategy_id,
                 data=update_data,
                 db=mock_db,
@@ -260,19 +266,13 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating any field should succeed when no agents exist."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
-            mock_strategy = MagicMock()
-            mock_strategy.id = uuid.UUID(mock_strategy_id)
-            mock_strategy.type = "ai"
+            mock_strategy = _build_mock_strategy(mock_strategy_id, mock_user_id)
             mock_repo.get_by_id.return_value = mock_strategy
             mock_repo.update.return_value = mock_strategy
 
@@ -285,7 +285,7 @@ class TestUpdateStrategyWithActiveAgents:
             update_data = StrategyUpdate(config={"key": "value"}, name="New Name")
 
             # Should NOT raise - no agents
-            result = await update_strategy(
+            await update_strategy(
                 strategy_id=mock_strategy_id,
                 data=update_data,
                 db=mock_db,
@@ -310,12 +310,8 @@ class TestUpdateStrategyWithActiveAgents:
             agents.append(agent)
 
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -354,12 +350,8 @@ class TestUpdateStrategyWithActiveAgents:
     ):
         """Updating both marketplace and config fields should fail with active agent."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -397,12 +389,8 @@ class TestRestoreVersionWithActiveAgents:
     ):
         """Restoring version should fail with active agent."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
@@ -433,17 +421,13 @@ class TestRestoreVersionWithActiveAgents:
     ):
         """Restoring version should succeed when no active agents exist."""
         with (
-            patch(
-                "app.api.routes.strategies.StrategyRepository"
-            ) as mock_repo_class,
-            patch(
-                "app.api.routes.strategies.AgentRepository"
-            ) as mock_agent_repo_class,
+            patch("app.api.routes.strategies.StrategyRepository") as mock_repo_class,
+            patch("app.api.routes.strategies.AgentRepository") as mock_agent_repo_class,
         ):
             # Setup mock strategy repo
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
-            mock_strategy = MagicMock()
+            mock_strategy = _build_mock_strategy(mock_strategy_id, mock_user_id)
             mock_repo.restore_version.return_value = mock_strategy
 
             # Setup mock agent repo - return empty list
@@ -452,7 +436,7 @@ class TestRestoreVersionWithActiveAgents:
             mock_agent_repo.get_active_agents_by_strategy.return_value = []
 
             # Should NOT raise
-            result = await restore_version(
+            await restore_version(
                 strategy_id=mock_strategy_id,
                 version=1,
                 db=mock_db,

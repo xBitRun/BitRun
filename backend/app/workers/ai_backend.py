@@ -362,7 +362,12 @@ class AIWorkerBackend(BaseWorkerBackend):
         self._running = True
 
         # Load active AI agents
-        await self._load_active_agents()
+        try:
+            await self._load_active_agents()
+        except Exception:
+            logger.exception(
+                "AI Worker Backend: failed to load active agents during startup"
+            )
 
         # Start ownership refresh task if using distributed safety
         if self._distributed_safety:
