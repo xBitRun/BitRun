@@ -60,7 +60,7 @@ async def _fetch_public_prices(
     if not symbols:
         return {}
 
-    from ..services.shared_price_cache import get_shared_price_cache
+    from ...services.shared_price_cache import get_shared_price_cache
 
     cache = get_shared_price_cache()
 
@@ -91,7 +91,7 @@ async def _fetch_public_prices(
                     else:
                         from ...traders.base import detect_market_type, MarketType
                         mtype = detect_market_type(symbol)
-                        if mtype == MarketType.SPOT:
+                        if mtype == MarketType.CRYPTO_SPOT:
                             ccxt_symbol = f"{symbol}/USDC"
                         else:
                             ccxt_symbol = f"{symbol}/USDC:USDC"
