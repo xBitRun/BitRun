@@ -529,6 +529,44 @@ class CCXTTrader(BaseTrader):
         except Exception as e:
             raise TradeError(f"Failed to get market data for {symbol}: {e}")
 
+    async def fetch_tickers(self, symbols: list[str]) -> dict[str, dict]:
+        """
+        Fetch ticker data for multiple symbols.
+
+        Uses exchange-native batch ``fetch_tickers`` when possible and falls back
+        to per-symbol ``fetch_ticker`` for exchanges that don't support batch.
+        """
+        self._ensure_initialized()
+        if not symbols:
+            return {}
+
+        symbol_map = {symbol: self._to_ccxt_symbol(symbol) for symbol in symbols}
+        ccxt_symbols = list(symbol_map.values())
+
+        # Prefer native batch API (best for rate limits/latency).
+        try:
+            raw = await self._exchange.fetch_tickers(ccxt_symbols)
+            if isinstance(raw, dict) and raw:
+                return {
+                    src_symbol: raw.get(ccxt_symbol, {})
+                    for src_symbol, ccxt_symbol in symbol_map.items()
+                    if raw.get(ccxt_symbol)
+                }
+        except Exception as e:
+            logger.debug(
+                f"Batch fetch_tickers unavailable for {self._exchange_id}, "
+                f"falling back to per-symbol fetch_ticker: {e}"
+            )
+
+        # Fallback: fetch each ticker independently.
+        results: dict[str, dict] = {}
+        for src_symbol, ccxt_symbol in symbol_map.items():
+            try:
+                results[src_symbol] = await self._exchange.fetch_ticker(ccxt_symbol)
+            except Exception as e:
+                logger.debug(f"fetch_ticker failed for {src_symbol}: {e}")
+        return results
+
     # ------------------------------------------------------------------
     # K-lines / OHLCV
     # ------------------------------------------------------------------

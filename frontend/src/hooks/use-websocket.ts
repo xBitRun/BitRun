@@ -27,6 +27,7 @@ export type WSMessageType =
   | 'decision'
   | 'position_update'
   | 'account_update'
+  | 'price_update'
   | 'strategy_status'
   | 'notification'
   | 'error';
@@ -42,6 +43,7 @@ export interface UseWebSocketOptions {
   autoConnect?: boolean;
   onDecision?: (data: Record<string, unknown>) => void;
   onPositionUpdate?: (data: Record<string, unknown>) => void;
+  onPriceUpdate?: (data: Record<string, unknown>) => void;
   onAccountUpdate?: (data: Record<string, unknown>) => void;
   onStrategyStatus?: (data: Record<string, unknown>) => void;
   onNotification?: (data: Record<string, unknown>) => void;
@@ -53,6 +55,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     autoConnect = true,
     onDecision,
     onPositionUpdate,
+    onPriceUpdate,
     onAccountUpdate,
     onStrategyStatus,
     onNotification,
@@ -208,6 +211,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         onPositionUpdate?.(message.data || {});
         break;
 
+      case 'price_update':
+        wsLogger.message('Price update', message.data);
+        onPriceUpdate?.(message.data || {});
+        break;
+
       case 'account_update':
         wsLogger.message('Account update', message.data);
         onAccountUpdate?.(message.data || {});
@@ -240,7 +248,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       default:
         wsLogger.message('Unknown message', message);
     }
-  }, [onDecision, onPositionUpdate, onAccountUpdate, onStrategyStatus, onNotification, onError, addNotification]);
+  }, [onDecision, onPositionUpdate, onPriceUpdate, onAccountUpdate, onStrategyStatus, onNotification, onError, addNotification]);
 
   handleMessageRef.current = handleMessage;
 

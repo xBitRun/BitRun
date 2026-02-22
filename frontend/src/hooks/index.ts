@@ -106,7 +106,7 @@ export {
 export { useStrategyStudio, apiResponseToConfig } from "./use-strategy-studio";
 
 // System hooks
-export { useOutboundIP } from "./use-system";
+export { useOutboundIP, usePricePrefetchStatus } from "./use-system";
 
 // Symbols hooks
 export { useSymbols, useSymbolsList } from "./use-symbols";

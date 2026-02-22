@@ -15,6 +15,7 @@ import type {
   AccountBalanceResponse,
   DashboardStatsResponse,
   ActivityFeedResponse,
+  DashboardExecutionMode,
 } from "@/lib/api";
 
 // ==================== Types ====================
@@ -162,13 +163,15 @@ function mapBackendAccounts(
  * First tries the backend `/dashboard/stats` endpoint.  Falls back to
  * client-side aggregation when the backend is unavailable.
  */
-export function useDashboardStats() {
+export function useDashboardStats(
+  executionMode: DashboardExecutionMode = "all",
+) {
   const { data, ...rest } = useSWR<DashboardData>(
-    "/dashboard/stats",
+    `/dashboard/stats?execution_mode=${executionMode}`,
     async () => {
       // Try backend endpoint first for efficient aggregation
       try {
-        const response = await dashboardApi.getFullStats();
+        const response = await dashboardApi.getFullStats(executionMode);
 
         // Count profitable positions from the response
         const profitablePositions = response.positions.filter(
@@ -353,7 +356,7 @@ export function useDashboardStats() {
       return { stats, positions: allPositions };
     },
     {
-      refreshInterval: 30000, // Refresh every 30 seconds
+      refreshInterval: 10000, // Refresh every 10 seconds
       revalidateOnFocus: true,
       dedupingInterval: 5000,
     },
@@ -420,7 +423,7 @@ export function useAccountsWithBalances() {
       return results;
     },
     {
-      refreshInterval: 30000,
+      refreshInterval: 10000,
       revalidateOnFocus: true,
     },
   );
@@ -483,12 +486,15 @@ export function usePerformanceStats() {
 /**
  * Fetch activity feed for dashboard
  */
-export function useActivityFeed(limit: number = 20) {
+export function useActivityFeed(
+  limit: number = 20,
+  executionMode: DashboardExecutionMode = "all",
+) {
   return useSWR<ActivityFeedResponse>(
-    `/dashboard/activity?limit=${limit}`,
-    () => dashboardApi.getActivity(limit, 0),
+    `/dashboard/activity?limit=${limit}&execution_mode=${executionMode}`,
+    () => dashboardApi.getActivity(limit, 0, executionMode),
     {
-      refreshInterval: 30000, // Refresh every 30 seconds
+      refreshInterval: 10000, // Refresh every 10 seconds
       revalidateOnFocus: true,
       dedupingInterval: 5000,
     },

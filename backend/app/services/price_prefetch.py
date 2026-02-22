@@ -45,6 +45,8 @@ logger = logging.getLogger(__name__)
 PREFETCH_INTERVAL = 3.0  # Prefetch every 3 seconds
 LEADER_TTL = 30  # Leader lock TTL in seconds
 LEADER_RENEW_INTERVAL = 10  # Renew leader lock every 10 seconds
+STREAM_TIMEOUT_RATIO = 0.8  # watch_tickers timeout = interval * ratio
+MIN_PUBLISH_CHANGE_PCT = 0.0001  # 0.01%
 
 
 @dataclass
@@ -122,6 +124,13 @@ class PricePrefetchService:
         # Metrics
         self._prefetch_count = 0
         self._prefetch_errors = 0
+        self._stream_hits = 0
+        self._stream_fallbacks = 0
+        self._publish_skips_no_subscribers = 0
+        self._publish_skips_small_change = 0
+
+        # Last published price per symbol for suppressing tiny oscillations.
+        self._last_published_prices: Dict[str, float] = {}
 
     async def _get_redis(self):
         """Get Redis connection lazily."""
@@ -328,6 +337,7 @@ class PricePrefetchService:
             if exchange is None:
                 continue
 
+            batch_prices = await self._try_stream_batch(exchange, exchange_id, symbols)
             for symbol in symbols:
                 try:
                     # Check if we need to fetch (cache TTL consideration)
@@ -340,8 +350,10 @@ class PricePrefetchService:
                     # Convert symbol to CCXT format
                     ccxt_symbol = self._to_ccxt_symbol(exchange_id, symbol)
 
-                    # Fetch ticker
-                    ticker = await exchange.fetch_ticker(ccxt_symbol)
+                    # Prefer stream ticker data when available for this cycle.
+                    ticker = batch_prices.get(ccxt_symbol)
+                    if ticker is None:
+                        ticker = await exchange.fetch_ticker(ccxt_symbol)
                     if ticker and ticker.get("last"):
                         price = float(ticker["last"])
                         bid = float(ticker.get("bid", price))
@@ -355,10 +367,75 @@ class PricePrefetchService:
                             sub.last_fetch = now
 
                         self._prefetch_count += 1
+                        # Publish live price updates to app WebSocket channel.
+                        try:
+                            from ..api.websocket import (
+                                has_price_subscribers,
+                                publish_price_update,
+                            )
+
+                            if not has_price_subscribers(exchange_id, symbol):
+                                self._publish_skips_no_subscribers += 1
+                                continue
+
+                            publish_key = f"{exchange_id}:{symbol}"
+                            last_published = self._last_published_prices.get(
+                                publish_key
+                            )
+                            if last_published and last_published > 0:
+                                delta_pct = abs(price - last_published) / last_published
+                                if delta_pct < MIN_PUBLISH_CHANGE_PCT:
+                                    self._publish_skips_small_change += 1
+                                    continue
+
+                            await publish_price_update(
+                                exchange=exchange_id,
+                                symbol=symbol,
+                                price=price,
+                                bid=bid,
+                                ask=ask,
+                                source="prefetch",
+                            )
+                            self._last_published_prices[publish_key] = price
+                        except Exception as e:
+                            logger.debug(
+                                f"Failed to publish price update for "
+                                f"{exchange_id}:{symbol}: {e}"
+                            )
                         logger.debug(f"Prefetched {exchange_id}:{symbol} = {price}")
 
                 except Exception as e:
                     logger.debug(f"Prefetch failed for {exchange_id}:{symbol}: {e}")
+
+    async def _try_stream_batch(
+        self,
+        exchange,
+        exchange_id: str,
+        symbols: Set[str],
+    ) -> Dict[str, dict]:
+        """
+        Try to fetch a batch of tickers through exchange streaming API.
+
+        Falls back silently when streaming is unavailable or times out.
+        """
+        watch_tickers = getattr(exchange, "watch_tickers", None)
+        if not callable(watch_tickers):
+            self._stream_fallbacks += 1
+            return {}
+
+        ccxt_symbols = [self._to_ccxt_symbol(exchange_id, s) for s in symbols]
+        timeout = max(0.5, self._prefetch_interval * STREAM_TIMEOUT_RATIO)
+
+        try:
+            tickers = await asyncio.wait_for(watch_tickers(ccxt_symbols), timeout)
+            if isinstance(tickers, dict) and tickers:
+                self._stream_hits += 1
+                return tickers
+        except Exception as e:
+            logger.debug(f"Streaming watch_tickers unavailable for {exchange_id}: {e}")
+
+        self._stream_fallbacks += 1
+        return {}
 
     def _to_ccxt_symbol(self, exchange_id: str, symbol: str) -> str:
         """Convert bare symbol to CCXT format."""
@@ -490,6 +567,10 @@ class PricePrefetchService:
             ],
             "prefetch_count": self._prefetch_count,
             "prefetch_errors": self._prefetch_errors,
+            "stream_hits": self._stream_hits,
+            "stream_fallbacks": self._stream_fallbacks,
+            "publish_skips_no_subscribers": self._publish_skips_no_subscribers,
+            "publish_skips_small_change": self._publish_skips_small_change,
         }
 
     def is_active(self) -> bool:

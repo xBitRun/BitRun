@@ -22,6 +22,8 @@ from .lifecycle import (
     release_ownership,
     acquire_execution_lock,
     release_execution_lock,
+    register_price_prefetch_symbols,
+    unregister_price_prefetch_symbols,
 )
 from ..core.config import get_settings
 from ..core.retry_utils import (
@@ -345,6 +347,7 @@ class AIWorkerBackend(BaseWorkerBackend):
     def __init__(self, distributed_safety: bool = True):
         super().__init__()
         self._workers: Dict[str, AIExecutionWorker] = {}
+        self._prefetch_registered: set[str] = set()
         self._distributed_safety = distributed_safety
         self._sync_task: Optional[asyncio.Task] = None
 
@@ -538,6 +541,15 @@ class AIWorkerBackend(BaseWorkerBackend):
                 await worker.start()
                 self._workers[agent_id] = worker
 
+                # Register symbols for background public price prefetch.
+                # This warms SharedPriceCache and reduces per-request ticker calls.
+                if await register_price_prefetch_symbols(
+                    agent_id=agent_id,
+                    trader=trader,
+                    symbols=strategy.symbols or [],
+                ):
+                    self._prefetch_registered.add(agent_id)
+
                 mode = "mock" if agent.execution_mode == "mock" else "live"
                 logger.info(f"Started AI worker for agent {agent_id} ({mode} mode)")
                 return True
@@ -560,6 +572,9 @@ class AIWorkerBackend(BaseWorkerBackend):
             logger.warning(f"Error stopping AI worker {agent_id}: {e}")
 
         self._workers.pop(agent_id, None)
+        if agent_id in self._prefetch_registered:
+            await unregister_price_prefetch_symbols(agent_id)
+            self._prefetch_registered.discard(agent_id)
         return True
 
     async def trigger_execution(

@@ -54,6 +54,7 @@ export type {
   DecisionStatsResponse,
   // Dashboard
   DashboardStatsResponse,
+  DashboardExecutionMode,
   ActivityItem,
   ActivityFeedResponse,
   // Backtest
@@ -94,4 +95,5 @@ export type {
   // Data
   SymbolItem,
   SymbolsResponse,
+  PricePrefetchStatsResponse,
 } from "./endpoints";

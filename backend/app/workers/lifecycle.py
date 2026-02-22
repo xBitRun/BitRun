@@ -354,6 +354,78 @@ async def try_reconnect_trader(
         return None
 
 
+def _resolve_prefetch_exchange_id(trader) -> Optional[str]:
+    """
+    Resolve exchange id used by PricePrefetchService from a trader instance.
+
+    Notes:
+    - CCXTTrader.exchange_name already returns ccxt exchange id.
+    - MockTrader.exchange_name is "mock", so we map to its underlying public
+      exchange id (defaults to "hyperliquid").
+    """
+    exchange_id = getattr(trader, "exchange_name", None)
+    if not exchange_id:
+        return None
+
+    if exchange_id == "mock":
+        # MockTrader stores the backing public exchange as _exchange_id.
+        return getattr(trader, "_exchange_id", "hyperliquid")
+
+    return exchange_id
+
+
+async def register_price_prefetch_symbols(
+    agent_id: str,
+    trader,
+    symbols: list[str],
+) -> bool:
+    """
+    Register agent symbols to PricePrefetchService.
+
+    Returns:
+        True if at least one symbol was registered.
+    """
+    if not symbols or trader is None:
+        return False
+
+    exchange_id = _resolve_prefetch_exchange_id(trader)
+    if not exchange_id:
+        return False
+
+    try:
+        from ..services.price_prefetch import get_price_prefetch_service
+
+        service = get_price_prefetch_service()
+        await service.start()
+
+        normalized = {s.upper().strip() for s in symbols if s and s.strip()}
+        for symbol in normalized:
+            await service.register_symbol(exchange_id, symbol, agent_id)
+
+        if normalized:
+            logger.info(
+                f"Registered {len(normalized)} symbols for prefetch "
+                f"(agent={agent_id}, exchange={exchange_id})"
+            )
+        return bool(normalized)
+    except Exception as e:
+        logger.warning(f"Failed to register prefetch symbols for agent {agent_id}: {e}")
+        return False
+
+
+async def unregister_price_prefetch_symbols(agent_id: str) -> None:
+    """Unregister all prefetch symbols for an agent."""
+    try:
+        from ..services.price_prefetch import get_price_prefetch_service
+
+        service = get_price_prefetch_service()
+        await service.unregister_agent(agent_id)
+    except Exception as e:
+        logger.warning(
+            f"Failed to unregister prefetch symbols for agent {agent_id}: {e}"
+        )
+
+
 async def clear_heartbeats_for_quant_strategies() -> int:
     """
     Clear heartbeats for all active quant strategies on startup.

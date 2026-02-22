@@ -17,6 +17,7 @@ import {
   providersApi,
   agentsApi,
   systemApi,
+  dataApi,
 } from "@/lib/api/endpoints";
 
 jest.mock("@/lib/api/client", () => ({
@@ -528,14 +529,16 @@ describe("dashboardApi", () => {
   it("getFullStats should GET /dashboard/stats", async () => {
     mockedApi.get.mockResolvedValue({ total_equity: 50000 });
     await dashboardApi.getFullStats();
-    expect(mockedApi.get).toHaveBeenCalledWith("/dashboard/stats");
+    expect(mockedApi.get).toHaveBeenCalledWith("/dashboard/stats", {
+      params: { execution_mode: "all" },
+    });
   });
 
   it("getActivity should GET /dashboard/activity with params", async () => {
     mockedApi.get.mockResolvedValue({ items: [], total: 0, has_more: false });
     await dashboardApi.getActivity(10, 5);
     expect(mockedApi.get).toHaveBeenCalledWith("/dashboard/activity", {
-      params: { limit: 10, offset: 5 },
+      params: { limit: 10, offset: 5, execution_mode: "all" },
     });
   });
 
@@ -543,7 +546,7 @@ describe("dashboardApi", () => {
     mockedApi.get.mockResolvedValue({ items: [], total: 0, has_more: false });
     await dashboardApi.getActivity();
     expect(mockedApi.get).toHaveBeenCalledWith("/dashboard/activity", {
-      params: { limit: 20, offset: 0 },
+      params: { limit: 20, offset: 0, execution_mode: "all" },
     });
   });
 
@@ -899,5 +902,27 @@ describe("systemApi", () => {
     });
     const result = await systemApi.getOutboundIP();
     expect(result.ip).toBeNull();
+  });
+});
+
+describe("dataApi", () => {
+  it("getPricePrefetchStats should GET /data/cache/prefetch/stats", async () => {
+    mockedApi.get.mockResolvedValue({
+      running: true,
+      is_leader: true,
+      subscriptions: 1,
+      agents: 1,
+      symbols: [],
+      prefetch_count: 10,
+      prefetch_errors: 0,
+      stream_hits: 3,
+      stream_fallbacks: 1,
+      publish_skips_no_subscribers: 5,
+      publish_skips_small_change: 7,
+    });
+
+    await dataApi.getPricePrefetchStats();
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/data/cache/prefetch/stats");
   });
 });

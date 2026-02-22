@@ -346,7 +346,7 @@ describe("useActivityFeed", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
-    expect(mockedDashboardApi.getActivity).toHaveBeenCalledWith(20, 0);
+    expect(mockedDashboardApi.getActivity).toHaveBeenCalledWith(20, 0, "all");
     expect(result.current.data?.items.length).toBe(1);
   });
 
@@ -359,6 +359,6 @@ describe("useActivityFeed", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
-    expect(mockedDashboardApi.getActivity).toHaveBeenCalledWith(5, 0);
+    expect(mockedDashboardApi.getActivity).toHaveBeenCalledWith(5, 0, "all");
   });
 });

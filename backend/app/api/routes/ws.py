@@ -87,6 +87,7 @@ async def websocket_endpoint(
         - {"type": "decision", "data": {...}}
         - {"type": "position_update", "data": {...}}
         - {"type": "account_update", "data": {...}}
+        - {"type": "price_update", "data": {...}}
         - {"type": "strategy_status", "data": {...}}
         - {"type": "notification", "data": {...}}
         - {"type": "pong"}
@@ -94,6 +95,7 @@ async def websocket_endpoint(
     Channels:
         - strategy:<strategy_id> - Strategy decisions and status
         - account:<account_id> - Account and position updates
+        - price:<exchange>:<symbol> - Public price updates (e.g. price:hyperliquid:BTC)
         - system - System-wide notifications
     """
     manager = get_connection_manager()

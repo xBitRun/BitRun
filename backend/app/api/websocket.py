@@ -36,6 +36,7 @@ class MessageType(str, Enum):
     DECISION = "decision"
     POSITION_UPDATE = "position_update"
     ACCOUNT_UPDATE = "account_update"
+    PRICE_UPDATE = "price_update"
     STRATEGY_STATUS = "strategy_status"
     NOTIFICATION = "notification"
     ERROR = "error"
@@ -544,6 +545,42 @@ async def publish_account_update(
     )
 
     await manager.send_to_user(user_id, message)
+
+
+async def publish_price_update(
+    exchange: str,
+    symbol: str,
+    price: float,
+    bid: Optional[float] = None,
+    ask: Optional[float] = None,
+    source: str = "prefetch",
+) -> None:
+    """
+    Publish public price update to a symbol channel.
+
+    Channel format:
+        price:<exchange>:<symbol>
+    """
+    channel = f"price:{exchange.lower()}:{symbol.upper()}"
+    message = WSMessage(
+        type=MessageType.PRICE_UPDATE,
+        data={
+            "exchange": exchange.lower(),
+            "symbol": symbol.upper(),
+            "price": price,
+            "bid": bid,
+            "ask": ask,
+            "source": source,
+        },
+    )
+
+    await manager.broadcast_to_channel(channel, message)
+
+
+def has_price_subscribers(exchange: str, symbol: str) -> bool:
+    """Check whether a price channel currently has subscribers."""
+    channel = f"price:{exchange.lower()}:{symbol.upper()}"
+    return manager.get_channel_subscribers(channel) > 0
 
 
 async def publish_strategy_status(

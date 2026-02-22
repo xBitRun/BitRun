@@ -35,6 +35,10 @@ from ..services.worker_heartbeat import (
     update_heartbeat,
     clear_heartbeat,
 )
+from .lifecycle import (
+    register_price_prefetch_symbols,
+    unregister_price_prefetch_symbols,
+)
 from ..services.strategy_engine import StrategyEngine
 from ..traders.base import BaseTrader, TradeError
 from ..traders.ccxt_trader import create_trader_from_account
@@ -278,6 +282,7 @@ class WorkerManager:
         """
         self._distributed = distributed
         self._workers: Dict[str, ExecutionWorker] = {}  # agent_id -> ExecutionWorker
+        self._prefetch_registered: set[str] = set()
         self._task_queue = None  # For distributed mode
         self._running = False
         self._monitor_task: Optional[asyncio.Task] = None
@@ -502,6 +507,14 @@ class WorkerManager:
                 await worker.start()
                 self._workers[agent_id] = worker
 
+                # Register symbols for background public price prefetch.
+                if await register_price_prefetch_symbols(
+                    agent_id=agent_id,
+                    trader=trader,
+                    symbols=strategy.symbols or [],
+                ):
+                    self._prefetch_registered.add(agent_id)
+
                 mode = "mock" if agent.execution_mode == "mock" else "live"
                 logger.info(f"Started worker for agent {agent_id} ({mode} mode)")
                 return True
@@ -541,6 +554,9 @@ class WorkerManager:
 
         await worker.stop()
         del self._workers[agent_id]
+        if agent_id in self._prefetch_registered:
+            await unregister_price_prefetch_symbols(agent_id)
+            self._prefetch_registered.discard(agent_id)
         return True
 
     # Backward compatibility aliases

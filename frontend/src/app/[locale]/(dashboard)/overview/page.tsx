@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   TrendingUp,
   TrendingDown,
@@ -27,11 +28,13 @@ import {
   useDashboardStats,
   useAccounts,
   useActivityFeed,
+  usePricePrefetchStatus,
 } from "@/hooks";
 import type { AccountSummary, Position } from "@/hooks";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import type { ActivityItem } from "@/lib/api";
 import { PnLValue, formatPnL, formatPnLPercent } from "@/components/pnl";
+import type { DashboardExecutionMode } from "@/lib/api";
 
 function formatTimeAgo(
   dateString: string,
@@ -644,6 +647,26 @@ export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tPositions = useTranslations("dashboard.positions");
   const tTime = useTranslations("time");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [executionMode, setExecutionMode] = useState<DashboardExecutionMode>(
+    "live",
+  );
+
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    const nextMode: DashboardExecutionMode =
+      mode === "mock" ? "mock" : "live";
+    setExecutionMode(nextMode);
+  }, [searchParams]);
+
+  const updateMode = (mode: DashboardExecutionMode) => {
+    setExecutionMode(mode);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("mode", mode);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  };
 
   // Data fetching - using aggregated hooks
   const {
@@ -651,13 +674,33 @@ export default function DashboardPage() {
     positions,
     isLoading: statsLoading,
     mutate: refreshStats,
-  } = useDashboardStats();
+  } = useDashboardStats(executionMode);
   const { isLoading: accountsLoading } = useAccounts();
+  const { mode: priceStreamMode } = usePricePrefetchStatus();
+  const lastPriceRefreshRef = useRef(0);
+  const subscribedPriceChannelsRef = useRef<Set<string>>(new Set());
+
+  const priceChannels = useMemo(() => {
+    const channels = new Set<string>();
+    for (const p of positions ?? []) {
+      if (!p.exchange || !p.symbol) continue;
+      channels.add(`price:${p.exchange.toLowerCase()}:${p.symbol.toUpperCase()}`);
+    }
+    return Array.from(channels);
+  }, [positions]);
 
   // Real-time updates via WebSocket
-  const { isConnected, subscribe } = useWebSocket({
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({
     onPositionUpdate: () => {
       refreshStats();
+    },
+    onPriceUpdate: () => {
+      const now = Date.now();
+      // Throttle dashboard refresh to avoid over-fetching on hot symbols.
+      if (now - lastPriceRefreshRef.current >= 2000) {
+        lastPriceRefreshRef.current = now;
+        refreshStats();
+      }
     },
   });
 
@@ -665,6 +708,27 @@ export default function DashboardPage() {
   useEffect(() => {
     subscribe("system");
   }, [subscribe]);
+
+  // Keep price channel subscriptions aligned with current positions.
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const current = subscribedPriceChannelsRef.current;
+    const next = new Set(priceChannels);
+
+    for (const channel of current) {
+      if (!next.has(channel)) {
+        unsubscribe(channel);
+      }
+    }
+    for (const channel of next) {
+      if (!current.has(channel)) {
+        subscribe(channel);
+      }
+    }
+
+    subscribedPriceChannelsRef.current = next;
+  }, [isConnected, priceChannels, subscribe, unsubscribe]);
 
   const isLoading = statsLoading || accountsLoading;
 
@@ -677,19 +741,55 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">
             {t("subtitle")}
             {isConnected && (
-              <span className="ml-2 inline-flex items-center">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" />
-                <span className="text-xs text-green-500">{tTime("live")}</span>
-              </span>
+              <>
+                <span className="ml-2 inline-flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" />
+                  <span className="text-xs text-green-500">{tTime("live")}</span>
+                </span>
+                <span
+                  className={cn(
+                    "ml-2 text-xs font-medium",
+                    priceStreamMode === "ws" && "text-green-500",
+                    priceStreamMode === "rest" && "text-amber-500",
+                    priceStreamMode === "mixed" && "text-blue-500",
+                    priceStreamMode === "unknown" && "text-muted-foreground",
+                  )}
+                >
+                  {priceStreamMode === "ws" && "PX:WS"}
+                  {priceStreamMode === "rest" && "PX:REST"}
+                  {priceStreamMode === "mixed" && "PX:MIX"}
+                  {priceStreamMode === "unknown" && "PX:--"}
+                </span>
+              </>
             )}
           </p>
         </div>
-        <Link href="/agents">
-          <Button className="glow-primary">
-            <Bot className="w-4 h-4 mr-2" />
-            {t("newAgent")}
-          </Button>
-        </Link>
+        <div className="inline-flex items-center rounded-lg border border-border/60 bg-muted/30 p-1">
+          <button
+            type="button"
+            onClick={() => updateMode("live")}
+            className={cn(
+              "px-3 py-1.5 text-xs rounded-md transition-colors",
+              executionMode === "live"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t("activity.live")}
+          </button>
+          <button
+            type="button"
+            onClick={() => updateMode("mock")}
+            className={cn(
+              "px-3 py-1.5 text-xs rounded-md transition-colors",
+              executionMode === "mock"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t("activity.mock")}
+          </button>
+        </div>
       </div>
 
       {/* Accounts Overview Section */}
@@ -704,7 +804,12 @@ export default function DashboardPage() {
       {/* Main Content Grid - Activity Feed & Positions side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
         {/* Activity Feed - Left */}
-        <ActivityFeed t={t} tTime={tTime} isLoading={isLoading} />
+        <ActivityFeed
+          t={t}
+          tTime={tTime}
+          isLoading={isLoading}
+          executionMode={executionMode}
+        />
 
         {/* Open Positions - Right (Grouped by Account) */}
         <Card className="bg-card/50 backdrop-blur-sm border-border/50 flex flex-col min-h-0">
@@ -735,14 +840,19 @@ function ActivityFeed({
   t,
   tTime,
   isLoading: parentLoading,
+  executionMode,
   className,
 }: {
   t: ReturnType<typeof useTranslations>;
   tTime: ReturnType<typeof useTranslations<"time">>;
   isLoading: boolean;
+  executionMode: DashboardExecutionMode;
   className?: string;
 }) {
-  const { data: activityData, isLoading, mutate } = useActivityFeed(5);
+  const { data: activityData, isLoading, mutate } = useActivityFeed(
+    5,
+    executionMode,
+  );
 
   const getStatusIcon = (status?: string) => {
     switch (status) {

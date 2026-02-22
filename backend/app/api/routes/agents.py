@@ -65,6 +65,18 @@ async def _fetch_public_prices(
 
     cache = get_shared_price_cache()
 
+    def _to_public_ccxt_symbol(symbol: str) -> str:
+        """Normalize a user symbol to CCXT perpetual/spot format."""
+        if "/" in symbol:
+            return symbol
+
+        from ...traders.base import detect_market_type, MarketType
+
+        mtype = detect_market_type(symbol)
+        if mtype == MarketType.CRYPTO_SPOT:
+            return f"{symbol}/USDC"
+        return f"{symbol}/USDC:USDC"
+
     async def fetcher(
         uncached_symbols: list[str],
     ) -> dict[str, tuple[float, float | None, float | None]]:
@@ -88,21 +100,25 @@ async def _fetch_public_prices(
                 }
             )
 
+            ccxt_symbol_map = {
+                symbol: _to_public_ccxt_symbol(symbol) for symbol in uncached_symbols
+            }
+
+            # Prefer batch ticker endpoint to reduce request pressure.
+            batch_tickers: dict = {}
+            try:
+                batch_tickers = await exchange.fetch_tickers(
+                    list(ccxt_symbol_map.values())
+                )
+            except Exception as e:
+                logger.debug(f"Batch fetch_tickers unavailable, fallback: {e}")
+
             for symbol in uncached_symbols:
                 try:
-                    # Determine market type and format symbol
-                    if "/" in symbol:
-                        ccxt_symbol = symbol
-                    else:
-                        from ...traders.base import detect_market_type, MarketType
-
-                        mtype = detect_market_type(symbol)
-                        if mtype == MarketType.CRYPTO_SPOT:
-                            ccxt_symbol = f"{symbol}/USDC"
-                        else:
-                            ccxt_symbol = f"{symbol}/USDC:USDC"
-
-                    ticker = await exchange.fetch_ticker(ccxt_symbol)
+                    ccxt_symbol = ccxt_symbol_map[symbol]
+                    ticker = batch_tickers.get(ccxt_symbol)
+                    if not ticker:
+                        ticker = await exchange.fetch_ticker(ccxt_symbol)
                     if ticker and ticker.get("last"):
                         price = float(ticker["last"])
                         bid = ticker.get("bid")

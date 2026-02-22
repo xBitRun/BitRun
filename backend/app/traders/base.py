@@ -559,6 +559,27 @@ class BaseTrader(ABC):
         """
         pass
 
+    async def fetch_tickers(self, symbols: list[str]) -> dict[str, dict]:
+        """
+        Fetch ticker snapshots for multiple symbols.
+
+        Default implementation falls back to per-symbol ``get_market_data`` calls.
+        Subclasses should override with exchange-native batch APIs when available.
+        """
+        tickers: dict[str, dict] = {}
+        for symbol in symbols:
+            try:
+                data = await self.get_market_data(symbol)
+                tickers[symbol] = {
+                    "last": data.mid_price,
+                    "bid": data.bid_price,
+                    "ask": data.ask_price,
+                    "volume": data.volume_24h,
+                }
+            except Exception:
+                continue
+        return tickers
+
     # ==================== K-line / OHLCV Data ====================
 
     async def get_klines(

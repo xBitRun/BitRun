@@ -154,6 +154,7 @@ async def create_mock_trader(
         trader = MockTrader(
             initial_balance=mock_balance,
             symbols=symbols,
+            use_shared_cache=True,
         )
         await trader.initialize()
 

@@ -12,6 +12,7 @@ from ...services.market_data_cache import (
     get_market_data_cache,
     get_backtest_preloader,
 )
+from ...services.price_prefetch import get_price_prefetch_service
 from ...traders.exchange_capabilities import (
     AssetType,
     ExchangeCapabilities,
@@ -101,6 +102,30 @@ class ExchangesForAssetResponse(BaseModel):
     )
 
 
+class PricePrefetchSymbolItem(BaseModel):
+    """Single prefetch subscription item."""
+
+    exchange: str
+    symbol: str
+    subscribers: int
+
+
+class PricePrefetchStatsResponse(BaseModel):
+    """Price prefetch runtime stats."""
+
+    running: bool
+    is_leader: bool
+    subscriptions: int
+    agents: int
+    symbols: list[PricePrefetchSymbolItem]
+    prefetch_count: int
+    prefetch_errors: int
+    stream_hits: int = 0
+    stream_fallbacks: int = 0
+    publish_skips_no_subscribers: int = 0
+    publish_skips_small_change: int = 0
+
+
 # ==================== Routes ====================
 
 # -------------------- Exchange Capabilities --------------------
@@ -188,6 +213,21 @@ async def get_cache_stats(
         )
 
     return CacheStats(**stats)
+
+
+@router.get("/cache/prefetch/stats", response_model=PricePrefetchStatsResponse)
+async def get_price_prefetch_stats(
+    user_id: CurrentUserDep,
+):
+    """
+    Get runtime statistics for the background price prefetch service.
+
+    Useful for checking whether WS streaming is being used or REST fallback
+    is dominating.
+    """
+    service = get_price_prefetch_service()
+    stats = service.get_stats()
+    return PricePrefetchStatsResponse(**stats)
 
 
 @router.post("/cache/preload", response_model=PreloadResponse)

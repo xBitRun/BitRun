@@ -297,6 +297,28 @@ describe("useWebSocket", () => {
       });
     });
 
+    it("should call onPriceUpdate callback", async () => {
+      const onPriceUpdate = jest.fn();
+      const { result } = renderHook(() => useWebSocket({ onPriceUpdate }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(50);
+      });
+
+      act(() => {
+        mockWsInstances[0].simulateMessage({
+          type: "price_update",
+          data: { exchange: "hyperliquid", symbol: "BTC", price: 100000 },
+        });
+      });
+
+      expect(onPriceUpdate).toHaveBeenCalledWith({
+        exchange: "hyperliquid",
+        symbol: "BTC",
+        price: 100000,
+      });
+    });
+
     it("should call onAccountUpdate callback", async () => {
       const onAccountUpdate = jest.fn();
       const { result } = renderHook(() => useWebSocket({ onAccountUpdate }));

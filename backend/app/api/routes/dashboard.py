@@ -133,6 +133,7 @@ async def get_dashboard_stats(
     db: DbSessionDep,
     user_id: CurrentUserDep,
     bypass_cache: bool = False,
+    execution_mode: str = "all",
 ):
     """
     Get aggregated dashboard statistics.
@@ -142,14 +143,17 @@ async def get_dashboard_stats(
     - Strategies (active count, performance)
     - Decisions (today's activity)
 
-    Results are cached for 30 seconds to reduce load.
+    Results are cached for 10 seconds to reduce load while preserving freshness.
     Pass bypass_cache=true to force a fresh fetch.
     """
+    mode = execution_mode if execution_mode in {"all", "live", "mock"} else "all"
+    cache_user_key = user_id if mode == "all" else f"{user_id}:{mode}"
+
     # Try to get from cache first (unless bypass requested)
     if not bypass_cache:
         try:
             redis = await get_redis_service()
-            cached = await redis.get_cached_dashboard_stats(user_id)
+            cached = await redis.get_cached_dashboard_stats(cache_user_key)
             if cached:
                 logger.debug(f"Returning cached dashboard stats for user {user_id}")
                 return DashboardStatsResponse(**cached)
@@ -166,10 +170,25 @@ async def get_dashboard_stats(
     # Fetch user's strategies
     strategies = await strategy_repo.get_by_user(uuid.UUID(user_id))
     # StrategyDB doesn't have status; status is on AgentDB.
-    # Count strategies that have at least one active agent.
-    active_strategies = [
-        s for s in strategies if any(a.status == "active" for a in s.agents)
-    ]
+    # Optionally scope stats to a specific execution mode.
+    if mode == "all":
+        active_strategies_count = len(
+            [s for s in strategies if any(a.status == "active" for a in s.agents)]
+        )
+        total_strategies_count = len(strategies)
+    else:
+        active_strategies_count = len(
+            [
+                s
+                for s in strategies
+                if any(
+                    a.status == "active" and a.execution_mode == mode for a in s.agents
+                )
+            ]
+        )
+        total_strategies_count = len(
+            [s for s in strategies if any(a.execution_mode == mode for a in s.agents)]
+        )
 
     # Initialize aggregated values
     total_equity = 0.0
@@ -180,7 +199,9 @@ async def get_dashboard_stats(
     account_summaries: list[AccountBalanceSummary] = []
 
     # Fetch real-time data from all connected accounts in parallel
-    connected_accounts = [a for a in accounts if a.is_connected]
+    connected_accounts = (
+        [a for a in accounts if a.is_connected] if mode in {"all", "live"} else []
+    )
 
     async def _fetch_single_account(account: Any) -> Optional[tuple]:
         """Fetch account state for a single account. Returns (account, state) or None.
@@ -361,21 +382,22 @@ async def get_dashboard_stats(
             )
 
     # Add offline accounts to summaries
-    offline_accounts = [a for a in accounts if not a.is_connected]
-    for account in offline_accounts:
-        account_summaries.append(
-            AccountBalanceSummary(
-                account_id=str(account.id),
-                account_name=account.name,
-                exchange=account.exchange,
-                status="offline",
-                total_equity=0.0,
-                available_balance=0.0,
-                daily_pnl=0.0,
-                daily_pnl_percent=0.0,
-                open_positions=0,
+    if mode in {"all", "live"}:
+        offline_accounts = [a for a in accounts if not a.is_connected]
+        for account in offline_accounts:
+            account_summaries.append(
+                AccountBalanceSummary(
+                    account_id=str(account.id),
+                    account_name=account.name,
+                    exchange=account.exchange,
+                    status="offline",
+                    total_equity=0.0,
+                    available_balance=0.0,
+                    daily_pnl=0.0,
+                    daily_pnl_percent=0.0,
+                    open_positions=0,
+                )
             )
-        )
 
     # Calculate daily P/L using cached midnight equity
     daily_pnl = 0.0
@@ -423,7 +445,7 @@ async def get_dashboard_stats(
         today_date = date.today()
 
         # Get user's account IDs
-        user_account_ids = [str(a.id) for a in accounts if a.is_connected]
+        user_account_ids = [str(a.id) for a in connected_accounts]
         if user_account_ids:
             # Weekly P/L: from start of week (Monday)
             week_start = today_date - timedelta(days=today_date.weekday())
@@ -502,6 +524,8 @@ async def get_dashboard_stats(
     agent_position_records = []  # (agent, position)
 
     for agent in user_agents:
+        if mode != "all" and agent.execution_mode != mode:
+            continue
         positions = await ps.get_agent_positions(agent.id, status_filter="open")
         for pos in positions:
             agent_positions_symbols.add(pos.symbol)
@@ -565,10 +589,19 @@ async def get_dashboard_stats(
         hour=0, minute=0, second=0, microsecond=0
     )
     recent_decisions = await decision_repo.get_recent(uuid.UUID(user_id), limit=100)
+    allowed_agent_ids: set[str] | None = None
+    if mode != "all":
+        allowed_agent_ids = {
+            str(a.id) for s in strategies for a in s.agents if a.execution_mode == mode
+        }
     today_decisions = [
         d
         for d in recent_decisions
-        if d.timestamp is not None and _ensure_utc(d.timestamp) >= today_start
+        if (
+            d.timestamp is not None
+            and _ensure_utc(d.timestamp) >= today_start
+            and (allowed_agent_ids is None or str(d.agent_id) in allowed_agent_ids)
+        )
     ]
     today_executed = [d for d in today_decisions if d.executed]
 
@@ -585,8 +618,8 @@ async def get_dashboard_stats(
         weekly_pnl_percent=round(weekly_pnl_percent, 2),
         monthly_pnl=round(monthly_pnl, 2),
         monthly_pnl_percent=round(monthly_pnl_percent, 2),
-        active_strategies=len(active_strategies),
-        total_strategies=len(strategies),
+        active_strategies=active_strategies_count,
+        total_strategies=total_strategies_count,
         open_positions=len(all_positions),
         positions=all_positions,
         today_decisions=len(today_decisions),
@@ -599,7 +632,7 @@ async def get_dashboard_stats(
     try:
         redis = await get_redis_service()
         await redis.cache_dashboard_stats(
-            user_id, response.model_dump(), ttl=30  # Cache for 30 seconds
+            cache_user_key, response.model_dump(), ttl=10  # Cache for 10 seconds
         )
     except Exception as e:
         logger.debug(f"Failed to cache dashboard stats: {e}")
@@ -613,6 +646,7 @@ async def get_activity_feed(
     user_id: CurrentUserDep,
     limit: int = 20,
     offset: int = 0,
+    execution_mode: str = "all",
 ):
     """
     Get recent activity feed for the dashboard.
@@ -628,6 +662,7 @@ async def get_activity_feed(
     strategy_repo = StrategyRepository(db)
 
     activities: list[ActivityItem] = []
+    mode = execution_mode if execution_mode in {"all", "live", "mock"} else "all"
 
     # Get recent decisions
     decisions = await decision_repo.get_recent(
@@ -645,6 +680,10 @@ async def get_activity_feed(
             agent_execution_modes[str(a.id)] = a.execution_mode
 
     for decision in decisions:
+        agent_mode = agent_execution_modes.get(str(decision.agent_id), "mock")
+        if mode != "all" and agent_mode != mode:
+            continue
+
         normalized_decisions = normalize_decisions(decision.decisions)
         strategy_name = agent_strategy_names.get(
             str(decision.agent_id), "Unknown Strategy"
@@ -686,9 +725,7 @@ async def get_activity_feed(
                     "confidence": decision.overall_confidence,
                     "executed": decision.executed,
                     "decisions_count": len(normalized_decisions),
-                    "execution_mode": agent_execution_modes.get(
-                        str(decision.agent_id), "mock"
-                    ),
+                    "execution_mode": agent_mode,
                 },
                 status=status,
             )

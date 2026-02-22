@@ -1210,6 +1210,8 @@ export interface ActivityFeedResponse {
   has_more: boolean;
 }
 
+export type DashboardExecutionMode = "all" | "live" | "mock";
+
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
     try {
@@ -1243,12 +1245,19 @@ export const dashboardApi = {
   },
 
   // Direct access to the full stats response
-  getFullStats: () => api.get<DashboardStatsResponse>("/dashboard/stats"),
+  getFullStats: (executionMode: DashboardExecutionMode = "all") =>
+    api.get<DashboardStatsResponse>("/dashboard/stats", {
+      params: { execution_mode: executionMode },
+    }),
 
   // Get activity feed
-  getActivity: (limit: number = 20, offset: number = 0) =>
+  getActivity: (
+    limit: number = 20,
+    offset: number = 0,
+    executionMode: DashboardExecutionMode = "all",
+  ) =>
     api.get<ActivityFeedResponse>("/dashboard/activity", {
-      params: { limit, offset },
+      params: { limit, offset, execution_mode: executionMode },
     }),
 };
 
@@ -1454,6 +1463,26 @@ export interface ExchangesForAssetResponse {
   exchanges: ExchangeCapabilities[];
 }
 
+export interface PricePrefetchSymbolItem {
+  exchange: string;
+  symbol: string;
+  subscribers: number;
+}
+
+export interface PricePrefetchStatsResponse {
+  running: boolean;
+  is_leader: boolean;
+  subscriptions: number;
+  agents: number;
+  symbols: PricePrefetchSymbolItem[];
+  prefetch_count: number;
+  prefetch_errors: number;
+  stream_hits: number;
+  stream_fallbacks: number;
+  publish_skips_no_subscribers: number;
+  publish_skips_small_change: number;
+}
+
 export const dataApi = {
   /**
    * Get available trading symbols for an exchange.
@@ -1490,6 +1519,12 @@ export const dataApi = {
     api.get<ExchangesForAssetResponse>(
       `/data/exchanges/for-asset/${assetType}`,
     ),
+
+  /**
+   * Get background price prefetch service status and stream fallback metrics.
+   */
+  getPricePrefetchStats: () =>
+    api.get<PricePrefetchStatsResponse>("/data/cache/prefetch/stats"),
 };
 
 // ==================== Analytics ====================

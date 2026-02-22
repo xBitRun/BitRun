@@ -26,6 +26,8 @@ from .lifecycle import (
     release_execution_lock,
     try_reconnect_trader,
     clear_heartbeats_for_quant_strategies,
+    register_price_prefetch_symbols,
+    unregister_price_prefetch_symbols,
 )
 from ..core.config import get_settings
 from ..core.retry_utils import (
@@ -437,6 +439,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
     def __init__(self):
         super().__init__()
         self._workers: Dict[str, QuantExecutionWorker] = {}
+        self._prefetch_registered: set[str] = set()
         self._sync_task: Optional[asyncio.Task] = None
 
     @property
@@ -602,6 +605,13 @@ class QuantWorkerBackend(BaseWorkerBackend):
                 await worker.start()
                 self._workers[agent_id] = worker
 
+                if await register_price_prefetch_symbols(
+                    agent_id=agent_id,
+                    trader=trader,
+                    symbols=[strategy.symbol] if strategy.symbol else [],
+                ):
+                    self._prefetch_registered.add(agent_id)
+
                 logger.info(
                     f"Started quant worker: {strategy.strategy_type} agent "
                     f"{agent_id} (interval: {interval}min)"
@@ -628,6 +638,9 @@ class QuantWorkerBackend(BaseWorkerBackend):
                 logger.warning(f"Error stopping quant worker {agent_id}: {e}")
             # Only remove from dict AFTER stop succeeds
             self._workers.pop(agent_id, None)
+        if agent_id in self._prefetch_registered:
+            await unregister_price_prefetch_symbols(agent_id)
+            self._prefetch_registered.discard(agent_id)
         # Note: ownership is released in worker.stop()
         logger.info(f"Stopped quant worker for {agent_id}")
 
