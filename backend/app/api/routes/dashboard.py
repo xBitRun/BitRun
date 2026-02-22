@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter
@@ -441,8 +441,6 @@ async def get_dashboard_stats(
     monthly_pnl_percent = 0.0
 
     try:
-        from datetime import UTC, date, datetime
-
         today_date = date.today()
 
         # Get user's account IDs
@@ -602,8 +600,6 @@ async def get_dashboard_stats(
 
     # Mock mode: build dashboard aggregates from mock agents (overall paper view).
     if mode == "mock":
-        from datetime import date
-
         mock_agents = [a for a in user_agents if a.execution_mode == "mock"]
         mock_agent_ids = [a.id for a in mock_agents]
         daily_by_agent: dict[str, float] = {}
