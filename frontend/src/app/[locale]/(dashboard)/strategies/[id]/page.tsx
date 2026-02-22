@@ -54,7 +54,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { useStrategy, useDeleteStrategy, useStrategyVersions } from "@/hooks";
+import { useStrategy, useDeleteStrategy, useStrategyVersions, useDuplicateStrategy } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { DetailPageHeader } from "@/components/layout";
 import type { StrategyType } from "@/types";
@@ -175,6 +175,8 @@ export default function StrategyDetailPage({
   const { trigger: deleteStrategy, isMutating: isDeleting } =
     useDeleteStrategy(id);
   const { data: versions } = useStrategyVersions(id);
+  const { trigger: duplicateStrategy, isMutating: isDuplicating } =
+    useDuplicateStrategy();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -228,6 +230,19 @@ export default function StrategyDetailPage({
     if (strategy && typeof window !== "undefined") {
       navigator.clipboard.writeText(window.location.href);
       toast.success(t("detail.linkCopied"));
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!strategy) return;
+    try {
+      const newStrategy = await duplicateStrategy({ strategyId: strategy.id });
+      toast.success(t("detail.duplicateSuccess"));
+      router.push(`/strategies/${newStrategy.id}/edit`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t("detail.duplicateError");
+      toast.error(t("detail.duplicateError"), message);
     }
   };
 
@@ -298,6 +313,12 @@ export default function StrategyDetailPage({
             label: t("detail.actions.copyId"),
             icon: <Copy className="w-4 h-4" />,
             onClick: handleCopyId,
+          },
+          {
+            label: t("detail.actions.duplicate"),
+            icon: <Copy className="w-4 h-4" />,
+            onClick: handleDuplicate,
+            disabled: isDuplicating,
           },
           {
             label: t("detail.actions.share"),

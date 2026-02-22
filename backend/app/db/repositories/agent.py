@@ -150,6 +150,19 @@ class AgentRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_active_agents_by_strategy(
+        self,
+        strategy_id: uuid.UUID,
+    ) -> list[AgentDB]:
+        """Get all active agents for a specific strategy."""
+        query = (
+            select(AgentDB)
+            .where(AgentDB.strategy_id == strategy_id)
+            .where(AgentDB.status == "active")
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     async def update(
         self,
         agent_id: uuid.UUID,

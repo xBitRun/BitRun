@@ -52,6 +52,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -618,17 +628,29 @@ export default function ModelsPage() {
 
   const { providers, isLoading, error, refresh } = useProviderConfigs();
 
-  const handleDeleteProvider = async (id: string) => {
-    if (!confirm(t("confirmDelete"))) return;
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    providerId: string;
+  }>({ show: false, providerId: "" });
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleDeleteProvider = (id: string) => {
+    setDeleteConfirm({ show: true, providerId: id });
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
     try {
-      await providersApi.delete(id);
+      await providersApi.delete(deleteConfirm.providerId);
       refresh();
       toast.success(t("deleteSuccess"));
+      setDeleteConfirm({ show: false, providerId: "" });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("error.failedToDeleteProvider");
       toast.error(t("deleteError"), message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -797,6 +819,36 @@ export default function ModelsPage() {
           </Link>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirm.show}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm({ show: false, providerId: "" });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteConfirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteConfirm.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("deleteConfirm.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("deleteConfirm.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

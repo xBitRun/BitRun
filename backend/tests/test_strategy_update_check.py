@@ -10,8 +10,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-from fastapi.status import HTTP_409_CONFLICT
+from fastapi import HTTPException, status
 
 from app.api.routes.strategies import restore_version, update_strategy
 from app.models.strategy import StrategyUpdate, StrategyVisibility
@@ -135,7 +134,7 @@ class TestUpdateStrategyWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
             assert "Cannot modify strategy config" in exc_info.value.detail
             assert "Test Agent" in exc_info.value.detail
             assert "Pause the agent first" in exc_info.value.detail
@@ -174,7 +173,7 @@ class TestUpdateStrategyWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
             assert "Cannot modify strategy config" in exc_info.value.detail
 
     @pytest.mark.asyncio
@@ -211,7 +210,7 @@ class TestUpdateStrategyWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
             assert "Cannot modify strategy config" in exc_info.value.detail
 
     @pytest.mark.asyncio
@@ -339,7 +338,7 @@ class TestUpdateStrategyWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
             # Should show count
             assert "5 agents are active" in exc_info.value.detail
             # Should show first 3 agent names
@@ -386,7 +385,7 @@ class TestUpdateStrategyWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
 
 class TestRestoreVersionWithActiveAgents:
@@ -423,7 +422,7 @@ class TestRestoreVersionWithActiveAgents:
                     user_id=mock_user_id,
                 )
 
-            assert exc_info.value.status_code == HTTP_409_CONFLICT
+            assert exc_info.value.status_code == status.HTTP_409_CONFLICT
             assert "Cannot restore version" in exc_info.value.detail
             assert "Test Agent" in exc_info.value.detail
             assert "Pause the agent first" in exc_info.value.detail

@@ -230,6 +230,7 @@ class StrategyRepository:
         """Fork a public strategy to the user's account.
 
         Name is automatically deduplicated if a conflict exists.
+        Records forked_from relationship for marketplace tracking.
         """
         source = await self.get_by_id(source_id)
         if not source or source.visibility != "public":
@@ -266,6 +267,51 @@ class StrategyRepository:
         await self.session.flush()
         await self.session.refresh(forked)
         return forked
+
+    async def duplicate(
+        self,
+        source_id: uuid.UUID,
+        user_id: uuid.UUID,
+        name_override: Optional[str] = None,
+    ) -> Optional[StrategyDB]:
+        """Duplicate a user's own strategy.
+
+        Creates a completely independent copy without forked_from tracking.
+        Name is automatically deduplicated if a conflict exists.
+        Default name format: "{original_name} (副本)"
+        """
+        source = await self.get_by_id(source_id, user_id)
+        if not source:
+            return None
+
+        # Determine the name to use (default to "{name} (副本)")
+        requested_name = name_override or f"{source.name} (副本)"
+
+        # Ensure name is unique across strategies and agents
+        from ...services.name_check_service import NameCheckService
+        name_check = NameCheckService(self.session)
+        unique_name = await name_check.generate_unique_name(
+            name=requested_name,
+            user_id=user_id,
+        )
+
+        duplicated = StrategyDB(
+            user_id=user_id,
+            type=source.type,
+            name=unique_name,
+            description=source.description,
+            symbols=source.symbols.copy() if source.symbols else [],
+            config=source.config.copy() if source.config else {},
+            visibility="private",  # Duplicates always start as private
+            category=source.category,
+            tags=source.tags.copy() if source.tags else [],
+            # No forked_from - this is a pure duplicate, not a marketplace fork
+        )
+        self.session.add(duplicated)
+
+        await self.session.flush()
+        await self.session.refresh(duplicated)
+        return duplicated
 
     async def delete(
         self,

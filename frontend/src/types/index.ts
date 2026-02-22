@@ -59,6 +59,11 @@ export interface Strategy {
   // Statistics
   agentCount: number;
 
+  // Pricing (for marketplace)
+  isPaid: boolean;
+  priceMonthly?: number | null;
+  pricingModel: PricingModel;
+
   // Timestamps
   createdAt: string;
   updatedAt: string;

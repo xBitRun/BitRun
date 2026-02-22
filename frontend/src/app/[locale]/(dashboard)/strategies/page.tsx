@@ -16,6 +16,7 @@ import {
   Eye,
   Trash2,
   Zap,
+  Copy,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -42,8 +43,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStrategies } from '@/hooks';
+import { useRouter } from '@/i18n/navigation';
 import { useToast } from '@/components/ui/toast';
 import type { StrategyResponse } from '@/lib/api';
 import type { StrategyType } from '@/types';
@@ -89,6 +102,7 @@ interface StrategyCardProps {
   typeIcon: LucideIcon;
   onDelete: (id: string) => void;
   onToggleVisibility: (id: string, current: string) => void;
+  onDuplicate: (id: string) => void;
   t: ReturnType<typeof useTranslations>;
   tType: ReturnType<typeof useTranslations>;
 }
@@ -98,6 +112,7 @@ function StrategyCard({
   typeIcon: TypeIcon,
   onDelete,
   onToggleVisibility,
+  onDuplicate,
   t,
   tType,
 }: StrategyCardProps) {
@@ -168,6 +183,10 @@ function StrategyCard({
                   <Zap className="w-4 h-4 mr-2" />
                   {t('actions.createAgent')}
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(strategy.id)}>
+                <Copy className="w-4 h-4 mr-2" />
+                {t('actions.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
@@ -247,21 +266,47 @@ export default function StrategiesPage() {
   const tType = useTranslations('strategies.type');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    strategyId: string;
+  }>({ show: false, strategyId: '' });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { strategies, error, isLoading, refresh } = useStrategies();
   const toast = useToast();
+  const router = useRouter();
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(t('confirmDelete'))) return;
+  const handleDelete = (id: string) => {
+    setDeleteConfirm({ show: true, strategyId: id });
+  };
+
+  const handleDuplicate = async (id: string) => {
     try {
       const { strategiesApi } = await import('@/lib/api');
-      await strategiesApi.delete(id);
+      const newStrategy = await strategiesApi.duplicate(id);
+      toast.success(t('toast.duplicated'));
+      router.push(`/strategies/${newStrategy.id}/edit`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t('error.duplicateFailed');
+      toast.error(t('error.duplicateFailed'), message);
+    }
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const { strategiesApi } = await import('@/lib/api');
+      await strategiesApi.delete(deleteConfirm.strategyId);
       refresh();
       toast.success(t('toast.deleted'));
+      setDeleteConfirm({ show: false, strategyId: '' });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t('error.deleteFailed');
       toast.error(t('error.deleteFailed'), message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -370,6 +415,7 @@ export default function StrategiesPage() {
                   typeIcon={getTypeIcon(strategy.type)}
                   onDelete={handleDelete}
                   onToggleVisibility={handleToggleVisibility}
+                  onDuplicate={handleDuplicate}
                   t={t}
                   tType={tType}
                 />
@@ -394,6 +440,36 @@ export default function StrategiesPage() {
           )}
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirm.show}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm({ show: false, strategyId: '' });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteConfirm.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t('deleteConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t('deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

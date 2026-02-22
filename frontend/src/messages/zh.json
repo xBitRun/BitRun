@@ -583,7 +583,12 @@
       "title": "回测详情",
       "backToList": "返回列表",
       "delete": "删除",
-      "confirmDelete": "确定要删除这条回测记录吗？",
+      "deleteConfirm": {
+        "title": "确认删除",
+        "description": "确定要删除这条回测记录吗？此操作不可撤销，回测记录将被永久删除。",
+        "cancel": "取消",
+        "confirm": "删除"
+      },
       "deleteSuccess": "删除成功",
       "deleteFailed": "删除失败",
       "notFound": "未找到回测记录"
@@ -715,7 +720,12 @@
     "title": "交易账户",
     "subtitle": "连接多交易所账户，凭证加密存储，支持测试网试运行",
     "addAccount": "添加账户",
-    "confirmDelete": "确定要删除这个账户吗？",
+    "deleteConfirm": {
+      "title": "确认删除",
+      "description": "确定要删除这个账户吗？此操作不可撤销，账户的所有数据将被永久删除。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
     "security": {
       "title": "安全第一",
       "description": "所有 API 凭证均采用端到端加密。建议使用有限权限的子账户并启用 IP 白名单。"
@@ -1032,7 +1042,12 @@
     "subtitle": "创建和管理你的交易策略",
     "createStrategy": "创建策略",
     "searchPlaceholder": "搜索策略...",
-    "confirmDelete": "确定要删除这个策略吗？",
+    "deleteConfirm": {
+      "title": "确认删除",
+      "description": "确定要删除这个策略吗？此操作不可撤销，策略将被永久删除。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
     "confirmDeleteWithAgents": "该策略被 {count} 个代理引用，请先删除或解绑这些代理。",
     "type": {
       "all": "全部类型",
@@ -1144,12 +1159,14 @@
       "loadFailed": "加载策略失败",
       "createFailed": "创建策略失败",
       "updateFailed": "更新策略失败",
-      "deleteFailed": "删除策略失败"
+      "deleteFailed": "删除策略失败",
+      "duplicateFailed": "复制策略失败"
     },
     "toast": {
       "created": "策略创建成功",
       "updated": "策略更新成功",
-      "deleted": "策略删除成功"
+      "deleted": "策略删除成功",
+      "duplicated": "策略复制成功"
     },
     "retry": "重试",
     "configKeys": {
@@ -1226,13 +1243,49 @@
       "no": "否",
       "add": "添加",
       "saveChanges": "保存更改",
-      "notFound": "策略未找到"
+      "notFound": "策略未找到",
+      "strategyConfigSection": "策略配置",
+      "strategyConfigDesc": "核心策略参数（有代理运行时不可修改）",
+      "marketplaceSection": "市场信息",
+      "marketplaceDesc": "发布到策略市场时显示的信息",
+      "marketplaceHint": "仅在发布到市场时需要配置",
+      "activeAgentWarning": "有 {count} 个代理正在运行，策略配置不可修改",
+      "activeAgentWarningSingle": "代理「{name}」正在运行，策略配置不可修改",
+      "pauseAgentFirst": "请先暂停代理",
+      "goToAgents": "查看代理",
+      "configLocked": "有代理运行时，策略配置被锁定",
+      "error409": "无法修改策略配置：{message}",
+      "category": "分类",
+      "categoryPlaceholder": "例如：趋势跟踪",
+      "isPaid": "付费策略",
+      "isPaidHint": "开启后可设置月费价格",
+      "pricingModel": "定价模式",
+      "agentsPaused": "已暂停 {count} 个代理",
+      "pauseAgentsError": "暂停代理失败"
+    },
+    "editDecision": {
+      "title": "如何修改此策略？",
+      "description": "策略「{strategy}」有 {count} 个代理正在运行：{agents}",
+      "pauseOption": {
+        "title": "暂停代理后编辑",
+        "description": "暂停所有活跃代理，然后编辑策略。编辑完成后需要手动恢复运行。"
+      },
+      "duplicateOption": {
+        "title": "创建副本并编辑",
+        "description": "复制一份策略，然后编辑副本。可以并行运行两个版本的策略进行对比。"
+      },
+      "recommended": "推荐",
+      "cancel": "取消",
+      "duplicateSuccess": "策略复制成功",
+      "duplicateError": "策略复制失败"
     },
     "detail": {
       "backToStrategies": "返回策略列表",
       "notFound": "策略未找到",
       "idCopied": "策略 ID 已复制",
       "linkCopied": "链接已复制",
+      "duplicateSuccess": "策略复制成功，正在跳转到编辑页面...",
+      "duplicateError": "策略复制失败",
       "refresh": "刷新",
       "tabs": {
         "overview": "概览",
@@ -1243,6 +1296,7 @@
       "actions": {
         "edit": "编辑",
         "copyId": "复制 ID",
+        "duplicate": "复制策略",
         "share": "分享"
       },
       "overview": {
@@ -1899,7 +1953,12 @@
     "title": "AI 模型",
     "subtitle": "配置 AI 供应商的 API Key 和端点，为交易代理提供决策支持",
     "addProvider": "添加供应商",
-    "confirmDelete": "确定要删除这个供应商吗？",
+    "deleteConfirm": {
+      "title": "确认删除",
+      "description": "确定要删除这个供应商吗？此操作不可撤销，供应商配置将被永久删除。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
     "deleteSuccess": "供应商删除成功",
     "deleteError": "删除供应商失败",
     "testSuccess": "连接测试成功",
@@ -2327,6 +2386,17 @@
       "description": "创建你的第一个量化交易策略",
       "createFirst": "创建第一个策略",
       "searchHint": "尝试调整搜索条件或筛选器"
+    },
+    "successDialog": {
+      "title": "策略创建成功",
+      "description": "策略定义了交易逻辑和规则。要自动执行交易，您需要创建一个代理来运行这个策略。",
+      "strategyLabel": "策略",
+      "agentLabel": "代理",
+      "strategyDesc": "定义交易逻辑",
+      "agentDesc": "绑定账户执行",
+      "createAgent": "创建代理",
+      "viewStrategy": "查看策略详情",
+      "backToList": "返回策略列表"
     },
     "toast": {
       "started": "策略已启动",

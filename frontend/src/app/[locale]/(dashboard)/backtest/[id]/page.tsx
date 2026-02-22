@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,6 +29,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useBacktest, useDeleteBacktest } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -1649,9 +1659,13 @@ export default function BacktestDetailPage() {
   const { data: backtest, isLoading, error } = useBacktest(id);
   const { trigger: deleteBacktest, isMutating: isDeleting } = useDeleteBacktest();
 
-  const handleDelete = async () => {
-    if (!confirm(t("detail.confirmDelete"))) return;
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
+  const handleDelete = () => {
+    setDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       await deleteBacktest(id);
       toast.success(t("detail.deleteSuccess"));
@@ -1757,6 +1771,34 @@ export default function BacktestDetailPage() {
           <TradeListTab data={backtest} />
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("detail.deleteConfirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("detail.deleteConfirm.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("detail.deleteConfirm.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("detail.deleteConfirm.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

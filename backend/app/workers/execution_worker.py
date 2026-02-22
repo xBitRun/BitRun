@@ -989,6 +989,11 @@ class _WorkerManagerCompatibilityWrapper:
     def is_distributed(self) -> bool:
         return False
 
+    @property
+    def _running(self) -> bool:
+        """Delegate running status to unified manager."""
+        return self._unified._running
+
     async def start(self) -> None:
         await self._unified.start()
 

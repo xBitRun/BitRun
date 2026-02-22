@@ -1,20 +1,21 @@
 /**
  * Strategies Hooks (v2 - unified strategy templates)
- * 
+ *
  * SWR hooks for strategy data fetching and mutations.
  * Strategy is a pure logic template - no runtime bindings.
  * For execution instances, see use-agents.ts.
  */
 
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
-import { strategiesApi, ApiError } from '@/lib/api';
-import type { 
-  StrategyResponse, 
+import { strategiesApi, agentsApi, ApiError } from '@/lib/api';
+import type {
+  StrategyResponse,
   MarketplaceResponse,
   StrategyVersionResponse,
-  CreateStrategyRequest, 
-  UpdateStrategyRequest 
+  CreateStrategyRequest,
+  UpdateStrategyRequest,
+  AgentResponse,
 } from '@/lib/api';
 import type { StrategyType, StrategyVisibility } from '@/types';
 
@@ -105,6 +106,24 @@ export function useForkStrategy() {
 }
 
 /**
+ * Duplicate strategy mutation (for user's own strategies)
+ */
+export function useDuplicateStrategy() {
+  const { mutate } = useSWRConfig();
+  return useSWRMutation<
+    StrategyResponse,
+    Error,
+    string,
+    { strategyId: string; name?: string }
+  >(STRATEGIES_KEY, async (_, { arg }) => {
+    const result = await strategiesApi.duplicate(arg.strategyId, arg.name);
+    // Refresh strategies list after duplication
+    await mutate(STRATEGIES_KEY);
+    return result;
+  });
+}
+
+/**
  * Browse marketplace strategies (public).
  * Treats 404 as empty list (graceful degradation when backend route is unavailable).
  */
@@ -165,4 +184,31 @@ export function useRestoreStrategyVersion(strategyId: string) {
       return strategiesApi.restoreVersion(strategyId, version);
     }
   );
+}
+
+/**
+ * Fetch agents for a specific strategy.
+ * Used to check if any active agents exist before editing strategy config.
+ */
+export function useStrategyAgents(strategyId: string | null) {
+  const { data: allAgents, ...swr } = useSWR<AgentResponse[]>(
+    strategyId ? `/strategies/${strategyId}/agents` : null,
+    async () => {
+      const agents = await agentsApi.list();
+      return agents.filter((a) => a.strategy_id === strategyId);
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
+    }
+  );
+
+  const activeAgents = allAgents?.filter((a) => a.status === "active") ?? [];
+
+  return {
+    ...swr,
+    agents: allAgents ?? [],
+    activeAgents,
+    hasActiveAgents: activeAgents.length > 0,
+  };
 }

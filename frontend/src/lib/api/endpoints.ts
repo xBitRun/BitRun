@@ -161,6 +161,10 @@ export interface UpdateStrategyRequest {
   visibility?: StrategyVisibility;
   category?: string;
   tags?: string[];
+  // Marketplace pricing fields
+  is_paid?: boolean;
+  price_monthly?: number | null;
+  pricing_model?: "free" | "one_time" | "monthly";
 }
 
 export interface StrategyResponse {
@@ -238,6 +242,10 @@ export const strategiesApi = {
   delete: (id: string) => api.delete<void>(`/strategies/${id}`),
 
   fork: (id: string) => api.post<StrategyResponse>(`/strategies/${id}/fork`),
+
+  /** Duplicate a user's own strategy (creates independent copy) */
+  duplicate: (id: string, name?: string) =>
+    api.post<StrategyResponse>(`/strategies/${id}/duplicate`, name ? { name } : {}),
 
   /** Browse public strategies (marketplace) */
   marketplace: (params?: {

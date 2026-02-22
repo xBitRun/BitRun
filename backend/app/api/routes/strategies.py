@@ -200,10 +200,49 @@ async def update_strategy(
 ):
     """Update a strategy's logic (name, config, symbols, etc.)"""
     from ...services.name_check_service import NameCheckService
+    from ...db.repositories.agent import AgentRepository
 
     repo = StrategyRepository(db)
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # Strategy config fields that require active agent check
+    STRATEGY_CONFIG_FIELDS = {"name", "description", "symbols", "config"}
+    has_config_changes = any(
+        field in update_data and update_data[field] is not None
+        for field in STRATEGY_CONFIG_FIELDS
+    )
+
+    # Check for active agents before modifying strategy config
+    if has_config_changes:
+        agent_repo = AgentRepository(db)
+        active_agents = await agent_repo.get_active_agents_by_strategy(
+            uuid.UUID(strategy_id)
+        )
+
+        if active_agents:
+            agent_names = [a.name for a in active_agents[:3]]
+            agent_count = len(active_agents)
+
+            if agent_count == 1:
+                detail = (
+                    f"Cannot modify strategy config: "
+                    f"Agent '{agent_names[0]}' is active. "
+                    f"Pause the agent first."
+                )
+            else:
+                detail = (
+                    f"Cannot modify strategy config: "
+                    f"{agent_count} agents are active "
+                    f"({', '.join(agent_names)}"
+                    f"{', ...' if agent_count > 3 else ''}). "
+                    f"Pause all agents first."
+                )
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=detail,
+            )
 
     # Normalize symbols
     if "symbols" in update_data and update_data["symbols"]:
@@ -269,6 +308,7 @@ async def fork_strategy(
     Fork a public strategy from the marketplace.
 
     Creates a private copy under the current user's account.
+    Records forked_from relationship for marketplace tracking.
     """
     repo = StrategyRepository(db)
     forked = await repo.fork(
@@ -284,6 +324,36 @@ async def fork_strategy(
         )
 
     return _strategy_to_response(forked)
+
+
+@router.post("/{strategy_id}/duplicate", response_model=StrategyResponse)
+async def duplicate_strategy(
+    strategy_id: str,
+    db: DbSessionDep,
+    user_id: CurrentUserDep,
+    name: Optional[str] = None,
+):
+    """
+    Duplicate a user's own strategy.
+
+    Creates an independent copy without marketplace fork tracking.
+    Default name format: "{original_name} (副本)".
+    Useful when you want to modify a strategy while keeping the original.
+    """
+    repo = StrategyRepository(db)
+    duplicated = await repo.duplicate(
+        source_id=uuid.UUID(strategy_id),
+        user_id=uuid.UUID(user_id),
+        name_override=name,
+    )
+
+    if not duplicated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found"
+        )
+
+    return _strategy_to_response(duplicated)
 
 
 # ==================== Subscription Endpoints ====================
@@ -537,6 +607,38 @@ async def restore_version(
     Creates a snapshot of the current state, then applies the
     selected version's config, symbols, and description.
     """
+    from ...db.repositories.agent import AgentRepository
+
+    # Check for active agents before restoring version
+    agent_repo = AgentRepository(db)
+    active_agents = await agent_repo.get_active_agents_by_strategy(
+        uuid.UUID(strategy_id)
+    )
+
+    if active_agents:
+        agent_names = [a.name for a in active_agents[:3]]
+        agent_count = len(active_agents)
+
+        if agent_count == 1:
+            detail = (
+                f"Cannot restore version: "
+                f"Agent '{agent_names[0]}' is active. "
+                f"Pause the agent first."
+            )
+        else:
+            detail = (
+                f"Cannot restore version: "
+                f"{agent_count} agents are active "
+                f"({', '.join(agent_names)}"
+                f"{', ...' if agent_count > 3 else ''}). "
+                f"Pause all agents first."
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail,
+        )
+
     repo = StrategyRepository(db)
     strategy = await repo.restore_version(
         uuid.UUID(strategy_id),

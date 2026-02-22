@@ -30,6 +30,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAccounts, useAccountBalance } from "@/hooks";
 import type { AccountResponse } from "@/lib/api";
@@ -284,17 +294,29 @@ export default function AccountsPage() {
 
   const { accounts, error, isLoading, refresh } = useAccounts();
 
-  const handleDeleteAccount = async (id: string) => {
-    if (!confirm(t("confirmDelete"))) return;
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    accountId: string;
+  }>({ show: false, accountId: "" });
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleDeleteAccount = (id: string) => {
+    setDeleteConfirm({ show: true, accountId: id });
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
     try {
-      await accountsApi.delete(id);
+      await accountsApi.delete(deleteConfirm.accountId);
       refresh();
       toast.success(t("toast.removeSuccess"));
+      setDeleteConfirm({ show: false, accountId: "" });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("toast.removeFailed");
       toast.error(t("toast.removeFailed"), message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -382,6 +404,36 @@ export default function AccountsPage() {
           </Link>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirm.show}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm({ show: false, accountId: "" });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteConfirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteConfirm.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("deleteConfirm.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("deleteConfirm.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

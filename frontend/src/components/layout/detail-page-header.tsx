@@ -24,6 +24,7 @@ interface MoreMenuItem {
   onClick: () => void;
   variant?: 'default' | 'destructive';
   separatorBefore?: boolean;
+  disabled?: boolean;
 }
 
 interface DetailPageHeaderProps {
@@ -142,6 +143,7 @@ export function DetailPageHeader({
                   <DropdownMenuItem
                     variant={item.variant}
                     onClick={item.onClick}
+                    disabled={item.disabled}
                   >
                     {item.icon && (
                       <span className="w-4 h-4 mr-2">{item.icon}</span>

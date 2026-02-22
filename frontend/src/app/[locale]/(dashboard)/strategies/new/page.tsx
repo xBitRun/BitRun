@@ -30,6 +30,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ArrowRight, FileText, Bot as BotIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -82,6 +90,10 @@ export default function CreateStrategyPage() {
 
   const [step, setStep] = useState(0); // 0: type, 1: basic info / AI studio, 2: params (quant only)
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Success dialog state
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [createdStrategyId, setCreatedStrategyId] = useState<string | null>(null);
 
   // Form state (shared)
   const [selectedType, setSelectedType] = useState<StrategyType | null>(null);
@@ -255,8 +267,8 @@ export default function CreateStrategyPage() {
         config: configObj,
       });
 
-      toast.success(t('toast.createSuccess'));
-      router.push(`/agents/new?strategyId=${strategy.id}`);
+      setCreatedStrategyId(strategy.id);
+      setShowSuccessDialog(true);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t('toast.createFailed');
@@ -281,8 +293,8 @@ export default function CreateStrategyPage() {
         symbols,
         config: buildQuantConfig(),
       });
-      toast.success(t('toast.createSuccess'));
-      router.push(`/agents/new?strategyId=${strategy.id}`);
+      setCreatedStrategyId(strategy.id);
+      setShowSuccessDialog(true);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t('toast.createFailed');
@@ -741,6 +753,87 @@ export default function CreateStrategyPage() {
           </div>
         </div>
       )}
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <DialogHeader className="items-center text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle className="text-xl">
+              {t('successDialog.title')}
+            </DialogTitle>
+            <DialogDescription className="text-center max-w-sm">
+              {t('successDialog.description')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Strategy → Agent relationship diagram */}
+          <div className="flex items-center justify-center gap-4 py-6">
+            <div className="flex flex-col items-center gap-1.5 rounded-lg border bg-muted/30 px-4 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
+                <FileText className="h-4 w-4 text-blue-500" />
+              </div>
+              <span className="text-sm font-medium">
+                {t('successDialog.strategyLabel')}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t('successDialog.strategyDesc')}
+              </span>
+            </div>
+
+            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+
+            <div className="flex flex-col items-center gap-1.5 rounded-lg border bg-muted/30 px-4 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/10">
+                <BotIcon className="h-4 w-4 text-purple-500" />
+              </div>
+              <span className="text-sm font-medium">
+                {t('successDialog.agentLabel')}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t('successDialog.agentDesc')}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/strategies')}
+              className="order-3 sm:order-1"
+            >
+              {t('successDialog.backToList')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (createdStrategyId) {
+                  router.push(`/strategies/${createdStrategyId}`);
+                }
+              }}
+              disabled={!createdStrategyId}
+              className="order-2"
+            >
+              {t('successDialog.viewStrategy')}
+            </Button>
+            <Button
+              onClick={() => {
+                if (createdStrategyId) {
+                  router.push(`/agents/new?strategyId=${createdStrategyId}`);
+                }
+              }}
+              disabled={!createdStrategyId}
+              className="order-1 sm:order-3"
+            >
+              <BotIcon className="mr-2 h-4 w-4" />
+              {t('successDialog.createAgent')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

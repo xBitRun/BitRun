@@ -13,9 +13,11 @@ export {
   useUpdateStrategy,
   useDeleteStrategy,
   useForkStrategy,
+  useDuplicateStrategy,
   useMarketplaceStrategies,
   useStrategyVersions,
   useRestoreStrategyVersion,
+  useStrategyAgents,
 } from "./use-strategies";
 
 // Agent hooks (execution instances)
