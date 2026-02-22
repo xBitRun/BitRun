@@ -46,6 +46,9 @@ class QuantStrategyRepository:
         1. StrategyDB - stores strategy logic (type, symbols, config)
         2. AgentDB - stores execution settings (account, capital, status)
 
+        Name is automatically deduplicated across both strategies and agents
+        for the same user.
+
         Args:
             user_id: Owner user ID
             name: Agent/strategy name
@@ -62,11 +65,19 @@ class QuantStrategyRepository:
         Returns:
             The created AgentDB instance (QuantStrategyDB alias)
         """
+        # Ensure name is unique across strategies and agents
+        from ...services.name_check_service import NameCheckService
+        name_check = NameCheckService(self.session)
+        unique_name = await name_check.generate_unique_name(
+            name=name,
+            user_id=user_id,
+        )
+
         # Step 1: Create StrategyDB with strategy logic
         strategy_db = StrategyDB(
             user_id=user_id,
             type=strategy_type,
-            name=name,
+            name=unique_name,
             description=description,
             symbols=[symbol],  # Quant strategies typically use single symbol
             config=config,
@@ -76,9 +87,10 @@ class QuantStrategyRepository:
         await self.session.flush()  # Get strategy_db.id
 
         # Step 2: Create AgentDB with execution settings
+        # Note: Both strategy and agent share the same deduplicated name
         agent = AgentDB(
             user_id=user_id,
-            name=name,
+            name=unique_name,
             strategy_id=strategy_db.id,
             account_id=account_id,
             execution_mode="mock" if account_id is None else "live",
@@ -146,8 +158,8 @@ class QuantStrategyRepository:
             query = query.join(StrategyDB, QuantStrategyDB.strategy_id == StrategyDB.id)
             query = query.where(StrategyDB.type == strategy_type)
 
-        # Secondary sort by id for stable ordering when updated_at is equal
-        query = query.order_by(QuantStrategyDB.updated_at.desc(), QuantStrategyDB.id.desc())
+        # Secondary sort by id for stable ordering when created_at is equal
+        query = query.order_by(QuantStrategyDB.created_at.desc(), QuantStrategyDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
@@ -179,6 +191,10 @@ class QuantStrategyRepository:
     ) -> Optional[QuantStrategyDB]:
         """Update quant agent fields.
 
+        If name is being updated, it's automatically deduplicated across
+        both strategies and agents for the same user. The name is updated
+        in both the AgentDB and StrategyDB to keep them in sync.
+
         Args:
             agent_id: AgentDB.id (not StrategyDB.id)
 
@@ -203,9 +219,23 @@ class QuantStrategyRepository:
             "symbol", "config", "description",
         }
 
+        # Handle name deduplication if name is being updated
+        if "name" in kwargs and kwargs["name"] is not None:
+            from ...services.name_check_service import NameCheckService
+            name_check = NameCheckService(self.session)
+            kwargs["name"] = await name_check.generate_unique_name(
+                name=kwargs["name"],
+                user_id=user_id,
+                exclude_agent_id=agent_id,
+                exclude_strategy_id=agent.strategy_id,
+            )
+
         for key, value in kwargs.items():
             if key in agent_fields:
                 setattr(agent, key, value)
+                # Also update strategy name if agent name is being updated
+                if key == "name" and agent.strategy:
+                    agent.strategy.name = value
             elif key in strategy_fields:
                 # Update via strategy relationship
                 if agent.strategy:

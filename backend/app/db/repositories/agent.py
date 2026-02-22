@@ -5,13 +5,16 @@ Handles CRUD for execution agents (Agent = Strategy + Model + Account/Mock).
 
 import uuid
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..models import AgentDB, StrategyDB
+
+if TYPE_CHECKING:
+    from ...services.name_check_service import NameCheckService
 
 
 class AgentRepository:
@@ -39,10 +42,22 @@ class AgentRepository:
         debate_consensus_mode: Optional[str] = None,
         debate_min_participants: int = 2,
     ) -> AgentDB:
-        """Create a new agent"""
+        """Create a new agent.
+
+        Name is automatically deduplicated if a conflict exists with
+        another strategy or agent for the same user.
+        """
+        # Ensure name is unique across strategies and agents
+        from ...services.name_check_service import NameCheckService
+        name_check = NameCheckService(self.session)
+        unique_name = await name_check.generate_unique_name(
+            name=name,
+            user_id=user_id,
+        )
+
         agent = AgentDB(
             user_id=user_id,
-            name=name,
+            name=unique_name,
             strategy_id=strategy_id,
             ai_model=ai_model,
             execution_mode=execution_mode,
@@ -115,8 +130,8 @@ class AgentRepository:
         if strategy_type:
             query = query.join(StrategyDB).where(StrategyDB.type == strategy_type)
 
-        # Secondary sort by id for stable ordering when updated_at is equal
-        query = query.order_by(AgentDB.updated_at.desc(), AgentDB.id.desc())
+        # Secondary sort by id for stable ordering when created_at is equal
+        query = query.order_by(AgentDB.created_at.desc(), AgentDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
@@ -141,7 +156,11 @@ class AgentRepository:
         user_id: uuid.UUID,
         **kwargs,
     ) -> Optional[AgentDB]:
-        """Update agent fields"""
+        """Update agent fields.
+
+        If name is being updated, it's automatically deduplicated if
+        a conflict exists with another strategy or agent for the same user.
+        """
         agent = await self.get_by_id(agent_id, user_id)
         if not agent:
             return None
@@ -155,6 +174,16 @@ class AgentRepository:
             "trade_type",
             "debate_enabled", "debate_models", "debate_consensus_mode", "debate_min_participants",
         }
+
+        # Handle name deduplication if name is being updated
+        if "name" in kwargs and kwargs["name"] is not None:
+            from ...services.name_check_service import NameCheckService
+            name_check = NameCheckService(self.session)
+            kwargs["name"] = await name_check.generate_unique_name(
+                name=kwargs["name"],
+                user_id=user_id,
+                exclude_agent_id=agent_id,
+            )
 
         for key, value in kwargs.items():
             if key in allowed_fields:

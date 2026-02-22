@@ -199,6 +199,8 @@ async def update_strategy(
     user_id: CurrentUserDep,
 ):
     """Update a strategy's logic (name, config, symbols, etc.)"""
+    from ...services.name_check_service import NameCheckService
+
     repo = StrategyRepository(db)
 
     update_data = data.model_dump(exclude_unset=True)
@@ -209,7 +211,23 @@ async def update_strategy(
 
     # Convert enums to strings
     if "visibility" in update_data and update_data["visibility"]:
-        update_data["visibility"] = update_data["visibility"].value
+        new_visibility = update_data["visibility"].value
+        update_data["visibility"] = new_visibility
+
+        # Check marketplace name conflict when publishing to public
+        if new_visibility == "public":
+            strategy = await repo.get_by_id(uuid.UUID(strategy_id), uuid.UUID(user_id))
+            if strategy:
+                name_check = NameCheckService(db)
+                if await name_check.market_name_exists(
+                    strategy.name,
+                    exclude_strategy_id=uuid.UUID(strategy_id),
+                ):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Strategy name already exists in the marketplace. "
+                               "Please rename your strategy before publishing."
+                    )
 
     # Validate config if being updated
     if "config" in update_data and update_data["config"]:

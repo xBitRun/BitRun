@@ -38,11 +38,23 @@ class StrategyRepository:
         price_monthly: Optional[float] = None,
         pricing_model: str = "free",
     ) -> StrategyDB:
-        """Create a new unified strategy"""
+        """Create a new unified strategy.
+
+        Name is automatically deduplicated if a conflict exists with
+        another strategy or agent for the same user.
+        """
+        # Ensure name is unique across strategies and agents
+        from ...services.name_check_service import NameCheckService
+        name_check = NameCheckService(self.session)
+        unique_name = await name_check.generate_unique_name(
+            name=name,
+            user_id=user_id,
+        )
+
         strategy = StrategyDB(
             user_id=user_id,
             type=type,
-            name=name,
+            name=unique_name,
             description=description,
             symbols=symbols,
             config=config,
@@ -101,8 +113,8 @@ class StrategyRepository:
         # Eager load agents to avoid lazy loading in async context
         query = query.options(selectinload(StrategyDB.agents))
 
-        # Secondary sort by id for stable ordering when updated_at is equal
-        query = query.order_by(StrategyDB.updated_at.desc(), StrategyDB.id.desc())
+        # Secondary sort by id for stable ordering when created_at is equal
+        query = query.order_by(StrategyDB.created_at.desc(), StrategyDB.id.desc())
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
@@ -152,7 +164,7 @@ class StrategyRepository:
         elif sort_by == "newest":
             query = query.order_by(StrategyDB.created_at.desc(), StrategyDB.id.desc())
         else:
-            query = query.order_by(StrategyDB.updated_at.desc(), StrategyDB.id.desc())
+            query = query.order_by(StrategyDB.created_at.desc(), StrategyDB.id.desc())
 
         query = query.limit(limit).offset(offset)
 
@@ -166,7 +178,11 @@ class StrategyRepository:
         change_note: str = "",
         **kwargs,
     ) -> Optional[StrategyDB]:
-        """Update strategy fields. Auto-snapshots config changes."""
+        """Update strategy fields. Auto-snapshots config changes.
+
+        If name is being updated, it's automatically deduplicated if
+        a conflict exists with another strategy or agent for the same user.
+        """
         strategy = await self.get_by_id(strategy_id, user_id)
         if not strategy:
             return None
@@ -187,6 +203,16 @@ class StrategyRepository:
             "is_paid", "price_monthly", "pricing_model",
         }
 
+        # Handle name deduplication if name is being updated
+        if "name" in kwargs and kwargs["name"] is not None:
+            from ...services.name_check_service import NameCheckService
+            name_check = NameCheckService(self.session)
+            kwargs["name"] = await name_check.generate_unique_name(
+                name=kwargs["name"],
+                user_id=user_id,
+                exclude_strategy_id=strategy_id,
+            )
+
         for key, value in kwargs.items():
             if key in allowed_fields:
                 setattr(strategy, key, value)
@@ -201,15 +227,29 @@ class StrategyRepository:
         user_id: uuid.UUID,
         name_override: Optional[str] = None,
     ) -> Optional[StrategyDB]:
-        """Fork a public strategy to the user's account."""
+        """Fork a public strategy to the user's account.
+
+        Name is automatically deduplicated if a conflict exists.
+        """
         source = await self.get_by_id(source_id)
         if not source or source.visibility != "public":
             return None
 
+        # Determine the name to use
+        requested_name = name_override or source.name
+
+        # Ensure name is unique across strategies and agents
+        from ...services.name_check_service import NameCheckService
+        name_check = NameCheckService(self.session)
+        unique_name = await name_check.generate_unique_name(
+            name=requested_name,
+            user_id=user_id,
+        )
+
         forked = StrategyDB(
             user_id=user_id,
             type=source.type,
-            name=name_override or source.name,
+            name=unique_name,
             description=source.description,
             symbols=source.symbols.copy() if source.symbols else [],
             config=source.config.copy() if source.config else {},
