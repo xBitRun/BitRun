@@ -95,5 +95,37 @@ describe("TradingDecisionCards", () => {
     expect(screen.queryByText("Leverage")).not.toBeInTheDocument();
     expect(screen.queryByText("Size")).not.toBeInTheDocument();
   });
-});
 
+  it("aggregates repeated decisions with same symbol/action", () => {
+    render(
+      <TradingDecisionCards
+        decisions={[
+          {
+            symbol: "BTC",
+            action: "open_long",
+            leverage: 3,
+            position_size_usd: 100,
+            confidence: 80,
+            risk_usd: 0,
+            reasoning: "grid_buy_signal",
+          },
+          {
+            symbol: "BTC",
+            action: "open_long",
+            leverage: 3,
+            position_size_usd: 120,
+            confidence: 90,
+            risk_usd: 0,
+            reasoning: "grid_buy_signal",
+          },
+        ]}
+        labels={labels}
+        getActionColor={getActionColor}
+      />,
+    );
+
+    expect(screen.getByText("x2")).toBeInTheDocument();
+    expect(screen.getByText("$220")).toBeInTheDocument();
+    expect(screen.getByText("85%")).toBeInTheDocument();
+  });
+});

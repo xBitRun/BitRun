@@ -86,4 +86,52 @@ describe("ExecutionRecords", () => {
     expect(screen.getAllByText("Reason:").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Insufficient margin").length).toBeGreaterThan(0);
   });
+
+  it("aggregates repeated execution records", () => {
+    const records: DecisionExecutionResult[] = [
+      {
+        symbol: "BTC",
+        action: "open_long",
+        executed: true,
+        reason: "grid_buy_signal",
+        reasoning: "grid_buy_signal",
+        requested_size_usd: 100,
+        actual_size_usd: 100,
+        position_size_usd: 100,
+        size_usd: 100,
+        order_result: {
+          order_id: "OID-1",
+          filled_size: 0.001,
+          filled_price: 50000,
+          status: "filled",
+        },
+      },
+      {
+        symbol: "BTC",
+        action: "open_long",
+        executed: true,
+        reason: "grid_buy_signal",
+        reasoning: "grid_buy_signal",
+        requested_size_usd: 120,
+        actual_size_usd: 120,
+        position_size_usd: 120,
+        size_usd: 120,
+        order_result: {
+          order_id: "OID-2",
+          filled_size: 0.002,
+          filled_price: 51000,
+          status: "filled",
+        },
+      },
+    ];
+
+    render(
+      <ExecutionRecords records={records} labels={labels} getActionColor={getActionColor} />,
+    );
+
+    expect(screen.getByText("x2")).toBeInTheDocument();
+    expect(screen.getAllByText("$220")).toHaveLength(2);
+    expect(screen.queryByText("OID-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("OID-2")).not.toBeInTheDocument();
+  });
 });

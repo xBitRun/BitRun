@@ -36,6 +36,7 @@
 |------|------|
 | `scripts/install.sh` | 一键安装脚本（支持 `--prod` 生产模式） |
 | `scripts/deploy.sh` | 服务管理脚本（start/stop/logs 等） |
+| `scripts/update.sh` | 线上增量更新脚本（拉代码、构建、迁移、健康检查） |
 | `docker-compose.prod.yml` | 生产环境 Docker Compose 配置 |
 | `nginx/nginx.prod.conf` | 生产环境 Nginx 配置（前后端分离域名） |
 | `.github/workflows/test.yml` | GitHub Actions 测试工作流 |
@@ -91,7 +92,18 @@ curl -fsSL https://raw.githubusercontent.com/xBitRun/BitRun/main/scripts/install
 
 #### 3. 后续更新
 
-推送到 `main` 分支 → GitHub Actions 自动部署
+SSH 到服务器项目目录执行：
+
+```bash
+cd /opt/bitrun
+./scripts/update.sh
+```
+
+可选：跳过备份（不推荐）
+
+```bash
+./scripts/update.sh --no-backup
+```
 
 ---
 

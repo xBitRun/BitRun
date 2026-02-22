@@ -33,10 +33,26 @@ import {
   usePricePrefetchStatus,
 } from "@/hooks";
 import type { AccountSummary, Position } from "@/hooks";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityItem } from "@/lib/api";
 import { PnLValue, formatPnL, formatPnLPercent } from "@/components/pnl";
 import type { DashboardExecutionMode } from "@/lib/api";
+
+const DASHBOARD_MODE_STORAGE_KEY = "dashboard.execution_mode";
+
+function isDashboardExecutionMode(
+  mode: string | null,
+): mode is DashboardExecutionMode {
+  return mode === "live" || mode === "mock";
+}
+
+function getStoredDashboardExecutionMode(): DashboardExecutionMode | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const mode = localStorage.getItem(DASHBOARD_MODE_STORAGE_KEY);
+  return isDashboardExecutionMode(mode) ? mode : null;
+}
 
 function formatTimeAgo(
   dateString: string,
@@ -652,19 +668,26 @@ export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [executionMode, setExecutionMode] = useState<DashboardExecutionMode>(
-    "live",
-  );
+  const modeFromQuery = searchParams.get("mode");
+  const executionMode: DashboardExecutionMode = isDashboardExecutionMode(
+    modeFromQuery,
+  )
+    ? modeFromQuery
+    : (getStoredDashboardExecutionMode() ?? "live");
 
   useEffect(() => {
-    const mode = searchParams.get("mode");
-    const nextMode: DashboardExecutionMode =
-      mode === "mock" ? "mock" : "live";
-    setExecutionMode(nextMode);
-  }, [searchParams]);
+    if (isDashboardExecutionMode(modeFromQuery)) {
+      localStorage.setItem(DASHBOARD_MODE_STORAGE_KEY, modeFromQuery);
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("mode", executionMode);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  }, [executionMode, modeFromQuery, pathname, router, searchParams]);
 
   const updateMode = (mode: DashboardExecutionMode) => {
-    setExecutionMode(mode);
+    localStorage.setItem(DASHBOARD_MODE_STORAGE_KEY, mode);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("mode", mode);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });

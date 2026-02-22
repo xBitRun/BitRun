@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { Target } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { DecisionResponse } from "@/lib/api";
+import { aggregateTradingDecisions } from "@/lib/decision-view-model";
 import { cn } from "@/lib/utils";
 
 type DecisionItem = DecisionResponse["decisions"][number];
@@ -34,6 +36,11 @@ export function TradingDecisionCards({
 }: TradingDecisionCardsProps) {
   if (!decisions?.length) return null;
 
+  const aggregated = useMemo(
+    () => aggregateTradingDecisions(decisions, resolveDisplay),
+    [decisions, resolveDisplay],
+  );
+
   return (
     <div>
       <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -41,10 +48,7 @@ export function TradingDecisionCards({
         {labels.title}
       </h4>
       <div className="space-y-3">
-        {decisions.map((d, i) => {
-          const display = resolveDisplay
-            ? resolveDisplay(d)
-            : { leverage: d.leverage ?? 1, sizeUsd: d.position_size_usd ?? 0 };
+        {aggregated.map((d, i) => {
           return (
             <div
               key={i}
@@ -56,6 +60,11 @@ export function TradingDecisionCards({
                   <Badge variant="outline" className={cn(getActionColor(d.action))}>
                     {d.action.replace("_", " ").toUpperCase()}
                   </Badge>
+                  {d.count > 1 && (
+                    <Badge variant="secondary" className="text-xs font-mono">
+                      x{d.count}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 sm:justify-end">
                   <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
@@ -79,29 +88,31 @@ export function TradingDecisionCards({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">{labels.leverage}</span>
-                    <p className="font-mono font-semibold">{display.leverage}x</p>
+                    <p className="font-mono font-semibold">
+                      {d.leverage != null ? `${d.leverage}x` : "-"}
+                    </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{labels.size}</span>
                     <p className="font-mono font-semibold">
-                      ${display.sizeUsd.toLocaleString()}
+                      ${d.sizeUsd.toLocaleString()}
                     </p>
                   </div>
-                  {d.stop_loss && (
+                  {d.stopLoss && (
                     <div>
                       <span className="text-muted-foreground">{labels.stopLoss}</span>
                       <p className="font-mono font-semibold text-[var(--loss)]">
-                        ${d.stop_loss.toLocaleString()}
+                        ${d.stopLoss.toLocaleString()}
                       </p>
                     </div>
                   )}
-                  {d.take_profit && (
+                  {d.takeProfit && (
                     <div>
                       <span className="text-muted-foreground">
                         {labels.takeProfit}
                       </span>
                       <p className="font-mono font-semibold text-[var(--profit)]">
-                        ${d.take_profit.toLocaleString()}
+                        ${d.takeProfit.toLocaleString()}
                       </p>
                     </div>
                   )}

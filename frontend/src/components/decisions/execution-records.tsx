@@ -1,10 +1,14 @@
 "use client";
 
+import { useMemo } from "react";
 import { Activity, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { DecisionExecutionResult } from "@/lib/api";
-import { executionReason } from "@/lib/decision-view-model";
+import {
+  aggregateExecutionResults,
+  executionReason,
+} from "@/lib/decision-view-model";
 import { cn } from "@/lib/utils";
 
 interface ExecutionRecordLabels {
@@ -34,6 +38,8 @@ export function ExecutionRecords({
 }: ExecutionRecordsProps) {
   if (!records?.length) return null;
 
+  const aggregated = useMemo(() => aggregateExecutionResults(records), [records]);
+
   return (
     <div>
       <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -41,7 +47,7 @@ export function ExecutionRecords({
         {labels.title}
       </h4>
       <div className="space-y-3">
-        {records.map((er, i) => {
+        {aggregated.map((er, i) => {
           const wasExecuted = er.executed === true;
           const orderResult = er.order_result ?? null;
           const hasFailed = wasExecuted === false && orderResult?.error != null;
@@ -66,6 +72,11 @@ export function ExecutionRecords({
                   >
                     {er.action?.replace("_", " ").toUpperCase()}
                   </Badge>
+                  {er.count > 1 && (
+                    <Badge variant="secondary" className="text-xs font-mono">
+                      x{er.count}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 sm:justify-end">
                   {wasExecuted ? (

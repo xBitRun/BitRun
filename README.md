@@ -102,6 +102,7 @@ bitrun/
 │   ├── install.sh            #   一键安装
 │   ├── quick-start.sh        #   一键启动
 │   ├── deploy.sh             #   生产部署
+│   ├── update.sh             #   线上增量更新
 │   ├── start-dev.sh          #   本地开发启动
 │   └── health-check.sh       #   健康检查
 ├── docs/                     # 项目文档

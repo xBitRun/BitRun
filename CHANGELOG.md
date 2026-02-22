@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Daily Summary (2026-02-22)
+
+- feat: 增强 Dashboard 中 Agent 持仓展示；重构策略相关组件；新增策略编辑保护与复制功能；增强 Agent 删除流程与 Mock 模式 PnL 计算；新增策略/代理名称自动去重；优化排序稳定性与 Landing 页面文案。
+- fix: 修复 agents 路由导入路径与市场类型枚举问题；补充 Jest `json-summary` reporter 以支持 CI 覆盖率报告；修复 CI 工作流 YAML 语法错误。
+- refactor: 重构持仓服务并修复 SL/TP 逻辑；重构 PnL 计算与展示组件；统一管理员权限依赖并新增 Admin 布局组件。
+- perf: 集成共享价格缓存，减少重复 API 调用开销。
+- test: 新增并优化前后端单元测试套件。
+- docs: 优化 README 文档格式与结构。
+
 ### Added
 
 - AI Agent 策略引擎 - 用自然语言定义交易策略
