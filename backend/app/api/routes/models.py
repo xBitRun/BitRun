@@ -9,7 +9,12 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from ...core.dependencies import CryptoDep, CurrentUserDep, DbSessionDep, RateLimitApiDep
+from ...core.dependencies import (
+    CryptoDep,
+    CurrentUserDep,
+    DbSessionDep,
+    RateLimitApiDep,
+)
 from ...db.models import AIProviderConfigDB
 from ...services.ai import (
     AIProvider,
@@ -26,8 +31,10 @@ logger = logging.getLogger(__name__)
 
 # ==================== Request/Response Models ====================
 
+
 class ModelInfoResponse(BaseModel):
     """AI model information"""
+
     id: str  # Full ID (provider:model_id)
     provider: str
     name: str
@@ -42,6 +49,7 @@ class ModelInfoResponse(BaseModel):
 
 class ProviderResponse(BaseModel):
     """AI provider information"""
+
     id: str
     name: str
     configured: bool  # Whether API key is configured
@@ -49,8 +57,11 @@ class ProviderResponse(BaseModel):
 
 class TestModelRequest(BaseModel):
     """Request to test a model connection"""
+
     model_id: str = Field(..., description="Full model ID (provider:model_id)")
-    api_key: Optional[str] = Field(default=None, description="Optional API key override")
+    api_key: Optional[str] = Field(
+        default=None, description="Optional API key override"
+    )
 
 
 # ==================== Helpers ====================
@@ -82,22 +93,25 @@ def _parse_provider_models(provider: AIProviderConfigDB) -> list[ModelInfoRespon
         if not model_id:
             continue
         full_id = f"{provider.provider_type}:{model_id}"
-        results.append(ModelInfoResponse(
-            id=full_id,
-            provider=provider.provider_type,
-            name=m.get("name", model_id),
-            description=m.get("description", ""),
-            context_window=m.get("context_window", 128000),
-            max_output_tokens=m.get("max_output_tokens", 4096),
-            supports_json_mode=m.get("supports_json_mode", False),
-            supports_vision=m.get("supports_vision", False),
-            cost_per_1k_input=m.get("cost_per_1k_input", 0.0),
-            cost_per_1k_output=m.get("cost_per_1k_output", 0.0),
-        ))
+        results.append(
+            ModelInfoResponse(
+                id=full_id,
+                provider=provider.provider_type,
+                name=m.get("name", model_id),
+                description=m.get("description", ""),
+                context_window=m.get("context_window", 128000),
+                max_output_tokens=m.get("max_output_tokens", 4096),
+                supports_json_mode=m.get("supports_json_mode", False),
+                supports_vision=m.get("supports_vision", False),
+                cost_per_1k_input=m.get("cost_per_1k_input", 0.0),
+                cost_per_1k_output=m.get("cost_per_1k_output", 0.0),
+            )
+        )
     return results
 
 
 # ==================== Routes ====================
+
 
 @router.get("/providers", response_model=list[ProviderResponse])
 async def list_providers(
@@ -124,12 +138,16 @@ async def list_providers(
     result = []
     for provider in AIProvider:
         name = _PROVIDER_DISPLAY_NAMES.get(provider, provider.value)
-        configured = (provider.value.lower() in configured_types) or (provider == AIProvider.CUSTOM)
-        result.append(ProviderResponse(
-            id=provider.value,
-            name=name,
-            configured=configured,
-        ))
+        configured = (provider.value.lower() in configured_types) or (
+            provider == AIProvider.CUSTOM
+        )
+        result.append(
+            ProviderResponse(
+                id=provider.value,
+                name=name,
+                configured=configured,
+            )
+        )
 
     return result
 
@@ -145,12 +163,9 @@ async def list_models(
 
     Optionally filter by provider type.
     """
-    query = (
-        select(AIProviderConfigDB)
-        .where(
-            AIProviderConfigDB.user_id == uuid.UUID(user_id),
-            AIProviderConfigDB.is_enabled.is_(True),
-        )
+    query = select(AIProviderConfigDB).where(
+        AIProviderConfigDB.user_id == uuid.UUID(user_id),
+        AIProviderConfigDB.is_enabled.is_(True),
     )
     if provider:
         query = query.where(AIProviderConfigDB.provider_type == provider)
@@ -178,14 +193,13 @@ async def get_model(
     if ":" not in model_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid model ID format: {model_id}. Expected 'provider:model_id'"
+            detail=f"Invalid model ID format: {model_id}. Expected 'provider:model_id'",
         )
 
     provider_type = model_id.split(":", 1)[0]
 
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.user_id == uuid.UUID(user_id),
             AIProviderConfigDB.provider_type == provider_type,
             AIProviderConfigDB.is_enabled.is_(True),
@@ -199,8 +213,7 @@ async def get_model(
                 return m
 
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Model not found: {model_id}"
+        status_code=status.HTTP_404_NOT_FOUND, detail=f"Model not found: {model_id}"
     )
 
 
@@ -218,7 +231,9 @@ def _model_test_error_code(e: Exception) -> str:
             return "no_api_key"
         if "base_url" in msg and "required" in msg:
             return "no_base_url"
-        if "model" in msg and ("not found" in msg or "404" in msg or "invalid" in msg or "not exist" in msg):
+        if "model" in msg and (
+            "not found" in msg or "404" in msg or "invalid" in msg or "not exist" in msg
+        ):
             return "model_not_found"
         return "api_error"
     return "unknown"

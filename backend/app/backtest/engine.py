@@ -4,7 +4,6 @@ Backtest engine for strategy simulation.
 Runs strategies against historical data with simulated execution.
 """
 
-import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
@@ -16,7 +15,6 @@ from ..models.strategy import StrategyConfig
 from ..services.ai import BaseAIClient
 from ..services.decision_parser import DecisionParser
 from ..services.prompt_builder import PromptBuilder
-from ..services.strategy_engine import StrategyEngine
 from ..traders.base import MarketData
 from .data_provider import DataProvider, MarketSnapshot
 from .simulator import SimulatedTrader, Trade
@@ -27,6 +25,7 @@ settings = get_settings()
 @dataclass
 class BacktestAnalysis:
     """Backtest result analysis"""
+
     strengths: List[str] = field(default_factory=list)
     weaknesses: List[str] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
@@ -35,6 +34,7 @@ class BacktestAnalysis:
 @dataclass
 class BacktestResult:
     """Backtest result summary"""
+
     strategy_name: str
     start_date: datetime
     end_date: datetime
@@ -114,7 +114,9 @@ class BacktestEngine:
         use_ai: bool = False,
         ai_client: Optional[BaseAIClient] = None,
         decision_interval_candles: int = 1,  # Make decision every N candles
-        analysis_ai_client: Optional[BaseAIClient] = None,  # Optional AI client for analysis
+        analysis_ai_client: Optional[
+            BaseAIClient
+        ] = None,  # Optional AI client for analysis
     ):
         """
         Initialize backtest engine.
@@ -147,7 +149,9 @@ class BacktestEngine:
         self.analysis_ai_client = analysis_ai_client
 
         # Parse strategy config
-        self.config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        self.config = (
+            StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        )
 
         # Initialize components with configured fees and slippage
         self.trader = SimulatedTrader(
@@ -195,12 +199,14 @@ class BacktestEngine:
 
             # Record equity
             account = await self.trader.get_account_state()
-            self._equity_curve.append({
-                "timestamp": snapshot.timestamp.isoformat(),
-                "equity": account.equity,
-                "balance": self.trader.balance,
-                "positions": account.position_count,
-            })
+            self._equity_curve.append(
+                {
+                    "timestamp": snapshot.timestamp.isoformat(),
+                    "equity": account.equity,
+                    "balance": self.trader.balance,
+                    "positions": account.position_count,
+                }
+            )
 
             # Make decision at intervals
             if i % self.decision_interval == 0:
@@ -260,15 +266,24 @@ class BacktestEngine:
             await self._execute_decisions(decision, account)
 
             # Record decision
-            self._decisions.append({
-                "timestamp": snapshot.timestamp.isoformat(),
-                "decision": decision.model_dump() if hasattr(decision, "model_dump") else str(decision),
-            })
+            self._decisions.append(
+                {
+                    "timestamp": snapshot.timestamp.isoformat(),
+                    "decision": (
+                        decision.model_dump()
+                        if hasattr(decision, "model_dump")
+                        else str(decision)
+                    ),
+                }
+            )
 
         except Exception as e:
             # Log error but continue with backtest
             import logging
-            logging.getLogger(__name__).warning(f"Decision generation error at {snapshot.timestamp}: {e}")
+
+            logging.getLogger(__name__).warning(
+                f"Decision generation error at {snapshot.timestamp}: {e}"
+            )
 
     async def _rule_based_decision(self, snapshot: MarketSnapshot) -> None:
         """
@@ -301,7 +316,7 @@ class BacktestEngine:
                 continue
 
             # Calculate SMA(20)
-            sma_20 = sum(c.close for c in candles[current_idx-20:current_idx]) / 20
+            sma_20 = sum(c.close for c in candles[current_idx - 20 : current_idx]) / 20
 
             # Current position
             position = await self.trader.get_position(symbol)
@@ -312,7 +327,10 @@ class BacktestEngine:
                 if not position:
                     # Open long — max_position_ratio limits margin, multiply
                     # by leverage to get the notional position value.
-                    max_margin = account.available_balance * self.config.risk_controls.max_position_ratio
+                    max_margin = (
+                        account.available_balance
+                        * self.config.risk_controls.max_position_ratio
+                    )
                     size_usd = max_margin * leverage
                     if size_usd > 100:  # Minimum position size
                         await self.trader.open_long(
@@ -328,7 +346,10 @@ class BacktestEngine:
             elif price < sma_20 * 0.99:  # 1% below SMA
                 if not position:
                     # Open short — same margin-based sizing
-                    max_margin = account.available_balance * self.config.risk_controls.max_position_ratio
+                    max_margin = (
+                        account.available_balance
+                        * self.config.risk_controls.max_position_ratio
+                    )
                     size_usd = max_margin * leverage
                     if size_usd > 100:
                         await self.trader.open_short(
@@ -403,7 +424,11 @@ class BacktestEngine:
                     "winning_trades": stats["winning_trades"],
                     "losing_trades": stats["losing_trades"],
                     "win_rate": stats["win_rate"],
-                    "profit_factor": stats["profit_factor"] if stats["profit_factor"] != float("inf") else None,
+                    "profit_factor": (
+                        stats["profit_factor"]
+                        if stats["profit_factor"] != float("inf")
+                        else None
+                    ),
                     "max_drawdown_percent": stats["max_drawdown"],
                     "sharpe_ratio": sharpe,
                     "sortino_ratio": sortino,
@@ -438,6 +463,7 @@ class BacktestEngine:
 
             # Build prompt
             import json
+
             system_prompt = """你是一位专业的量化交易策略分析师。请基于提供的回测数据，进行深入分析并给出专业的建议。
 
 请从以下维度进行分析：
@@ -473,6 +499,7 @@ class BacktestEngine:
 
             # Parse response
             import json as json_lib
+
             try:
                 content = response.content.strip()
                 # Remove markdown code blocks if present
@@ -492,12 +519,16 @@ class BacktestEngine:
                 )
             except (json_lib.JSONDecodeError, KeyError) as e:
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to parse AI analysis response: {e}, content: {content[:200]}")
+                logger.warning(
+                    f"Failed to parse AI analysis response: {e}, content: {content[:200]}"
+                )
                 return None
 
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to generate AI analysis: {e}", exc_info=True)
             return None
@@ -505,7 +536,6 @@ class BacktestEngine:
     async def _build_result(self) -> BacktestResult:
         """Build final backtest result"""
         import statistics as stats_mod
-        from collections import defaultdict
 
         stats = self.trader.get_statistics()
         trades = self.trader.get_trades()
@@ -525,7 +555,7 @@ class BacktestEngine:
             mean_return = stats_mod.mean(returns)
             std_return = stats_mod.stdev(returns) if len(returns) > 1 else 0
             if std_return > 0:
-                sharpe = (mean_return * 8760) / (std_return * (8760 ** 0.5))
+                sharpe = (mean_return * 8760) / (std_return * (8760**0.5))
 
         # --- Sortino Ratio (only downside deviation) ---
         sortino = None
@@ -535,7 +565,7 @@ class BacktestEngine:
             if downside and len(downside) > 1:
                 downside_std = stats_mod.stdev(downside)
                 if downside_std > 0:
-                    sortino = (mean_return * 8760) / (downside_std * (8760 ** 0.5))
+                    sortino = (mean_return * 8760) / (downside_std * (8760**0.5))
 
         # --- Calmar Ratio (annualised return / max drawdown) ---
         calmar = None
@@ -562,10 +592,12 @@ class BacktestEngine:
                 if eq > peak:
                     peak = eq
                 dd_pct = ((peak - eq) / peak * 100) if peak > 0 else 0
-                drawdown_curve.append({
-                    "timestamp": pt["timestamp"],
-                    "drawdown_percent": round(dd_pct, 4),
-                })
+                drawdown_curve.append(
+                    {
+                        "timestamp": pt["timestamp"],
+                        "drawdown_percent": round(dd_pct, 4),
+                    }
+                )
 
         # --- Monthly returns ---
         monthly_returns = []
@@ -574,17 +606,22 @@ class BacktestEngine:
             for pt in self._equity_curve:
                 month_key = pt["timestamp"][:7]  # "YYYY-MM"
                 if month_key not in monthly_buckets:
-                    monthly_buckets[month_key] = {"first": pt["equity"], "last": pt["equity"]}
+                    monthly_buckets[month_key] = {
+                        "first": pt["equity"],
+                        "last": pt["equity"],
+                    }
                 monthly_buckets[month_key]["last"] = pt["equity"]
 
             for month_key, bucket in sorted(monthly_buckets.items()):
                 first_eq = bucket["first"]
                 last_eq = bucket["last"]
                 ret_pct = ((last_eq - first_eq) / first_eq * 100) if first_eq > 0 else 0
-                monthly_returns.append({
-                    "month": month_key,
-                    "return_percent": round(ret_pct, 2),
-                })
+                monthly_returns.append(
+                    {
+                        "month": month_key,
+                        "return_percent": round(ret_pct, 2),
+                    }
+                )
 
         # --- Trade statistics (extended) ---
         trade_statistics = {

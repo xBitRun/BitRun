@@ -38,6 +38,7 @@ def _ensure_clients_registered():
     # DeepSeek
     try:
         from .deepseek_client import DeepSeekClient
+
         _CLIENT_CLASSES[AIProvider.DEEPSEEK] = DeepSeekClient
     except Exception:
         pass
@@ -45,6 +46,7 @@ def _ensure_clients_registered():
     # Qwen (Alibaba)
     try:
         from .qwen_client import QwenClient
+
         _CLIENT_CLASSES[AIProvider.QWEN] = QwenClient
     except Exception:
         pass
@@ -52,6 +54,7 @@ def _ensure_clients_registered():
     # Zhipu (GLM)
     try:
         from .zhipu_client import ZhipuClient
+
         _CLIENT_CLASSES[AIProvider.ZHIPU] = ZhipuClient
     except Exception:
         pass
@@ -59,6 +62,7 @@ def _ensure_clients_registered():
     # MiniMax
     try:
         from .minimax_client import MiniMaxClient
+
         _CLIENT_CLASSES[AIProvider.MINIMAX] = MiniMaxClient
     except Exception:
         pass
@@ -66,6 +70,7 @@ def _ensure_clients_registered():
     # Kimi (Moonshot)
     try:
         from .kimi_client import KimiClient
+
         _CLIENT_CLASSES[AIProvider.KIMI] = KimiClient
     except Exception:
         pass
@@ -73,6 +78,7 @@ def _ensure_clients_registered():
     # OpenAI (GPT)
     try:
         from .openai_client import OpenAIClient
+
         _CLIENT_CLASSES[AIProvider.OPENAI] = OpenAIClient
     except Exception:
         pass
@@ -80,6 +86,7 @@ def _ensure_clients_registered():
     # Google Gemini
     try:
         from .gemini_client import GeminiClient
+
         _CLIENT_CLASSES[AIProvider.GEMINI] = GeminiClient
     except Exception:
         pass
@@ -87,6 +94,7 @@ def _ensure_clients_registered():
     # xAI Grok
     try:
         from .grok_client import GrokClient
+
         _CLIENT_CLASSES[AIProvider.GROK] = GrokClient
     except Exception:
         pass
@@ -94,6 +102,7 @@ def _ensure_clients_registered():
     # Custom
     try:
         from .custom_client import CustomOpenAIClient
+
         _CLIENT_CLASSES[AIProvider.CUSTOM] = CustomOpenAIClient
     except Exception:
         pass
@@ -195,7 +204,9 @@ class AIClientFactory:
 
         # Parse model ID
         if ":" not in model_full_id:
-            raise AIClientError(f"Invalid model ID format: {model_full_id}. Expected 'provider:model_id'")
+            raise AIClientError(
+                f"Invalid model ID format: {model_full_id}. Expected 'provider:model_id'"
+            )
 
         provider_str, model_id = model_full_id.split(":", 1)
 
@@ -214,13 +225,16 @@ class AIClientFactory:
         config = AIClientConfig(
             api_key=resolved_api_key,
             model=model_id,
-            max_tokens=kwargs.get("max_tokens", custom_model_info.max_output_tokens if custom_model_info else 4096),
+            max_tokens=kwargs.get(
+                "max_tokens",
+                custom_model_info.max_output_tokens if custom_model_info else 4096,
+            ),
             temperature=kwargs.get("temperature", 0.7),
             timeout=kwargs.get("timeout", 120),
         )
 
         # Handle custom base_url
-        if custom_model_info and hasattr(custom_model_info, 'base_url'):
+        if custom_model_info and hasattr(custom_model_info, "base_url"):
             config.base_url = custom_model_info.base_url  # type: ignore
         elif kwargs.get("base_url"):
             config.base_url = kwargs["base_url"]

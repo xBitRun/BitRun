@@ -8,7 +8,6 @@ Provides:
 - Batch data preloading for backtests
 """
 
-import asyncio
 import json
 import logging
 from datetime import UTC, datetime, timedelta
@@ -132,7 +131,9 @@ class MarketDataCache:
         """Generate cache key for K-line data"""
         start_str = start_time.strftime("%Y%m%d")
         end_str = end_time.strftime("%Y%m%d")
-        return f"{self.KLINE_PREFIX}{exchange}:{symbol}:{timeframe}:{start_str}:{end_str}"
+        return (
+            f"{self.KLINE_PREFIX}{exchange}:{symbol}:{timeframe}:{start_str}:{end_str}"
+        )
 
     # ==================== Price Cache ====================
 
@@ -300,7 +301,7 @@ class BacktestDataPreloader:
         end_date: datetime,
         timeframe: str = "1h",
         exchange: str = "binance",
-        data_provider = None,
+        data_provider=None,
     ) -> dict:
         """
         Preload data for a backtest run.
@@ -361,7 +362,9 @@ class BacktestDataPreloader:
                             exchange=exchange,
                         )
                         results["symbols_fetched"] += 1
-                        logger.info(f"Fetched and cached {len(klines)} klines for {symbol}")
+                        logger.info(
+                            f"Fetched and cached {len(klines)} klines for {symbol}"
+                        )
 
             except Exception as e:
                 logger.error(f"Error preloading {symbol}: {e}")
@@ -374,7 +377,7 @@ class BacktestDataPreloader:
         exchange: str = "binance",
         timeframe: str = "1h",
         days_back: int = 30,
-        data_provider = None,
+        data_provider=None,
     ) -> dict:
         """
         Preload data for commonly traded symbols.

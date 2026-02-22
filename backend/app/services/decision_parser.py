@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class DecisionParseError(Exception):
     """Error parsing AI decision response"""
+
     def __init__(self, message: str, raw_response: str = ""):
         self.message = message
         self.raw_response = raw_response
@@ -42,8 +43,10 @@ class DecisionParser:
     """
 
     # Regex patterns for extracting content
-    JSON_BLOCK_PATTERN = re.compile(r'```(?:json)?\s*\n?([\s\S]*?)\n?```', re.IGNORECASE)
-    JSON_ARRAY_PATTERN = re.compile(r'\[\s*\{[\s\S]*?\}\s*\]')
+    JSON_BLOCK_PATTERN = re.compile(
+        r"```(?:json)?\s*\n?([\s\S]*?)\n?```", re.IGNORECASE
+    )
+    JSON_ARRAY_PATTERN = re.compile(r"\[\s*\{[\s\S]*?\}\s*\]")
     JSON_OBJECT_PATTERN = re.compile(r'\{[\s\S]*?"chain_of_thought"[\s\S]*?\}')
 
     # Fixed-percentage fallback when ATR is unavailable
@@ -115,16 +118,16 @@ class DecisionParser:
         """Fix common encoding issues in AI responses"""
         # Chinese quotes to ASCII
         replacements = {
-            '"': '"',
-            '"': '"',
-            ''': "'",
-            ''': "'",
-            '【': '[',
-            '】': ']',
-            '（': '(',
-            '）': ')',
-            '：': ':',
-            '，': ',',
+            "\u201c": '"',
+            "\u201d": '"',
+            "\u2018": "'",
+            "\u2019": "'",
+            "【": "[",
+            "】": "]",
+            "（": "(",
+            "）": ")",
+            "：": ":",
+            "，": ",",
         }
 
         for old, new in replacements.items():
@@ -157,29 +160,31 @@ class DecisionParser:
         match = self.JSON_ARRAY_PATTERN.search(text)
         if match:
             # Wrap in response object
-            return json.dumps({
-                "chain_of_thought": self._extract_text_before_json(text),
-                "market_assessment": "",
-                "decisions": json.loads(match.group(0)),
-                "overall_confidence": 50,
-                "next_review_minutes": 60,
-            })
+            return json.dumps(
+                {
+                    "chain_of_thought": self._extract_text_before_json(text),
+                    "market_assessment": "",
+                    "decisions": json.loads(match.group(0)),
+                    "overall_confidence": 50,
+                    "next_review_minutes": 60,
+                }
+            )
 
         # Try to find JSON object with chain_of_thought (for text before JSON cases)
         match = self.JSON_OBJECT_PATTERN.search(text)
         if match:
             try:
                 # Find the complete JSON object by matching braces
-                json_start = text.find('{')
+                json_start = text.find("{")
                 if json_start >= 0:
                     brace_count = 0
                     for i, c in enumerate(text[json_start:]):
-                        if c == '{':
+                        if c == "{":
                             brace_count += 1
-                        elif c == '}':
+                        elif c == "}":
                             brace_count -= 1
                             if brace_count == 0:
-                                json_str = text[json_start:json_start + i + 1]
+                                json_str = text[json_start : json_start + i + 1]
                                 json.loads(json_str)  # Validate
                                 return json_str
             except json.JSONDecodeError:
@@ -194,9 +199,9 @@ class DecisionParser:
     def _extract_text_before_json(self, text: str) -> str:
         """Extract reasoning text before JSON block"""
         # Find where JSON starts
-        json_start = text.find('{')
+        json_start = text.find("{")
         if json_start == -1:
-            json_start = text.find('[')
+            json_start = text.find("[")
 
         if json_start > 0:
             return text[:json_start].strip()
@@ -250,8 +255,7 @@ class DecisionParser:
                 decisions.append(decision)
             except (ValueError, KeyError, ValidationError) as e:
                 logger.warning(
-                    f"[DecisionParser] Skipping invalid decision: {e} | "
-                    f"raw={d}"
+                    f"[DecisionParser] Skipping invalid decision: {e} | " f"raw={d}"
                 )
                 continue
 
@@ -429,10 +433,10 @@ class DecisionParser:
         """Extract chain of thought from response"""
         # Look for explicit tags
         patterns = [
-            (r'<reasoning>\s*([\s\S]*?)\s*</reasoning>', 1),
-            (r'<chain_of_thought>\s*([\s\S]*?)\s*</chain_of_thought>', 1),
-            (r'## Analysis\s*([\s\S]*?)(?=##|\{|\[|$)', 1),
-            (r'## Market Analysis\s*([\s\S]*?)(?=##|\{|\[|$)', 1),
+            (r"<reasoning>\s*([\s\S]*?)\s*</reasoning>", 1),
+            (r"<chain_of_thought>\s*([\s\S]*?)\s*</chain_of_thought>", 1),
+            (r"## Analysis\s*([\s\S]*?)(?=##|\{|\[|$)", 1),
+            (r"## Market Analysis\s*([\s\S]*?)(?=##|\{|\[|$)", 1),
         ]
 
         for pattern, group in patterns:
@@ -456,7 +460,10 @@ class DecisionParser:
 
         # Check confidence threshold
         if decision.confidence < self.risk_controls.min_confidence:
-            return False, f"Confidence {decision.confidence}% below threshold {self.risk_controls.min_confidence}%"
+            return (
+                False,
+                f"Confidence {decision.confidence}% below threshold {self.risk_controls.min_confidence}%",
+            )
 
         # Check position size (only for open actions; close actions use existing position size)
         is_open = decision.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT)

@@ -226,21 +226,19 @@ async def detect_stale_agents(
     # Find active agents with stale or missing heartbeat
     # Note: For agents without heartbeat, we also require last_run_at to be older than
     # the cutoff time. This provides a grace period for workers to start up.
-    stmt = (
-        select(AgentDB)
-        .where(
-            AgentDB.status == "active",
-            (
-                # Either has a heartbeat that's too old
-                (AgentDB.worker_heartbeat_at.isnot(None)) & (AgentDB.worker_heartbeat_at < cutoff_time)
-                |
-                # Or has no heartbeat AND last_run is also older than cutoff
-                # (grace period for worker startup)
-                (AgentDB.worker_heartbeat_at.is_(None))
-                & (AgentDB.last_run_at.isnot(None))
-                & (AgentDB.last_run_at < cutoff_time)
-            ),
-        )
+    stmt = select(AgentDB).where(
+        AgentDB.status == "active",
+        (
+            # Either has a heartbeat that's too old
+            (AgentDB.worker_heartbeat_at.isnot(None))
+            & (AgentDB.worker_heartbeat_at < cutoff_time)
+            |
+            # Or has no heartbeat AND last_run is also older than cutoff
+            # (grace period for worker startup)
+            (AgentDB.worker_heartbeat_at.is_(None))
+            & (AgentDB.last_run_at.isnot(None))
+            & (AgentDB.last_run_at < cutoff_time)
+        ),
     )
 
     result = await session.execute(stmt)
@@ -285,7 +283,11 @@ async def mark_stale_agents_as_error(
             )
         else:
             # No heartbeat but has last_run_at - worker started but never sent heartbeat
-            last_run = agent.last_run_at.strftime("%Y-%m-%d %H:%M:%S UTC") if agent.last_run_at else "never"
+            last_run = (
+                agent.last_run_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+                if agent.last_run_at
+                else "never"
+            )
             error_msg = (
                 f"Worker startup incomplete - no heartbeat received "
                 f"(last run: {last_run})"
@@ -385,7 +387,9 @@ def is_agent_running(
         # No heartbeat yet - check if within startup grace period
         # Use updated_at as a proxy for when the agent was last activated
         if agent.updated_at:
-            startup_cutoff = datetime.now(UTC) - timedelta(seconds=startup_grace_seconds)
+            startup_cutoff = datetime.now(UTC) - timedelta(
+                seconds=startup_grace_seconds
+            )
             if agent.updated_at > startup_cutoff:
                 # Recently activated, allow grace period for worker to start
                 return True

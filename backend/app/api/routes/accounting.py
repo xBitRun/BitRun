@@ -2,12 +2,17 @@
 
 import uuid
 from datetime import datetime, timedelta, UTC
-from typing import Optional, Dict, Any
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, status, Query
+from pydantic import BaseModel
 
-from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep, ChannelAdminDep
+from ...core.dependencies import (
+    CurrentUserDep,
+    DbSessionDep,
+    PlatformAdminDep,
+    ChannelAdminDep,
+)
 from ...services.channel_service import ChannelService
 from ...services.wallet_service import WalletService
 
@@ -16,8 +21,10 @@ router = APIRouter(prefix="/accounting", tags=["Accounting"])
 
 # ==================== Response Models ====================
 
+
 class UserAccountingOverview(BaseModel):
     """User accounting overview"""
+
     balance: float
     frozen_balance: float
     total_balance: float
@@ -29,6 +36,7 @@ class UserAccountingOverview(BaseModel):
 
 class ChannelAccountingOverview(BaseModel):
     """Channel accounting overview"""
+
     channel_id: str
     channel_name: str
     channel_code: str
@@ -44,6 +52,7 @@ class ChannelAccountingOverview(BaseModel):
 
 class PlatformAccountingOverview(BaseModel):
     """Platform accounting overview"""
+
     total_channels: int
     active_channels: int
     total_users: int
@@ -53,6 +62,7 @@ class PlatformAccountingOverview(BaseModel):
 
 
 # ==================== User Accounting ====================
+
 
 @router.get("/overview", response_model=UserAccountingOverview)
 async def get_user_accounting_overview(
@@ -71,8 +81,7 @@ async def get_user_accounting_overview(
 
     if not wallet:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Wallet not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found"
         )
 
     # Get period summary
@@ -100,7 +109,7 @@ async def get_user_accounting_overview(
 async def get_channel_accounting_overview(
     channel_id: str,
     db: DbSessionDep,
-    admin_user = ChannelAdminDep,
+    admin_user=ChannelAdminDep,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
 ):
@@ -114,8 +123,7 @@ async def get_channel_accounting_overview(
 
     if not channel:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Channel not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found"
         )
 
     stats = await service.get_channel_statistics(
@@ -144,7 +152,7 @@ async def get_channel_accounting_overview(
 @router.get("/channels/me/overview", response_model=ChannelAccountingOverview)
 async def get_my_channel_accounting_overview(
     db: DbSessionDep,
-    user = ChannelAdminDep,
+    user=ChannelAdminDep,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
 ):
@@ -157,7 +165,7 @@ async def get_my_channel_accounting_overview(
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not an admin of any channel"
+            detail="You are not an admin of any channel",
         )
 
     stats = await service.get_channel_statistics(
@@ -189,7 +197,7 @@ async def get_my_channel_accounting_overview(
 @router.get("/platform/overview", response_model=PlatformAccountingOverview)
 async def get_platform_accounting_overview(
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """
     Get platform-wide accounting overview (platform admin only).
@@ -212,7 +220,7 @@ async def get_platform_accounting_overview(
 @router.get("/platform/daily", response_model=list)
 async def get_platform_daily_stats(
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
     days: int = Query(30, ge=1, le=90, description="Number of days to include"),
 ):
     """
@@ -220,50 +228,62 @@ async def get_platform_daily_stats(
 
     Returns daily breakdown of recharges, consumption, and commission.
     """
-    from sqlalchemy import select, func, and_, case
+    from sqlalchemy import select, func, and_
     from ...db.models import WalletTransactionDB, ChannelTransactionDB
 
     end_date = datetime.now(UTC).replace(hour=23, minute=59, second=59)
     start_date = (end_date - timedelta(days=days)).replace(hour=0, minute=0, second=0)
 
     # Daily user recharges
-    recharge_query = select(
-        func.date(WalletTransactionDB.created_at).label("date"),
-        func.sum(WalletTransactionDB.amount).label("recharge_amount"),
-    ).where(
-        and_(
-            WalletTransactionDB.type == "recharge",
-            WalletTransactionDB.created_at >= start_date,
+    recharge_query = (
+        select(
+            func.date(WalletTransactionDB.created_at).label("date"),
+            func.sum(WalletTransactionDB.amount).label("recharge_amount"),
         )
-    ).group_by(func.date(WalletTransactionDB.created_at))
+        .where(
+            and_(
+                WalletTransactionDB.type == "recharge",
+                WalletTransactionDB.created_at >= start_date,
+            )
+        )
+        .group_by(func.date(WalletTransactionDB.created_at))
+    )
 
     result = await db.execute(recharge_query)
     recharges = {str(r.date): r.recharge_amount for r in result.all()}
 
     # Daily consumption
-    consume_query = select(
-        func.date(WalletTransactionDB.created_at).label("date"),
-        func.sum(WalletTransactionDB.amount).label("consume_amount"),
-    ).where(
-        and_(
-            WalletTransactionDB.type == "consume",
-            WalletTransactionDB.created_at >= start_date,
+    consume_query = (
+        select(
+            func.date(WalletTransactionDB.created_at).label("date"),
+            func.sum(WalletTransactionDB.amount).label("consume_amount"),
         )
-    ).group_by(func.date(WalletTransactionDB.created_at))
+        .where(
+            and_(
+                WalletTransactionDB.type == "consume",
+                WalletTransactionDB.created_at >= start_date,
+            )
+        )
+        .group_by(func.date(WalletTransactionDB.created_at))
+    )
 
     result = await db.execute(consume_query)
     consumes = {str(r.date): r.consume_amount for r in result.all()}
 
     # Daily commission
-    commission_query = select(
-        func.date(ChannelTransactionDB.created_at).label("date"),
-        func.sum(ChannelTransactionDB.amount).label("commission_amount"),
-    ).where(
-        and_(
-            ChannelTransactionDB.type == "commission",
-            ChannelTransactionDB.created_at >= start_date,
+    commission_query = (
+        select(
+            func.date(ChannelTransactionDB.created_at).label("date"),
+            func.sum(ChannelTransactionDB.amount).label("commission_amount"),
         )
-    ).group_by(func.date(ChannelTransactionDB.created_at))
+        .where(
+            and_(
+                ChannelTransactionDB.type == "commission",
+                ChannelTransactionDB.created_at >= start_date,
+            )
+        )
+        .group_by(func.date(ChannelTransactionDB.created_at))
+    )
 
     result = await db.execute(commission_query)
     commissions = {str(r.date): r.commission_amount for r in result.all()}
@@ -273,11 +293,13 @@ async def get_platform_daily_stats(
 
     daily_stats = []
     for date in sorted(all_dates):
-        daily_stats.append({
-            "date": date,
-            "recharge_amount": recharges.get(date, 0.0),
-            "consume_amount": consumes.get(date, 0.0),
-            "commission_amount": commissions.get(date, 0.0),
-        })
+        daily_stats.append(
+            {
+                "date": date,
+                "recharge_amount": recharges.get(date, 0.0),
+                "consume_amount": consumes.get(date, 0.0),
+                "commission_amount": commissions.get(date, 0.0),
+            }
+        )
 
     return daily_stats

@@ -9,9 +9,14 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from ...core.dependencies import CryptoDep, CurrentUserDep, DbSessionDep, RateLimitApiDep
+from ...core.dependencies import (
+    CryptoDep,
+    CurrentUserDep,
+    DbSessionDep,
+    RateLimitApiDep,
+)
 from ...db.models import AIProviderConfigDB
-from ...services.ai import AIClientFactory, AIProvider, preset_models_json
+from ...services.ai import preset_models_json
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +89,13 @@ API_FORMATS = ["openai", "custom"]
 
 # ==================== Request/Response Models ====================
 
+
 class ProviderCreate(BaseModel):
     """Create provider configuration request"""
-    provider_type: str = Field(..., description="Provider type: deepseek, qwen, zhipu, minimax, kimi, etc.")
+
+    provider_type: str = Field(
+        ..., description="Provider type: deepseek, qwen, zhipu, minimax, kimi, etc."
+    )
     name: str = Field(..., min_length=1, max_length=100, description="Display name")
     note: Optional[str] = Field(None, max_length=500, description="Notes")
     website_url: Optional[str] = Field(None, max_length=500, description="Website URL")
@@ -97,6 +106,7 @@ class ProviderCreate(BaseModel):
 
 class ProviderUpdate(BaseModel):
     """Update provider configuration request"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
     website_url: Optional[str] = Field(None, max_length=500)
@@ -108,6 +118,7 @@ class ProviderUpdate(BaseModel):
 
 class ProviderResponse(BaseModel):
     """Provider configuration response (no API key)"""
+
     id: str
     provider_type: str
     name: str
@@ -123,6 +134,7 @@ class ProviderResponse(BaseModel):
 
 class PresetProviderInfo(BaseModel):
     """Preset provider information"""
+
     id: str
     name: str
     base_url: str
@@ -132,17 +144,23 @@ class PresetProviderInfo(BaseModel):
 
 class TestConnectionRequest(BaseModel):
     """Test connection request"""
-    api_key: Optional[str] = Field(None, description="Optional API key to test with (uses saved key if not provided)")
+
+    api_key: Optional[str] = Field(
+        None,
+        description="Optional API key to test with (uses saved key if not provided)",
+    )
 
 
 class TestConnectionResponse(BaseModel):
     """Test connection response"""
+
     success: bool
     message: str
 
 
 class ProviderModelItem(BaseModel):
     """A single model configuration within a provider"""
+
     id: str = Field(..., description="Model ID sent to the API (e.g. deepseek-chat)")
     name: str = Field(..., description="Display name")
     description: str = Field(default="", description="Short description")
@@ -156,11 +174,13 @@ class ProviderModelItem(BaseModel):
 
 class UpdateProviderModelsRequest(BaseModel):
     """Replace the whole model list for a provider"""
+
     models: list[ProviderModelItem]
 
 
 class AddProviderModelRequest(BaseModel):
     """Add a single model to a provider"""
+
     id: str = Field(..., description="Model ID sent to the API")
     name: str = Field(..., description="Display name")
     description: str = Field(default="")
@@ -173,6 +193,7 @@ class AddProviderModelRequest(BaseModel):
 
 
 # ==================== Helpers ====================
+
 
 def _provider_to_response(p: AIProviderConfigDB) -> ProviderResponse:
     """Convert a provider DB row to response model."""
@@ -207,6 +228,7 @@ def _set_models_list(provider: AIProviderConfigDB, models: list[dict]) -> None:
 
 
 # ==================== Routes ====================
+
 
 @router.get("/presets", response_model=list[PresetProviderInfo])
 async def list_preset_providers(
@@ -276,14 +298,14 @@ async def create_provider(
     if data.provider_type not in PRESET_PROVIDERS and data.provider_type != "custom":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown provider type: {data.provider_type}"
+            detail=f"Unknown provider type: {data.provider_type}",
         )
 
     # Validate API format
     if data.api_format not in API_FORMATS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown API format: {data.api_format}"
+            detail=f"Unknown API format: {data.api_format}",
         )
 
     # Get default base_url from preset if not provided
@@ -315,7 +337,9 @@ async def create_provider(
     await db.commit()
     await db.refresh(provider)
 
-    logger.info(f"Created provider config: {provider.name} ({provider.provider_type}) for user {user_id}")
+    logger.info(
+        f"Created provider config: {provider.name} ({provider.provider_type}) for user {user_id}"
+    )
 
     return _provider_to_response(provider)
 
@@ -330,10 +354,9 @@ async def get_provider(
     Get a specific provider configuration.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -341,7 +364,7 @@ async def get_provider(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     return _provider_to_response(provider)
@@ -359,10 +382,9 @@ async def update_provider(
     Update a provider configuration.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -370,7 +392,7 @@ async def update_provider(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     # Update fields
@@ -386,7 +408,7 @@ async def update_provider(
         if data.api_format not in API_FORMATS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unknown API format: {data.api_format}"
+                detail=f"Unknown API format: {data.api_format}",
             )
         provider.api_format = data.api_format
     if data.is_enabled is not None:
@@ -412,10 +434,9 @@ async def delete_provider(
     Delete a provider configuration.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -423,7 +444,7 @@ async def delete_provider(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     await db.delete(provider)
@@ -447,10 +468,9 @@ async def test_provider_connection(
     Optionally provide an API key to test with (uses saved key if not provided).
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -458,7 +478,7 @@ async def test_provider_connection(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     # Get API key
@@ -466,8 +486,7 @@ async def test_provider_connection(
     if not api_key:
         if not provider.encrypted_api_key:
             return TestConnectionResponse(
-                success=False,
-                message="No API key configured"
+                success=False, message="No API key configured"
             )
         api_key = crypto.decrypt(provider.encrypted_api_key)
 
@@ -475,6 +494,7 @@ async def test_provider_connection(
     try:
         # Test OpenAI-compatible API (all supported providers use this format)
         import httpx
+
         async with httpx.AsyncClient() as http_client:
             base_url = provider.base_url or "https://api.deepseek.com"
             response = await http_client.get(
@@ -485,24 +505,20 @@ async def test_provider_connection(
             success = response.status_code == 200
 
         if success:
-            return TestConnectionResponse(
-                success=True,
-                message="Connection successful"
-            )
+            return TestConnectionResponse(success=True, message="Connection successful")
         else:
             return TestConnectionResponse(
-                success=False,
-                message="Connection failed - invalid response"
+                success=False, message="Connection failed - invalid response"
             )
     except Exception as e:
         logger.error(f"Connection test failed for provider {provider.id}: {e}")
         return TestConnectionResponse(
-            success=False,
-            message=f"Connection failed: {str(e)}"
+            success=False, message=f"Connection failed: {str(e)}"
         )
 
 
 # ==================== Provider Model CRUD ====================
+
 
 @router.get("/{provider_id}/models", response_model=list[ProviderModelItem])
 async def list_provider_models(
@@ -514,10 +530,9 @@ async def list_provider_models(
     List all models configured for a specific provider.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -525,7 +540,7 @@ async def list_provider_models(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     return [ProviderModelItem(**m) for m in _get_models_list(provider)]
@@ -542,10 +557,9 @@ async def replace_provider_models(
     Replace the entire model list for a provider.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -553,7 +567,7 @@ async def replace_provider_models(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     models = [m.model_dump() for m in data.models]
@@ -562,12 +576,18 @@ async def replace_provider_models(
     await db.commit()
     await db.refresh(provider)
 
-    logger.info(f"Replaced model list for provider {provider.id} ({len(models)} models)")
+    logger.info(
+        f"Replaced model list for provider {provider.id} ({len(models)} models)"
+    )
 
     return [ProviderModelItem(**m) for m in _get_models_list(provider)]
 
 
-@router.post("/{provider_id}/models", response_model=ProviderModelItem, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{provider_id}/models",
+    response_model=ProviderModelItem,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_provider_model(
     provider_id: str,
     data: AddProviderModelRequest,
@@ -578,10 +598,9 @@ async def add_provider_model(
     Add a single model to a provider's model list.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -589,7 +608,7 @@ async def add_provider_model(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     models = _get_models_list(provider)
@@ -598,7 +617,7 @@ async def add_provider_model(
     if any(m.get("id") == data.id for m in models):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Model '{data.id}' already exists in this provider"
+            detail=f"Model '{data.id}' already exists in this provider",
         )
 
     new_model = data.model_dump()
@@ -613,7 +632,9 @@ async def add_provider_model(
     return ProviderModelItem(**new_model)
 
 
-@router.delete("/{provider_id}/models/{model_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{provider_id}/models/{model_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_provider_model(
     provider_id: str,
     model_id: str,
@@ -624,10 +645,9 @@ async def delete_provider_model(
     Delete a single model from a provider's model list.
     """
     result = await db.execute(
-        select(AIProviderConfigDB)
-        .where(
+        select(AIProviderConfigDB).where(
             AIProviderConfigDB.id == uuid.UUID(provider_id),
-            AIProviderConfigDB.user_id == uuid.UUID(user_id)
+            AIProviderConfigDB.user_id == uuid.UUID(user_id),
         )
     )
     provider = result.scalar_one_or_none()
@@ -635,7 +655,7 @@ async def delete_provider_model(
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Provider configuration not found"
+            detail="Provider configuration not found",
         )
 
     models = _get_models_list(provider)
@@ -645,7 +665,7 @@ async def delete_provider_model(
     if len(models) == original_len:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Model '{model_id}' not found in this provider"
+            detail=f"Model '{model_id}' not found in this provider",
         )
 
     _set_models_list(provider, models)

@@ -17,12 +17,12 @@ os.environ.setdefault("DATA_ENCRYPTION_KEY", _VALID_AES_KEY)
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.api.main import create_app
 from app.core.dependencies import get_current_user_id
-
+from app.core.security import create_access_token, create_refresh_token
 
 # ---------------------------------------------------------------------------
 # Auto-use fixture: mock bcrypt & CryptoService for every test so that
@@ -30,6 +30,7 @@ from app.core.dependencies import get_current_user_id
 #     ``PermissionError: [Errno 1] Operation not permitted``
 # (b) CryptoService always uses a mock instead of real AESGCM init
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _mock_security(monkeypatch):
@@ -42,24 +43,17 @@ def _mock_security(monkeypatch):
     opens a real socket.
     """
     from app.core.config import get_settings
+
     get_settings.cache_clear()
 
     # -- 1. Mock bcrypt low-level calls (avoids PermissionError) ------------
-    monkeypatch.setattr(
-        "bcrypt.gensalt", lambda *a, **kw: b"$2b$12$" + b"x" * 22
-    )
-    monkeypatch.setattr(
-        "bcrypt.hashpw", lambda pw, salt: b"$2b$12$" + b"x" * 53
-    )
-    monkeypatch.setattr(
-        "bcrypt.checkpw", lambda pw, hashed: False
-    )
+    monkeypatch.setattr("bcrypt.gensalt", lambda *a, **kw: b"$2b$12$" + b"x" * 22)
+    monkeypatch.setattr("bcrypt.hashpw", lambda pw, salt: b"$2b$12$" + b"x" * 53)
+    monkeypatch.setattr("bcrypt.checkpw", lambda pw, hashed: False)
     monkeypatch.setattr(
         "app.core.security.hash_password", lambda pw: "$2b$12$" + "x" * 53
     )
-    monkeypatch.setattr(
-        "app.core.security.verify_password", lambda pw, h: False
-    )
+    monkeypatch.setattr("app.core.security.verify_password", lambda pw, h: False)
 
     # -- 2. Mock CryptoService singleton ------------------------------------
     mock_crypto = MagicMock()
@@ -183,6 +177,79 @@ class TestAuthEndpoints:
         """Test accessing protected endpoint without authentication."""
         response = await client.get("/api/strategies")
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_refresh_replay_is_rejected(self, client, monkeypatch):
+        """Old refresh token should be rejected when reused."""
+        revoked: set[str] = set()
+
+        class _ReplaySafeRedis:
+            async def is_token_blacklisted(self, token_jti: str) -> bool:
+                return token_jti in revoked
+
+            async def blacklist_token(
+                self, token_jti: str, expires_in: int = 3600
+            ) -> bool:
+                revoked.add(token_jti)
+                return True
+
+        async def _mock_get_redis_service():
+            return _ReplaySafeRedis()
+
+        monkeypatch.setattr(
+            "app.api.routes.auth.get_redis_service", _mock_get_redis_service
+        )
+
+        refresh_token = create_refresh_token(str(uuid4()))
+
+        first = await client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert first.status_code == 200
+        payload = first.json()
+        assert "access_token" in payload
+        assert "refresh_token" in payload
+
+        second = await client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert second.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_logout_token_cannot_be_reused(self, client, monkeypatch):
+        """After logout, the same access token should be rejected."""
+        revoked: set[str] = set()
+
+        class _ReplaySafeRedis:
+            async def is_token_blacklisted(self, token_jti: str) -> bool:
+                return token_jti in revoked
+
+            async def blacklist_token(
+                self, token_jti: str, expires_in: int = 3600
+            ) -> bool:
+                revoked.add(token_jti)
+                return True
+
+        async def _mock_get_redis_service():
+            return _ReplaySafeRedis()
+
+        monkeypatch.setattr(
+            "app.api.routes.auth.get_redis_service", _mock_get_redis_service
+        )
+        monkeypatch.setattr(
+            "app.core.dependencies.get_redis_service", _mock_get_redis_service
+        )
+
+        access_token = create_access_token(str(uuid4()))
+        auth_headers = {"Authorization": f"Bearer {access_token}"}
+
+        first = await client.post("/api/auth/logout", headers=auth_headers)
+        assert first.status_code == 200
+
+        second = await client.post("/api/auth/logout", headers=auth_headers)
+        assert second.status_code == 401
 
 
 class TestStrategyEndpoints:

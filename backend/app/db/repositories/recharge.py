@@ -11,7 +11,6 @@ from sqlalchemy.orm import selectinload
 
 from ..models import (
     RechargeOrderDB,
-    UserDB,
 )
 
 

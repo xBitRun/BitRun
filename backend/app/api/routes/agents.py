@@ -24,7 +24,6 @@ from ...db.repositories.decision import DecisionRepository
 from ...db.repositories.strategy import StrategyRepository
 from ...models.agent import (
     AgentCreate,
-    AgentStatus,
     AgentStatusUpdate,
     AgentUpdate,
     ExecutionMode,
@@ -36,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==================== Helper Functions ====================
+
 
 async def _fetch_public_prices(
     symbols: list[str],
@@ -64,7 +64,9 @@ async def _fetch_public_prices(
 
     cache = get_shared_price_cache()
 
-    async def fetcher(uncached_symbols: list[str]) -> dict[str, tuple[float, float | None, float | None]]:
+    async def fetcher(
+        uncached_symbols: list[str],
+    ) -> dict[str, tuple[float, float | None, float | None]]:
         """Fetch prices from CCXT for uncached symbols."""
         import ccxt.async_support as ccxt
         from ...core.config import get_ccxt_proxy_config
@@ -77,11 +79,13 @@ async def _fetch_public_prices(
             if exchange_class is None:
                 exchange_class = ccxt.hyperliquid
 
-            exchange = exchange_class({
-                "enableRateLimit": True,
-                "options": {"defaultType": "swap"},  # perpetual futures
-                **get_ccxt_proxy_config(),
-            })
+            exchange = exchange_class(
+                {
+                    "enableRateLimit": True,
+                    "options": {"defaultType": "swap"},  # perpetual futures
+                    **get_ccxt_proxy_config(),
+                }
+            )
 
             for symbol in uncached_symbols:
                 try:
@@ -90,6 +94,7 @@ async def _fetch_public_prices(
                         ccxt_symbol = symbol
                     else:
                         from ...traders.base import detect_market_type, MarketType
+
                         mtype = detect_market_type(symbol)
                         if mtype == MarketType.CRYPTO_SPOT:
                             ccxt_symbol = f"{symbol}/USDC"
@@ -126,8 +131,10 @@ async def _fetch_public_prices(
 
 # ==================== Response Models ====================
 
+
 class AgentResponse(BaseModel):
     """Agent response model"""
+
     id: str
     user_id: str
     name: str
@@ -195,6 +202,7 @@ class AgentResponse(BaseModel):
 
 class AgentPositionResponse(BaseModel):
     """Agent position response"""
+
     id: str
     agent_id: str
     account_id: Optional[str] = None
@@ -217,6 +225,7 @@ class AgentPositionResponse(BaseModel):
 
 class AgentAccountStateResponse(BaseModel):
     """Agent account state response for positions tab"""
+
     equity: float = Field(description="Total account equity")
     available_balance: float = Field(description="Available balance for new positions")
     total_unrealized_pnl: float = Field(description="Total unrealized profit/loss")
@@ -229,16 +238,18 @@ class AgentAccountStateResponse(BaseModel):
 
 class BoundAccountInfo(BaseModel):
     """Info about an account bound to agents"""
+
     account_id: str = Field(description="Exchange account ID")
     total_percent: float = Field(description="Total percentage allocated (0.0 to 1.0+)")
     agent_count: int = Field(description="Number of agents using this account")
     allocation_mode: Optional[str] = Field(
         default=None,
-        description="Current allocation mode: 'percent', 'fixed', or None if no allocation set"
+        description="Current allocation mode: 'percent', 'fixed', or None if no allocation set",
     )
 
 
 # ==================== Routes ====================
+
 
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
 async def create_agent(
@@ -259,7 +270,7 @@ async def create_agent(
     if not strategy:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Strategy not found or does not belong to you."
+            detail="Strategy not found or does not belong to you.",
         )
 
     # AI strategies require either ai_model or debate with 2+ models
@@ -269,14 +280,14 @@ async def create_agent(
         if not has_single_model and not has_debate:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="AI strategies require either ai_model or debate mode with 2+ models."
+                detail="AI strategies require either ai_model or debate mode with 2+ models.",
             )
 
     # Quant strategies don't need ai_model
     if strategy.type != "ai" and data.ai_model:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Quantitative strategies do not use an AI model."
+            detail="Quantitative strategies do not use an AI model.",
         )
 
     # Validate account ownership for live mode
@@ -285,14 +296,14 @@ async def create_agent(
         if not data.account_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Live mode requires an exchange account."
+                detail="Live mode requires an exchange account.",
             )
         account_repo = AccountRepository(db)
         account = await account_repo.get_by_id(uuid.UUID(data.account_id))
         if not account or str(account.user_id) != user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Account not found or does not belong to you."
+                detail="Account not found or does not belong to you.",
             )
         account_uuid = uuid.UUID(data.account_id)
 
@@ -300,7 +311,7 @@ async def create_agent(
         if not supports_asset(account.exchange, AssetType(data.trade_type.value)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Exchange {account.exchange} does not support {data.trade_type.value}"
+                detail=f"Exchange {account.exchange} does not support {data.trade_type.value}",
             )
 
     agent_repo = AgentRepository(db)
@@ -314,7 +325,7 @@ async def create_agent(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Capital allocation exceeds 100%. "
-                    f"Current: {total_percent*100:.1f}%, Requested: {data.allocated_capital_percent*100:.1f}%"
+                    f"Current: {total_percent*100:.1f}%, Requested: {data.allocated_capital_percent*100:.1f}%",
                 )
     agent = await agent_repo.create(
         user_id=uuid.UUID(user_id),
@@ -415,8 +426,7 @@ async def get_agent(
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     return _agent_to_response(agent)
@@ -438,12 +448,13 @@ async def update_agent(
     if "account_id" in update_data and update_data["account_id"]:
         # Check for open positions
         from ...services.agent_position_service import AgentPositionService
+
         ps = AgentPositionService(db=db)
         has_positions = await ps.has_open_positions(uuid.UUID(agent_id))
         if has_positions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot change account while agent has open positions."
+                detail="Cannot change account while agent has open positions.",
             )
 
         account_repo = AccountRepository(db)
@@ -451,25 +462,31 @@ async def update_agent(
         if not account or str(account.user_id) != user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Account not found or does not belong to you."
+                detail="Account not found or does not belong to you.",
             )
         update_data["account_id"] = uuid.UUID(update_data["account_id"])
 
     # Protect capital allocation changes when positions exist
     if "allocated_capital" in update_data or "allocated_capital_percent" in update_data:
         from ...services.agent_position_service import AgentPositionService
+
         ps = AgentPositionService(db=db)
         has_positions = await ps.has_open_positions(uuid.UUID(agent_id))
         if has_positions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot change capital allocation while agent has open positions."
+                detail="Cannot change capital allocation while agent has open positions.",
             )
 
     # Validate capital allocation percentage doesn't exceed 100%
-    if "allocated_capital_percent" in update_data and update_data["allocated_capital_percent"] is not None:
+    if (
+        "allocated_capital_percent" in update_data
+        and update_data["allocated_capital_percent"] is not None
+    ):
         # Get current agent to determine account_id
-        current_agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
+        current_agent = await agent_repo.get_by_id(
+            uuid.UUID(agent_id), uuid.UUID(user_id)
+        )
         if current_agent and current_agent.account_id:
             total_percent = await agent_repo.get_account_allocated_percent(
                 account_id=current_agent.account_id,
@@ -481,7 +498,7 @@ async def update_agent(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Capital allocation would exceed 100%. "
                     f"Current (other agents): {total_percent*100:.1f}%, "
-                    f"Requested: {update_data['allocated_capital_percent']*100:.1f}%"
+                    f"Requested: {update_data['allocated_capital_percent']*100:.1f}%",
                 )
 
     # Convert enums
@@ -496,8 +513,7 @@ async def update_agent(
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     agent = await agent_repo.get_by_id(
@@ -528,7 +544,7 @@ async def update_agent_status(
     if data.status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}",
         )
 
     agent_repo = AgentRepository(db)
@@ -539,8 +555,7 @@ async def update_agent_status(
     )
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     # Validate transition
@@ -563,14 +578,14 @@ async def update_agent_status(
     if (current, new) not in valid_transitions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status transition from '{current}' to '{new}'"
+            detail=f"Invalid status transition from '{current}' to '{new}'",
         )
 
     # Live mode activation requires an account
     if new == "active" and agent.execution_mode == "live" and not agent.account_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot activate live agent without an exchange account"
+            detail="Cannot activate live agent without an exchange account",
         )
 
     # AI strategy activation requires ai_model
@@ -578,7 +593,7 @@ async def update_agent_status(
         if not agent.ai_model:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot activate AI agent without selecting a model"
+                detail="Cannot activate AI agent without selecting a model",
             )
 
     # Exchange connection check for live mode error recovery
@@ -588,7 +603,7 @@ async def update_agent_status(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Exchange account not found. Cannot reactivate."
+                detail="Exchange account not found. Cannot reactivate.",
             )
         credentials = await account_repo.get_decrypted_credentials(
             agent.account_id, agent.user_id
@@ -596,18 +611,19 @@ async def update_agent_status(
         if not credentials:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot decrypt exchange credentials."
+                detail="Cannot decrypt exchange credentials.",
             )
         trader = None
         try:
             from ...traders.ccxt_trader import create_trader_from_account
+
             trader = create_trader_from_account(account, credentials)
             await trader.initialize()
             await trader.get_account_state()
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Exchange connection failed: {e}"
+                detail=f"Exchange connection failed: {e}",
             )
         finally:
             if trader:
@@ -626,6 +642,7 @@ async def update_agent_status(
     # Sync with unified worker manager
     try:
         from ...workers.unified_manager import get_unified_worker_manager
+
         worker_manager = await get_unified_worker_manager()
         agent_id_str = str(agent.id)
         if new == "active":
@@ -678,11 +695,11 @@ async def get_agent_positions(
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     from ...services.agent_position_service import AgentPositionService
+
     ps = AgentPositionService(db=db)
     positions = await ps.get_agent_positions(
         uuid.UUID(agent_id),
@@ -726,7 +743,9 @@ async def get_agent_positions(
                 finally:
                     await trader.close()
         except Exception as e:
-            logger.warning(f"Failed to fetch exchange positions for agent {agent_id}: {e}")
+            logger.warning(
+                f"Failed to fetch exchange positions for agent {agent_id}: {e}"
+            )
 
     # For mock mode, fetch prices from public API to calculate unrealized PnL
     mock_prices: dict[str, float] = {}
@@ -765,7 +784,9 @@ async def get_agent_positions(
             # Calculate percentage based on position value
             if p.entry_price > 0 and p.size > 0:
                 position_value = p.entry_price * p.size
-                unrealized_pnl_percent = (unrealized_pnl / position_value) * 100 if position_value else 0
+                unrealized_pnl_percent = (
+                    (unrealized_pnl / position_value) * 100 if position_value else 0
+                )
 
         response = AgentPositionResponse(
             id=str(p.id),
@@ -808,11 +829,11 @@ async def get_agent_account_state(
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     from ...services.agent_position_service import AgentPositionService
+
     ps = AgentPositionService(db=db)
 
     # For live mode with exchange account, get real data from exchange
@@ -826,7 +847,9 @@ async def get_agent_account_state(
                 agent.account_id, uuid.UUID(user_id)
             )
             if credentials:
-                account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
+                account = await account_repo.get_by_id(
+                    agent.account_id, uuid.UUID(user_id)
+                )
                 trader = create_trader_from_account(account, credentials)
                 await trader.initialize()
                 try:
@@ -846,7 +869,8 @@ async def get_agent_account_state(
                     # Get exchange positions and filter to this agent's
                     exchange_positions = await trader.get_positions()
                     filtered_positions = [
-                        pos for pos in exchange_positions
+                        pos
+                        for pos in exchange_positions
                         if f"{pos.symbol}_{pos.side}" in agent_position_keys
                     ]
 
@@ -869,7 +893,9 @@ async def get_agent_account_state(
                 finally:
                     await trader.close()
         except Exception as e:
-            logger.warning(f"Failed to get real account state for agent {agent_id}: {e}")
+            logger.warning(
+                f"Failed to get real account state for agent {agent_id}: {e}"
+            )
             # Fall through to virtual calculation on error
 
     # Mock mode or live mode fallback: calculate virtual account state
@@ -879,7 +905,9 @@ async def get_agent_account_state(
     # Mock mode: fetch prices from public API for unrealized PnL calculation
     if agent.execution_mode == "mock":
         try:
-            positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
+            positions = await ps.get_agent_positions(
+                uuid.UUID(agent_id), status_filter="open"
+            )
             if positions:
                 symbols = list({p.symbol for p in positions})
                 current_prices = await _fetch_public_prices(symbols)
@@ -897,7 +925,9 @@ async def get_agent_account_state(
                 agent.account_id, uuid.UUID(user_id)
             )
             if credentials:
-                account = await account_repo.get_by_id(agent.account_id, uuid.UUID(user_id))
+                account = await account_repo.get_by_id(
+                    agent.account_id, uuid.UUID(user_id)
+                )
                 trader = create_trader_from_account(account, credentials)
                 await trader.initialize()
                 try:
@@ -905,11 +935,17 @@ async def get_agent_account_state(
                     account_equity = state.equity
 
                     # Get current prices for open positions
-                    positions = await ps.get_agent_positions(uuid.UUID(agent_id), status_filter="open")
+                    positions = await ps.get_agent_positions(
+                        uuid.UUID(agent_id), status_filter="open"
+                    )
                     if positions:
                         symbols = list({p.symbol for p in positions})
                         tickers = await trader.fetch_tickers(symbols)
-                        current_prices = {s: t.get("last") for s, t in tickers.items() if t.get("last")}
+                        current_prices = {
+                            s: t.get("last")
+                            for s, t in tickers.items()
+                            if t.get("last")
+                        }
                 finally:
                     await trader.close()
         except Exception as e:
@@ -925,8 +961,7 @@ async def get_agent_account_state(
 
     # Calculate total margin used
     total_margin_used = sum(
-        pos.size_usd / max(pos.leverage, 1)
-        for pos in state.positions
+        pos.size_usd / max(pos.leverage, 1) for pos in state.positions
     )
 
     return AgentAccountStateResponse(
@@ -955,19 +990,19 @@ async def trigger_agent_execution(
     )
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     # Check if agent is active
     if agent.status != "active":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot trigger execution for agent in '{agent.status}' status. Agent must be active."
+            detail=f"Cannot trigger execution for agent in '{agent.status}' status. Agent must be active.",
         )
 
     # Use unified worker manager for all strategy types
     from ...workers.unified_manager import get_unified_worker_manager
+
     worker_manager = await get_unified_worker_manager()
     result = await worker_manager.trigger_execution(
         agent_id=agent_id,
@@ -990,6 +1025,7 @@ async def trigger_agent_execution(
 
 class RuntimeStatusResponse(BaseModel):
     """Runtime status response model"""
+
     agent_id: str
     status: str
     is_running: bool
@@ -1024,8 +1060,7 @@ async def get_agent_runtime_status(
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     # Calculate heartbeat age
@@ -1038,7 +1073,9 @@ async def get_agent_runtime_status(
         agent_id=str(agent.id),
         status=agent.status,
         is_running=is_agent_running(agent),
-        worker_heartbeat_at=agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None,
+        worker_heartbeat_at=(
+            agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None
+        ),
         worker_instance_id=agent.worker_instance_id,
         last_run_at=agent.last_run_at.isoformat() if agent.last_run_at else None,
         next_run_at=agent.next_run_at.isoformat() if agent.next_run_at else None,
@@ -1097,13 +1134,15 @@ async def _save_quant_decision_record(
     market_assessment = f"交易对: {symbol}\n执行状态: {'成功' if success else '失败'}"
 
     # Build decisions list (rule-based, so confidence is 100)
-    decisions = [{
-        "action": action,
-        "symbol": symbol,
-        "confidence": 100,
-        "reasoning": action_desc,
-        "size_usd": 0,  # Quant doesn't track per-decision size
-    }]
+    decisions = [
+        {
+            "action": action,
+            "symbol": symbol,
+            "confidence": 100,
+            "reasoning": action_desc,
+            "size_usd": 0,  # Quant doesn't track per-decision size
+        }
+    ]
 
     record = await decision_repo.create(
         agent_id=agent.id,
@@ -1132,7 +1171,6 @@ async def _trigger_quant_cycle(
     from ...services.quant_engine import create_engine
     from ...services.agent_position_service import AgentPositionService
     from ...services.redis_service import get_redis_service
-    from ...traders.mock_trader import MockTrader
     from ...traders.ccxt_trader import create_trader_from_account
     from ...db.repositories.account import AccountRepository
 
@@ -1145,6 +1183,7 @@ async def _trigger_quant_cycle(
         trader = None
         if agent.execution_mode == "mock":
             from ...workers.tasks import create_mock_trader
+
             symbols = [agent.symbol] if agent.symbol else ["BTC"]
             trader, error = await create_mock_trader(agent, db, symbols=symbols)
             if error:
@@ -1152,7 +1191,10 @@ async def _trigger_quant_cycle(
         else:
             # Live mode
             if not agent.account_id:
-                return {"success": False, "error": "No account configured for live trading"}
+                return {
+                    "success": False,
+                    "error": "No account configured for live trading",
+                }
 
             account_repo = AccountRepository(db)
             account = await account_repo.get_by_id(agent.account_id)
@@ -1160,7 +1202,8 @@ async def _trigger_quant_cycle(
                 return {"success": False, "error": "Account not found"}
 
             credentials = await account_repo.get_decrypted_credentials(
-                agent.account_id, agent.user_id,
+                agent.account_id,
+                agent.user_id,
             )
             if not credentials:
                 return {"success": False, "error": "Failed to decrypt credentials"}
@@ -1178,7 +1221,10 @@ async def _trigger_quant_cycle(
         # Create engine and run one cycle
         strategy_type = agent.strategy_type
         if not strategy_type or strategy_type not in ("grid", "dca", "rsi"):
-            return {"success": False, "error": f"Unsupported strategy type: {strategy_type}"}
+            return {
+                "success": False,
+                "error": f"Unsupported strategy type: {strategy_type}",
+            }
 
         engine = create_engine(
             strategy_type=strategy_type,
@@ -1214,7 +1260,8 @@ async def _trigger_quant_cycle(
                 agent.user_id,
                 runtime_state=result["updated_state"],
                 last_run_at=datetime.now(UTC),
-                next_run_at=datetime.now(UTC) + timedelta(minutes=agent.execution_interval_minutes),
+                next_run_at=datetime.now(UTC)
+                + timedelta(minutes=agent.execution_interval_minutes),
             )
             await db.commit()
 
@@ -1237,6 +1284,7 @@ async def _trigger_quant_cycle(
 
 class DeleteAgentResponse(BaseModel):
     """Response model for agent deletion"""
+
     id: str
     deleted: bool
     positions_closed: int = 0
@@ -1267,17 +1315,17 @@ async def delete_agent(
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     if agent.status not in ("draft", "stopped"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete agent in '{agent.status}' status. Stop it first."
+            detail=f"Cannot delete agent in '{agent.status}' status. Stop it first.",
         )
 
     from ...services.agent_position_service import AgentPositionService
+
     ps = AgentPositionService(db=db)
     has_positions = await ps.has_open_positions(uuid.UUID(agent_id))
 
@@ -1289,8 +1337,8 @@ async def delete_agent(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete agent with open positions. "
-                       "Set force_close_positions=true to close them automatically, "
-                       "or close all positions first."
+                "Set force_close_positions=true to close them automatically, "
+                "or close all positions first.",
             )
 
         # Close all positions automatically
@@ -1304,14 +1352,13 @@ async def delete_agent(
         if positions_closed == 0 and close_errors:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to close positions: {'; '.join(close_errors)}"
+                detail=f"Failed to close positions: {'; '.join(close_errors)}",
             )
 
     deleted = await agent_repo.delete(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     return DeleteAgentResponse(
@@ -1323,6 +1370,7 @@ async def delete_agent(
 
 
 # ==================== Helper Functions ====================
+
 
 async def _close_agent_positions(
     agent,
@@ -1361,14 +1409,13 @@ async def _close_agent_positions(
 
         if account and credentials:
             from ...traders.ccxt_trader import create_trader_from_account
+
             trader = create_trader_from_account(account, credentials)
             await trader.initialize()
             try:
                 for pos_record in open_positions:
                     try:
-                        result = await trader.close_position(
-                            symbol=pos_record.symbol
-                        )
+                        result = await trader.close_position(symbol=pos_record.symbol)
                         if result.success:
                             await ps.close_position_record(
                                 position_id=pos_record.id,
@@ -1384,9 +1431,7 @@ async def _close_agent_positions(
                                 f"Failed to close {pos_record.symbol}: {result.error}"
                             )
                     except Exception as close_err:
-                        errors.append(
-                            f"Error closing {pos_record.symbol}: {close_err}"
-                        )
+                        errors.append(f"Error closing {pos_record.symbol}: {close_err}")
                         logger.error(
                             f"Error closing position {pos_record.symbol}: {close_err}"
                         )
@@ -1406,9 +1451,7 @@ async def _close_agent_positions(
                     f"Closed mock position {pos_record.symbol} for agent {agent.id}"
                 )
             except Exception as close_err:
-                errors.append(
-                    f"Error closing {pos_record.symbol}: {close_err}"
-                )
+                errors.append(f"Error closing {pos_record.symbol}: {close_err}")
                 logger.error(
                     f"Error closing mock position {pos_record.symbol}: {close_err}"
                 )
@@ -1424,6 +1467,7 @@ def _agent_to_response(agent) -> AgentResponse:
 
     # Compute is_running based on heartbeat
     from ...services.worker_heartbeat import is_agent_running
+
     agent_is_running = is_agent_running(agent)
 
     return AgentResponse(
@@ -1453,7 +1497,9 @@ def _agent_to_response(agent) -> AgentResponse:
         runtime_state=agent.runtime_state,
         status=agent.status,
         error_message=agent.error_message,
-        worker_heartbeat_at=agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None,
+        worker_heartbeat_at=(
+            agent.worker_heartbeat_at.isoformat() if agent.worker_heartbeat_at else None
+        ),
         worker_instance_id=agent.worker_instance_id,
         is_running=agent_is_running,
         total_pnl=agent.total_pnl,

@@ -34,7 +34,7 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Callable, Dict, Optional, Tuple
 
@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CachedPrice:
     """Cached price entry with metadata."""
+
     price: float
     timestamp: float  # monotonic time for TTL checks
     exchange: str
@@ -108,6 +109,7 @@ class SharedPriceCache:
         if self._redis is None and self._enable_l2:
             try:
                 from .redis_service import get_redis_service
+
                 self._redis = await get_redis_service()
             except Exception as e:
                 logger.warning(f"Redis unavailable, using L1 cache only: {e}")
@@ -126,7 +128,9 @@ class SharedPriceCache:
         self,
         exchange: str,
         symbol: str,
-        fetcher: Optional[Callable[[], Tuple[float, Optional[float], Optional[float]]]] = None,
+        fetcher: Optional[
+            Callable[[], Tuple[float, Optional[float], Optional[float]]]
+        ] = None,
     ) -> Optional[float]:
         """
         Get cached price, optionally fetching if not cached.
@@ -218,12 +222,15 @@ class SharedPriceCache:
 
         # Update L2
         if self._enable_l2:
-            await self._set_in_l2(key, {
-                "price": price,
-                "bid": bid,
-                "ask": ask,
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            await self._set_in_l2(
+                key,
+                {
+                    "price": price,
+                    "bid": bid,
+                    "ask": ask,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
 
         logger.debug(f"Cached price for {exchange}:{symbol}: {price}")
 
@@ -231,7 +238,11 @@ class SharedPriceCache:
         self,
         exchange: str,
         symbols: list[str],
-        fetcher: Optional[Callable[[list[str]], Dict[str, Tuple[float, Optional[float], Optional[float]]]]] = None,
+        fetcher: Optional[
+            Callable[
+                [list[str]], Dict[str, Tuple[float, Optional[float], Optional[float]]]
+            ]
+        ] = None,
     ) -> Dict[str, float]:
         """
         Get prices for multiple symbols efficiently.
@@ -282,7 +293,8 @@ class SharedPriceCache:
 
         # Invalidate L1
         keys_to_remove = [
-            k for k in self._l1_cache
+            k
+            for k in self._l1_cache
             if symbol is None or k == prefix.replace("*", symbol.upper())
         ]
         for k in keys_to_remove:
@@ -375,7 +387,9 @@ class SharedPriceCache:
             result = await fetcher()
 
             if result is not None:
-                price, bid, ask = result if len(result) == 3 else (result[0], None, None)
+                price, bid, ask = (
+                    result if len(result) == 3 else (result[0], None, None)
+                )
                 await self.set_price(exchange, symbol, price, bid, ask)
                 future.set_result(price)
                 return price

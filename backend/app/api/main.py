@@ -19,14 +19,31 @@ from ..db.database import close_db, init_db
 from ..db.seed import seed_admin_user
 from ..services.redis_service import close_redis, get_redis_service
 from ..traders.exchange_pool import ExchangePool
-from .routes import accounts, agents, analytics, auth, backtest, brand, crypto, dashboard, data, decisions, metrics, models, notifications, providers, strategies, system, workers, ws
+from .routes import (
+    accounts,
+    agents,
+    analytics,
+    auth,
+    backtest,
+    brand,
+    crypto,
+    dashboard,
+    data,
+    decisions,
+    metrics,
+    models,
+    notifications,
+    providers,
+    strategies,
+    system,
+    workers,
+    ws,
+)
 from .routes import channels, wallets, recharge, accounting
 from .routes.backtest import records_router as backtest_records_router
 from ..monitoring.middleware import setup_prometheus_middleware
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.sentry import init_sentry
-from ..workers.execution_worker import get_worker_manager
-from ..workers.quant_worker import get_quant_worker_manager
 from ..workers.unified_manager import get_unified_worker_manager
 
 
@@ -78,7 +95,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug: {settings.is_debug}")
     logger.info(f"Transport Encryption: {settings.transport_encryption_enabled}")
-    
+
     # Initialize Sentry for error tracking
     if init_sentry():
         logger.info("Sentry: Initialized for error tracking and performance monitoring")
@@ -120,6 +137,7 @@ async def lifespan(app: FastAPI):
     # Use non-blocking startup to allow healthcheck to pass quickly
     unified_worker_manager = None
     if settings.worker_enabled:
+
         async def start_workers_later():
             """Start workers in background after service is ready for healthcheck."""
             await asyncio.sleep(5)  # Wait for service to be ready
@@ -164,6 +182,7 @@ async def lifespan(app: FastAPI):
     if settings.worker_distributed:
         try:
             from ..workers.queue import close_task_queue
+
             await close_task_queue()
             logger.info("Task Queue: Closed")
         except Exception as e:
@@ -202,9 +221,13 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
         if not settings.is_debug:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
 
     # Prometheus metrics middleware (middle layer)
@@ -259,7 +282,9 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api", include_in_schema=False)
         app.include_router(decisions.router, prefix="/api", include_in_schema=False)
         app.include_router(backtest.router, prefix="/api", include_in_schema=False)
-        app.include_router(backtest_records_router, prefix="/api", include_in_schema=False)
+        app.include_router(
+            backtest_records_router, prefix="/api", include_in_schema=False
+        )
         app.include_router(dashboard.router, prefix="/api", include_in_schema=False)
         app.include_router(data.router, prefix="/api", include_in_schema=False)
         app.include_router(models.router, prefix="/api", include_in_schema=False)

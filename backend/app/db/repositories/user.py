@@ -57,9 +57,7 @@ class UserRepository:
 
     async def get_by_id(self, user_id: uuid.UUID) -> Optional[UserDB]:
         """Get user by ID"""
-        result = await self.session.execute(
-            select(UserDB).where(UserDB.id == user_id)
-        )
+        result = await self.session.execute(select(UserDB).where(UserDB.id == user_id))
         return result.scalar_one_or_none()
 
     async def get_by_email(self, email: str) -> Optional[UserDB]:
@@ -92,11 +90,7 @@ class UserRepository:
             return None
         return user
 
-    async def update(
-        self,
-        user_id: uuid.UUID,
-        **kwargs
-    ) -> Optional[UserDB]:
+    async def update(self, user_id: uuid.UUID, **kwargs) -> Optional[UserDB]:
         """
         Update user fields.
 
@@ -115,11 +109,7 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def change_password(
-        self,
-        user_id: uuid.UUID,
-        new_password: str
-    ) -> bool:
+    async def change_password(self, user_id: uuid.UUID, new_password: str) -> bool:
         """Change user password"""
         user = await self.get_by_id(user_id)
         if not user:

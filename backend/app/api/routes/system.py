@@ -15,6 +15,7 @@ router = APIRouter(prefix="/system", tags=["System"])
 
 class OutboundIPResponse(BaseModel):
     """Server outbound IP address response."""
+
     ip: str | None = None
     source: str = "unknown"
     cached: bool = False

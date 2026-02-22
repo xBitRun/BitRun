@@ -21,7 +21,7 @@ from arq.jobs import Job
 
 from ..core.config import get_settings
 from ..db.database import AsyncSessionLocal
-from ..db.models import DecisionRecordDB, ExchangeAccountDB, StrategyDB, AgentDB
+from ..db.models import AgentDB
 from ..db.repositories.account import AccountRepository
 from ..db.repositories.agent import AgentRepository
 from ..db.repositories.strategy import StrategyRepository
@@ -34,13 +34,14 @@ from ..services.worker_heartbeat import (
     clear_all_heartbeats_for_active_agents,
     is_agent_running,
 )
-from ..traders.base import BaseTrader, TradeError
-from ..traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
+from ..traders.base import TradeError
+from ..traders.ccxt_trader import create_trader_from_account
 
 logger = logging.getLogger(__name__)
 
 
 # ==================== Mock State Restoration ====================
+
 
 async def _restore_mock_trader_state(
     session,
@@ -64,23 +65,17 @@ async def _restore_mock_trader_state(
     from ..db.models import AgentPositionDB
 
     # Load open positions
-    open_stmt = (
-        select(AgentPositionDB)
-        .where(
-            AgentPositionDB.agent_id == agent_id,
-            AgentPositionDB.status == "open",
-        )
+    open_stmt = select(AgentPositionDB).where(
+        AgentPositionDB.agent_id == agent_id,
+        AgentPositionDB.status == "open",
     )
     open_result = await session.execute(open_stmt)
     open_positions = open_result.scalars().all()
 
     # Calculate realized PnL from closed positions to reconstruct balance
-    pnl_stmt = (
-        select(func.coalesce(func.sum(AgentPositionDB.realized_pnl), 0.0))
-        .where(
-            AgentPositionDB.agent_id == agent_id,
-            AgentPositionDB.status == "closed",
-        )
+    pnl_stmt = select(func.coalesce(func.sum(AgentPositionDB.realized_pnl), 0.0)).where(
+        AgentPositionDB.agent_id == agent_id,
+        AgentPositionDB.status == "closed",
     )
     pnl_result = await session.execute(pnl_stmt)
     total_realized_pnl = float(pnl_result.scalar_one())
@@ -91,14 +86,16 @@ async def _restore_mock_trader_state(
     # Build position data for restoration
     positions_data = []
     for pos in open_positions:
-        positions_data.append({
-            "symbol": pos.symbol,
-            "side": pos.side,
-            "size": pos.size,
-            "entry_price": pos.entry_price,
-            "leverage": pos.leverage,
-            "opened_at": pos.opened_at,
-        })
+        positions_data.append(
+            {
+                "symbol": pos.symbol,
+                "side": pos.side,
+                "size": pos.size,
+                "entry_price": pos.entry_price,
+                "leverage": pos.leverage,
+                "opened_at": pos.opened_at,
+            }
+        )
 
     if positions_data or total_realized_pnl != 0.0:
         trader.restore_state(
@@ -140,9 +137,13 @@ async def create_mock_trader(
     if symbols is None:
         # For quant strategies, agent.symbol is a single string
         # For AI strategies, agent.strategy.symbols is a list
-        if hasattr(agent, 'symbol') and agent.symbol:
+        if hasattr(agent, "symbol") and agent.symbol:
             symbols = [agent.symbol]
-        elif hasattr(agent, 'strategy') and agent.strategy and hasattr(agent.strategy, 'symbols'):
+        elif (
+            hasattr(agent, "strategy")
+            and agent.strategy
+            and hasattr(agent.strategy, "symbols")
+        ):
             symbols = agent.strategy.symbols or ["BTC"]
         else:
             symbols = ["BTC"]
@@ -178,6 +179,7 @@ async def create_mock_trader(
 
 # ==================== Task Definitions ====================
 
+
 async def execute_strategy_cycle(
     ctx: dict,
     strategy_id: str,
@@ -200,7 +202,7 @@ async def execute_strategy_cycle(
         Dict with execution results
     """
     logger.info(f"Starting strategy cycle for {strategy_id}")
-    
+
     result = {
         "strategy_id": strategy_id,
         "success": False,
@@ -209,7 +211,7 @@ async def execute_strategy_cycle(
         "latency_ms": 0,
         "executed_at": datetime.now(UTC).isoformat(),
     }
-    
+
     trader = None
 
     # ── Strategy-level execution lock ──
@@ -239,7 +241,7 @@ async def execute_strategy_cycle(
             # Get strategy from database
             strategy_repo = StrategyRepository(session)
             account_repo = AccountRepository(session)
-            
+
             strategy = await strategy_repo.get_by_id(uuid.UUID(strategy_id))
 
             if not strategy:
@@ -274,7 +276,9 @@ async def execute_strategy_cycle(
             # ── Determine execution mode and create trader ──
             if agent and agent.execution_mode == "mock":
                 # Mock mode: use MockTrader
-                trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                trader, error = await create_mock_trader(
+                    agent, session, symbols=strategy.symbols
+                )
                 if error:
                     result["error"] = error
                     return result
@@ -283,12 +287,17 @@ async def execute_strategy_cycle(
                 # Live mode: use CCXTTrader with exchange credentials
                 account_id = agent.account_id if agent else strategy.account_id
                 if not account_id:
-                    result["error"] = f"Strategy {strategy_id} has no account configured"
+                    result["error"] = (
+                        f"Strategy {strategy_id} has no account configured"
+                    )
                     logger.error(result["error"])
                     if agent:
                         from ..db.repositories.agent import AgentRepository
+
                         agent_repo = AgentRepository(session)
-                        await agent_repo.update_status(agent.id, "error", result["error"])
+                        await agent_repo.update_status(
+                            agent.id, "error", result["error"]
+                        )
                         await session.commit()
                     return result
 
@@ -303,7 +312,9 @@ async def execute_strategy_cycle(
                     account_id, user_id
                 )
                 if not credentials:
-                    result["error"] = f"Failed to get credentials for strategy {strategy_id}"
+                    result["error"] = (
+                        f"Failed to get credentials for strategy {strategy_id}"
+                    )
                     logger.error(result["error"])
                     return result
 
@@ -316,14 +327,16 @@ async def execute_strategy_cycle(
                     logger.error(result["error"])
                     if agent:
                         from ..db.repositories.agent import AgentRepository
+
                         agent_repo = AgentRepository(session)
                         await agent_repo.update_status(agent.id, "error", error_msg)
                         await session.commit()
                     return result
-            
+
             # Create agent position service
             from ..services.redis_service import get_redis_service
             from ..services.agent_position_service import AgentPositionService
+
             try:
                 redis_service = await get_redis_service()
             except Exception:
@@ -339,16 +352,16 @@ async def execute_strategy_cycle(
                 db_session=session,
                 position_service=position_service,
             )
-            
+
             cycle_result = await engine.run_cycle()
-            
+
             # Get interval from agent or strategy config
             if agent:
                 interval_minutes = agent.execution_interval_minutes or 30
             else:
                 config = strategy.config or {}
                 interval_minutes = config.get("execution_interval_minutes", 30)
-            
+
             # Update strategy timestamps
             await strategy_repo.update(
                 strategy.id,
@@ -357,7 +370,7 @@ async def execute_strategy_cycle(
                 next_run_at=datetime.now(UTC) + timedelta(minutes=interval_minutes),
             )
             await session.commit()
-            
+
             # Schedule next execution
             redis: ArqRedis = ctx["redis"]
             await redis.enqueue_job(
@@ -366,18 +379,18 @@ async def execute_strategy_cycle(
                 _defer_by=timedelta(minutes=interval_minutes),
                 _job_id=f"strategy:{strategy_id}",  # Unique job ID prevents duplicates
             )
-            
+
             result["success"] = cycle_result.get("success", False)
             result["tokens_used"] = cycle_result.get("tokens_used", 0)
             result["latency_ms"] = cycle_result.get("latency_ms", 0)
-            
+
             logger.info(
                 f"Strategy {strategy_id} cycle completed: "
                 f"success={result['success']}, "
                 f"tokens={result['tokens_used']}, "
                 f"latency={result['latency_ms']}ms"
             )
-            
+
     except Exception as e:
         result["error"] = str(e)
         logger.exception(f"Error executing strategy {strategy_id}: {e}")
@@ -404,15 +417,15 @@ async def execute_strategy_cycle(
                     if job_try >= settings.worker_max_consecutive_errors:
                         agent_repo = AgentRepository(session)
                         await agent_repo.update_status(
-                            agent.id,
-                            "error",
-                            f"Too many errors: {str(e)}"
+                            agent.id, "error", f"Too many errors: {str(e)}"
                         )
                         await session.commit()
                         logger.error(f"Agent {agent.id} paused due to repeated errors")
-        except Exception as update_error:
-            logger.exception("Failed to update agent status after strategy execution error")
-    
+        except Exception:
+            logger.exception(
+                "Failed to update agent status after strategy execution error"
+            )
+
     finally:
         # Clean up trader connection
         if trader:
@@ -426,7 +439,7 @@ async def execute_strategy_cycle(
             await redis.delete(lock_key)
         except Exception:
             pass  # Lock will expire via TTL
-    
+
     return result
 
 
@@ -447,16 +460,16 @@ async def start_strategy_execution(
         Dict with status
     """
     logger.info(f"Starting execution for strategy {strategy_id}")
-    
+
     redis: ArqRedis = ctx["redis"]
-    
+
     # Schedule immediate execution
     job = await redis.enqueue_job(
         "execute_strategy_cycle",
         strategy_id,
         _job_id=f"strategy:{strategy_id}",
     )
-    
+
     return {
         "strategy_id": strategy_id,
         "status": "scheduled",
@@ -481,19 +494,19 @@ async def stop_strategy_execution(
         Dict with status
     """
     logger.info(f"Stopping execution for strategy {strategy_id}")
-    
+
     redis: ArqRedis = ctx["redis"]
-    
+
     # Try to abort the pending job
     job_id = f"strategy:{strategy_id}"
     job = Job(job_id, redis)
-    
+
     try:
         await job.abort()
         logger.info(f"Aborted job for strategy {strategy_id}")
     except Exception as e:
         logger.warning(f"Could not abort job for strategy {strategy_id}: {e}")
-    
+
     return {
         "strategy_id": strategy_id,
         "status": "stopped",
@@ -501,6 +514,7 @@ async def stop_strategy_execution(
 
 
 # ==================== Agent-Based Tasks (v2) ====================
+
 
 async def execute_agent_cycle(
     ctx: dict,
@@ -572,7 +586,9 @@ async def execute_agent_cycle(
                 return result
 
             if agent.status != "active":
-                result["error"] = f"Agent {agent_id} is not active (status={agent.status})"
+                result["error"] = (
+                    f"Agent {agent_id} is not active (status={agent.status})"
+                )
                 logger.info(result["error"])
                 return result
 
@@ -590,10 +606,14 @@ async def execute_agent_cycle(
             agent_repo = AgentRepository(session)
 
             if agent.execution_mode == "mock":
-                trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+                trader, error = await create_mock_trader(
+                    agent, session, symbols=strategy.symbols
+                )
                 if error:
                     result["error"] = error
-                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error}")
+                    await agent_repo.update_status(
+                        agent.id, "error", f"Worker startup failed: {error}"
+                    )
                     await session.commit()
                     return result
             else:
@@ -601,7 +621,9 @@ async def execute_agent_cycle(
                 if not agent.account_id:
                     error_msg = "No exchange account configured"
                     result["error"] = error_msg
-                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await agent_repo.update_status(
+                        agent.id, "error", f"Worker startup failed: {error_msg}"
+                    )
                     await session.commit()
                     return result
 
@@ -609,7 +631,9 @@ async def execute_agent_cycle(
                 if not account:
                     error_msg = "Exchange account not found"
                     result["error"] = error_msg
-                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await agent_repo.update_status(
+                        agent.id, "error", f"Worker startup failed: {error_msg}"
+                    )
                     await session.commit()
                     return result
 
@@ -619,7 +643,9 @@ async def execute_agent_cycle(
                 if not credentials:
                     error_msg = "Invalid API credentials"
                     result["error"] = error_msg
-                    await agent_repo.update_status(agent.id, "error", f"Worker startup failed: {error_msg}")
+                    await agent_repo.update_status(
+                        agent.id, "error", f"Worker startup failed: {error_msg}"
+                    )
                     await session.commit()
                     return result
 
@@ -630,13 +656,16 @@ async def execute_agent_cycle(
                     error_msg = str(e) if isinstance(e, ValueError) else e.message
                     result["error"] = f"Trader initialization failed: {error_msg}"
                     logger.error(result["error"])
-                    await agent_repo.update_status(agent.id, "error", f"Trader initialization failed: {error_msg}")
+                    await agent_repo.update_status(
+                        agent.id, "error", f"Trader initialization failed: {error_msg}"
+                    )
                     await session.commit()
                     return result
 
             # Create position service
             from ..services.redis_service import get_redis_service
             from ..services.agent_position_service import AgentPositionService
+
             try:
                 redis_service = await get_redis_service()
             except Exception:
@@ -701,11 +730,13 @@ async def execute_agent_cycle(
                         await agent_repo.update_status(
                             agent.id,
                             "error",
-                            f"Execution failed after {job_try} retries: {str(e)}"
+                            f"Execution failed after {job_try} retries: {str(e)}",
                         )
                         await session.commit()
-                        logger.error(f"Agent {agent.id} marked as error due to repeated failures")
-        except Exception as update_error:
+                        logger.error(
+                            f"Agent {agent.id} marked as error due to repeated failures"
+                        )
+        except Exception:
             logger.exception("Failed to update agent status after execution error")
 
     finally:
@@ -915,8 +946,10 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
                             _job_id=job_id,
                         )
                         started += 1
-                        logger.info(f"Scheduled agent job for {agent_id} with delay {delay}")
-                    except Exception as e:
+                        logger.info(
+                            f"Scheduled agent job for {agent_id} with delay {delay}"
+                        )
+                    except Exception:
                         errors += 1
                         logger.exception(f"Failed to schedule job for agent {agent_id}")
                 else:
@@ -936,6 +969,7 @@ async def sync_active_strategies(ctx: dict) -> dict[str, Any]:
 
 
 # ==================== Position Reconciliation ====================
+
 
 async def create_daily_snapshots(ctx: dict) -> dict[str, Any]:
     """
@@ -966,7 +1000,7 @@ async def create_daily_snapshots(ctx: dict) -> dict[str, Any]:
 
             # Get all connected accounts
             accounts_stmt = select(ExchangeAccountDB).where(
-                ExchangeAccountDB.is_connected == True
+                ExchangeAccountDB.is_connected
             )
             accounts_result = await session.execute(accounts_stmt)
             accounts = accounts_result.scalars().all()
@@ -1023,8 +1057,10 @@ async def create_daily_snapshots(ctx: dict) -> dict[str, Any]:
                                 except Exception:
                                     pass
 
-                except Exception as e:
-                    logger.exception(f"Error creating snapshot for account {account.id}")
+                except Exception:
+                    logger.exception(
+                        f"Error creating snapshot for account {account.id}"
+                    )
                     result["errors"] += 1
 
             # Get all active agents
@@ -1090,9 +1126,8 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
             from ..services.agent_position_service import AgentPositionService
 
             # Find all accounts that have open/pending agent positions
-            stmt = (
-                select(distinct(AgentPositionDB.account_id))
-                .where(AgentPositionDB.status.in_(["open", "pending"]))
+            stmt = select(distinct(AgentPositionDB.account_id)).where(
+                AgentPositionDB.status.in_(["open", "pending"])
             )
             result = await session.execute(stmt)
             account_ids = [row[0] for row in result.all()]
@@ -1103,11 +1138,14 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
 
             account_repo = AccountRepository(session)
             from ..services.redis_service import get_redis_service
+
             try:
                 redis_service = await get_redis_service()
             except Exception:
                 redis_service = None
-            agent_position_service = AgentPositionService(db=session, redis=redis_service)
+            agent_position_service = AgentPositionService(
+                db=session, redis=redis_service
+            )
 
             for account_id in account_ids:
                 trader = None
@@ -1140,7 +1178,7 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
                     total_summary["size_synced"] += summary["size_synced"]
                     total_summary["stale_cleaned"] += stale
 
-                except Exception as e:
+                except Exception:
                     logger.exception(f"Reconciliation error for account {account_id}")
                 finally:
                     if trader:
@@ -1161,16 +1199,17 @@ async def reconcile_positions(ctx: dict) -> dict[str, Any]:
 
 # ==================== Worker Startup/Shutdown ====================
 
+
 async def startup(ctx: dict) -> None:
     """Worker startup hook - runs when worker starts."""
     logger.info("ARQ Worker starting up...")
-    
+
     # Sync active strategies on startup
     await sync_active_strategies(ctx)
 
     # Run position reconciliation on startup
     await reconcile_positions(ctx)
-    
+
     logger.info("ARQ Worker startup complete")
 
 
@@ -1180,6 +1219,7 @@ async def shutdown(ctx: dict) -> None:
 
 
 # ==================== Worker Settings ====================
+
 
 def get_worker_settings() -> dict:
     """
@@ -1263,14 +1303,14 @@ class WorkerSettings:
 
     on_startup = startup
     on_shutdown = shutdown
-    
+
     max_jobs = 10
     job_timeout = 300
     max_tries = 3
     retry_delay = 60
     health_check_interval = 30
     queue_name = "bitrun:tasks"
-    
+
     @staticmethod
     def redis_settings():
         settings = get_settings()

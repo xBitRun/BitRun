@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
 from ...db.repositories.account import AccountRepository
@@ -16,7 +16,6 @@ from ...traders import create_trader_from_account
 from ...core.errors import (
     exchange_api_error,
     exchange_connection_error,
-    sanitize_error_message,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,8 +25,10 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 # ==================== Response Models ====================
 
+
 class TradeRecord(BaseModel):
     """A single trade record with P&L"""
+
     id: str
     symbol: str
     side: str
@@ -46,6 +47,7 @@ class TradeRecord(BaseModel):
 
 class AgentPnLSummary(BaseModel):
     """P&L summary for an agent"""
+
     total_pnl: float
     total_trades: int
     winning_trades: int
@@ -59,6 +61,7 @@ class AgentPnLSummary(BaseModel):
 
 class AgentPnLResponse(BaseModel):
     """Agent P&L detail response"""
+
     agent_id: str
     agent_name: str
     summary: AgentPnLSummary
@@ -70,6 +73,7 @@ class AgentPnLResponse(BaseModel):
 
 class AgentPerformance(BaseModel):
     """Performance metrics for an agent"""
+
     agent_id: str
     agent_name: str
     strategy_name: str
@@ -87,6 +91,7 @@ class AgentPerformance(BaseModel):
 
 class AccountAgentsResponse(BaseModel):
     """Agents performance for an account"""
+
     account_id: str
     agents: list[AgentPerformance]
     total: int
@@ -94,6 +99,7 @@ class AccountAgentsResponse(BaseModel):
 
 class AccountPnLSummary(BaseModel):
     """P&L summary for an account"""
+
     account_id: str
     account_name: str
     exchange: str
@@ -115,6 +121,7 @@ class AccountPnLSummary(BaseModel):
 
 class EquityDataPoint(BaseModel):
     """Single data point in equity curve"""
+
     date: str
     equity: float
     daily_pnl: float
@@ -125,6 +132,7 @@ class EquityDataPoint(BaseModel):
 
 class EquityCurveResponse(BaseModel):
     """Equity curve response"""
+
     account_id: str
     start_date: str
     end_date: str
@@ -133,6 +141,7 @@ class EquityCurveResponse(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.get("/agents/{agent_id}/pnl", response_model=AgentPnLResponse)
 async def get_agent_pnl(
@@ -169,14 +178,14 @@ async def get_agent_pnl(
     # Get agent name
     from sqlalchemy import select
     from ...db.models import AgentDB
+
     stmt = select(AgentDB).where(AgentDB.id == agent_uuid)
     result = await db.execute(stmt)
     agent = result.scalars().first()
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent {agent_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
         )
 
     # Transform trades to response format
@@ -239,7 +248,9 @@ async def get_account_equity_curve(
     user_id: CurrentUserDep,
     start_date: Optional[date] = Query(None, description="Start date"),
     end_date: Optional[date] = Query(None, description="End date"),
-    granularity: str = Query("day", pattern="^(day|week|month)$", description="Data granularity"),
+    granularity: str = Query(
+        "day", pattern="^(day|week|month)$", description="Data granularity"
+    ),
 ):
     """
     Get equity curve data for an account.
@@ -296,7 +307,7 @@ async def get_account_pnl(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Account {account_id} not found"
+            detail=f"Account {account_id} not found",
         )
 
     # Get P&L for different periods
@@ -332,6 +343,7 @@ async def get_account_pnl(
 
 class SyncSnapshotResponse(BaseModel):
     """Response for sync snapshot operation"""
+
     success: bool
     message: str
     equity: Optional[float] = None
@@ -360,13 +372,13 @@ async def sync_account_snapshot(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Account {account_id} not found"
+            detail=f"Account {account_id} not found",
         )
 
     if not account.is_connected:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account is not connected. Please test connection first."
+            detail="Account is not connected. Please test connection first.",
         )
 
     # Get decrypted credentials
@@ -374,7 +386,7 @@ async def sync_account_snapshot(
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to decrypt account credentials"
+            detail="Failed to decrypt account credentials",
         )
 
     trader = None
@@ -420,17 +432,19 @@ async def sync_account_snapshot(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     except TradeError as e:
-        logger.warning(f"Exchange error syncing snapshot for account {account_id}: {e.message}")
+        logger.warning(
+            f"Exchange error syncing snapshot for account {account_id}: {e.message}"
+        )
         raise exchange_api_error(e, operation="sync snapshot")
 
     except Exception as e:
-        logger.error(f"Unexpected error syncing snapshot for account {account_id}: {e}", exc_info=True)
+        logger.error(
+            f"Unexpected error syncing snapshot for account {account_id}: {e}",
+            exc_info=True,
+        )
         raise exchange_connection_error(e, exchange=account.exchange)
 
     finally:

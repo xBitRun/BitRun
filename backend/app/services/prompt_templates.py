@@ -7,7 +7,6 @@ Supported languages: English (en), Chinese (zh).
 
 from typing import Any
 
-
 # ==================== System Prompt Templates ====================
 
 SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
@@ -19,7 +18,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "and make data-driven decisions.\n"
             "You have deep expertise in technical analysis, risk management, and market psychology."
         ),
-
         # Section 2: Trading mode descriptions
         "trading_mode": {
             "aggressive": (
@@ -47,7 +45,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
                 "- Target: Steady growth with controlled drawdowns"
             ),
         },
-
         # Section 2: Priority rules
         "priority_rules": (
             "\n\nPRIORITY RULES (MUST follow):\n"
@@ -56,7 +53,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "All decisions must align with this mode.\n"
             "- Custom instructions should add detail, not contradict the mode or risk framework."
         ),
-
         # Section 3: Hard constraints
         "hard_constraints_header": "## Hard Constraints (Enforced by System)",
         "hard_constraints_desc": "These limits are enforced by the execution engine. DO NOT exceed them:",
@@ -74,19 +70,17 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "IMPORTANT - Position Sizing with Leverage:\n"
             "- `position_size_usd` is the NOTIONAL value (total position value), NOT the margin.\n"
             "- Margin = position_size_usd / leverage.\n"
-            "- The \"Maximum Margin Per Position\" constraint limits the margin, not the notional value.\n"
+            '- The "Maximum Margin Per Position" constraint limits the margin, not the notional value.\n'
             "- Example: With $200 equity, 20% max margin ratio, and 20x leverage:\n"
             "  margin cap = $200 × 20% = $40, so position_size_usd can be up to $40 × 20 = $800.\n"
             "- Set position_size_usd = desired_margin × leverage to fully utilise the allowed margin."
         ),
-
         # Section 4: Default trading frequency
         "default_trading_frequency": (
             "Analyze market conditions carefully before making decisions.\n"
             "Only trade when high-probability setups appear. Quality over quantity.\n"
             "Avoid overtrading - patience is a virtue in trading."
         ),
-
         # Section 5: Default entry standards
         "default_entry_standards": (
             "Enter positions only when:\n"
@@ -95,7 +89,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "- Market structure supports the trade thesis\n"
             "- Position sizing respects risk limits"
         ),
-
         # Section 6: Default decision process
         "default_decision_process": (
             "Follow this decision process:\n"
@@ -108,7 +101,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "7. Set stop loss and take profit levels\n"
             "8. Make final decision with confidence score"
         ),
-
         # Section 7: Output format
         "output_format_header": "## Output Format",
         "output_format_intro": "You MUST respond with valid JSON matching this schema:",
@@ -125,14 +117,12 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "Use ATR-based levels or key support/resistance levels. The system will auto-fill defaults if omitted, "
             "but explicit values based on your analysis are strongly preferred.",
         ],
-
         # Section 8: Additional instructions
         "additional_instructions_header": "## Additional Instructions",
         "additional_instructions_note": (
             "(These instructions supplement but do NOT override "
             "the Trading Mode or Hard Constraints above)"
         ),
-
         # Section headers
         "section_role": "## Role Definition",
         "section_trading_mode": "## Trading Mode",
@@ -140,7 +130,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
         "section_entry": "## Entry Standards",
         "section_process": "## Decision Process",
     },
-
     "zh": {
         # Section 1: Default role definition
         "default_role": (
@@ -148,7 +137,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "你的职责是分析市场状况、识别交易机会，并做出基于数据的决策。\n"
             "你在技术分析、风险管理和市场心理学方面拥有深厚的专业知识。"
         ),
-
         # Section 2: Trading mode descriptions
         "trading_mode": {
             "aggressive": (
@@ -176,7 +164,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
                 "- 目标：稳定增长，控制回撤"
             ),
         },
-
         # Section 2: Priority rules
         "priority_rules": (
             "\n\n优先级规则（必须遵守）：\n"
@@ -184,7 +171,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "- 交易模式（本节）定义了你的风险偏好框架，所有决策必须符合该模式。\n"
             "- 自定义指令应补充细节，而非与模式或风控框架相矛盾。"
         ),
-
         # Section 3: Hard constraints
         "hard_constraints_header": "## 硬性约束（系统强制执行）",
         "hard_constraints_desc": "以下限制由执行引擎强制执行，请勿超出：",
@@ -207,14 +193,12 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "  保证金上限 = $200 × 20% = $40，因此 position_size_usd 最高可设为 $40 × 20 = $800。\n"
             "- 设置 position_size_usd = 期望保证金 × 杠杆倍数，以充分利用允许的保证金额度。"
         ),
-
         # Section 4: Default trading frequency
         "default_trading_frequency": (
             "在做出决策前仔细分析市场状况。\n"
             "只在高概率机会出现时交易，质量优于数量。\n"
             "避免过度交易——耐心是交易中的美德。"
         ),
-
         # Section 5: Default entry standards
         "default_entry_standards": (
             "仅在以下条件满足时开仓：\n"
@@ -223,7 +207,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "- 市场结构支持交易逻辑\n"
             "- 仓位大小符合风控限制"
         ),
-
         # Section 6: Default decision process
         "default_decision_process": (
             "遵循以下决策流程：\n"
@@ -236,7 +219,6 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "7. 设置止损和止盈水平\n"
             "8. 做出最终决策并给出置信度评分"
         ),
-
         # Section 7: Output format
         "output_format_header": "## 输出格式",
         "output_format_intro": "你必须以有效的 JSON 格式回复，匹配以下 schema：",
@@ -253,13 +235,11 @@ SYSTEM_TEMPLATES: dict[str, dict[str, Any]] = {
             "重要：对于 open_long 和 open_short 操作，必须同时提供 stop_loss 和 take_profit 价格。"
             "请基于 ATR 波幅或关键支撑/阻力位设定。如果未提供，系统会自动填充默认值，但基于你分析的显式值更佳。",
         ],
-
         # Section 8: Additional instructions
         "additional_instructions_header": "## 附加指令",
         "additional_instructions_note": (
             "（以下指令作为补充，不会覆盖上方的交易模式或硬性约束）"
         ),
-
         # Section headers
         "section_role": "## 角色定义",
         "section_trading_mode": "## 交易模式",
@@ -276,7 +256,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
     "en": {
         # Header
         "header_title": "# Trading Analysis Request",
-
         # Account section
         "account_status": "## Account Status",
         "total_equity": "Total Equity",
@@ -284,7 +263,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "total_margin_used": "Total Margin Used",
         "unrealized_pnl": "Unrealized P/L",
         "open_positions": "Open Positions",
-
         # Positions section
         "current_positions": "## Current Positions",
         "no_positions": "No open positions.",
@@ -294,7 +272,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "pos_leverage": "Leverage",
         "pos_pnl": "Unrealized P/L",
         "pos_liquidation": "Liquidation",
-
         # Market data section
         "market_data": "## Market Data",
         "market_analysis": "## Market Analysis",
@@ -306,21 +283,17 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "current_price": "Current Price",
         "volume_24h": "24h Volume",
         "avg_funding_24h": "Avg Funding (24h)",
-
         # Funding signals
         "bullish_bias": "bullish bias",
         "bearish_bias": "bearish bias",
         "neutral": "neutral",
-
         # Technical indicators
         "timeframe_analysis": "Timeframe Analysis",
         "recent_candles": "Recent Candles",
         "no_indicators": "No indicators available",
         "no_kline_data": "No K-line data available",
-
         # Recent trades
         "recent_trades": "## Recent Closed Trades (Last 10)",
-
         # Task section (basic)
         "task_basic": (
             "## Your Task\n"
@@ -332,7 +305,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
             "5. Output your analysis and decisions in the required JSON format\n\n"
             'Remember: Only trade when confident. "hold" or "wait" is a valid decision.'
         ),
-
         # Task section (enhanced with context)
         "task_enhanced": (
             "## Your Task\n"
@@ -347,11 +319,9 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
             "Use the technical indicators to confirm your analysis before making a decision."
         ),
     },
-
     "zh": {
         # Header
         "header_title": "# 交易分析请求",
-
         # Account section
         "account_status": "## 账户状态",
         "total_equity": "总权益",
@@ -359,7 +329,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "total_margin_used": "已用保证金",
         "unrealized_pnl": "未实现盈亏",
         "open_positions": "持仓数量",
-
         # Positions section
         "current_positions": "## 当前持仓",
         "no_positions": "暂无持仓。",
@@ -369,7 +338,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "pos_leverage": "杠杆",
         "pos_pnl": "未实现盈亏",
         "pos_liquidation": "强平价",
-
         # Market data section
         "market_data": "## 市场数据",
         "market_analysis": "## 市场分析",
@@ -381,21 +349,17 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
         "current_price": "当前价格",
         "volume_24h": "24h 成交量",
         "avg_funding_24h": "24h 平均资金费率",
-
         # Funding signals
         "bullish_bias": "多头偏向",
         "bearish_bias": "空头偏向",
         "neutral": "中性",
-
         # Technical indicators
         "timeframe_analysis": "周期分析",
         "recent_candles": "近期 K 线",
         "no_indicators": "暂无指标数据",
         "no_kline_data": "暂无 K 线数据",
-
         # Recent trades
         "recent_trades": "## 近期平仓记录（最近 10 笔）",
-
         # Task section (basic)
         "task_basic": (
             "## 你的任务\n"
@@ -407,7 +371,6 @@ USER_TEMPLATES: dict[str, dict[str, Any]] = {
             "5. 以要求的 JSON 格式输出你的分析和决策\n\n"
             '请记住：只在有把握时交易。"hold"（持有）或 "wait"（等待）也是有效的决策。'
         ),
-
         # Task section (enhanced with context)
         "task_enhanced": (
             "## 你的任务\n"
@@ -454,6 +417,7 @@ SIGNAL_TRANSLATIONS: dict[str, dict[str, str]] = {
 
 
 # ==================== Helper ====================
+
 
 def get_system_templates(language: str = "en") -> dict[str, Any]:
     """Get system prompt templates for a given language."""

@@ -11,7 +11,6 @@ by the QuantExecutionWorker.
 """
 
 import logging
-import math
 import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -144,8 +143,7 @@ class QuantEngineBase(ABC):
                 )
             except PositionConflictError as e:
                 logger.warning(
-                    f"Quant {self.agent_id}: symbol conflict for "
-                    f"{self.symbol}: {e}"
+                    f"Quant {self.agent_id}: symbol conflict for " f"{self.symbol}: {e}"
                 )
                 return OrderResult(
                     success=False,
@@ -322,13 +320,17 @@ class GridEngine(QuantEngineBase):
             # Config safety checks
             if upper_price <= lower_price:
                 return {
-                    "success": False, "trades_executed": 0, "pnl_change": 0.0,
+                    "success": False,
+                    "trades_executed": 0,
+                    "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Error: upper_price must be > lower_price",
                 }
             if grid_count < 1:
                 return {
-                    "success": False, "trades_executed": 0, "pnl_change": 0.0,
+                    "success": False,
+                    "trades_executed": 0,
+                    "pnl_change": 0.0,
                     "updated_state": self.runtime_state,
                     "message": "Error: grid_count must be >= 1",
                 }
@@ -393,7 +395,11 @@ class GridEngine(QuantEngineBase):
                         logger.warning(f"Grid trade error at level {level}: {e}")
 
                 # Sell signal: price rose above this grid level + one step, and was bought
-                elif current_price >= level + grid_step and level_key in filled_buys and level_key not in filled_sells:
+                elif (
+                    current_price >= level + grid_step
+                    and level_key in filled_buys
+                    and level_key not in filled_sells
+                ):
                     try:
                         size_usd = amount_per_grid
                         close_result = await self._close_with_isolation()
@@ -541,7 +547,9 @@ class DCAEngine(QuantEngineBase):
             if last_order_time_str:
                 try:
                     last_order_time = datetime.fromisoformat(last_order_time_str)
-                    elapsed = (datetime.now(UTC) - last_order_time.replace(tzinfo=UTC)).total_seconds()
+                    elapsed = (
+                        datetime.now(UTC) - last_order_time.replace(tzinfo=UTC)
+                    ).total_seconds()
                     if elapsed < interval_minutes * 60:
                         self.runtime_state["last_check"] = datetime.now(UTC).isoformat()
                         return {
@@ -550,7 +558,7 @@ class DCAEngine(QuantEngineBase):
                             "pnl_change": 0.0,
                             "updated_state": self.runtime_state,
                             "message": f"Waiting for interval ({interval_minutes}min), "
-                                       f"elapsed={elapsed/60:.1f}min",
+                            f"elapsed={elapsed/60:.1f}min",
                         }
                 except (ValueError, TypeError):
                     pass  # Malformed timestamp, proceed with order
@@ -574,7 +582,11 @@ class DCAEngine(QuantEngineBase):
                 # Update running average
                 new_total_invested = total_invested + order_amount
                 new_total_quantity = total_quantity + quantity
-                new_avg_cost = new_total_invested / new_total_quantity if new_total_quantity > 0 else actual_price
+                new_avg_cost = (
+                    new_total_invested / new_total_quantity
+                    if new_total_quantity > 0
+                    else actual_price
+                )
 
                 self.runtime_state["orders_placed"] = orders_placed + 1
                 self.runtime_state["total_invested"] = new_total_invested
@@ -724,7 +736,9 @@ class RSIEngine(QuantEngineBase):
             elif rsi_value >= overbought and has_position:
                 try:
                     entry_price = self.runtime_state.get("entry_price", current_price)
-                    position_size = self.runtime_state.get("position_size_usd", order_amount)
+                    position_size = self.runtime_state.get(
+                        "position_size_usd", order_amount
+                    )
 
                     close_result = await self._close_with_isolation()
                     if close_result.success:
@@ -734,7 +748,9 @@ class RSIEngine(QuantEngineBase):
 
                         # Calculate P/L using actual fill prices
                         if entry_price > 0:
-                            pnl_change = position_size * ((actual_close - entry_price) / entry_price)
+                            pnl_change = position_size * (
+                                (actual_close - entry_price) / entry_price
+                            )
 
                         self.runtime_state["has_position"] = False
                         self.runtime_state["entry_price"] = 0.0

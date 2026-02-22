@@ -19,8 +19,10 @@ router = APIRouter(prefix="/decisions", tags=["Decisions"])
 
 # ==================== Response Models ====================
 
+
 class DecisionResponse(BaseModel):
     """Decision record response"""
+
     id: str
     agent_id: str
     timestamp: str
@@ -56,6 +58,7 @@ class DecisionResponse(BaseModel):
 
 class PaginatedDecisionResponse(BaseModel):
     """Paginated decision list response"""
+
     items: list[DecisionResponse]
     total: int
     limit: int
@@ -64,6 +67,7 @@ class PaginatedDecisionResponse(BaseModel):
 
 class DecisionStatsResponse(BaseModel):
     """Decision statistics response"""
+
     total_decisions: int
     executed_decisions: int
     average_confidence: float
@@ -73,6 +77,7 @@ class DecisionStatsResponse(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.get("/recent", response_model=list[DecisionResponse])
 async def get_recent_decisions(
@@ -108,8 +113,7 @@ async def get_agent_decisions(
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     repo = DecisionRepository(db)
@@ -122,7 +126,9 @@ async def get_agent_decisions(
         execution_filter=execution_filter,
         action_filter=action,
     )
-    total = await repo.count_by_agent(aid, execution_filter=execution_filter, action_filter=action)
+    total = await repo.count_by_agent(
+        aid, execution_filter=execution_filter, action_filter=action
+    )
 
     return PaginatedDecisionResponse(
         items=[_decision_to_response(d) for d in decisions],
@@ -143,8 +149,7 @@ async def get_agent_decision_stats(
     agent = await agent_repo.get_by_id(uuid.UUID(agent_id), uuid.UUID(user_id))
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found"
         )
 
     repo = DecisionRepository(db)
@@ -193,14 +198,14 @@ async def get_decision(
 
     if not decision:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Decision not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Decision not found"
         )
 
     return _decision_to_response(decision)
 
 
 # ==================== Helper Functions ====================
+
 
 def _decision_to_response(decision) -> DecisionResponse:
     """Convert decision DB model to response"""

@@ -43,7 +43,7 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that provides a database session.
-    
+
     Usage:
         @router.get("/items")
         async def get_items(db: AsyncSession = Depends(get_db)):
@@ -63,7 +63,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """
     Initialize database tables.
-    
+
     Note: In production, use Alembic migrations instead.
     This is mainly for development/testing.
     """
@@ -74,7 +74,7 @@ async def init_db() -> None:
 async def drop_db() -> None:
     """
     Drop all database tables.
-    
+
     WARNING: This will delete all data. Use with caution.
     Only for development/testing.
     """

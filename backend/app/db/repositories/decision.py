@@ -94,7 +94,13 @@ class DecisionRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    def _apply_filters(self, query, agent_id: uuid.UUID, execution_filter: str = "all", action_filter: Optional[str] = None):
+    def _apply_filters(
+        self,
+        query,
+        agent_id: uuid.UUID,
+        execution_filter: str = "all",
+        action_filter: Optional[str] = None,
+    ):
         """Apply common filters to a query."""
         query = query.where(DecisionRecordDB.agent_id == agent_id)
         if execution_filter == "executed":
@@ -106,7 +112,9 @@ class DecisionRepository:
             if action_filter not in VALID_ACTIONS:
                 return query.where(False)  # noqa: E712
             query = query.where(
-                cast(DecisionRecordDB.decisions, Text).contains(f'"action": "{action_filter}"')
+                cast(DecisionRecordDB.decisions, Text).contains(
+                    f'"action": "{action_filter}"'
+                )
             )
         return query
 
@@ -200,7 +208,7 @@ class DecisionRepository:
         executed_result = await self.session.execute(
             select(func.count(DecisionRecordDB.id)).where(
                 DecisionRecordDB.agent_id == agent_id,
-                DecisionRecordDB.executed == True  # noqa: E712
+                DecisionRecordDB.executed == True,  # noqa: E712
             )
         )
         executed = executed_result.scalar() or 0
@@ -233,8 +241,10 @@ class DecisionRepository:
         )
         action_counts: dict[str, int] = {}
         async for (decisions_list,) in decisions_result:
-            for d in (decisions_list or []):
-                action = d.get("action", "unknown") if isinstance(d, dict) else "unknown"
+            for d in decisions_list or []:
+                action = (
+                    d.get("action", "unknown") if isinstance(d, dict) else "unknown"
+                )
                 action_counts[action] = action_counts.get(action, 0) + 1
 
         return {
@@ -264,12 +274,8 @@ class DecisionRepository:
         if not keep_ids:
             return 0
 
-        delete_query = (
-            select(DecisionRecordDB)
-            .where(
-                DecisionRecordDB.agent_id == agent_id,
-                DecisionRecordDB.id.not_in(keep_ids)
-            )
+        delete_query = select(DecisionRecordDB).where(
+            DecisionRecordDB.agent_id == agent_id, DecisionRecordDB.id.not_in(keep_ids)
         )
         delete_result = await self.session.execute(delete_query)
         records_to_delete = list(delete_result.scalars().all())

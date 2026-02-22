@@ -27,8 +27,10 @@ logger = logging.getLogger(__name__)
 
 # ==================== Request/Response Models ====================
 
+
 class CacheStats(BaseModel):
     """Cache statistics"""
+
     kline_entries: int
     price_entries: int
     symbol_entries: int
@@ -37,7 +39,10 @@ class CacheStats(BaseModel):
 
 class PreloadRequest(BaseModel):
     """Request to preload backtest data"""
-    symbols: list[str] = Field(..., description="List of symbols to preload (e.g., ['BTC/USDT', 'ETH/USDT'])")
+
+    symbols: list[str] = Field(
+        ..., description="List of symbols to preload (e.g., ['BTC/USDT', 'ETH/USDT'])"
+    )
     start_date: str = Field(..., description="Start date (YYYY-MM-DD)")
     end_date: str = Field(..., description="End date (YYYY-MM-DD)")
     timeframe: str = Field(default="1h", description="Candle timeframe")
@@ -46,6 +51,7 @@ class PreloadRequest(BaseModel):
 
 class PreloadResponse(BaseModel):
     """Preload result"""
+
     symbols_requested: int
     symbols_cached: int
     symbols_fetched: int
@@ -54,18 +60,23 @@ class PreloadResponse(BaseModel):
 
 class InvalidateCacheRequest(BaseModel):
     """Request to invalidate cache"""
+
     symbol: Optional[str] = Field(None, description="Specific symbol (None = all)")
     exchange: Optional[str] = Field(None, description="Specific exchange (None = all)")
 
 
 class SymbolItem(BaseModel):
     """Single symbol with base and full format"""
+
     symbol: str = Field(..., description="Base symbol (e.g., 'BTC')")
-    full_symbol: str = Field(..., description="Full CCXT symbol (e.g., 'BTC/USDT:USDT')")
+    full_symbol: str = Field(
+        ..., description="Full CCXT symbol (e.g., 'BTC/USDT:USDT')"
+    )
 
 
 class SymbolsResponse(BaseModel):
     """Response for symbols endpoint"""
+
     exchange: str = Field(..., description="Exchange name")
     asset_type: Optional[str] = Field(None, description="Asset type filter applied")
     symbols: list[SymbolItem] = Field(..., description="List of available symbols")
@@ -74,19 +85,26 @@ class SymbolsResponse(BaseModel):
 
 class ExchangeCapabilitiesResponse(BaseModel):
     """Response for exchanges endpoint"""
-    exchanges: list[ExchangeCapabilities] = Field(..., description="List of exchange capabilities")
+
+    exchanges: list[ExchangeCapabilities] = Field(
+        ..., description="List of exchange capabilities"
+    )
     last_updated: datetime = Field(..., description="Timestamp of last update")
 
 
 class ExchangesForAssetResponse(BaseModel):
     """Response for exchanges supporting a specific asset type"""
+
     asset_type: AssetType = Field(..., description="Requested asset type")
-    exchanges: list[ExchangeCapabilities] = Field(..., description="List of exchanges supporting this asset type")
+    exchanges: list[ExchangeCapabilities] = Field(
+        ..., description="List of exchanges supporting this asset type"
+    )
 
 
 # ==================== Routes ====================
 
 # -------------------- Exchange Capabilities --------------------
+
 
 @router.get("/exchanges", response_model=ExchangeCapabilitiesResponse)
 async def get_all_exchange_capabilities(
@@ -123,12 +141,14 @@ async def get_single_exchange_capability(
     if not cap:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Exchange '{exchange_id}' not found"
+            detail=f"Exchange '{exchange_id}' not found",
         )
     return cap
 
 
-@router.get("/exchanges/for-asset/{asset_type}", response_model=ExchangesForAssetResponse)
+@router.get(
+    "/exchanges/for-asset/{asset_type}", response_model=ExchangesForAssetResponse
+)
 async def get_exchanges_by_asset_type(
     asset_type: AssetType,
     user_id: CurrentUserDep,
@@ -148,6 +168,7 @@ async def get_exchanges_by_asset_type(
 
 # -------------------- Cache Management --------------------
 
+
 @router.get("/cache/stats", response_model=CacheStats)
 async def get_cache_stats(
     user_id: CurrentUserDep,
@@ -163,7 +184,7 @@ async def get_cache_stats(
     if "error" in stats:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get cache stats: {stats['error']}"
+            detail=f"Failed to get cache stats: {stats['error']}",
         )
 
     return CacheStats(**stats)
@@ -186,13 +207,13 @@ async def preload_backtest_data(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid date format. Use YYYY-MM-DD"
+            detail="Invalid date format. Use YYYY-MM-DD",
         )
 
     if start_date >= end_date:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Start date must be before end date"
+            detail="Start date must be before end date",
         )
 
     # Initialize data provider for fetching
@@ -279,7 +300,9 @@ def _extract_base_symbol(full_symbol: str) -> str:
     return full_symbol
 
 
-def _is_valid_perpetual(symbol: str, market: dict, exchange: str, asset_type: Optional[AssetType] = None) -> bool:
+def _is_valid_perpetual(
+    symbol: str, market: dict, exchange: str, asset_type: Optional[AssetType] = None
+) -> bool:
     """Check if symbol is a valid perpetual contract for the exchange.
 
     Uses ExchangeCapabilities for settlement currency lookup.
@@ -326,7 +349,7 @@ async def get_available_symbols(
     if cap and target_asset not in cap.supported_assets:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Exchange '{exchange}' does not support asset type '{target_asset.value}'"
+            detail=f"Exchange '{exchange}' does not support asset type '{target_asset.value}'",
         )
 
     cache = get_market_data_cache()
@@ -358,7 +381,8 @@ async def get_available_symbols(
 
         # Filter for perpetual contracts
         symbols = [
-            s for s in markets.keys()
+            s
+            for s in markets.keys()
             if _is_valid_perpetual(s, markets[s], exchange, target_asset)
         ]
         symbols.sort()
@@ -368,8 +392,7 @@ async def get_available_symbols(
 
         # Convert to SymbolItem format
         symbol_items = [
-            SymbolItem(symbol=_extract_base_symbol(s), full_symbol=s)
-            for s in symbols
+            SymbolItem(symbol=_extract_base_symbol(s), full_symbol=s) for s in symbols
         ]
 
         return SymbolsResponse(

@@ -32,18 +32,16 @@ from ..services.worker_heartbeat import (
     update_heartbeat,
     clear_heartbeat,
 )
-from ..traders.base import BaseTrader, TradeError
+from ..traders.base import BaseTrader
 from ..traders.ccxt_trader import create_trader_from_account
-from ..traders.mock_trader import MockTrader
-from .tasks import _restore_mock_trader_state
 
 logger = logging.getLogger(__name__)
 
 # Default cycle intervals per strategy type (minutes)
 DEFAULT_INTERVALS = {
-    "grid": 1,    # Grid checks every minute
-    "dca": 60,    # DCA default: check every hour (actual interval from config)
-    "rsi": 5,     # RSI checks every 5 minutes
+    "grid": 1,  # Grid checks every minute
+    "dca": 60,  # DCA default: check every hour (actual interval from config)
+    "rsi": 5,  # RSI checks every 5 minutes
 }
 
 # Unique identifier for this process instance (used for leader election)
@@ -104,10 +102,14 @@ class QuantExecutionWorker:
             async with AsyncSessionLocal() as session:
                 await update_heartbeat(session, self.agent_id, self._worker_instance_id)
         except Exception as e:
-            logger.warning(f"Failed to send initial heartbeat for quant strategy {self.agent_id}: {e}")
+            logger.warning(
+                f"Failed to send initial heartbeat for quant strategy {self.agent_id}: {e}"
+            )
 
         self._task = asyncio.create_task(self._run_loop())
-        logger.info(f"Started quant worker for {self.strategy_type} strategy {self.agent_id}")
+        logger.info(
+            f"Started quant worker for {self.strategy_type} strategy {self.agent_id}"
+        )
 
     async def stop(self, timeout: float = 30.0) -> None:
         """Stop the worker gracefully with timeout.
@@ -121,7 +123,9 @@ class QuantExecutionWorker:
             try:
                 await asyncio.wait_for(self._task, timeout=timeout)
             except asyncio.TimeoutError:
-                logger.warning(f"Quant worker for strategy {self.agent_id} did not stop within {timeout}s, forcing")
+                logger.warning(
+                    f"Quant worker for strategy {self.agent_id} did not stop within {timeout}s, forcing"
+                )
             except asyncio.CancelledError:
                 pass
 
@@ -130,14 +134,18 @@ class QuantExecutionWorker:
             async with AsyncSessionLocal() as session:
                 await clear_heartbeat(session, self.agent_id)
         except Exception as e:
-            logger.warning(f"Failed to clear heartbeat for quant strategy {self.agent_id}: {e}")
+            logger.warning(
+                f"Failed to clear heartbeat for quant strategy {self.agent_id}: {e}"
+            )
 
         # Close trader connection to avoid resource leaks
         if self.trader:
             try:
                 await self.trader.close()
             except Exception as e:
-                logger.warning(f"Error closing trader for quant strategy {self.agent_id}: {e}")
+                logger.warning(
+                    f"Error closing trader for quant strategy {self.agent_id}: {e}"
+                )
 
         logger.info(f"Stopped quant worker for strategy {self.agent_id}")
 
@@ -154,9 +162,7 @@ class QuantExecutionWorker:
             except asyncio.CancelledError:
                 break
             except asyncio.TimeoutError:
-                logger.error(
-                    f"Quant strategy {self.agent_id} cycle timed out (>300s)"
-                )
+                logger.error(f"Quant strategy {self.agent_id} cycle timed out (>300s)")
                 self._error_count += 1
                 if self._error_count >= self._max_errors:
                     await self._update_status("error", "Cycle execution timed out")
@@ -166,7 +172,9 @@ class QuantExecutionWorker:
                 logger.exception(f"Error in quant strategy {self.agent_id}")
                 self._error_count += 1
                 if self._error_count >= self._max_errors:
-                    logger.error(f"Too many errors, pausing quant strategy {self.agent_id}")
+                    logger.error(
+                        f"Too many errors, pausing quant strategy {self.agent_id}"
+                    )
                     await self._update_status("error", str(e))
                     break
                 # On connection-related errors, try to reconnect the trader
@@ -184,9 +192,7 @@ class QuantExecutionWorker:
         if not self._account_id or not self._user_id:
             return
 
-        logger.info(
-            f"Quant worker {self.agent_id}: attempting trader reconnection"
-        )
+        logger.info(f"Quant worker {self.agent_id}: attempting trader reconnection")
         try:
             # Close existing connection
             if self.trader:
@@ -221,27 +227,28 @@ class QuantExecutionWorker:
                 )
                 await new_trader.initialize()
                 self.trader = new_trader
-                logger.info(
-                    f"Quant worker {self.agent_id}: trader reconnected"
-                )
-        except Exception as e:
-            logger.exception(
-                f"Quant worker {self.agent_id}: reconnection failed"
-            )
+                logger.info(f"Quant worker {self.agent_id}: trader reconnected")
+        except Exception:
+            logger.exception(f"Quant worker {self.agent_id}: reconnection failed")
 
     async def _run_cycle(self) -> None:
         """Run one strategy cycle with execution lock and position isolation."""
         # ── Execution lock ──
         # Prevents concurrent cycles across all instances
         from ..services.redis_service import get_redis_service
+
         lock_key = f"exec_lock:quant_strategy:{self.agent_id}"
         redis_service = None
         lock_acquired = False
         try:
             redis_service = await get_redis_service()
-            lock_acquired = await redis_service.redis.set(lock_key, "1", nx=True, ex=300)
+            lock_acquired = await redis_service.redis.set(
+                lock_key, "1", nx=True, ex=300
+            )
         except Exception as e:
-            logger.warning(f"Failed to acquire exec lock for quant {self.agent_id}: {e}")
+            logger.warning(
+                f"Failed to acquire exec lock for quant {self.agent_id}: {e}"
+            )
             # Fail-safe: do NOT proceed without lock to prevent duplicate execution
             return
 
@@ -314,7 +321,9 @@ class QuantExecutionWorker:
                     action_desc = "持有/观望"
 
                 strategy_names = {"grid": "网格交易", "dca": "定投", "rsi": "RSI指标"}
-                strategy_name = strategy_names.get(strategy.strategy_type, strategy.strategy_type)
+                strategy_name = strategy_names.get(
+                    strategy.strategy_type, strategy.strategy_type
+                )
 
                 chain_of_thought = f"[{strategy_name}] {message}"
                 if trades_executed > 0:
@@ -332,15 +341,17 @@ class QuantExecutionWorker:
                     raw_response=str(result),
                     chain_of_thought=chain_of_thought,
                     market_assessment=f"交易对: {strategy.symbol}\n执行状态: {'成功' if success else '失败'}",
-                    decisions=[{
-                        "action": action,
-                        "symbol": strategy.symbol,
-                        "confidence": 100,
-                        "reasoning": action_desc,
-                        "leverage": leverage,
-                        "position_size_usd": total_size_usd,
-                        "risk_usd": 0,
-                    }],
+                    decisions=[
+                        {
+                            "action": action,
+                            "symbol": strategy.symbol,
+                            "confidence": 100,
+                            "reasoning": action_desc,
+                            "leverage": leverage,
+                            "position_size_usd": total_size_usd,
+                            "risk_usd": 0,
+                        }
+                    ],
                     overall_confidence=100,
                     ai_model=f"quant:{strategy.strategy_type}",
                     tokens_used=0,
@@ -374,7 +385,8 @@ class QuantExecutionWorker:
                 self.agent_id,
                 strategy.user_id,
                 last_run_at=datetime.now(UTC),
-                next_run_at=datetime.now(UTC) + timedelta(minutes=self.interval_minutes),
+                next_run_at=datetime.now(UTC)
+                + timedelta(minutes=self.interval_minutes),
             )
 
             await session.commit()
@@ -424,7 +436,9 @@ class QuantWorkerManager:
         # - Picking up strategies whose owner instance crashed
         # - Restarting failed workers
         self._sync_task = asyncio.create_task(self._periodic_sync())
-        logger.info(f"Quant Worker Manager ({_INSTANCE_ID}): Started with {len(self._workers)} active strategies")
+        logger.info(
+            f"Quant Worker Manager ({_INSTANCE_ID}): Started with {len(self._workers)} active strategies"
+        )
 
     async def stop(self) -> None:
         """Stop all workers and release ownership"""
@@ -492,8 +506,11 @@ class QuantWorkerManager:
                 if strategy.execution_mode == "mock":
                     # Mock mode: create MockTrader
                     from .tasks import create_mock_trader
+
                     symbols = [strategy.symbol] if strategy.symbol else ["BTC"]
-                    trader, error = await create_mock_trader(strategy, session, symbols=symbols)
+                    trader, error = await create_mock_trader(
+                        strategy, session, symbols=symbols
+                    )
                     if error:
                         logger.error(error)
                         await repo.update_status(uuid.UUID(agent_id), "error", error)
@@ -504,7 +521,9 @@ class QuantWorkerManager:
                     # Live mode: require account
                     if not strategy.account_id:
                         logger.error(f"Quant agent {agent_id} has no account")
-                        await repo.update_status(uuid.UUID(agent_id), "error", "No associated account")
+                        await repo.update_status(
+                            uuid.UUID(agent_id), "error", "No associated account"
+                        )
                         await session.commit()
                         await self._release_ownership(agent_id)
                         return False
@@ -514,7 +533,9 @@ class QuantWorkerManager:
                     account = await account_repo.get_by_id(strategy.account_id)
                     if not account:
                         logger.error(f"Account not found for quant agent {agent_id}")
-                        await repo.update_status(uuid.UUID(agent_id), "error", "Associated account not found")
+                        await repo.update_status(
+                            uuid.UUID(agent_id), "error", "Associated account not found"
+                        )
                         await session.commit()
                         await self._release_ownership(agent_id)
                         return False
@@ -523,7 +544,9 @@ class QuantWorkerManager:
                         strategy.account_id, strategy.user_id
                     )
                     if not credentials:
-                        logger.error(f"Failed to get credentials for quant agent {agent_id}")
+                        logger.error(
+                            f"Failed to get credentials for quant agent {agent_id}"
+                        )
                         await self._release_ownership(agent_id)
                         return False
 
@@ -546,7 +569,11 @@ class QuantWorkerManager:
                     strategy_type=strategy.strategy_type,
                     trader=trader,
                     interval_minutes=interval,
-                    account_id=strategy.account_id if strategy.execution_mode != "mock" else None,
+                    account_id=(
+                        strategy.account_id
+                        if strategy.execution_mode != "mock"
+                        else None
+                    ),
                     user_id=strategy.user_id,
                     trade_type=strategy.trade_type,
                 )
@@ -560,7 +587,7 @@ class QuantWorkerManager:
                 )
                 return True
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"Failed to start quant worker for {agent_id}")
             await self._release_ownership(agent_id)
             return False
@@ -596,6 +623,7 @@ class QuantWorkerManager:
         """
         try:
             from ..services.redis_service import get_redis_service
+
             redis_service = await get_redis_service()
             key = f"{_WORKER_OWNER_PREFIX}{agent_id}"
             claimed = await redis_service.redis.set(
@@ -642,12 +670,16 @@ class QuantWorkerManager:
         """
         try:
             from ..services.redis_service import get_redis_service
+
             redis_service = await get_redis_service()
             key = f"{_WORKER_OWNER_PREFIX}{agent_id}"
 
             result = await redis_service.redis.eval(
-                self._REFRESH_LUA, 1, key,
-                _INSTANCE_ID, _OWNER_TTL_SECONDS,
+                self._REFRESH_LUA,
+                1,
+                key,
+                _INSTANCE_ID,
+                _OWNER_TTL_SECONDS,
             )
 
             if result == 1:
@@ -675,11 +707,10 @@ class QuantWorkerManager:
         """
         try:
             from ..services.redis_service import get_redis_service
+
             redis_service = await get_redis_service()
             key = f"{_WORKER_OWNER_PREFIX}{agent_id}"
-            await redis_service.redis.eval(
-                self._RELEASE_LUA, 1, key, _INSTANCE_ID
-            )
+            await redis_service.redis.eval(self._RELEASE_LUA, 1, key, _INSTANCE_ID)
         except Exception:
             pass  # Best-effort; TTL will clean up
 
@@ -715,7 +746,7 @@ class QuantWorkerManager:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception:
                 logger.exception("Quant worker sync error")
                 await asyncio.sleep(30)
 
@@ -749,7 +780,9 @@ class QuantWorkerManager:
                 )
                 await session.execute(stmt)
                 await session.commit()
-                logger.info(f"Cleared heartbeats for {len(active_ids)} active quant strategies")
+                logger.info(
+                    f"Cleared heartbeats for {len(active_ids)} active quant strategies"
+                )
 
         except Exception as e:
             logger.warning(f"Failed to clear quant heartbeats: {e}")
@@ -766,7 +799,7 @@ class QuantWorkerManager:
                     if sid not in self._workers:
                         await self.start_strategy(sid)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to load active quant strategies")
 
     def get_worker_count(self) -> int:

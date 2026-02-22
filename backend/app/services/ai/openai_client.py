@@ -28,6 +28,7 @@ def _get_openai():
     if openai is None:
         try:
             import openai as _openai
+
             openai = _openai
         except ImportError:
             raise AIClientError(

@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from arq import ArqRedis, create_pool
 from arq.connections import RedisSettings
-from arq.jobs import Job, JobStatus
+from arq.jobs import Job
 
 from ..core.config import get_settings
 
@@ -57,7 +57,9 @@ class TaskQueueService:
             job = await self.redis.enqueue_job(
                 "start_strategy_execution",
                 strategy_id,
-                _defer_by=timedelta(seconds=defer_seconds) if defer_seconds > 0 else None,
+                _defer_by=(
+                    timedelta(seconds=defer_seconds) if defer_seconds > 0 else None
+                ),
                 _job_id=f"start:{strategy_id}",
                 _queue_name=self.QUEUE_NAME,
             )
@@ -86,7 +88,7 @@ class TaskQueueService:
                 strategy_id,
                 _queue_name=self.QUEUE_NAME,
             )
-            
+
             # Also try to abort the execution job directly
             job_id = f"strategy:{strategy_id}"
             job = Job(job_id, self.redis)
@@ -94,7 +96,7 @@ class TaskQueueService:
                 await job.abort()
             except Exception:
                 pass  # Job may not exist
-            
+
             logger.info(f"Stopped strategy {strategy_id}")
             return True
         except Exception as e:
@@ -119,8 +121,9 @@ class TaskQueueService:
         try:
             # Use a unique job ID for manual triggers
             import uuid
+
             manual_job_id = f"manual:{strategy_id}:{uuid.uuid4().hex[:8]}"
-            
+
             job = await self.redis.enqueue_job(
                 "execute_strategy_cycle",
                 strategy_id,
@@ -156,7 +159,9 @@ class TaskQueueService:
             job = await self.redis.enqueue_job(
                 "start_agent_execution",
                 agent_id,
-                _defer_by=timedelta(seconds=defer_seconds) if defer_seconds > 0 else None,
+                _defer_by=(
+                    timedelta(seconds=defer_seconds) if defer_seconds > 0 else None
+                ),
                 _job_id=f"agent:{agent_id}",
                 _queue_name=self.QUEUE_NAME,
             )
@@ -218,6 +223,7 @@ class TaskQueueService:
         try:
             # Use a unique job ID for manual triggers
             import uuid
+
             manual_job_id = f"manual:agent:{agent_id}:{uuid.uuid4().hex[:8]}"
 
             job = await self.redis.enqueue_job(
@@ -247,17 +253,21 @@ class TaskQueueService:
         try:
             job = Job(job_id, self.redis)
             info = await job.info()
-            
+
             if info is None:
                 return None
-            
+
             return {
                 "job_id": job_id,
                 "function": info.function,
                 "status": info.status.value if info.status else "unknown",
-                "enqueue_time": info.enqueue_time.isoformat() if info.enqueue_time else None,
+                "enqueue_time": (
+                    info.enqueue_time.isoformat() if info.enqueue_time else None
+                ),
                 "start_time": info.start_time.isoformat() if info.start_time else None,
-                "finish_time": info.finish_time.isoformat() if info.finish_time else None,
+                "finish_time": (
+                    info.finish_time.isoformat() if info.finish_time else None
+                ),
                 "success": info.success,
                 "result": info.result,
                 "score": info.score,
@@ -266,7 +276,9 @@ class TaskQueueService:
             logger.error(f"Failed to get job status for {job_id}: {e}")
             return None
 
-    async def get_strategy_job_status(self, strategy_id: str) -> Optional[dict[str, Any]]:
+    async def get_strategy_job_status(
+        self, strategy_id: str
+    ) -> Optional[dict[str, Any]]:
         """
         Get status of the scheduled job for a strategy.
 
@@ -305,7 +317,7 @@ class TaskQueueService:
         status = await self.get_strategy_job_status(strategy_id)
         if status is None:
             return False
-        
+
         return status.get("status") in ["deferred", "queued", "in_progress"]
 
     # ==================== Queue Operations ====================
@@ -340,15 +352,15 @@ class TaskQueueService:
             # Get queue length
             queued_key = f"arq:{self.QUEUE_NAME}"
             queued_count = await self.redis.zcard(queued_key)
-            
+
             # Get in-progress count
             in_progress_key = f"arq:{self.QUEUE_NAME}:in-progress"
             in_progress_count = await self.redis.zcard(in_progress_key)
-            
+
             # Get results count (completed jobs)
             results_key = f"arq:{self.QUEUE_NAME}:results"
             results_count = await self.redis.hlen(results_key)
-            
+
             return {
                 "queue_name": self.QUEUE_NAME,
                 "queued": queued_count,
@@ -372,10 +384,10 @@ class TaskQueueService:
         try:
             # Ping Redis
             pong = await self.redis.ping()
-            
+
             # Get queue info
             queue_info = await self.get_queue_info()
-            
+
             return {
                 "healthy": pong,
                 "redis_connected": pong,
@@ -398,42 +410,42 @@ _redis_pool: Optional[ArqRedis] = None
 async def get_redis_pool() -> ArqRedis:
     """Get or create the ARQ Redis pool."""
     global _redis_pool
-    
+
     if _redis_pool is None:
         settings = get_settings()
-        
+
         redis_settings = RedisSettings(
             host=settings.redis_url.host or "localhost",
             port=settings.redis_url.port or 6379,
             password=settings.redis_url.password,
             database=0,
         )
-        
+
         _redis_pool = await create_pool(redis_settings)
         logger.info("Created ARQ Redis pool")
-    
+
     return _redis_pool
 
 
 async def get_task_queue_service() -> TaskQueueService:
     """Get or create the TaskQueueService singleton."""
     global _task_queue_service
-    
+
     if _task_queue_service is None:
         pool = await get_redis_pool()
         _task_queue_service = TaskQueueService(pool)
         logger.info("Created TaskQueueService")
-    
+
     return _task_queue_service
 
 
 async def close_task_queue() -> None:
     """Close task queue connections."""
     global _task_queue_service, _redis_pool
-    
+
     if _redis_pool:
         await _redis_pool.close()
         _redis_pool = None
-    
+
     _task_queue_service = None
     logger.info("Closed task queue connections")

@@ -8,12 +8,14 @@ This file re-exports for backward compatibility during migration.
 """
 
 import warnings
+from enum import Enum
+from typing import Optional
 
+from pydantic import BaseModel, Field, model_validator
 from .strategy import (
     DCAConfig,
     GridConfig,
     RSIConfig,
-    STRATEGY_CONFIG_MODELS,
 )
 
 warnings.warn(
@@ -29,15 +31,10 @@ QUANT_CONFIG_MODELS = {
     "rsi": RSIConfig,
 }
 
-# Legacy types - kept for migration scripts
-from enum import Enum
-from typing import Optional
-
-from pydantic import BaseModel, Field, model_validator
-
 
 class QuantStrategyType(str, Enum):
     """DEPRECATED: Use StrategyType instead"""
+
     GRID = "grid"
     DCA = "dca"
     RSI = "rsi"
@@ -45,6 +42,7 @@ class QuantStrategyType(str, Enum):
 
 class QuantStrategyStatus(str, Enum):
     """DEPRECATED: Use AgentStatus instead"""
+
     DRAFT = "draft"
     ACTIVE = "active"
     PAUSED = "paused"
@@ -55,6 +53,7 @@ class QuantStrategyStatus(str, Enum):
 
 class QuantStrategyCreate(BaseModel):
     """DEPRECATED: Use StrategyCreate + AgentCreate instead"""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
     strategy_type: QuantStrategyType
@@ -66,7 +65,10 @@ class QuantStrategyCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_capital_allocation(self):
-        if self.allocated_capital is not None and self.allocated_capital_percent is not None:
+        if (
+            self.allocated_capital is not None
+            and self.allocated_capital_percent is not None
+        ):
             raise ValueError(
                 "Cannot set both allocated_capital and allocated_capital_percent."
             )
@@ -75,6 +77,7 @@ class QuantStrategyCreate(BaseModel):
 
 class QuantStrategyUpdate(BaseModel):
     """DEPRECATED: Use StrategyUpdate + AgentUpdate instead"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     symbol: Optional[str] = Field(None, min_length=1, max_length=20)
@@ -85,7 +88,10 @@ class QuantStrategyUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_capital_allocation(self):
-        if self.allocated_capital is not None and self.allocated_capital_percent is not None:
+        if (
+            self.allocated_capital is not None
+            and self.allocated_capital_percent is not None
+        ):
             raise ValueError(
                 "Cannot set both allocated_capital and allocated_capital_percent."
             )
@@ -94,12 +100,14 @@ class QuantStrategyUpdate(BaseModel):
 
 class QuantStrategyStatusUpdate(BaseModel):
     """DEPRECATED: Use AgentStatusUpdate instead"""
+
     status: str = Field(...)
     close_positions: bool = Field(default=False)
 
 
 class QuantStrategyResponse(BaseModel):
     """DEPRECATED: Use Agent response instead"""
+
     id: str
     name: str
     description: str

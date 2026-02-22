@@ -56,13 +56,11 @@ __all__ = [
     "AIResponse",
     "BaseAIClient",
     "ModelInfo",
-
     # Preset model registry (for populating new provider configs)
     "PRESET_PROVIDER_MODELS",
     "get_preset_models",
     "model_info_to_dict",
     "preset_models_json",
-
     # Factory
     "AIClientFactory",
     "get_ai_client",

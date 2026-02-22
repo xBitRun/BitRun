@@ -67,6 +67,7 @@ class QuantStrategyRepository:
         """
         # Ensure name is unique across strategies and agents
         from ...services.name_check_service import NameCheckService
+
         name_check = NameCheckService(self.session)
         unique_name = await name_check.generate_unique_name(
             name=name,
@@ -159,7 +160,9 @@ class QuantStrategyRepository:
             query = query.where(StrategyDB.type == strategy_type)
 
         # Secondary sort by id for stable ordering when created_at is equal
-        query = query.order_by(QuantStrategyDB.created_at.desc(), QuantStrategyDB.id.desc())
+        query = query.order_by(
+            QuantStrategyDB.created_at.desc(), QuantStrategyDB.id.desc()
+        )
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
@@ -208,20 +211,30 @@ class QuantStrategyRepository:
 
         # Agent-level fields (stored in AgentDB)
         agent_fields = {
-            "name", "account_id", "status", "error_message",
-            "runtime_state", "last_run_at", "next_run_at",
-            "allocated_capital", "allocated_capital_percent",
-            "execution_interval_minutes", "trade_type",
+            "name",
+            "account_id",
+            "status",
+            "error_message",
+            "runtime_state",
+            "last_run_at",
+            "next_run_at",
+            "allocated_capital",
+            "allocated_capital_percent",
+            "execution_interval_minutes",
+            "trade_type",
         }
 
         # Strategy-level fields (stored in StrategyDB via relationship)
         strategy_fields = {
-            "symbol", "config", "description",
+            "symbol",
+            "config",
+            "description",
         }
 
         # Handle name deduplication if name is being updated
         if "name" in kwargs and kwargs["name"] is not None:
             from ...services.name_check_service import NameCheckService
+
             name_check = NameCheckService(self.session)
             kwargs["name"] = await name_check.generate_unique_name(
                 name=kwargs["name"],

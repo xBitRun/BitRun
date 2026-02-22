@@ -25,9 +25,7 @@ from ...models.strategy import (
     AIStrategyConfig,
     STRATEGY_CONFIG_MODELS,
     StrategyCreate,
-    StrategyType,
     StrategyUpdate,
-    StrategyVisibility,
     PromptSections,
     TradingMode,
 )
@@ -40,8 +38,10 @@ logger = logging.getLogger(__name__)
 
 # ==================== Response Models ====================
 
+
 class StrategyResponse(BaseModel):
     """Unified strategy response"""
+
     id: str
     user_id: str
     type: str  # ai, grid, dca, rsi
@@ -73,6 +73,7 @@ class StrategyResponse(BaseModel):
 
 class MarketplaceResponse(BaseModel):
     """Paginated marketplace response"""
+
     items: list[StrategyResponse]
     total: int
     limit: int
@@ -80,6 +81,7 @@ class MarketplaceResponse(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.post("", response_model=StrategyResponse, status_code=status.HTTP_201_CREATED)
 async def create_strategy(
@@ -184,8 +186,7 @@ async def get_strategy(
 
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     return _strategy_to_response(strategy)
@@ -265,7 +266,7 @@ async def update_strategy(
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Strategy name already exists in the marketplace. "
-                               "Please rename your strategy before publishing."
+                        "Please rename your strategy before publishing.",
                     )
 
     # Validate config if being updated
@@ -279,19 +280,16 @@ async def update_strategy(
                 except Exception as e:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Invalid config for {strategy.type} strategy: {e}"
+                        detail=f"Invalid config for {strategy.type} strategy: {e}",
                     )
 
     strategy = await repo.update(
-        uuid.UUID(strategy_id),
-        uuid.UUID(user_id),
-        **update_data
+        uuid.UUID(strategy_id), uuid.UUID(user_id), **update_data
     )
 
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     return _strategy_to_response(strategy)
@@ -320,7 +318,7 @@ async def fork_strategy(
     if not forked:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found or not public"
+            detail="Strategy not found or not public",
         )
 
     return _strategy_to_response(forked)
@@ -349,8 +347,7 @@ async def duplicate_strategy(
 
     if not duplicated:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     return _strategy_to_response(duplicated)
@@ -361,6 +358,7 @@ async def duplicate_strategy(
 
 class SubscriptionResponse(BaseModel):
     """Subscription status response"""
+
     strategy_id: str
     subscribed: bool
     status: Optional[str] = None
@@ -413,13 +411,13 @@ async def subscribe_to_strategy(
     if not strategy or strategy.visibility != "public":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found or not public"
+            detail="Strategy not found or not public",
         )
 
     if not strategy.is_paid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Strategy is free. Use fork instead."
+            detail="Strategy is free. Use fork instead.",
         )
 
     # Check for existing active subscription
@@ -441,6 +439,7 @@ async def subscribe_to_strategy(
 
     # Create subscription
     from datetime import datetime, UTC
+
     now = datetime.now(UTC)
     expires_at = None
     if strategy.pricing_model == "monthly":
@@ -483,12 +482,12 @@ async def delete_strategy(
     strategy = await repo.get_by_id(uuid.UUID(strategy_id), uuid.UUID(user_id))
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     # Check if any agents reference this strategy
     from ...db.repositories.agent import AgentRepository
+
     agent_repo = AgentRepository(db)
     agents = await agent_repo.get_by_user(uuid.UUID(user_id))
     refs = [a for a in agents if str(a.strategy_id) == strategy_id]
@@ -496,14 +495,13 @@ async def delete_strategy(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot delete strategy: {len(refs)} agent(s) reference it. "
-                   "Delete all agents first."
+            "Delete all agents first.",
         )
 
     deleted = await repo.delete(uuid.UUID(strategy_id), uuid.UUID(user_id))
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
 
@@ -512,6 +510,7 @@ async def delete_strategy(
 
 class StrategyVersionResponse(BaseModel):
     """Strategy version snapshot response"""
+
     id: str
     strategy_id: str
     version: int
@@ -577,8 +576,7 @@ async def get_version(
 
     if not v:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Version not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Version not found"
         )
 
     return StrategyVersionResponse(
@@ -594,7 +592,9 @@ async def get_version(
     )
 
 
-@router.post("/{strategy_id}/versions/{version}/restore", response_model=StrategyResponse)
+@router.post(
+    "/{strategy_id}/versions/{version}/restore", response_model=StrategyResponse
+)
 async def restore_version(
     strategy_id: str,
     version: int,
@@ -649,7 +649,7 @@ async def restore_version(
     if not strategy:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy or version not found"
+            detail="Strategy or version not found",
         )
 
     return _strategy_to_response(strategy)
@@ -657,8 +657,10 @@ async def restore_version(
 
 # ==================== AI Strategy Specific Endpoints ====================
 
+
 class PromptPreviewRequest(BaseModel):
     """Request for previewing generated prompt"""
+
     prompt: str = Field(default="", description="User's custom strategy prompt")
     trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
     symbols: list[str] = Field(default=["BTC", "ETH"])
@@ -673,6 +675,7 @@ class PromptPreviewRequest(BaseModel):
 
 class PromptPreviewResponse(BaseModel):
     """Response with generated prompt preview"""
+
     system_prompt: str
     estimated_tokens: int
     sections: dict = Field(default_factory=dict)
@@ -690,7 +693,11 @@ async def preview_prompt(
     Useful for the Strategy Studio preview feature.
     """
     indicators = {
-        "ema_periods": data.indicators.get("ema_periods", [9, 21, 55]) if data.indicators else [9, 21, 55],
+        "ema_periods": (
+            data.indicators.get("ema_periods", [9, 21, 55])
+            if data.indicators
+            else [9, 21, 55]
+        ),
         "rsi_period": data.indicators.get("rsi_period", 14) if data.indicators else 14,
         "macd_fast": data.indicators.get("macd_fast", 12) if data.indicators else 12,
         "macd_slow": data.indicators.get("macd_slow", 26) if data.indicators else 26,
@@ -699,22 +706,57 @@ async def preview_prompt(
     }
 
     risk_controls = RiskControls(
-        max_leverage=data.risk_controls.get("max_leverage", 5) if data.risk_controls else 5,
-        max_position_ratio=data.risk_controls.get("max_position_ratio", 0.2) if data.risk_controls else 0.2,
-        max_total_exposure=data.risk_controls.get("max_total_exposure", 0.8) if data.risk_controls else 0.8,
-        min_risk_reward_ratio=data.risk_controls.get("min_risk_reward_ratio", 2.0) if data.risk_controls else 2.0,
-        max_drawdown_percent=data.risk_controls.get("max_drawdown_percent", 0.1) if data.risk_controls else 0.1,
-        min_confidence=data.risk_controls.get("min_confidence", 60) if data.risk_controls else 60,
+        max_leverage=(
+            data.risk_controls.get("max_leverage", 5) if data.risk_controls else 5
+        ),
+        max_position_ratio=(
+            data.risk_controls.get("max_position_ratio", 0.2)
+            if data.risk_controls
+            else 0.2
+        ),
+        max_total_exposure=(
+            data.risk_controls.get("max_total_exposure", 0.8)
+            if data.risk_controls
+            else 0.8
+        ),
+        min_risk_reward_ratio=(
+            data.risk_controls.get("min_risk_reward_ratio", 2.0)
+            if data.risk_controls
+            else 2.0
+        ),
+        max_drawdown_percent=(
+            data.risk_controls.get("max_drawdown_percent", 0.1)
+            if data.risk_controls
+            else 0.1
+        ),
+        min_confidence=(
+            data.risk_controls.get("min_confidence", 60) if data.risk_controls else 60
+        ),
     )
 
     prompt_sections = PromptSections(
-        role_definition=data.prompt_sections.get("role_definition", "") if data.prompt_sections else "",
-        trading_frequency=data.prompt_sections.get("trading_frequency", "") if data.prompt_sections else "",
-        entry_standards=data.prompt_sections.get("entry_standards", "") if data.prompt_sections else "",
-        decision_process=data.prompt_sections.get("decision_process", "") if data.prompt_sections else "",
+        role_definition=(
+            data.prompt_sections.get("role_definition", "")
+            if data.prompt_sections
+            else ""
+        ),
+        trading_frequency=(
+            data.prompt_sections.get("trading_frequency", "")
+            if data.prompt_sections
+            else ""
+        ),
+        entry_standards=(
+            data.prompt_sections.get("entry_standards", "")
+            if data.prompt_sections
+            else ""
+        ),
+        decision_process=(
+            data.prompt_sections.get("decision_process", "")
+            if data.prompt_sections
+            else ""
+        ),
     )
 
-    from ...models.strategy import AIStrategyConfig
     config = AIStrategyConfig(
         language=data.language,
         indicators=indicators,
@@ -736,15 +778,19 @@ async def preview_prompt(
     estimated_tokens = len(system_prompt) // 4
 
     from ...services.prompt_templates import get_system_templates
+
     sys_t = get_system_templates(data.language)
 
     mode_key = data.trading_mode.value
     sections = {
         "role_definition": prompt_sections.role_definition or sys_t["default_role"],
         "trading_mode": sys_t["trading_mode"].get(mode_key, ""),
-        "trading_frequency": prompt_sections.trading_frequency or sys_t["default_trading_frequency"],
-        "entry_standards": prompt_sections.entry_standards or sys_t["default_entry_standards"],
-        "decision_process": prompt_sections.decision_process or sys_t["default_decision_process"],
+        "trading_frequency": prompt_sections.trading_frequency
+        or sys_t["default_trading_frequency"],
+        "entry_standards": prompt_sections.entry_standards
+        or sys_t["default_entry_standards"],
+        "decision_process": prompt_sections.decision_process
+        or sys_t["default_decision_process"],
         "custom_prompt": data.prompt,
     }
 
@@ -757,6 +803,7 @@ async def preview_prompt(
 
 class DebateValidationRequest(BaseModel):
     """Request to validate debate model configuration"""
+
     model_ids: list[str] = Field(..., min_length=2, max_length=5)
 
 
@@ -785,9 +832,13 @@ async def validate_debate_models(
     from ...services.debate_engine import validate_debate_models as validate_models
 
     async def cred_resolver(model_id: str):
-        return await resolve_provider_credentials(db, crypto, uuid.UUID(user_id), model_id)
+        return await resolve_provider_credentials(
+            db, crypto, uuid.UUID(user_id), model_id
+        )
 
-    validation_results = await validate_models(data.model_ids, credentials_resolver=cred_resolver)
+    validation_results = await validate_models(
+        data.model_ids, credentials_resolver=cred_resolver
+    )
 
     models = [
         DebateModelValidation(
@@ -806,7 +857,9 @@ async def validate_debate_models(
     elif valid_count >= 2:
         message = f"{valid_count}/{len(models)} models are valid (minimum 2 required)"
     else:
-        message = f"Only {valid_count} model(s) valid. At least 2 models required for debate."
+        message = (
+            f"Only {valid_count} model(s) valid. At least 2 models required for debate."
+        )
 
     return DebateValidationResponse(
         valid=valid_count >= 2,
@@ -816,6 +869,7 @@ async def validate_debate_models(
 
 
 # ==================== Helper Functions ====================
+
 
 def _strategy_to_response(strategy) -> StrategyResponse:
     """Convert strategy DB model to response"""

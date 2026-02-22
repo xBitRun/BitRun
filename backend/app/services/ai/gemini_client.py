@@ -29,6 +29,7 @@ def _get_genai():
     if genai is None:
         try:
             import google.generativeai as _genai
+
             genai = _genai
         except ImportError:
             raise AIClientError(
@@ -102,7 +103,9 @@ class GeminiClient(BaseAIClient):
                 generation_config={
                     "max_output_tokens": self.config.max_tokens,
                     "temperature": self.config.temperature,
-                    "response_mime_type": "application/json" if json_mode else "text/plain",
+                    "response_mime_type": (
+                        "application/json" if json_mode else "text/plain"
+                    ),
                 },
                 system_instruction=system_prompt,
             )
@@ -111,8 +114,7 @@ class GeminiClient(BaseAIClient):
             # Note: google-generativeai uses synchronous API, so we run in executor
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
-                None,
-                lambda: model.generate_content(user_prompt)
+                None, lambda: model.generate_content(user_prompt)
             )
 
             # Extract content
@@ -121,9 +123,11 @@ class GeminiClient(BaseAIClient):
             # Calculate tokens (Gemini provides usage metadata)
             input_tokens = 0
             output_tokens = 0
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
-                output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                input_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
+                output_tokens = getattr(
+                    response.usage_metadata, "candidates_token_count", 0
+                )
 
             latency_ms = int((time.time() - start_time) * 1000)
 
@@ -131,7 +135,7 @@ class GeminiClient(BaseAIClient):
             stop_reason = ""
             if response.candidates and len(response.candidates) > 0:
                 candidate = response.candidates[0]
-                if hasattr(candidate, 'finish_reason'):
+                if hasattr(candidate, "finish_reason"):
                     stop_reason = str(candidate.finish_reason)
 
             return AIResponse(
@@ -149,8 +153,14 @@ class GeminiClient(BaseAIClient):
         except Exception as e:
             error_str = str(e).lower()
 
-            if "api_key" in error_str or "authentication" in error_str or "invalid" in error_str:
-                raise AIAuthenticationError(f"Authentication failed: {e}", self.provider)
+            if (
+                "api_key" in error_str
+                or "authentication" in error_str
+                or "invalid" in error_str
+            ):
+                raise AIAuthenticationError(
+                    f"Authentication failed: {e}", self.provider
+                )
             elif "quota" in error_str or "rate" in error_str or "limit" in error_str:
                 raise AIRateLimitError(f"Rate limit exceeded: {e}", self.provider)
             elif "connection" in error_str or "network" in error_str:
@@ -168,14 +178,19 @@ class GeminiClient(BaseAIClient):
 
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
-                None,
-                lambda: model.generate_content("Hi")
+                None, lambda: model.generate_content("Hi")
             )
             return response.text is not None
         except Exception as e:
             error_str = str(e).lower()
-            if "api_key" in error_str or "authentication" in error_str or "invalid" in error_str:
-                raise AIAuthenticationError(f"Authentication failed: {e}", self.provider)
+            if (
+                "api_key" in error_str
+                or "authentication" in error_str
+                or "invalid" in error_str
+            ):
+                raise AIAuthenticationError(
+                    f"Authentication failed: {e}", self.provider
+                )
             if "quota" in error_str or "rate" in error_str or "limit" in error_str:
                 raise AIRateLimitError(f"Rate limit exceeded: {e}", self.provider)
             if "connection" in error_str or "network" in error_str:

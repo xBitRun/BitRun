@@ -1,7 +1,7 @@
 """Channel service for channel management"""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,9 +116,7 @@ class ChannelService:
         )
 
     async def update_channel(
-        self,
-        channel_id: uuid.UUID,
-        **kwargs
+        self, channel_id: uuid.UUID, **kwargs
     ) -> Optional[ChannelDB]:
         """Update channel fields"""
         return await self.channel_repo.update(channel_id, **kwargs)
@@ -296,11 +294,12 @@ class ChannelService:
         wallet = await self.channel_repo.get_wallet(channel_id)
 
         # Count active users (with transactions in period)
-        active_users_query = select(func.count(func.distinct(
-            WalletTransactionDB.user_id
-        ))).select_from(WalletTransactionDB).join(
-            UserDB, UserDB.id == WalletTransactionDB.user_id
-        ).where(UserDB.channel_id == channel_id)
+        active_users_query = (
+            select(func.count(func.distinct(WalletTransactionDB.user_id)))
+            .select_from(WalletTransactionDB)
+            .join(UserDB, UserDB.id == WalletTransactionDB.user_id)
+            .where(UserDB.channel_id == channel_id)
+        )
 
         if start_date:
             active_users_query = active_users_query.where(
@@ -365,9 +364,7 @@ class ChannelService:
         active_channels = await self.channel_repo.count(status="active")
 
         # Count users
-        users_result = await self.session.execute(
-            select(func.count(UserDB.id))
-        )
+        users_result = await self.session.execute(select(func.count(UserDB.id)))
         total_users = users_result.scalar() or 0
 
         # Get total revenue from completed recharge orders

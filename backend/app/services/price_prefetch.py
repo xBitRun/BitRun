@@ -27,13 +27,12 @@ Architecture:
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from typing import Dict, Optional, Set
 
 import ccxt.async_support as ccxt
 
-from ..core.config import get_ccxt_proxy_config, get_settings
+from ..core.config import get_ccxt_proxy_config
 from .shared_price_cache import SharedPriceCache, get_shared_price_cache
 
 logger = logging.getLogger(__name__)
@@ -51,6 +50,7 @@ LEADER_RENEW_INTERVAL = 10  # Renew leader lock every 10 seconds
 @dataclass
 class SymbolSubscription:
     """Tracks subscription for a symbol."""
+
     symbol: str
     exchange: str
     subscriber_count: int = 1
@@ -128,6 +128,7 @@ class PricePrefetchService:
         if self._redis is None:
             try:
                 from .redis_service import get_redis_service
+
                 self._redis = await get_redis_service()
             except Exception as e:
                 logger.warning(f"Redis unavailable for leader election: {e}")
@@ -148,11 +149,13 @@ class PricePrefetchService:
                     logger.warning(f"Unknown exchange: {exchange_id}")
                     return None
 
-                self._exchanges[exchange_id] = exchange_class({
-                    "enableRateLimit": True,
-                    "options": {"defaultType": "swap"},
-                    **get_ccxt_proxy_config(),
-                })
+                self._exchanges[exchange_id] = exchange_class(
+                    {
+                        "enableRateLimit": True,
+                        "options": {"defaultType": "swap"},
+                        **get_ccxt_proxy_config(),
+                    }
+                )
             except Exception as e:
                 logger.error(f"Failed to create exchange {exchange_id}: {e}")
                 return None
@@ -352,9 +355,7 @@ class PricePrefetchService:
                             sub.last_fetch = now
 
                         self._prefetch_count += 1
-                        logger.debug(
-                            f"Prefetched {exchange_id}:{symbol} = {price}"
-                        )
+                        logger.debug(f"Prefetched {exchange_id}:{symbol} = {price}")
 
                 except Exception as e:
                     logger.debug(f"Prefetch failed for {exchange_id}:{symbol}: {e}")
@@ -480,7 +481,11 @@ class PricePrefetchService:
             "subscriptions": len(self._subscriptions),
             "agents": len(self._agent_symbols),
             "symbols": [
-                {"exchange": s.exchange, "symbol": s.symbol, "subscribers": s.subscriber_count}
+                {
+                    "exchange": s.exchange,
+                    "symbol": s.symbol,
+                    "subscribers": s.subscriber_count,
+                }
                 for s in self._subscriptions.values()
             ],
             "prefetch_count": self._prefetch_count,

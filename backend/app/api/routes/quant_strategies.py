@@ -5,7 +5,6 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep
 from ...db.repositories.account import AccountRepository
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==================== Helper Functions ====================
+
 
 def _to_response(strategy) -> QuantStrategyResponse:
     """Convert quant strategy DB model to response"""
@@ -67,7 +67,10 @@ def _validate_config(strategy_type: str, config: dict) -> None:
 
 # ==================== Routes ====================
 
-@router.post("", response_model=QuantStrategyResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "", response_model=QuantStrategyResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_quant_strategy(
     data: QuantStrategyCreate,
     db: DbSessionDep,
@@ -81,7 +84,11 @@ async def create_quant_strategy(
     """
     # Validate strategy_type
     valid_types = {t.value for t in QuantStrategyType}
-    strategy_type_str = data.strategy_type.value if isinstance(data.strategy_type, QuantStrategyType) else data.strategy_type
+    strategy_type_str = (
+        data.strategy_type.value
+        if isinstance(data.strategy_type, QuantStrategyType)
+        else data.strategy_type
+    )
     if strategy_type_str not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -178,6 +185,7 @@ async def update_quant_strategy(
     update_data = data.model_dump(exclude_unset=True)
 
     from ...services.agent_position_service import AgentPositionService
+
     ps = AgentPositionService(db=db)
 
     # Validate account ownership + protect account changes when positions exist
@@ -187,7 +195,7 @@ async def update_quant_strategy(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot change account while strategy has open positions. "
-                       "Close all positions first.",
+                "Close all positions first.",
             )
         account_repo = AccountRepository(db)
         account = await account_repo.get_by_id(uuid.UUID(update_data["account_id"]))
@@ -205,7 +213,7 @@ async def update_quant_strategy(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot change symbol while strategy has open positions. "
-                       "Close all positions first.",
+                "Close all positions first.",
             )
         update_data["symbol"] = update_data["symbol"].upper()
 
@@ -219,7 +227,7 @@ async def update_quant_strategy(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot change capital allocation while strategy has open positions. "
-                       "Close all positions first.",
+                "Close all positions first.",
             )
 
     # Validate config if being updated
@@ -329,11 +337,12 @@ async def update_quant_strategy_status(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot decrypt exchange credentials. "
-                           "Please update your API keys.",
+                    "Please update your API keys.",
                 )
             trader = None
             try:
                 from ...traders.ccxt_trader import create_trader_from_account
+
                 trader = create_trader_from_account(account, credentials)
                 await trader.initialize()
                 # Quick connectivity check
@@ -342,7 +351,7 @@ async def update_quant_strategy_status(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Exchange connection failed: {e}. "
-                           "Fix the issue before reactivating.",
+                    "Fix the issue before reactivating.",
                 )
             finally:
                 if trader:
@@ -357,11 +366,14 @@ async def update_quant_strategy_status(
     # Sync with quant worker manager
     try:
         from ...workers.quant_worker import get_quant_worker_manager
+
         worker_manager = await get_quant_worker_manager()
         if new == "active":
             success = await worker_manager.start_strategy(strategy_id)
             if not success:
-                logger.warning(f"Failed to start quant worker for strategy {strategy_id}")
+                logger.warning(
+                    f"Failed to start quant worker for strategy {strategy_id}"
+                )
         elif new in ("paused", "stopped"):
             await worker_manager.stop_strategy(strategy_id)
     except Exception as e:
@@ -414,7 +426,9 @@ async def update_quant_strategy_status(
                         await trader.close()
                     await db.commit()
         except Exception as e:
-            logger.error(f"Error closing positions for quant strategy {strategy_id}: {e}")
+            logger.error(
+                f"Error closing positions for quant strategy {strategy_id}: {e}"
+            )
 
     # Refresh strategy
     strategy = await repo.get_by_id(uuid.UUID(strategy_id), uuid.UUID(user_id))
@@ -442,23 +456,25 @@ async def delete_quant_strategy(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot delete strategy in '{strategy.status}' status. "
-                   "Stop the strategy first.",
+            "Stop the strategy first.",
         )
 
     # Check for open positions
     from ...services.agent_position_service import AgentPositionService
+
     ps = AgentPositionService(db=db)
     has_positions = await ps.has_open_positions(uuid.UUID(strategy_id))
     if has_positions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete strategy with open positions. "
-                   "Close all positions first.",
+            "Close all positions first.",
         )
 
     # Stop worker if running (safety)
     try:
         from ...workers.quant_worker import get_quant_worker_manager
+
         worker_manager = await get_quant_worker_manager()
         await worker_manager.stop_strategy(strategy_id)
     except Exception as e:

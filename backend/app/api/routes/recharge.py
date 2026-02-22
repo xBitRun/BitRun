@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep
@@ -15,19 +15,23 @@ router = APIRouter(prefix="/recharge", tags=["Recharge"])
 
 # ==================== Request/Response Models ====================
 
+
 class RechargeOrderCreate(BaseModel):
     """Recharge order creation request"""
+
     amount: float = Field(..., gt=0, description="Recharge amount")
     bonus_amount: float = Field(0.0, ge=0, description="Promotional bonus amount")
 
 
 class RechargeOrderConfirm(BaseModel):
     """Recharge order confirmation request (admin)"""
+
     note: Optional[str] = Field(None, max_length=500, description="Admin note")
 
 
 class RechargeOrderResponse(BaseModel):
     """Recharge order response"""
+
     id: str
     user_id: str
     order_no: str
@@ -45,6 +49,7 @@ class RechargeOrderResponse(BaseModel):
 
 class RechargeOrderListResponse(BaseModel):
     """Recharge order list response with user info"""
+
     id: str
     user_id: str
     user_email: Optional[str] = None
@@ -64,7 +69,10 @@ class RechargeOrderListResponse(BaseModel):
 
 # ==================== User Routes ====================
 
-@router.post("/orders", response_model=RechargeOrderResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/orders", response_model=RechargeOrderResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_recharge_order(
     request: RechargeOrderCreate,
     db: DbSessionDep,
@@ -155,15 +163,14 @@ async def get_my_order(
 
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
     # Ensure user owns this order
     if str(order.user_id) != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this order"
+            detail="You don't have access to this order",
         )
 
     return RechargeOrderResponse(
@@ -189,7 +196,7 @@ async def get_my_order(
 @router.get("/admin/orders", response_model=List[RechargeOrderListResponse])
 async def admin_list_orders(
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
     status: Optional[str] = Query(None, description="Filter by status"),
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     start_date: Optional[datetime] = None,
@@ -239,7 +246,7 @@ async def admin_mark_order_paid(
     order_id: str,
     request: RechargeOrderConfirm,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """Mark order as paid (platform admin only)."""
     from ...db.repositories import RechargeRepository
@@ -249,8 +256,7 @@ async def admin_mark_order_paid(
 
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
     await db.commit()
@@ -277,7 +283,7 @@ async def admin_confirm_order(
     order_id: str,
     request: RechargeOrderConfirm,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """
     Confirm recharge order and credit balance (platform admin only).
@@ -296,18 +302,14 @@ async def admin_confirm_order(
     order = await repo.mark_paid(uuid.UUID(order_id), request.note)
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
     # Process recharge (credit balance)
     wallet, error = await service.process_recharge(order.id, admin_user.id)
     if error:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     await db.commit()
 
@@ -336,7 +338,7 @@ async def admin_cancel_order(
     order_id: str,
     request: RechargeOrderConfirm,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """Cancel a pending order (platform admin only)."""
     from ...db.repositories import RechargeRepository
@@ -346,17 +348,18 @@ async def admin_cancel_order(
 
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
     if order.status not in ("pending", "paid"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot cancel order with status '{order.status}'"
+            detail=f"Cannot cancel order with status '{order.status}'",
         )
 
-    order = await repo.mark_failed(uuid.UUID(order_id), request.note or "Cancelled by admin")
+    order = await repo.mark_failed(
+        uuid.UUID(order_id), request.note or "Cancelled by admin"
+    )
 
     await db.commit()
 

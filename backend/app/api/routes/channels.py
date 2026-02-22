@@ -1,13 +1,13 @@
 """Channel management routes"""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, EmailStr, Field
 
-from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep, ChannelAdminDep
+from ...core.dependencies import DbSessionDep, PlatformAdminDep, ChannelAdminDep
 from ...services.channel_service import ChannelService
 
 router = APIRouter(prefix="/channels", tags=["Channels"])
@@ -15,19 +15,28 @@ router = APIRouter(prefix="/channels", tags=["Channels"])
 
 # ==================== Request/Response Models ====================
 
+
 class ChannelCreate(BaseModel):
     """Channel creation request"""
+
     name: str = Field(..., min_length=1, max_length=100)
-    code: str = Field(..., min_length=3, max_length=6, description="Unique channel code (3-6 chars)")
-    commission_rate: float = Field(0.0, ge=0.0, le=1.0, description="Commission rate (0.0-1.0)")
+    code: str = Field(
+        ..., min_length=3, max_length=6, description="Unique channel code (3-6 chars)"
+    )
+    commission_rate: float = Field(
+        0.0, ge=0.0, le=1.0, description="Commission rate (0.0-1.0)"
+    )
     contact_name: Optional[str] = Field(None, max_length=100)
     contact_email: Optional[EmailStr] = None
     contact_phone: Optional[str] = Field(None, max_length=50)
-    admin_user_id: Optional[str] = Field(None, description="User ID to set as channel admin")
+    admin_user_id: Optional[str] = Field(
+        None, description="User ID to set as channel admin"
+    )
 
 
 class ChannelUpdate(BaseModel):
     """Channel update request"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     commission_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
     contact_name: Optional[str] = Field(None, max_length=100)
@@ -38,11 +47,13 @@ class ChannelUpdate(BaseModel):
 
 class ChannelStatusUpdate(BaseModel):
     """Channel status update request"""
+
     status: str = Field(..., description="Status: active, suspended, closed")
 
 
 class ChannelResponse(BaseModel):
     """Channel response"""
+
     id: str
     name: str
     code: str
@@ -67,6 +78,7 @@ class ChannelResponse(BaseModel):
 
 class ChannelWalletResponse(BaseModel):
     """Channel wallet response"""
+
     channel_id: str
     balance: float
     frozen_balance: float
@@ -77,6 +89,7 @@ class ChannelWalletResponse(BaseModel):
 
 class ChannelUserResponse(BaseModel):
     """Channel user response"""
+
     id: str
     email: str
     name: str
@@ -85,6 +98,7 @@ class ChannelUserResponse(BaseModel):
 
 class ChannelStatisticsResponse(BaseModel):
     """Channel statistics response"""
+
     total_users: int
     active_users: int
     total_revenue: float
@@ -97,11 +111,12 @@ class ChannelStatisticsResponse(BaseModel):
 
 # ==================== Platform Admin Routes ====================
 
+
 @router.post("", response_model=ChannelResponse, status_code=status.HTTP_201_CREATED)
 async def create_channel(
     request: ChannelCreate,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """
     Create a new channel (platform admin only).
@@ -115,7 +130,7 @@ async def create_channel(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Channel code '{request.code}' already exists"
+            detail=f"Channel code '{request.code}' already exists",
         )
 
     # Parse admin user ID
@@ -156,7 +171,7 @@ async def create_channel(
 @router.get("", response_model=List[ChannelResponse])
 async def list_channels(
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -178,38 +193,39 @@ async def list_channels(
         # Get active users count
         from sqlalchemy import select, func
         from ...db.models import UserDB, WalletTransactionDB
-        active_users_query = select(func.count(func.distinct(
-            UserDB.id
-        ))).select_from(UserDB).outerjoin(
-            WalletTransactionDB, UserDB.id == WalletTransactionDB.user_id
-        ).where(
-            UserDB.channel_id == c.id,
-            WalletTransactionDB.id.isnot(None)
+
+        active_users_query = (
+            select(func.count(func.distinct(UserDB.id)))
+            .select_from(UserDB)
+            .outerjoin(WalletTransactionDB, UserDB.id == WalletTransactionDB.user_id)
+            .where(UserDB.channel_id == c.id, WalletTransactionDB.id.isnot(None))
         )
         result = await db.execute(active_users_query)
         active_users = result.scalar() or 0
 
-        responses.append(ChannelResponse(
-            id=str(c.id),
-            name=c.name,
-            code=c.code,
-            commission_rate=c.commission_rate,
-            status=c.status,
-            contact_name=c.contact_name,
-            contact_email=c.contact_email,
-            contact_phone=c.contact_phone,
-            admin_user_id=str(c.admin_user_id) if c.admin_user_id else None,
-            total_users=c.total_users,
-            total_revenue=c.total_revenue,
-            total_commission=c.total_commission,
-            total_accounts=extended_stats["total_accounts"],
-            total_agents=extended_stats["total_agents"],
-            active_users=active_users,
-            available_balance=wallet.balance if wallet else 0.0,
-            pending_commission=wallet.pending_commission if wallet else 0.0,
-            created_at=c.created_at,
-            updated_at=c.updated_at,
-        ))
+        responses.append(
+            ChannelResponse(
+                id=str(c.id),
+                name=c.name,
+                code=c.code,
+                commission_rate=c.commission_rate,
+                status=c.status,
+                contact_name=c.contact_name,
+                contact_email=c.contact_email,
+                contact_phone=c.contact_phone,
+                admin_user_id=str(c.admin_user_id) if c.admin_user_id else None,
+                total_users=c.total_users,
+                total_revenue=c.total_revenue,
+                total_commission=c.total_commission,
+                total_accounts=extended_stats["total_accounts"],
+                total_agents=extended_stats["total_agents"],
+                active_users=active_users,
+                available_balance=wallet.balance if wallet else 0.0,
+                pending_commission=wallet.pending_commission if wallet else 0.0,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+            )
+        )
 
     return responses
 
@@ -218,7 +234,7 @@ async def list_channels(
 async def get_channel(
     channel_id: str,
     db: DbSessionDep,
-    admin_user = ChannelAdminDep,
+    admin_user=ChannelAdminDep,
 ):
     """Get channel by ID."""
     service = ChannelService(db)
@@ -226,8 +242,7 @@ async def get_channel(
 
     if not channel:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Channel not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found"
         )
 
     return ChannelResponse(
@@ -253,7 +268,7 @@ async def update_channel(
     channel_id: str,
     request: ChannelUpdate,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """Update channel (platform admin only)."""
     service = ChannelService(db)
@@ -274,13 +289,14 @@ async def update_channel(
 
     if not channel:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Channel not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found"
         )
 
     # Handle admin user update separately
     if request.admin_user_id is not None:
-        admin_user_id = uuid.UUID(request.admin_user_id) if request.admin_user_id else None
+        admin_user_id = (
+            uuid.UUID(request.admin_user_id) if request.admin_user_id else None
+        )
         channel = await service.set_channel_admin(uuid.UUID(channel_id), admin_user_id)
 
     await db.commit()
@@ -308,7 +324,7 @@ async def update_channel_status(
     channel_id: str,
     request: ChannelStatusUpdate,
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """Update channel status (platform admin only)."""
     service = ChannelService(db)
@@ -316,15 +332,14 @@ async def update_channel_status(
     if request.status not in ("active", "suspended", "closed"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid status. Must be: active, suspended, or closed"
+            detail="Invalid status. Must be: active, suspended, or closed",
         )
 
     channel = await service.update_channel_status(uuid.UUID(channel_id), request.status)
 
     if not channel:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Channel not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found"
         )
 
     await db.commit()
@@ -349,10 +364,11 @@ async def update_channel_status(
 
 # ==================== Channel Admin Routes ====================
 
+
 @router.get("/me", response_model=ChannelResponse)
 async def get_my_channel(
     db: DbSessionDep,
-    user = ChannelAdminDep,
+    user=ChannelAdminDep,
 ):
     """Get current user's channel (channel admin only)."""
     service = ChannelService(db)
@@ -361,7 +377,7 @@ async def get_my_channel(
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not an admin of any channel"
+            detail="You are not an admin of any channel",
         )
 
     return ChannelResponse(
@@ -385,7 +401,7 @@ async def get_my_channel(
 @router.get("/me/users", response_model=List[ChannelUserResponse])
 async def get_my_channel_users(
     db: DbSessionDep,
-    user = ChannelAdminDep,
+    user=ChannelAdminDep,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -396,7 +412,7 @@ async def get_my_channel_users(
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not an admin of any channel"
+            detail="You are not an admin of any channel",
         )
 
     users = await service.get_channel_users(channel.id, limit=limit, offset=offset)
@@ -415,7 +431,7 @@ async def get_my_channel_users(
 @router.get("/me/wallet", response_model=ChannelWalletResponse)
 async def get_my_channel_wallet(
     db: DbSessionDep,
-    user = ChannelAdminDep,
+    user=ChannelAdminDep,
 ):
     """Get current channel's wallet (channel admin only)."""
     service = ChannelService(db)
@@ -424,15 +440,14 @@ async def get_my_channel_wallet(
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not an admin of any channel"
+            detail="You are not an admin of any channel",
         )
 
     wallet = await service.get_channel_wallet(channel.id)
 
     if not wallet:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Channel wallet not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Channel wallet not found"
         )
 
     return ChannelWalletResponse(
@@ -448,7 +463,7 @@ async def get_my_channel_wallet(
 @router.get("/me/statistics", response_model=ChannelStatisticsResponse)
 async def get_my_channel_statistics(
     db: DbSessionDep,
-    user = ChannelAdminDep,
+    user=ChannelAdminDep,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
 ):
@@ -459,7 +474,7 @@ async def get_my_channel_statistics(
     if not channel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not an admin of any channel"
+            detail="You are not an admin of any channel",
         )
 
     stats = await service.get_channel_statistics(
@@ -473,8 +488,10 @@ async def get_my_channel_statistics(
 
 # ==================== Platform Admin - User Management ====================
 
+
 class AdminUserResponse(BaseModel):
     """Admin user response with channel info"""
+
     id: str
     email: str
     name: str
@@ -488,6 +505,7 @@ class AdminUserResponse(BaseModel):
 
 class AdminUserListResponse(BaseModel):
     """Paginated user list response"""
+
     users: List[AdminUserResponse]
     total: int
     limit: int
@@ -497,7 +515,7 @@ class AdminUserListResponse(BaseModel):
 @router.get("/admin/users", response_model=AdminUserListResponse)
 async def list_all_users(
     db: DbSessionDep,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
     search: Optional[str] = Query(None, description="Search by email or name"),
     role: Optional[str] = Query(None, description="Filter by role"),
     channel_id: Optional[str] = Query(None, description="Filter by channel ID"),
@@ -579,7 +597,7 @@ async def set_user_channel(
     user_id: str,
     channel_id: Optional[str] = None,
     db: DbSessionDep = None,
-    admin_user = PlatformAdminDep,
+    admin_user=PlatformAdminDep,
 ):
     """
     Set or remove user's channel (platform admin only).
@@ -592,8 +610,7 @@ async def set_user_channel(
     user = await db.get(UserDB, uuid.UUID(user_id))
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     # Update channel
@@ -601,8 +618,7 @@ async def set_user_channel(
         channel = await db.get(ChannelDB, uuid.UUID(channel_id))
         if not channel:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Channel not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found"
             )
         user.channel_id = uuid.UUID(channel_id)
     else:

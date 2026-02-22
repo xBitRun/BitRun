@@ -17,7 +17,6 @@ from typing import Optional
 from .base_backend import WorkerBackend
 from .ai_backend import AIWorkerBackend
 from .quant_backend import QuantWorkerBackend
-from ..core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -221,8 +220,8 @@ class UnifiedWorkerManager:
             List of agent UUID strings
         """
         return (
-            self._ai_backend.list_running_agents() +
-            self._quant_backend.list_running_agents()
+            self._ai_backend.list_running_agents()
+            + self._quant_backend.list_running_agents()
         )
 
     def list_ai_agents(self) -> list[str]:

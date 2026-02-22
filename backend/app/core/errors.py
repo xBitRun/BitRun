@@ -8,7 +8,6 @@ Provides:
 """
 
 import logging
-import traceback
 from enum import Enum
 from typing import Any, Optional
 
@@ -27,6 +26,7 @@ except ImportError:
 
 class ErrorCode(str, Enum):
     """Standard error codes for the application"""
+
     # Authentication
     AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
     AUTH_TOKEN_EXPIRED = "AUTH_TOKEN_EXPIRED"
@@ -35,27 +35,27 @@ class ErrorCode(str, Enum):
     AUTH_ACCOUNT_LOCKED = "AUTH_ACCOUNT_LOCKED"
     AUTH_RATE_LIMITED = "AUTH_RATE_LIMITED"
     AUTH_EMAIL_EXISTS = "AUTH_EMAIL_EXISTS"
-    
+
     # Authorization
     AUTHZ_FORBIDDEN = "AUTHZ_FORBIDDEN"
     AUTHZ_RESOURCE_NOT_FOUND = "AUTHZ_RESOURCE_NOT_FOUND"
-    
+
     # Validation
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INVALID_INPUT = "INVALID_INPUT"
-    
+
     # External services
     EXCHANGE_ERROR = "EXCHANGE_ERROR"
     EXCHANGE_CONNECTION_FAILED = "EXCHANGE_CONNECTION_FAILED"
     AI_SERVICE_ERROR = "AI_SERVICE_ERROR"
     REDIS_UNAVAILABLE = "REDIS_UNAVAILABLE"
     DATABASE_ERROR = "DATABASE_ERROR"
-    
+
     # Business logic
     BACKTEST_FAILED = "BACKTEST_FAILED"
     STRATEGY_ERROR = "STRATEGY_ERROR"
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
-    
+
     # General
     INTERNAL_ERROR = "INTERNAL_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
@@ -64,10 +64,10 @@ class ErrorCode(str, Enum):
 class AppError(Exception):
     """
     Base application error with structured information.
-    
+
     Supports automatic sanitization for production environments.
     """
-    
+
     def __init__(
         self,
         code: ErrorCode,
@@ -78,7 +78,7 @@ class AppError(Exception):
     ):
         """
         Create an application error.
-        
+
         Args:
             code: Error code enum for machine-readable identification
             message: User-friendly error message (safe to expose)
@@ -101,23 +101,23 @@ def sanitize_error_message(
 ) -> str:
     """
     Sanitize an error message for client response.
-    
+
     In production: Returns generic user message
     In development: Returns detailed error information
-    
+
     Args:
         error: The exception to sanitize
         user_message: User-friendly message to show in production
         include_type: Whether to include error type in dev message
-        
+
     Returns:
         Sanitized error message string
     """
     settings = get_settings()
-    
+
     if settings.environment == "production":
         return user_message
-    
+
     # In development/staging, include details
     error_str = str(error)
     if include_type:
@@ -134,7 +134,7 @@ def log_and_raise_http_error(
 ) -> None:
     """
     Log an error and raise an HTTPException with sanitized message.
-    
+
     Args:
         error: The original exception
         code: Error code for identification
@@ -143,20 +143,20 @@ def log_and_raise_http_error(
         log_level: Logging level (error, warning, info)
     """
     settings = get_settings()
-    
+
     # Log the full error with traceback
     log_func = getattr(logger, log_level, logger.error)
     log_func(
         f"[{code.value}] {user_message}: {error}",
         exc_info=True if log_level == "error" else False,
     )
-    
+
     # Build response detail
     if settings.environment == "production":
         detail = user_message
     else:
         detail = f"{user_message}: {error}"
-    
+
     raise HTTPException(
         status_code=status_code,
         detail=detail,
@@ -172,19 +172,19 @@ def create_http_exception(
 ) -> HTTPException:
     """
     Create an HTTPException with sanitized message.
-    
+
     Args:
         code: Error code for identification
         user_message: User-friendly message (shown in production)
         status_code: HTTP status code
         internal_error: Optional internal exception for logging
         log_error: Whether to log the error
-        
+
     Returns:
         HTTPException ready to raise
     """
     settings = get_settings()
-    
+
     # Log if requested
     if log_error and internal_error:
         logger.error(
@@ -193,7 +193,7 @@ def create_http_exception(
         )
     elif log_error:
         logger.error(f"[{code.value}] {user_message}")
-    
+
     # Build response detail
     if settings.environment == "production":
         detail = user_message
@@ -202,7 +202,7 @@ def create_http_exception(
             detail = f"{user_message}: {internal_error}"
         else:
             detail = user_message
-    
+
     return HTTPException(
         status_code=status_code,
         detail=detail,
@@ -210,6 +210,7 @@ def create_http_exception(
 
 
 # ==================== Pre-built HTTP Exceptions ====================
+
 
 def backtest_failed_error(error: Exception) -> HTTPException:
     """Create standardized backtest failed error"""
@@ -236,12 +237,12 @@ def exchange_api_error(error: Exception, operation: str = "") -> HTTPException:
     """Create standardized exchange API error"""
     op_info = f" during {operation}" if operation else ""
     settings = get_settings()
-    
+
     # Check if it's a TradeError with specific error code
     if TradeError and isinstance(error, TradeError):
-        error_code = getattr(error, 'code', None)
-        error_message = getattr(error, 'message', str(error))
-        
+        error_code = getattr(error, "code", None)
+        error_message = getattr(error, "message", str(error))
+
         if error_code == "AUTH_ERROR":
             # Authentication error - provide clear guidance
             user_message = f"认证失败{op_info}。请检查 API Key 和 Secret Key 是否正确，并确保已启用必要的权限。"
@@ -262,14 +263,14 @@ def exchange_api_error(error: Exception, operation: str = "") -> HTTPException:
                 user_message = f"{user_message} {error_message}"
             else:
                 user_message = f"{user_message} 请稍后重试。"
-        
+
         return create_http_exception(
             code=ErrorCode.EXCHANGE_ERROR,
             user_message=user_message,
             status_code=status.HTTP_502_BAD_GATEWAY,
             internal_error=error,
         )
-    
+
     # Generic error handling
     return create_http_exception(
         code=ErrorCode.EXCHANGE_ERROR,
@@ -302,6 +303,7 @@ def internal_error(error: Exception, context: str = "") -> HTTPException:
 
 # ==================== Auth Error Helpers ====================
 
+
 def auth_error(
     code: ErrorCode,
     status_code: int = status.HTTP_401_UNAUTHORIZED,
@@ -310,17 +312,17 @@ def auth_error(
 ) -> HTTPException:
     """
     Create an auth error with structured detail for frontend i18n.
-    
+
     The detail is a dict containing:
     - code: Error code for frontend to look up translation
     - Any additional data (e.g., remaining_attempts, remaining_minutes)
-    
+
     Args:
         code: Error code enum
         status_code: HTTP status code
         headers: Optional response headers
         **extra_data: Additional data to include in detail (e.g., remaining_attempts=3)
-        
+
     Returns:
         HTTPException with structured detail
     """

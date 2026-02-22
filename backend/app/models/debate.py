@@ -16,6 +16,7 @@ from .decision import TradingDecision, DecisionResponse, ActionType
 
 class ConsensusMode(str, Enum):
     """Consensus modes for multi-model debate"""
+
     MAJORITY_VOTE = "majority_vote"  # Most common action wins
     HIGHEST_CONFIDENCE = "highest_confidence"  # Highest confidence model wins
     WEIGHTED_AVERAGE = "weighted_average"  # Weight by confidence
@@ -26,6 +27,7 @@ class DebateParticipant(BaseModel):
     """
     Response from a single AI model in the debate.
     """
+
     model_id: str = Field(..., description="Full model ID (provider:model)")
     raw_response: str = Field(default="", description="Raw AI response text")
     chain_of_thought: str = Field(default="", description="Model's reasoning")
@@ -46,6 +48,7 @@ class DebateVote(BaseModel):
     """
     Vote summary for a specific symbol and action.
     """
+
     symbol: str
     action: ActionType
     vote_count: int
@@ -58,6 +61,7 @@ class DebateResult(BaseModel):
     """
     Complete result of a multi-model debate.
     """
+
     # Participants
     participants: list[DebateParticipant] = Field(default_factory=list)
     successful_participants: int = Field(default=0)
@@ -70,18 +74,14 @@ class DebateResult(BaseModel):
     # Voting results
     votes: list[DebateVote] = Field(default_factory=list)
     agreement_score: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="0-1 score of model agreement"
+        default=0.0, ge=0.0, le=1.0, description="0-1 score of model agreement"
     )
 
     # Final consensus
     final_decisions: list[TradingDecision] = Field(default_factory=list)
     final_confidence: int = Field(default=0, ge=0, le=100)
     consensus_reasoning: str = Field(
-        default="",
-        description="Explanation of how consensus was reached"
+        default="", description="Explanation of how consensus was reached"
     )
 
     # Aggregated market assessment
@@ -112,26 +112,19 @@ class DebateConfig(BaseModel):
     """
     Configuration for a debate session.
     """
+
     enabled: bool = Field(default=False, description="Enable debate mode")
     model_ids: list[str] = Field(
-        default_factory=list,
-        description="List of model IDs to participate"
+        default_factory=list, description="List of model IDs to participate"
     )
     consensus_mode: ConsensusMode = Field(
-        default=ConsensusMode.MAJORITY_VOTE,
-        description="How to reach consensus"
+        default=ConsensusMode.MAJORITY_VOTE, description="How to reach consensus"
     )
     min_participants: int = Field(
-        default=2,
-        ge=2,
-        le=5,
-        description="Minimum successful responses required"
+        default=2, ge=2, le=5, description="Minimum successful responses required"
     )
     timeout_seconds: int = Field(
-        default=120,
-        ge=30,
-        le=300,
-        description="Timeout for each model"
+        default=120, ge=30, le=300, description="Timeout for each model"
     )
 
     def validate_config(self) -> tuple[bool, str]:

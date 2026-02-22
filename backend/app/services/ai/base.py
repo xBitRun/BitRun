@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 class AIProvider(str, Enum):
     """Supported AI providers"""
+
     DEEPSEEK = "deepseek"
     QWEN = "qwen"
     ZHIPU = "zhipu"  # GLM models
@@ -27,6 +28,7 @@ class AIProvider(str, Enum):
 @dataclass
 class ModelInfo:
     """Information about a specific AI model"""
+
     id: str  # Model identifier (e.g., "claude-sonnet-4-5-20250514")
     provider: AIProvider
     name: str  # Display name (e.g., "Claude Sonnet 4.5")
@@ -47,6 +49,7 @@ class ModelInfo:
 @dataclass
 class AIClientConfig:
     """Configuration for an AI client instance"""
+
     api_key: str
     model: str
     base_url: Optional[str] = None  # For custom endpoints
@@ -59,6 +62,7 @@ class AIClientConfig:
 @dataclass
 class AIResponse:
     """Standardized response from AI clients"""
+
     content: str
     model: str
     provider: AIProvider
@@ -72,6 +76,7 @@ class AIResponse:
 
 class AIClientError(Exception):
     """Base error for AI client operations"""
+
     def __init__(self, message: str, provider: Optional[AIProvider] = None):
         self.message = message
         self.provider = provider
@@ -80,21 +85,25 @@ class AIClientError(Exception):
 
 class AIAuthenticationError(AIClientError):
     """Authentication failed with provider"""
+
     pass
 
 
 class AIRateLimitError(AIClientError):
     """Rate limit exceeded"""
+
     pass
 
 
 class AIConnectionError(AIClientError):
     """Connection to provider failed"""
+
     pass
 
 
 class AIInvalidRequestError(AIClientError):
     """Invalid request to provider"""
+
     pass
 
 
@@ -180,8 +189,6 @@ class BaseAIClient(ABC):
         a more explicit instruction.
         """
         import asyncio
-        import json
-        import re
 
         last_error = None
         current_user_prompt = user_prompt
@@ -207,7 +214,7 @@ No additional text or explanation - just the JSON.
                 last_error = e
                 if attempt == max_retries - 1:
                     raise
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                await asyncio.sleep(2**attempt)  # Exponential backoff
 
         if last_error:
             raise last_error
@@ -223,14 +230,14 @@ No additional text or explanation - just the JSON.
         patterns = [
             r'\{[\s\S]*"chain_of_thought"[\s\S]*\}',
             r'\{[\s\S]*"decisions"[\s\S]*\}',
-            r'```json\s*([\s\S]*?)\s*```',
+            r"```json\s*([\s\S]*?)\s*```",
         ]
 
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
                 try:
-                    json_str = match.group(1) if '```' in pattern else match.group(0)
+                    json_str = match.group(1) if "```" in pattern else match.group(0)
                     json.loads(json_str)
                     return True
                 except (json.JSONDecodeError, IndexError):
@@ -493,5 +500,6 @@ def model_info_to_dict(model: ModelInfo) -> dict:
 def preset_models_json(provider_type: str) -> str:
     """Get the preset models for a provider as a JSON string."""
     import json
+
     models = get_preset_models(provider_type)
     return json.dumps([model_info_to_dict(m) for m in models])

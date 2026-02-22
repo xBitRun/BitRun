@@ -10,10 +10,6 @@ import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Awaitable, Callable, Optional
-
-# Resolver: model_id -> (api_key, base_url) from DB
-CredentialsResolver: type = Callable[[str], Awaitable[tuple[str | None, str | None]]]
-
 from ..models.debate import (
     ConsensusMode,
     DebateConfig,
@@ -30,6 +26,9 @@ from ..models.decision import (
 from .ai.factory import get_ai_client
 from .ai.base import AIClientError, AIResponse
 from .decision_parser import DecisionParser, DecisionParseError
+
+# Resolver: model_id -> (api_key, base_url) from DB
+CredentialsResolver: type = Callable[[str], Awaitable[tuple[str | None, str | None]]]
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +174,9 @@ class DebateEngine:
     ) -> list[DebateParticipant]:
         """Generate responses from all models in parallel."""
         tasks = [
-            self._generate_single(model_id, system_prompt, user_prompt, credentials_resolver)
+            self._generate_single(
+                model_id, system_prompt, user_prompt, credentials_resolver
+            )
             for model_id in model_ids
         ]
 
@@ -206,7 +207,7 @@ class DebateEngine:
             # Generate response
             response: AIResponse = await asyncio.wait_for(
                 client.generate(system_prompt, user_prompt),
-                timeout=self.config.timeout_seconds
+                timeout=self.config.timeout_seconds,
             )
 
             latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
@@ -221,7 +222,7 @@ class DebateEngine:
                     raw_response=response.content,
                     latency_ms=latency_ms,
                     tokens_used=response.tokens_used,
-                    error=f"Parse error: {e.message}"
+                    error=f"Parse error: {e.message}",
                 )
 
             return DebateParticipant(
@@ -241,15 +242,13 @@ class DebateEngine:
             return DebateParticipant(
                 model_id=model_id,
                 latency_ms=latency_ms,
-                error=f"Timeout after {self.config.timeout_seconds}s"
+                error=f"Timeout after {self.config.timeout_seconds}s",
             )
         except AIClientError as e:
             latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             logger.warning(f"AI client error from {model_id}: {e}")
             return DebateParticipant(
-                model_id=model_id,
-                latency_ms=latency_ms,
-                error=f"AI error: {e.message}"
+                model_id=model_id, latency_ms=latency_ms, error=f"AI error: {e.message}"
             )
         except Exception as e:
             latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
@@ -257,7 +256,7 @@ class DebateEngine:
             return DebateParticipant(
                 model_id=model_id,
                 latency_ms=latency_ms,
-                error=f"Unexpected error: {str(e)}"
+                error=f"Unexpected error: {str(e)}",
             )
 
     def _aggregate_votes(
@@ -387,8 +386,7 @@ class DebateEngine:
 
             # Get winning vote
             winning_vote = max(
-                symbol_vote_list,
-                key=lambda v: (v.vote_count, v.average_confidence)
+                symbol_vote_list, key=lambda v: (v.vote_count, v.average_confidence)
             )
 
             # Only include if majority agrees (> 50%)
@@ -400,7 +398,9 @@ class DebateEngine:
                         if d.symbol == symbol and d.action == winning_vote.action:
                             # Clone decision with adjusted confidence
                             final_decision = d.model_copy()
-                            final_decision.confidence = int(winning_vote.average_confidence)
+                            final_decision.confidence = int(
+                                winning_vote.average_confidence
+                            )
                             final_decisions.append(final_decision)
                             reasoning_parts.append(
                                 f"- {symbol} {winning_vote.action.value}: "
@@ -442,7 +442,9 @@ class DebateEngine:
         reasoning_parts = ["Consensus by weighted confidence:"]
 
         # Group by symbol
-        symbol_decisions: dict[str, list[tuple[TradingDecision, int]]] = defaultdict(list)
+        symbol_decisions: dict[str, list[tuple[TradingDecision, int]]] = defaultdict(
+            list
+        )
 
         for p in participants:
             weight = p.overall_confidence
@@ -464,14 +466,13 @@ class DebateEngine:
                 weighted_conf = weight * decision.confidence / 100
                 action_weights[decision.action] = (
                     current_weight + weighted_conf,
-                    decision
+                    decision,
                 )
 
             # Pick highest weighted action
             if action_weights:
                 best_action, (total_weight, best_decision) = max(
-                    action_weights.items(),
-                    key=lambda x: x[1][0]
+                    action_weights.items(), key=lambda x: x[1][0]
                 )
 
                 if best_action not in (ActionType.HOLD, ActionType.WAIT):
@@ -513,7 +514,9 @@ class DebateEngine:
                     break
 
         if not final_decisions:
-            reasoning_parts.append("- No unanimous agreement reached, defaulting to hold")
+            reasoning_parts.append(
+                "- No unanimous agreement reached, defaulting to hold"
+            )
 
         return final_decisions, "\n".join(reasoning_parts)
 
@@ -572,7 +575,9 @@ class DebateEngine:
 
         for p in participants:
             if p.chain_of_thought:
-                parts.append(f"#### {p.model_id} (confidence: {p.overall_confidence}%)\n")
+                parts.append(
+                    f"#### {p.model_id} (confidence: {p.overall_confidence}%)\n"
+                )
                 # Truncate if too long
                 cot = p.chain_of_thought
                 if len(cot) > 500:
@@ -634,17 +639,11 @@ async def validate_debate_models(
             success = await client.test_connection()
             results[model_id] = {
                 "valid": success,
-                "error": None if success else "Connection test failed"
+                "error": None if success else "Connection test failed",
             }
         except AIClientError as e:
-            results[model_id] = {
-                "valid": False,
-                "error": e.message
-            }
+            results[model_id] = {"valid": False, "error": e.message}
         except Exception as e:
-            results[model_id] = {
-                "valid": False,
-                "error": str(e)
-            }
+            results[model_id] = {"valid": False, "error": str(e)}
 
     return results

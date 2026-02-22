@@ -21,13 +21,41 @@ logger = logging.getLogger(__name__)
 
 # OAuth2 scheme for JWT authentication
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/auth/login",
-    auto_error=False  # Don't auto-raise, let us handle it
+    tokenUrl="/api/v1/auth/login",
+    auto_error=False,  # Don't auto-raise, let us handle it
 )
 
 
+async def _check_token_blacklist(token_data: TokenData) -> bool:
+    """
+    Check whether token JTI is blacklisted.
+
+    Returns:
+        True if token is blacklisted, False otherwise.
+
+    Raises:
+        HTTPException 503 in production if blacklist check is unavailable.
+    """
+    if not token_data.jti:
+        return False
+
+    try:
+        redis = await get_redis_service()
+        return await redis.is_token_blacklisted(token_data.jti)
+    except Exception as e:
+        settings = get_settings()
+        logger.error(f"Redis unavailable for token blacklist check: {e}")
+        if settings.environment == "production":
+            raise auth_error(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Retry-After": "5"},
+            )
+        return False
+
+
 async def get_current_user_id(
-    token: Annotated[Optional[str], Depends(oauth2_scheme)]
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
 ) -> str:
     """
     Dependency to get current authenticated user ID from JWT token.
@@ -44,6 +72,12 @@ async def get_current_user_id(
 
     try:
         token_data = verify_token(token, token_type="access")
+        if await _check_token_blacklist(token_data):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return token_data.sub
     except JWTError as e:
         raise HTTPException(
@@ -54,7 +88,7 @@ async def get_current_user_id(
 
 
 async def get_optional_user_id(
-    token: Annotated[Optional[str], Depends(oauth2_scheme)]
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
 ) -> Optional[str]:
     """
     Dependency to optionally get current user ID.
@@ -65,13 +99,15 @@ async def get_optional_user_id(
 
     try:
         token_data = verify_token(token, token_type="access")
+        if await _check_token_blacklist(token_data):
+            return None
         return token_data.sub
     except JWTError:
         return None
 
 
 async def get_current_token_data(
-    token: Annotated[Optional[str], Depends(oauth2_scheme)]
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
 ) -> TokenData:
     """
     Dependency to get full token data including JTI.
@@ -88,6 +124,12 @@ async def get_current_token_data(
 
     try:
         token_data = verify_token(token, token_type="access")
+        if await _check_token_blacklist(token_data):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return token_data
     except JWTError as e:
         raise HTTPException(
@@ -98,6 +140,7 @@ async def get_current_token_data(
 
 
 # ==================== Rate Limiting ====================
+
 
 async def rate_limit_auth(request: Request) -> None:
     """
@@ -116,13 +159,13 @@ async def rate_limit_auth(request: Request) -> None:
     try:
         redis = await get_redis_service()
         allowed, remaining = await redis.check_rate_limit(
-            identifier=f"auth:{client_ip}",
-            max_requests=5,
-            window_seconds=60
+            identifier=f"auth:{client_ip}", max_requests=5, window_seconds=60
         )
 
         if not allowed:
-            logger.warning(f"Rate limit exceeded for auth endpoint from IP: {client_ip}")
+            logger.warning(
+                f"Rate limit exceeded for auth endpoint from IP: {client_ip}"
+            )
             raise auth_error(
                 ErrorCode.AUTH_RATE_LIMITED,
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -140,7 +183,9 @@ async def rate_limit_auth(request: Request) -> None:
                 headers={"Retry-After": "5"},
             )
         # In dev/staging, allow request without rate limiting
-        logger.warning(f"Skipping rate limit check in {settings.environment} (Redis unavailable)")
+        logger.warning(
+            f"Skipping rate limit check in {settings.environment} (Redis unavailable)"
+        )
 
 
 # Rate limit dependency for use with Depends()
@@ -281,6 +326,7 @@ DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 # ==================== Admin Role Dependencies ====================
 
+
 async def require_platform_admin(
     db: DbSessionDep,
     user_id: CurrentUserDep,
@@ -296,7 +342,7 @@ async def require_platform_admin(
     if not user or user.role != "platform_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Platform admin access required"
+            detail="Platform admin access required",
         )
     return user
 
@@ -316,7 +362,7 @@ async def require_channel_admin(
     if not user or user.role not in ("channel_admin", "platform_admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Channel admin access required"
+            detail="Channel admin access required",
         )
     return user
 

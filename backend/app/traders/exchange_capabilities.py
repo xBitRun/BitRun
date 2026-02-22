@@ -13,23 +13,26 @@ from pydantic import BaseModel, Field
 
 class AssetType(str, Enum):
     """Supported asset/market types"""
-    CRYPTO_PERP = "crypto_perp"     # Crypto perpetual futures
-    CRYPTO_SPOT = "crypto_spot"     # Crypto spot
-    FOREX = "forex"                 # Foreign exchange (future)
-    METALS = "metals"               # Precious metals (future)
-    EQUITIES = "equities"           # Stocks/equities (future)
+
+    CRYPTO_PERP = "crypto_perp"  # Crypto perpetual futures
+    CRYPTO_SPOT = "crypto_spot"  # Crypto spot
+    FOREX = "forex"  # Foreign exchange (future)
+    METALS = "metals"  # Precious metals (future)
+    EQUITIES = "equities"  # Stocks/equities (future)
 
 
 class SettlementCurrency(str, Enum):
     """Supported settlement currencies"""
+
     USDT = "USDT"
     USDC = "USDC"
-    USD = "USD"                     # For forex/metals/equities
+    USD = "USD"  # For forex/metals/equities
     BUSD = "BUSD"
 
 
 class ExchangeFeature(str, Enum):
     """Optional exchange features"""
+
     FUNDING_RATES = "funding_rates"
     OPEN_INTEREST = "open_interest"
     LEVERAGE_ADJUSTMENT = "leverage_adjustment"
@@ -42,42 +45,49 @@ class ExchangeFeature(str, Enum):
 
 class ExchangeCapabilities(BaseModel):
     """Exchange capabilities and configuration"""
-    id: str = Field(..., description="Exchange identifier (e.g., 'hyperliquid', 'binance')")
-    display_name: str = Field(..., description="Human-readable name (e.g., 'Binance Futures')")
+
+    id: str = Field(
+        ..., description="Exchange identifier (e.g., 'hyperliquid', 'binance')"
+    )
+    display_name: str = Field(
+        ..., description="Human-readable name (e.g., 'Binance Futures')"
+    )
 
     # Supported assets
     supported_assets: list[AssetType] = Field(
-        default_factory=list,
-        description="List of supported asset types"
+        default_factory=list, description="List of supported asset types"
     )
 
     # Settlement currencies per asset type
     settlement_currencies: dict[AssetType, SettlementCurrency] = Field(
-        default_factory=dict,
-        description="Settlement currency mapping per asset type"
+        default_factory=dict, description="Settlement currency mapping per asset type"
     )
 
     # Default settlement currency (for backward compatibility)
     default_settlement: SettlementCurrency = Field(
-        default=SettlementCurrency.USDT,
-        description="Default settlement currency"
+        default=SettlementCurrency.USDT, description="Default settlement currency"
     )
 
     # Optional features
     features: list[ExchangeFeature] = Field(
-        default_factory=list,
-        description="List of supported features"
+        default_factory=list, description="List of supported features"
     )
 
     # Limits
     max_leverage: int = Field(default=100, description="Maximum leverage")
-    min_order_size_usd: float = Field(default=1.0, description="Minimum order size in USD")
+    min_order_size_usd: float = Field(
+        default=1.0, description="Minimum order size in USD"
+    )
     max_kline_limit: int = Field(default=1000, description="Maximum kline data limit")
 
     # CCXT-specific config
     ccxt_id: str = Field(..., description="CCXT exchange class ID")
-    requires_passphrase: bool = Field(default=False, description="Whether passphrase is required")
-    supports_testnet: bool = Field(default=True, description="Whether testnet is supported")
+    requires_passphrase: bool = Field(
+        default=False, description="Whether passphrase is required"
+    )
+    supports_testnet: bool = Field(
+        default=True, description="Whether testnet is supported"
+    )
 
     # Metadata
     is_active: bool = Field(default=True, description="Whether exchange is active")
@@ -110,7 +120,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=True,
         website_url="https://hyperliquid.xyz",
     ),
-
     "binance": ExchangeCapabilities(
         id="binance",
         display_name="Binance Futures",
@@ -136,7 +145,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=True,
         website_url="https://www.binance.com",
     ),
-
     "okx": ExchangeCapabilities(
         id="okx",
         display_name="OKX",
@@ -162,7 +170,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=True,
         website_url="https://www.okx.com",
     ),
-
     "bybit": ExchangeCapabilities(
         id="bybit",
         display_name="Bybit",
@@ -188,7 +195,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=True,
         website_url="https://www.bybit.com",
     ),
-
     "bitget": ExchangeCapabilities(
         id="bitget",
         display_name="Bitget",
@@ -213,7 +219,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=False,
         website_url="https://www.bitget.com",
     ),
-
     "kucoin": ExchangeCapabilities(
         id="kucoin",
         display_name="KuCoin Futures",
@@ -236,7 +241,6 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
         supports_testnet=True,
         website_url="https://www.kucoin.com",
     ),
-
     "gate": ExchangeCapabilities(
         id="gate",
         display_name="Gate.io",
@@ -263,6 +267,7 @@ EXCHANGE_CAPABILITIES: dict[str, ExchangeCapabilities] = {
 
 
 # ==================== Helper Functions ====================
+
 
 def get_exchange_capabilities(exchange_id: str) -> Optional[ExchangeCapabilities]:
     """Get capabilities for a specific exchange.
@@ -304,14 +309,14 @@ def get_exchanges_for_asset(asset_type: AssetType) -> list[ExchangeCapabilities]
         List of ExchangeCapabilities that support the given asset type
     """
     return [
-        cap for cap in EXCHANGE_CAPABILITIES.values()
+        cap
+        for cap in EXCHANGE_CAPABILITIES.values()
         if asset_type in cap.supported_assets and cap.is_active
     ]
 
 
 def get_settlement_currency(
-    exchange_id: str,
-    asset_type: AssetType = AssetType.CRYPTO_PERP
+    exchange_id: str, asset_type: AssetType = AssetType.CRYPTO_PERP
 ) -> SettlementCurrency:
     """Get settlement currency for an exchange and asset type.
 

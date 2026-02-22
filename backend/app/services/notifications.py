@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class NotificationChannel(str, Enum):
     """Notification channels"""
+
     TELEGRAM = "telegram"
     DISCORD = "discord"
     EMAIL = "email"
@@ -30,6 +31,7 @@ class NotificationChannel(str, Enum):
 
 class NotificationType(str, Enum):
     """Notification types"""
+
     DECISION = "decision"
     TRADE_EXECUTED = "trade_executed"
     STRATEGY_STATUS = "strategy_status"
@@ -40,6 +42,7 @@ class NotificationType(str, Enum):
 @dataclass
 class Notification:
     """Notification data"""
+
     type: NotificationType
     title: str
     message: str
@@ -152,11 +155,13 @@ class DiscordProvider(NotificationProvider):
         if notification.data:
             fields = []
             for key, value in notification.data.items():
-                fields.append({
-                    "name": key,
-                    "value": str(value),
-                    "inline": True,
-                })
+                fields.append(
+                    {
+                        "name": key,
+                        "value": str(value),
+                        "inline": True,
+                    }
+                )
             embed["fields"] = fields
 
         try:
@@ -258,11 +263,15 @@ class ResendEmailProvider(NotificationProvider):
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, lambda: resend.Emails.send(params))
 
-            logger.info(f"Resend email sent to {notification.recipient_email}: {notification.title}")
+            logger.info(
+                f"Resend email sent to {notification.recipient_email}: {notification.title}"
+            )
             return True
 
         except ImportError:
-            logger.error("resend package not installed, email notifications unavailable")
+            logger.error(
+                "resend package not installed, email notifications unavailable"
+            )
             return False
         except Exception as e:
             logger.error(f"Resend email notification error: {e}")
@@ -476,11 +485,11 @@ def get_notification_service() -> NotificationService:
         settings = get_settings()
 
         _notification_service.configure(
-            telegram_bot_token=getattr(settings, 'telegram_bot_token', None),
-            telegram_chat_id=getattr(settings, 'telegram_chat_id', None),
-            discord_webhook_url=getattr(settings, 'discord_webhook_url', None),
-            resend_api_key=getattr(settings, 'resend_api_key', None),
-            resend_from=getattr(settings, 'resend_from', None),
+            telegram_bot_token=getattr(settings, "telegram_bot_token", None),
+            telegram_chat_id=getattr(settings, "telegram_chat_id", None),
+            discord_webhook_url=getattr(settings, "discord_webhook_url", None),
+            resend_api_key=getattr(settings, "resend_api_key", None),
+            resend_from=getattr(settings, "resend_from", None),
         )
 
     return _notification_service

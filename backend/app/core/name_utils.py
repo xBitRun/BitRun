@@ -8,8 +8,7 @@
 """
 
 import re
-from typing import Callable, Optional, Tuple
-
+from typing import Callable, Tuple
 
 # 匹配名称末尾的数字后缀，支持中划线格式
 # 示例: "BTC策略-1", "My Strategy-2", "Test-10"
@@ -93,7 +92,6 @@ async def generate_unique_name(
         >>> await generate_unique_name("BTC策略", user_id, check_func)
         "BTC策略-2"  # 第二个冲突
     """
-    import asyncio
 
     # 如果原名称可用，直接返回
     if not await exists_check(name, user_id):
@@ -112,6 +110,7 @@ async def generate_unique_name(
 
     # 如果超过最大尝试次数，使用时间戳作为后缀
     import time
+
     timestamp = int(time.time())
     return add_numeric_suffix(base_name, timestamp)
 
@@ -151,5 +150,6 @@ def generate_unique_name_sync(
 
     # 如果超过最大尝试次数，使用时间戳作为后缀
     import time
+
     timestamp = int(time.time())
     return add_numeric_suffix(base_name, timestamp)

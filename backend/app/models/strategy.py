@@ -14,19 +14,20 @@ Supports multiple strategy types via polymorphic config:
 
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
 from .decision import RiskControls
 
-
 # =============================================================================
 # Enums
 # =============================================================================
 
+
 class StrategyType(str, Enum):
     """Strategy type discriminator"""
+
     AI = "ai"
     GRID = "grid"
     DCA = "dca"
@@ -35,6 +36,7 @@ class StrategyType(str, Enum):
 
 class TradingMode(str, Enum):
     """Trading style/mode (AI strategies only)"""
+
     AGGRESSIVE = "aggressive"
     BALANCED = "balanced"
     CONSERVATIVE = "conservative"
@@ -42,12 +44,14 @@ class TradingMode(str, Enum):
 
 class StrategyVisibility(str, Enum):
     """Strategy visibility in marketplace"""
+
     PRIVATE = "private"
     PUBLIC = "public"
 
 
 class PricingModel(str, Enum):
     """Strategy pricing model"""
+
     FREE = "free"
     ONE_TIME = "one_time"
     MONTHLY = "monthly"
@@ -57,6 +61,7 @@ class PricingModel(str, Enum):
 # AI Strategy Config
 # =============================================================================
 
+
 class PromptSections(BaseModel):
     """
     Customizable sections of the system prompt.
@@ -64,21 +69,22 @@ class PromptSections(BaseModel):
     These allow users to fine-tune AI behavior without rewriting the entire prompt.
     Based on NoFx's 8-section prompt structure.
     """
+
     role_definition: str = Field(
         default="You are an expert cryptocurrency trader with deep market analysis skills.",
-        description="AI role and persona definition"
+        description="AI role and persona definition",
     )
     trading_frequency: str = Field(
         default="Analyze market every 30-60 minutes. Only trade when high-confidence setups appear.",
-        description="How often to trade"
+        description="How often to trade",
     )
     entry_standards: str = Field(
         default="Enter positions only when multiple indicators align and risk/reward is favorable.",
-        description="Criteria for entering trades"
+        description="Criteria for entering trades",
     )
     decision_process: str = Field(
         default="1. Assess overall market trend\n2. Identify key support/resistance\n3. Check momentum indicators\n4. Evaluate risk/reward\n5. Make decision",
-        description="Step-by-step decision process"
+        description="Step-by-step decision process",
     )
 
 
@@ -89,11 +95,9 @@ class AIStrategyConfig(BaseModel):
     Contains all the settings that were previously split between
     StrategyDB top-level fields and StrategyConfig.
     """
+
     # Prompt (the user's natural language trading instructions)
-    prompt: str = Field(
-        default="",
-        description="Natural language trading instructions"
-    )
+    prompt: str = Field(default="", description="Natural language trading instructions")
 
     # Trading mode
     trading_mode: TradingMode = Field(default=TradingMode.CONSERVATIVE)
@@ -101,8 +105,7 @@ class AIStrategyConfig(BaseModel):
     # Symbols (kept here for PromptBuilder compatibility;
     # also stored at StrategyDB.symbols top level)
     symbols: list[str] = Field(
-        default=["BTC", "ETH"],
-        description="Trading symbols to analyze"
+        default=["BTC", "ETH"], description="Trading symbols to analyze"
     )
 
     # Prompt language (auto-set from frontend locale)
@@ -118,41 +121,39 @@ class AIStrategyConfig(BaseModel):
             "macd_signal": 9,
             "atr_period": 14,
         },
-        description="Technical indicator settings"
+        description="Technical indicator settings",
     )
 
     # Timeframes
     timeframes: list[str] = Field(
-        default=["15m", "1h", "4h"],
-        description="Timeframes to analyze"
+        default=["15m", "1h", "4h"], description="Timeframes to analyze"
     )
 
     # Risk controls (hard limits)
     risk_controls: RiskControls = Field(
-        default_factory=RiskControls,
-        description="Risk control parameters"
+        default_factory=RiskControls, description="Risk control parameters"
     )
 
     # Prompt customization
     prompt_mode: str = Field(
         default="simple",
-        description="Prompt editing mode: 'simple' (section-based) or 'advanced' (full markdown editor)"
+        description="Prompt editing mode: 'simple' (section-based) or 'advanced' (full markdown editor)",
     )
     prompt_sections: PromptSections = Field(
         default_factory=PromptSections,
-        description="Customizable prompt sections (used in simple mode)"
+        description="Customizable prompt sections (used in simple mode)",
     )
 
     # Custom prompt addition
     custom_prompt: str = Field(
         default="",
-        description="Additional custom instructions appended to system prompt (used in simple mode, deprecated)"
+        description="Additional custom instructions appended to system prompt (used in simple mode, deprecated)",
     )
 
     # Advanced prompt (full markdown content for sections 1-6)
     advanced_prompt: str = Field(
         default="",
-        description="Full custom prompt content for advanced mode (replaces sections 1-6)"
+        description="Full custom prompt content for advanced mode (replaces sections 1-6)",
     )
 
 
@@ -160,13 +161,23 @@ class AIStrategyConfig(BaseModel):
 # Quant Strategy Configs (reuse existing, no changes)
 # =============================================================================
 
+
 class GridConfig(BaseModel):
     """Configuration for Grid trading strategy"""
-    upper_price: float = Field(..., gt=0, description="Upper price boundary of the grid")
-    lower_price: float = Field(..., gt=0, description="Lower price boundary of the grid")
+
+    upper_price: float = Field(
+        ..., gt=0, description="Upper price boundary of the grid"
+    )
+    lower_price: float = Field(
+        ..., gt=0, description="Lower price boundary of the grid"
+    )
     grid_count: int = Field(..., ge=2, le=200, description="Number of grid levels")
-    total_investment: float = Field(..., gt=0, description="Total investment amount (USD)")
-    leverage: float = Field(default=1.0, ge=1.0, le=50.0, description="Leverage multiplier")
+    total_investment: float = Field(
+        ..., gt=0, description="Total investment amount (USD)"
+    )
+    leverage: float = Field(
+        default=1.0, ge=1.0, le=50.0, description="Leverage multiplier"
+    )
 
     @model_validator(mode="after")
     def validate_price_range(self):
@@ -177,26 +188,48 @@ class GridConfig(BaseModel):
 
 class DCAConfig(BaseModel):
     """Configuration for DCA (Dollar-Cost Averaging) strategy"""
+
     order_amount: float = Field(..., gt=0, description="Amount per order (USD)")
-    interval_minutes: int = Field(..., ge=1, le=43200, description="Time between orders (minutes)")
-    take_profit_percent: float = Field(default=5.0, ge=0.1, le=100.0, description="Take profit percentage")
-    total_budget: float = Field(default=0, ge=0, description="Total budget limit (0 = unlimited)")
-    max_orders: int = Field(default=0, ge=0, description="Max number of orders (0 = unlimited)")
+    interval_minutes: int = Field(
+        ..., ge=1, le=43200, description="Time between orders (minutes)"
+    )
+    take_profit_percent: float = Field(
+        default=5.0, ge=0.1, le=100.0, description="Take profit percentage"
+    )
+    total_budget: float = Field(
+        default=0, ge=0, description="Total budget limit (0 = unlimited)"
+    )
+    max_orders: int = Field(
+        default=0, ge=0, description="Max number of orders (0 = unlimited)"
+    )
 
 
 class RSIConfig(BaseModel):
     """Configuration for RSI-based trading strategy"""
-    rsi_period: int = Field(default=14, ge=2, le=100, description="RSI calculation period")
-    overbought_threshold: float = Field(default=70.0, ge=50.0, le=95.0, description="RSI overbought level (sell signal)")
-    oversold_threshold: float = Field(default=30.0, ge=5.0, le=50.0, description="RSI oversold level (buy signal)")
+
+    rsi_period: int = Field(
+        default=14, ge=2, le=100, description="RSI calculation period"
+    )
+    overbought_threshold: float = Field(
+        default=70.0, ge=50.0, le=95.0, description="RSI overbought level (sell signal)"
+    )
+    oversold_threshold: float = Field(
+        default=30.0, ge=5.0, le=50.0, description="RSI oversold level (buy signal)"
+    )
     order_amount: float = Field(..., gt=0, description="Amount per order (USD)")
-    timeframe: str = Field(default="1h", description="Timeframe for RSI calculation (e.g., 15m, 1h, 4h)")
-    leverage: float = Field(default=1.0, ge=1.0, le=50.0, description="Leverage multiplier")
+    timeframe: str = Field(
+        default="1h", description="Timeframe for RSI calculation (e.g., 15m, 1h, 4h)"
+    )
+    leverage: float = Field(
+        default=1.0, ge=1.0, le=50.0, description="Leverage multiplier"
+    )
 
     @model_validator(mode="after")
     def validate_thresholds(self):
         if self.overbought_threshold <= self.oversold_threshold:
-            raise ValueError("overbought_threshold must be greater than oversold_threshold")
+            raise ValueError(
+                "overbought_threshold must be greater than oversold_threshold"
+            )
         return self
 
 
@@ -213,6 +246,7 @@ STRATEGY_CONFIG_MODELS: dict[str, type[BaseModel]] = {
 # Strategy Entity & Request/Response Models
 # =============================================================================
 
+
 class Strategy(BaseModel):
     """
     Trading strategy entity (read model).
@@ -220,6 +254,7 @@ class Strategy(BaseModel):
     Represents a user-created strategy template that can be
     instantiated as one or more Agents.
     """
+
     id: str
     user_id: str
     type: StrategyType
@@ -248,6 +283,7 @@ class Strategy(BaseModel):
 
 class StrategyCreate(BaseModel):
     """Request model for creating a strategy"""
+
     type: StrategyType
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
@@ -272,7 +308,9 @@ class StrategyCreate(BaseModel):
             try:
                 config_model(**self.config)
             except Exception as e:
-                raise ValueError(f"Invalid config for strategy type '{self.type.value}': {e}")
+                raise ValueError(
+                    f"Invalid config for strategy type '{self.type.value}': {e}"
+                )
         return self
 
     @model_validator(mode="after")
@@ -311,6 +349,7 @@ class StrategyCreate(BaseModel):
 
 class StrategyUpdate(BaseModel):
     """Request model for updating a strategy"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     symbols: Optional[list[str]] = None
@@ -325,7 +364,13 @@ class StrategyUpdate(BaseModel):
 
 class StrategyFork(BaseModel):
     """Request model for forking a strategy from marketplace"""
-    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Override name (defaults to source name)")
+
+    name: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Override name (defaults to source name)",
+    )
 
 
 # =============================================================================

@@ -1,7 +1,7 @@
 """Wallet service for balance management"""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from ..db.models import WalletDB, WalletTransactionDB, RechargeOrderDB
 
 class InsufficientBalanceError(Exception):
     """Raised when user has insufficient balance"""
+
     pass
 
 
@@ -135,8 +136,12 @@ class WalletService:
             balance_after=wallet.balance,
             reference_type="recharge_order",
             reference_id=order.id,
-            description=f"Recharge order {order.order_no}" +
-                       (f" (includes bonus: {order.bonus_amount})" if order.bonus_amount > 0 else ""),
+            description=f"Recharge order {order.order_no}"
+            + (
+                f" (includes bonus: {order.bonus_amount})"
+                if order.bonus_amount > 0
+                else ""
+            ),
         )
 
         # Mark order as completed
@@ -441,7 +446,7 @@ class WalletService:
         return
 
         # ===== 以下代码保留，待功能启用时恢复 =====
-        from ..db.models import ChannelWalletDB, ChannelTransactionDB
+        from ..db.models import ChannelTransactionDB
 
         # Get or create channel wallet
         wallet = await self.channel_repo.get_wallet(channel_id)
@@ -471,15 +476,18 @@ class WalletService:
             balance_after=wallet.balance,
             reference_type=reference_type,
             reference_id=reference_id,
-            description=f"Commission from user consumption",
+            description="Commission from user consumption",
         )
         self.session.add(transaction)
 
         # Update channel statistics
         await self.channel_repo.update_revenue(
             channel_id=channel_id,
-            revenue=amount / (1 - (await self.channel_repo.get_by_id(channel_id)).commission_rate)
-            if (await self.channel_repo.get_by_id(channel_id)).commission_rate < 1
-            else amount,
+            revenue=(
+                amount
+                / (1 - (await self.channel_repo.get_by_id(channel_id)).commission_rate)
+                if (await self.channel_repo.get_by_id(channel_id)).commission_rate < 1
+                else amount
+            ),
             commission=amount,
         )

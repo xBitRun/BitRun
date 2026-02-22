@@ -16,12 +16,16 @@ from ...backtest import BacktestEngine, DataProvider
 from ...backtest.data_provider import DataProvider as _DP  # for SUPPORTED_EXCHANGES
 from ...core.config import get_settings
 from ...services.ai import get_ai_client, resolve_provider_credentials
-from ...core.dependencies import CryptoDep, CurrentUserDep, DbSessionDep, RateLimitApiDep
+from ...core.dependencies import (
+    CryptoDep,
+    CurrentUserDep,
+    DbSessionDep,
+    RateLimitApiDep,
+)
 from ...core.errors import (
     ErrorCode,
     backtest_failed_error,
     create_http_exception,
-    internal_error,
 )
 from ...db.repositories.backtest import BacktestRepository
 from ...db.repositories.strategy import StrategyRepository
@@ -37,19 +41,28 @@ ExchangeLiteral = Literal["binance", "bybit", "okx", "hyperliquid"]
 
 class BacktestRequest(BaseModel):
     """Backtest request parameters"""
+
     strategy_id: UUID
     start_date: datetime = Field(description="Backtest start date")
     end_date: datetime = Field(description="Backtest end date")
     initial_balance: float = Field(default=10000, ge=100)
-    symbols: list[str] | None = Field(default=None, description="Override strategy symbols for backtest")
+    symbols: list[str] | None = Field(
+        default=None, description="Override strategy symbols for backtest"
+    )
     use_ai: bool = Field(default=False, description="Use AI for decisions (slow)")
-    ai_model: str | None = Field(default=None, description="AI model ID for AI strategies (e.g., 'deepseek:deepseek-chat')")
+    ai_model: str | None = Field(
+        default=None,
+        description="AI model ID for AI strategies (e.g., 'deepseek:deepseek-chat')",
+    )
     timeframe: str = Field(default="1h", description="Candle timeframe")
-    exchange: ExchangeLiteral = Field(default="hyperliquid", description="Exchange data source")
+    exchange: ExchangeLiteral = Field(
+        default="hyperliquid", description="Exchange data source"
+    )
 
 
 class TradeRecord(BaseModel):
     """Single closed trade"""
+
     symbol: str
     side: str
     size: float
@@ -66,6 +79,7 @@ class TradeRecord(BaseModel):
 
 class SideStats(BaseModel):
     """Statistics for one side (long or short)"""
+
     total_trades: int = 0
     winning_trades: int = 0
     losing_trades: int = 0
@@ -79,6 +93,7 @@ class SideStats(BaseModel):
 
 class TradeStatistics(BaseModel):
     """Extended trade statistics"""
+
     average_win: float = 0
     average_loss: float = 0
     largest_win: float = 0
@@ -98,12 +113,14 @@ class TradeStatistics(BaseModel):
 
 class MonthlyReturn(BaseModel):
     """Monthly return data point"""
+
     month: str
     return_percent: float
 
 
 class SymbolBreakdown(BaseModel):
     """Per-symbol performance"""
+
     symbol: str
     total_trades: int
     winning_trades: int
@@ -115,6 +132,7 @@ class SymbolBreakdown(BaseModel):
 
 class BacktestAnalysis(BaseModel):
     """Backtest result analysis"""
+
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
@@ -122,6 +140,7 @@ class BacktestAnalysis(BaseModel):
 
 class BacktestResponse(BaseModel):
     """Backtest result response"""
+
     strategy_name: str
     start_date: datetime
     end_date: datetime
@@ -148,6 +167,7 @@ class BacktestResponse(BaseModel):
 
 class QuickBacktestRequest(BaseModel):
     """Quick backtest with inline config"""
+
     symbols: list[str] = Field(default=["BTC", "ETH"])
     start_date: datetime
     end_date: datetime
@@ -155,7 +175,9 @@ class QuickBacktestRequest(BaseModel):
     max_leverage: int = Field(default=5, ge=1, le=100)
     max_position_ratio: float = Field(default=0.2, ge=0.01, le=1.0)
     timeframe: str = Field(default="1h")
-    exchange: ExchangeLiteral = Field(default="hyperliquid", description="Exchange data source")
+    exchange: ExchangeLiteral = Field(
+        default="hyperliquid", description="Exchange data source"
+    )
 
 
 def _build_response(result) -> BacktestResponse:
@@ -165,7 +187,11 @@ def _build_response(result) -> BacktestResponse:
 
     # Limit trades to most recent ones (trades are in chronological order)
     # Keep the latest trades_limit trades to avoid large response size
-    trades_to_return = result.trades[-trades_limit:] if len(result.trades) > trades_limit else result.trades
+    trades_to_return = (
+        result.trades[-trades_limit:]
+        if len(result.trades) > trades_limit
+        else result.trades
+    )
 
     trade_records = [
         TradeRecord(
@@ -186,31 +212,31 @@ def _build_response(result) -> BacktestResponse:
     ]
 
     ts = result.trade_statistics
-    trade_statistics = TradeStatistics(
-        average_win=round(ts.get("average_win", 0), 2),
-        average_loss=round(ts.get("average_loss", 0), 2),
-        largest_win=round(ts.get("largest_win", 0), 2),
-        largest_loss=round(ts.get("largest_loss", 0), 2),
-        gross_profit=round(ts.get("gross_profit", 0), 2),
-        gross_loss=round(ts.get("gross_loss", 0), 2),
-        avg_holding_hours=ts.get("avg_holding_hours", 0),
-        max_consecutive_wins=ts.get("max_consecutive_wins", 0),
-        max_consecutive_losses=ts.get("max_consecutive_losses", 0),
-        expectancy=ts.get("expectancy", 0),
-        recovery_factor=ts.get("recovery_factor"),
-        sortino_ratio=ts.get("sortino_ratio"),
-        calmar_ratio=ts.get("calmar_ratio"),
-        long_stats=SideStats(**ts.get("long_stats", {})),
-        short_stats=SideStats(**ts.get("short_stats", {})),
-    ) if ts else None
+    trade_statistics = (
+        TradeStatistics(
+            average_win=round(ts.get("average_win", 0), 2),
+            average_loss=round(ts.get("average_loss", 0), 2),
+            largest_win=round(ts.get("largest_win", 0), 2),
+            largest_loss=round(ts.get("largest_loss", 0), 2),
+            gross_profit=round(ts.get("gross_profit", 0), 2),
+            gross_loss=round(ts.get("gross_loss", 0), 2),
+            avg_holding_hours=ts.get("avg_holding_hours", 0),
+            max_consecutive_wins=ts.get("max_consecutive_wins", 0),
+            max_consecutive_losses=ts.get("max_consecutive_losses", 0),
+            expectancy=ts.get("expectancy", 0),
+            recovery_factor=ts.get("recovery_factor"),
+            sortino_ratio=ts.get("sortino_ratio"),
+            calmar_ratio=ts.get("calmar_ratio"),
+            long_stats=SideStats(**ts.get("long_stats", {})),
+            short_stats=SideStats(**ts.get("short_stats", {})),
+        )
+        if ts
+        else None
+    )
 
-    monthly_returns = [
-        MonthlyReturn(**m) for m in (result.monthly_returns or [])
-    ]
+    monthly_returns = [MonthlyReturn(**m) for m in (result.monthly_returns or [])]
 
-    symbol_breakdown = [
-        SymbolBreakdown(**s) for s in (result.symbol_breakdown or [])
-    ]
+    symbol_breakdown = [SymbolBreakdown(**s) for s in (result.symbol_breakdown or [])]
 
     analysis = None
     if result.analysis:
@@ -264,8 +290,7 @@ async def run_backtest(
 
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     # Resolve AI client from request.ai_model
@@ -282,7 +307,11 @@ async def run_backtest(
         api_key, base_url = await resolve_provider_credentials(
             db, crypto, UUID(user_id), model_id
         )
-        if not api_key and "custom" not in (model_id.split(":")[0] if ":" in model_id else "").lower():
+        if (
+            not api_key
+            and "custom"
+            not in (model_id.split(":")[0] if ":" in model_id else "").lower()
+        ):
             raise create_http_exception(
                 ErrorCode.VALIDATION_ERROR,
                 user_message="No API key configured for the selected AI model. Configure the provider in Models / Providers.",
@@ -300,7 +329,11 @@ async def run_backtest(
             api_key, base_url = await resolve_provider_credentials(
                 db, crypto, UUID(user_id), model_id
             )
-            if api_key or "custom" in (model_id.split(":")[0] if ":" in model_id else "").lower():
+            if (
+                api_key
+                or "custom"
+                in (model_id.split(":")[0] if ":" in model_id else "").lower()
+            ):
                 kwargs = {"api_key": api_key or ""}
                 if base_url:
                     kwargs["base_url"] = base_url
@@ -315,7 +348,9 @@ async def run_backtest(
         await data_provider.initialize()
 
         # Load data
-        config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        config = (
+            StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        )
         if request.symbols:
             config.symbols = request.symbols
         await data_provider.load_data(
@@ -345,7 +380,9 @@ async def run_backtest(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Backtest failed for strategy {request.strategy_id}: {e}", exc_info=True)
+        logger.error(
+            f"Backtest failed for strategy {request.strategy_id}: {e}", exc_info=True
+        )
         raise backtest_failed_error(e)
 
 
@@ -449,10 +486,12 @@ async def get_available_symbols(
             base = market.get("base", "")
             if base and base not in seen_bases:
                 seen_bases.add(base)
-                symbols.append({
-                    "symbol": base,
-                    "full_symbol": symbol,
-                })
+                symbols.append(
+                    {
+                        "symbol": base,
+                        "full_symbol": symbol,
+                    }
+                )
 
         await data_provider.close()
 
@@ -483,6 +522,7 @@ records_router = APIRouter(prefix="/backtests", tags=["backtest"])
 
 class BacktestListItem(BaseModel):
     """List item for backtest results"""
+
     id: UUID
     strategy_name: str
     symbols: list[str]
@@ -501,6 +541,7 @@ class BacktestListItem(BaseModel):
 
 class BacktestListResponse(BaseModel):
     """Paginated backtest list"""
+
     items: list[BacktestListItem]
     total: int
     limit: int
@@ -509,6 +550,7 @@ class BacktestListResponse(BaseModel):
 
 class BacktestDetailResponse(BacktestResponse):
     """Full backtest result with id and timestamps"""
+
     id: UUID
     strategy_id: Optional[UUID] = None
     use_ai: bool = False
@@ -545,7 +587,9 @@ def _build_detail_response(record) -> BacktestDetailResponse:
 
     # Build trades
     trades_data = record.trades or []
-    trades_to_return = trades_data[-trades_limit:] if len(trades_data) > trades_limit else trades_data
+    trades_to_return = (
+        trades_data[-trades_limit:] if len(trades_data) > trades_limit else trades_data
+    )
     trade_records = [
         TradeRecord(
             symbol=t.get("symbol", ""),
@@ -566,33 +610,33 @@ def _build_detail_response(record) -> BacktestDetailResponse:
 
     # Build trade statistics
     ts = record.trade_statistics or {}
-    trade_statistics = TradeStatistics(
-        average_win=round(ts.get("average_win", 0), 2),
-        average_loss=round(ts.get("average_loss", 0), 2),
-        largest_win=round(ts.get("largest_win", 0), 2),
-        largest_loss=round(ts.get("largest_loss", 0), 2),
-        gross_profit=round(ts.get("gross_profit", 0), 2),
-        gross_loss=round(ts.get("gross_loss", 0), 2),
-        avg_holding_hours=ts.get("avg_holding_hours", 0),
-        max_consecutive_wins=ts.get("max_consecutive_wins", 0),
-        max_consecutive_losses=ts.get("max_consecutive_losses", 0),
-        expectancy=ts.get("expectancy", 0),
-        recovery_factor=ts.get("recovery_factor"),
-        sortino_ratio=ts.get("sortino_ratio"),
-        calmar_ratio=ts.get("calmar_ratio"),
-        long_stats=SideStats(**ts.get("long_stats", {})),
-        short_stats=SideStats(**ts.get("short_stats", {})),
-    ) if ts else None
+    trade_statistics = (
+        TradeStatistics(
+            average_win=round(ts.get("average_win", 0), 2),
+            average_loss=round(ts.get("average_loss", 0), 2),
+            largest_win=round(ts.get("largest_win", 0), 2),
+            largest_loss=round(ts.get("largest_loss", 0), 2),
+            gross_profit=round(ts.get("gross_profit", 0), 2),
+            gross_loss=round(ts.get("gross_loss", 0), 2),
+            avg_holding_hours=ts.get("avg_holding_hours", 0),
+            max_consecutive_wins=ts.get("max_consecutive_wins", 0),
+            max_consecutive_losses=ts.get("max_consecutive_losses", 0),
+            expectancy=ts.get("expectancy", 0),
+            recovery_factor=ts.get("recovery_factor"),
+            sortino_ratio=ts.get("sortino_ratio"),
+            calmar_ratio=ts.get("calmar_ratio"),
+            long_stats=SideStats(**ts.get("long_stats", {})),
+            short_stats=SideStats(**ts.get("short_stats", {})),
+        )
+        if ts
+        else None
+    )
 
     # Build monthly returns
-    monthly_returns = [
-        MonthlyReturn(**m) for m in (record.monthly_returns or [])
-    ]
+    monthly_returns = [MonthlyReturn(**m) for m in (record.monthly_returns or [])]
 
     # Build symbol breakdown
-    symbol_breakdown = [
-        SymbolBreakdown(**s) for s in (record.symbol_breakdown or [])
-    ]
+    symbol_breakdown = [SymbolBreakdown(**s) for s in (record.symbol_breakdown or [])]
 
     # Build analysis
     analysis = None
@@ -677,8 +721,7 @@ async def create_backtest(
 
     if not strategy:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strategy not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found"
         )
 
     # Resolve AI client from request.ai_model
@@ -695,7 +738,11 @@ async def create_backtest(
         api_key, base_url = await resolve_provider_credentials(
             db, crypto, UUID(user_id), model_id
         )
-        if not api_key and "custom" not in (model_id.split(":")[0] if ":" in model_id else "").lower():
+        if (
+            not api_key
+            and "custom"
+            not in (model_id.split(":")[0] if ":" in model_id else "").lower()
+        ):
             raise create_http_exception(
                 ErrorCode.VALIDATION_ERROR,
                 user_message="No API key configured for the selected AI model. Configure the provider in Models / Providers.",
@@ -713,7 +760,11 @@ async def create_backtest(
             api_key, base_url = await resolve_provider_credentials(
                 db, crypto, UUID(user_id), model_id
             )
-            if api_key or "custom" in (model_id.split(":")[0] if ":" in model_id else "").lower():
+            if (
+                api_key
+                or "custom"
+                in (model_id.split(":")[0] if ":" in model_id else "").lower()
+            ):
                 kwargs = {"api_key": api_key or ""}
                 if base_url:
                     kwargs["base_url"] = base_url
@@ -727,7 +778,9 @@ async def create_backtest(
         await data_provider.initialize()
 
         # Load data
-        config = StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        config = (
+            StrategyConfig(**strategy.config) if strategy.config else StrategyConfig()
+        )
         symbols = request.symbols or config.symbols
         await data_provider.load_data(
             symbols=symbols,
@@ -798,11 +851,17 @@ async def create_backtest(
             monthly_returns=result.monthly_returns or [],
             trade_statistics=result.trade_statistics,
             symbol_breakdown=result.symbol_breakdown or [],
-            analysis={
-                "strengths": result.analysis.strengths if result.analysis else [],
-                "weaknesses": result.analysis.weaknesses if result.analysis else [],
-                "recommendations": result.analysis.recommendations if result.analysis else [],
-            } if result.analysis else None,
+            analysis=(
+                {
+                    "strengths": result.analysis.strengths if result.analysis else [],
+                    "weaknesses": result.analysis.weaknesses if result.analysis else [],
+                    "recommendations": (
+                        result.analysis.recommendations if result.analysis else []
+                    ),
+                }
+                if result.analysis
+                else None
+            ),
         )
 
         return _build_detail_response(record)
@@ -810,7 +869,9 @@ async def create_backtest(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Backtest failed for strategy {request.strategy_id}: {e}", exc_info=True)
+        logger.error(
+            f"Backtest failed for strategy {request.strategy_id}: {e}", exc_info=True
+        )
         raise backtest_failed_error(e)
 
 
@@ -829,8 +890,7 @@ async def get_backtest(
 
     if not record:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Backtest result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Backtest result not found"
         )
 
     return _build_detail_response(record)
@@ -851,8 +911,7 @@ async def delete_backtest(
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Backtest result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Backtest result not found"
         )
 
     return None

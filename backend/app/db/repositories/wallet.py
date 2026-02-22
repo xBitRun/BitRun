@@ -1,18 +1,15 @@
 """Wallet repository for database operations"""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Optional, List, Dict, Any
-from decimal import Decimal
 
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from ..models import (
     WalletDB,
     WalletTransactionDB,
-    UserDB,
 )
 
 

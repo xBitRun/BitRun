@@ -16,7 +16,6 @@ import logging
 import random
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -26,9 +25,9 @@ logger = logging.getLogger(__name__)
 class ErrorType(Enum):
     """Classification of error types for retry decisions."""
 
-    TRANSIENT = "transient"   # Temporary errors - should retry
-    PERMANENT = "permanent"   # Permanent errors - should stop immediately
-    UNKNOWN = "unknown"       # Unknown errors - treat as transient
+    TRANSIENT = "transient"  # Temporary errors - should retry
+    PERMANENT = "permanent"  # Permanent errors - should stop immediately
+    UNKNOWN = "unknown"  # Unknown errors - treat as transient
 
 
 # Patterns for error classification
@@ -227,7 +226,7 @@ def calculate_backoff_delay(
         Delay in seconds before next retry
     """
     # Exponential backoff: base * 2^attempt
-    delay = base_delay * (2 ** attempt)
+    delay = base_delay * (2**attempt)
 
     # Cap at max delay
     delay = min(delay, max_delay)
@@ -279,9 +278,7 @@ async def retry_with_backoff(
                 return False, e
 
             if attempt < max_attempts - 1:
-                delay = calculate_backoff_delay(
-                    attempt, base_delay, max_delay, jitter
-                )
+                delay = calculate_backoff_delay(attempt, base_delay, max_delay, jitter)
                 logger.info(
                     f"Retry attempt {attempt + 1}/{max_attempts} "
                     f"after {delay:.1f}s: {e}"

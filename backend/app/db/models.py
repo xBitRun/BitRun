@@ -31,6 +31,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
     """Base class for all ORM models"""
+
     pass
 
 
@@ -41,18 +42,14 @@ class UserDB(Base):
     Stores user credentials and profile information.
     Password is hashed with bcrypt before storage.
     """
+
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
-        nullable=False,
-        index=True
+        String(255), unique=True, nullable=False, index=True
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -62,93 +59,72 @@ class UserDB(Base):
 
     # Invitation and channel fields
     invite_code: Mapped[Optional[str]] = mapped_column(
-        String(20),
-        unique=True,
-        nullable=True,
-        index=True
+        String(20), unique=True, nullable=True, index=True
     )
     referrer_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
     channel_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("channels.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
     role: Mapped[str] = mapped_column(
-        String(20),
-        default="user",
-        nullable=False,
-        index=True
+        String(20), default="user", nullable=False, index=True
     )  # user, channel_admin, platform_admin
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     accounts: Mapped[list["ExchangeAccountDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     strategies: Mapped[list["StrategyDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     agents: Mapped[list["AgentDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     ai_providers: Mapped[list["AIProviderConfigDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     backtest_results: Mapped[list["BacktestResultDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     pnl_records: Mapped[list["PnlRecordDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     daily_account_snapshots: Mapped[list["DailyAccountSnapshotDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     daily_agent_snapshots: Mapped[list["DailyAgentSnapshotDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     # Channel relationships
     channel: Mapped[Optional["ChannelDB"]] = relationship(
-        back_populates="users",
-        foreign_keys=[channel_id]
+        back_populates="users", foreign_keys=[channel_id]
     )
     referrer: Mapped[Optional["UserDB"]] = relationship(
-        remote_side=[id],
-        foreign_keys=[referrer_id]
+        remote_side=[id], foreign_keys=[referrer_id]
     )
     wallet: Mapped[Optional["WalletDB"]] = relationship(
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan"
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
     recharge_orders: Mapped[list["RechargeOrderDB"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -162,26 +138,23 @@ class ExchangeAccountDB(Base):
     SECURITY: All credentials (api_key, api_secret, private_key) are
     encrypted using AES-256-GCM before storage via CryptoService.
     """
+
     __tablename__ = "exchange_accounts"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Account info
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     exchange: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        index=True
+        String(50), nullable=False, index=True
     )  # hyperliquid, binance, bybit, okx
     is_testnet: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -195,20 +168,20 @@ class ExchangeAccountDB(Base):
 
     # Connection status
     is_connected: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_connected_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_connected_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     connection_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
@@ -223,6 +196,7 @@ class ExchangeAccountDB(Base):
 # Strategy Layer - Pure trading logic, no runtime bindings
 # =============================================================================
 
+
 class StrategyDB(Base):
     """
     Unified trading strategy model (pure logic template).
@@ -236,25 +210,22 @@ class StrategyDB(Base):
     Strategies are DECOUPLED from execution - they don't reference any
     exchange account or AI model. Those bindings live on Agent.
     """
+
     __tablename__ = "strategies"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Strategy type discriminator
     type: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        index=True
+        String(20), nullable=False, index=True
     )  # "ai", "grid", "dca", "rsi"
 
     # Basic info
@@ -275,15 +246,14 @@ class StrategyDB(Base):
 
     # Strategy marketplace fields
     visibility: Mapped[str] = mapped_column(
-        String(20),
-        default="private"
+        String(20), default="private"
     )  # "private", "public"
     category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     tags: Mapped[list] = mapped_column(JSON, default=list)
     forked_from: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("strategies.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
     )
     fork_count: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -296,22 +266,19 @@ class StrategyDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     user: Mapped["UserDB"] = relationship(back_populates="strategies")
     agents: Mapped[list["AgentDB"]] = relationship(
-        back_populates="strategy",
-        cascade="all, delete-orphan"
+        back_populates="strategy", cascade="all, delete-orphan"
     )
     source_strategy: Mapped[Optional["StrategyDB"]] = relationship(
         remote_side="StrategyDB.id",
@@ -320,7 +287,7 @@ class StrategyDB(Base):
     versions: Mapped[list["StrategyVersionDB"]] = relationship(
         back_populates="strategy",
         cascade="all, delete-orphan",
-        order_by="StrategyVersionDB.version.desc()"
+        order_by="StrategyVersionDB.version.desc()",
     )
 
     def __repr__(self) -> str:
@@ -331,6 +298,7 @@ class StrategyDB(Base):
 # Strategy Versioning - Config change history
 # =============================================================================
 
+
 class StrategyVersionDB(Base):
     """
     Strategy version snapshot.
@@ -339,18 +307,17 @@ class StrategyVersionDB(Base):
     is changed. Allows users to view change history and restore previous
     configurations.
     """
+
     __tablename__ = "strategy_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("strategies.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Version number (auto-incremented per strategy)
@@ -367,9 +334,7 @@ class StrategyVersionDB(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -383,6 +348,7 @@ class StrategyVersionDB(Base):
 # Strategy Subscriptions - Paid strategy access
 # =============================================================================
 
+
 class StrategySubscriptionDB(Base):
     """
     Subscription record for a paid strategy.
@@ -390,30 +356,28 @@ class StrategySubscriptionDB(Base):
     Tracks which users have subscribed to (purchased access to) a paid
     strategy, along with their subscription status and expiry.
     """
+
     __tablename__ = "strategy_subscriptions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     strategy_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("strategies.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Subscription status
     status: Mapped[str] = mapped_column(
-        String(20),
-        default="active"
+        String(20), default="active"
     )  # "active", "expired", "cancelled"
 
     # Pricing at time of subscription
@@ -422,20 +386,15 @@ class StrategySubscriptionDB(Base):
 
     # Subscription period
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     expires_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
+        DateTime(timezone=True), nullable=True
     )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     def __repr__(self) -> str:
@@ -445,6 +404,7 @@ class StrategySubscriptionDB(Base):
 # =============================================================================
 # Agent Layer - Execution instance = Strategy + Model + Account/Mock
 # =============================================================================
+
 
 class AgentDB(Base):
     """
@@ -457,18 +417,17 @@ class AgentDB(Base):
 
     One Strategy can have multiple Agents (different models, accounts, modes).
     """
+
     __tablename__ = "agents"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 
@@ -477,22 +436,18 @@ class AgentDB(Base):
         UUID(as_uuid=True),
         ForeignKey("strategies.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # AI model binding (required for AI strategies, null for quant)
     # Format: "provider:model_id" (e.g., "deepseek:deepseek-chat")
     ai_model: Mapped[Optional[str]] = mapped_column(
-        String(100),
-        nullable=True,
-        default=None
+        String(100), nullable=True, default=None
     )
 
     # Execution mode
     execution_mode: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        default="mock"
+        String(20), nullable=False, default="mock"
     )  # "live", "mock"
 
     # Live mode: exchange account binding
@@ -500,7 +455,7 @@ class AgentDB(Base):
         UUID(as_uuid=True),
         ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
 
     # Mock mode: simulated initial balance
@@ -517,22 +472,20 @@ class AgentDB(Base):
     )
 
     # Execution configuration
-    execution_interval_minutes: Mapped[int] = mapped_column(
-        Integer, default=15
-    )
+    execution_interval_minutes: Mapped[int] = mapped_column(Integer, default=15)
     auto_execute: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Trade type configuration (crypto_perp, crypto_spot, forex, metals)
     trade_type: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        default="crypto_perp"
+        String(20), nullable=False, default="crypto_perp"
     )
 
     # Multi-model debate configuration (for AI strategies)
     debate_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     debate_models: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    debate_consensus_mode: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    debate_consensus_mode: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
     debate_min_participants: Mapped[int] = mapped_column(Integer, default=2)
 
     # Quant strategy runtime state (only for grid/dca/rsi)
@@ -543,9 +496,7 @@ class AgentDB(Base):
 
     # Status
     status: Mapped[str] = mapped_column(
-        String(20),
-        default="draft",
-        index=True
+        String(20), default="draft", index=True
     )  # draft, active, paused, stopped, error, warning
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -574,28 +525,26 @@ class AgentDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     user: Mapped["UserDB"] = relationship(back_populates="agents")
     strategy: Mapped["StrategyDB"] = relationship(back_populates="agents")
-    account: Mapped[Optional["ExchangeAccountDB"]] = relationship(back_populates="agents")
+    account: Mapped[Optional["ExchangeAccountDB"]] = relationship(
+        back_populates="agents"
+    )
     decisions: Mapped[list["DecisionRecordDB"]] = relationship(
-        back_populates="agent",
-        cascade="all, delete-orphan"
+        back_populates="agent", cascade="all, delete-orphan"
     )
     positions: Mapped[list["AgentPositionDB"]] = relationship(
-        back_populates="agent",
-        cascade="all, delete-orphan"
+        back_populates="agent", cascade="all, delete-orphan"
     )
 
     @property
@@ -653,6 +602,7 @@ class AgentDB(Base):
 # Position Layer - Agent-level position isolation
 # =============================================================================
 
+
 class AgentPositionDB(Base):
     """
     Agent-level position tracking with isolation.
@@ -674,6 +624,7 @@ class AgentPositionDB(Base):
       account for that symbol.
     - Reconciliation task periodically verifies consistency.
     """
+
     __tablename__ = "agent_positions"
 
     # Partial unique index: only one open/pending position per agent+symbol
@@ -729,7 +680,9 @@ class AgentPositionDB(Base):
 
     # Timestamps
     opened_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
     )
     closed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -750,6 +703,7 @@ class AgentPositionDB(Base):
 # AI Provider Configuration
 # =============================================================================
 
+
 class AIProviderConfigDB(Base):
     """
     AI Provider configuration for storing user's API credentials.
@@ -768,24 +722,22 @@ class AIProviderConfigDB(Base):
     - minimax: MiniMax
     - custom: Custom OpenAI-compatible API
     """
+
     __tablename__ = "ai_provider_configs"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Provider identification
     provider_type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False
+        String(50), nullable=False
     )  # anthropic, openai, deepseek, gemini, zhipu, qwen, kimi, minimax, custom
 
     # Display info
@@ -799,8 +751,7 @@ class AIProviderConfigDB(Base):
     # API configuration
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     api_format: Mapped[str] = mapped_column(
-        String(50),
-        default="openai"
+        String(50), default="openai"
     )  # anthropic, openai, custom
 
     # Status
@@ -812,15 +763,13 @@ class AIProviderConfigDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
@@ -834,6 +783,7 @@ class AIProviderConfigDB(Base):
 # Decision Records - Audit trail for AI decisions
 # =============================================================================
 
+
 class DecisionRecordDB(Base):
     """
     AI decision record for audit trail.
@@ -844,18 +794,17 @@ class DecisionRecordDB(Base):
     Linked to Agent (not Strategy) because decisions are made by
     specific agent instances with specific model/account bindings.
     """
+
     __tablename__ = "decision_records"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("agents.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Timestamp
@@ -863,7 +812,7 @@ class DecisionRecordDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Prompts (for debugging and audit)
@@ -898,8 +847,12 @@ class DecisionRecordDB(Base):
     is_debate: Mapped[bool] = mapped_column(Boolean, default=False)
     debate_models: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     debate_responses: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    debate_consensus_mode: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    debate_agreement_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    debate_consensus_mode: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
+    debate_agreement_score: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
 
     # Relationships
     agent: Mapped["AgentDB"] = relationship(back_populates="decisions")
@@ -912,6 +865,7 @@ class DecisionRecordDB(Base):
 # Backtest Results - Persisted backtest records
 # =============================================================================
 
+
 class BacktestResultDB(Base):
     """
     Persisted backtest result for history and comparison.
@@ -920,36 +874,39 @@ class BacktestResultDB(Base):
     performance metrics, equity curve, and trade history. Allows users
     to review past backtests and compare strategy performance over time.
     """
+
     __tablename__ = "backtest_results"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     strategy_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("strategies.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
 
     # Configuration snapshot (at backtest time)
     strategy_name: Mapped[str] = mapped_column(String(100), nullable=False)
     symbols: Mapped[list] = mapped_column(JSON, default=list)
-    exchange: Mapped[str] = mapped_column(String(50), nullable=False, default="hyperliquid")
+    exchange: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="hyperliquid"
+    )
     initial_balance: Mapped[float] = mapped_column(Float, nullable=False)
     timeframe: Mapped[str] = mapped_column(String(10), default="1h")
     use_ai: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Time range
-    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    start_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Core metrics
@@ -980,7 +937,7 @@ class BacktestResultDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Relationships
@@ -1005,6 +962,7 @@ QuantStrategyDB = AgentDB
 # P&L Records - Trade-level profit/loss tracking
 # =============================================================================
 
+
 class PnlRecordDB(Base):
     """
     P&L record for tracking individual trade profit/loss.
@@ -1014,35 +972,34 @@ class PnlRecordDB(Base):
     the complete trade context including entry/exit prices, duration,
     and realized P&L.
     """
+
     __tablename__ = "pnl_records"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("agents.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
     position_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("agent_positions.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
     )
 
     # Trade details
@@ -1059,14 +1016,9 @@ class PnlRecordDB(Base):
     leverage: Mapped[int] = mapped_column(Integer, default=1)
 
     # Timing
-    opened_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False
-    )
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     closed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        index=True
+        DateTime(timezone=True), nullable=False, index=True
     )
     duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
     exit_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -1074,9 +1026,7 @@ class PnlRecordDB(Base):
     # Metadata
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -1092,6 +1042,7 @@ class PnlRecordDB(Base):
 # Daily Snapshots - Historical equity and performance tracking
 # =============================================================================
 
+
 class DailyAccountSnapshotDB(Base):
     """
     Daily snapshot of account equity and positions.
@@ -1100,6 +1051,7 @@ class DailyAccountSnapshotDB(Base):
     Enables historical equity curve visualization and period-based
     P&L analysis. Used for calculating daily/weekly/monthly returns.
     """
+
     __tablename__ = "daily_account_snapshots"
     __table_args__ = (
         Index(
@@ -1111,25 +1063,22 @@ class DailyAccountSnapshotDB(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("exchange_accounts.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     snapshot_date: Mapped[datetime] = mapped_column(
-        nullable=False,
-        index=True
+        nullable=False, index=True
     )  # Date (UTC midnight)
 
     # Equity components
@@ -1148,13 +1097,10 @@ class DailyAccountSnapshotDB(Base):
 
     # Metadata
     snapshot_source: Mapped[str] = mapped_column(
-        String(20),
-        default="scheduled"
+        String(20), default="scheduled"
     )  # 'scheduled', 'manual', 'trade'
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -1173,6 +1119,7 @@ class DailyAgentSnapshotDB(Base):
     Tracks cumulative and daily performance metrics enabling
     historical performance analysis and comparison.
     """
+
     __tablename__ = "daily_agent_snapshots"
     __table_args__ = (
         Index(
@@ -1184,30 +1131,27 @@ class DailyAgentSnapshotDB(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("agents.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("exchange_accounts.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
     )
     snapshot_date: Mapped[datetime] = mapped_column(
-        nullable=False,
-        index=True
+        nullable=False, index=True
     )  # Date (UTC midnight)
 
     # Cumulative metrics (at snapshot time)
@@ -1227,9 +1171,7 @@ class DailyAgentSnapshotDB(Base):
     virtual_equity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -1245,6 +1187,7 @@ class DailyAgentSnapshotDB(Base):
 # Channel Management - Invitation and billing system
 # =============================================================================
 
+
 class ChannelDB(Base):
     """
     Channel/Distributor model for multi-tenant distribution.
@@ -1256,27 +1199,23 @@ class ChannelDB(Base):
     - An optional admin user (channel_admin role)
     - A channel wallet for commission tracking
     """
+
     __tablename__ = "channels"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Basic info
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     code: Mapped[str] = mapped_column(
-        String(20),
-        unique=True,
-        nullable=False,
-        index=True
+        String(20), unique=True, nullable=False, index=True
     )  # Unique code for invite prefix
     admin_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )
 
     # Commission settings
@@ -1284,9 +1223,7 @@ class ChannelDB(Base):
 
     # Status
     status: Mapped[str] = mapped_column(
-        String(20),
-        default="active",
-        index=True
+        String(20), default="active", index=True
     )  # active, suspended, closed
 
     # Contact info
@@ -1301,29 +1238,22 @@ class ChannelDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     users: Mapped[list["UserDB"]] = relationship(
-        back_populates="channel",
-        foreign_keys="UserDB.channel_id"
+        back_populates="channel", foreign_keys="UserDB.channel_id"
     )
-    admin_user: Mapped[Optional["UserDB"]] = relationship(
-        foreign_keys=[admin_user_id]
-    )
+    admin_user: Mapped[Optional["UserDB"]] = relationship(foreign_keys=[admin_user_id])
     wallet: Mapped[Optional["ChannelWalletDB"]] = relationship(
-        back_populates="channel",
-        uselist=False,
-        cascade="all, delete-orphan"
+        back_populates="channel", uselist=False, cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -1340,19 +1270,18 @@ class WalletDB(Base):
     - Total recharged and consumed amounts
     Uses optimistic locking (version) for concurrent updates.
     """
+
     __tablename__ = "wallets"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
-        index=True
+        index=True,
     )
 
     # Balance
@@ -1368,22 +1297,19 @@ class WalletDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     user: Mapped["UserDB"] = relationship(back_populates="wallet")
     transactions: Mapped[list["WalletTransactionDB"]] = relationship(
-        back_populates="wallet",
-        cascade="all, delete-orphan"
+        back_populates="wallet", cascade="all, delete-orphan"
     )
 
     @property
@@ -1405,25 +1331,26 @@ class ChannelWalletDB(Base):
     - Pending commission (to be settled)
     - Total commission earned and withdrawn
     """
+
     __tablename__ = "channel_wallets"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     channel_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("channels.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
-        index=True
+        index=True,
     )
 
     # Balance
     balance: Mapped[float] = mapped_column(Float, default=0.0)  # Available
     frozen_balance: Mapped[float] = mapped_column(Float, default=0.0)  # Reserved
-    pending_commission: Mapped[float] = mapped_column(Float, default=0.0)  # Not yet settled
+    pending_commission: Mapped[float] = mapped_column(
+        Float, default=0.0
+    )  # Not yet settled
 
     # Statistics
     total_commission: Mapped[float] = mapped_column(Float, default=0.0)
@@ -1434,22 +1361,19 @@ class ChannelWalletDB(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     channel: Mapped["ChannelDB"] = relationship(back_populates="wallet")
     transactions: Mapped[list["ChannelTransactionDB"]] = relationship(
-        back_populates="wallet",
-        cascade="all, delete-orphan"
+        back_populates="wallet", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -1469,31 +1393,28 @@ class WalletTransactionDB(Base):
 
     Each transaction records balance before and after for audit.
     """
+
     __tablename__ = "wallet_transactions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     wallet_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("wallets.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Transaction type
     type: Mapped[str] = mapped_column(
-        String(30),
-        nullable=False,
-        index=True
+        String(30), nullable=False, index=True
     )  # recharge, consume, refund, gift, adjustment
 
     # Amount and balance snapshot
@@ -1503,12 +1424,10 @@ class WalletTransactionDB(Base):
 
     # Reference info (what caused this transaction)
     reference_type: Mapped[Optional[str]] = mapped_column(
-        String(50),
-        nullable=True
+        String(50), nullable=True
     )  # strategy_subscription, recharge_order, system_gift, etc.
     reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=True
+        UUID(as_uuid=True), nullable=True
     )
 
     # Commission info (if this transaction generated commission)
@@ -1523,7 +1442,7 @@ class WalletTransactionDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Relationships
@@ -1531,11 +1450,7 @@ class WalletTransactionDB(Base):
 
     # Indexes for efficient querying
     __table_args__ = (
-        Index(
-            "ix_wallet_transactions_reference",
-            "reference_type",
-            "reference_id"
-        ),
+        Index("ix_wallet_transactions_reference", "reference_type", "reference_id"),
     )
 
     def __repr__(self) -> str:
@@ -1554,37 +1469,34 @@ class ChannelTransactionDB(Base):
 
     source_user_id indicates which user's activity generated this transaction.
     """
+
     __tablename__ = "channel_transactions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     wallet_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("channel_wallets.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     channel_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("channels.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     source_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        index=True
+        index=True,
     )  # User whose activity generated this transaction
 
     # Transaction type
     type: Mapped[str] = mapped_column(
-        String(30),
-        nullable=False,
-        index=True
+        String(30), nullable=False, index=True
     )  # commission, withdraw, adjustment, refund
 
     # Amount and balance snapshot
@@ -1594,7 +1506,9 @@ class ChannelTransactionDB(Base):
 
     # Reference info
     reference_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
 
     # Description
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -1604,7 +1518,7 @@ class ChannelTransactionDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Relationships
@@ -1626,55 +1540,52 @@ class RechargeOrderDB(Base):
 
     Supports bonus amounts for promotional campaigns.
     """
+
     __tablename__ = "recharge_orders"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Order info
     order_no: Mapped[str] = mapped_column(
-        String(50),
-        unique=True,
-        nullable=False,
-        index=True
+        String(50), unique=True, nullable=False, index=True
     )
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     bonus_amount: Mapped[float] = mapped_column(Float, default=0.0)  # Promotional bonus
 
     # Payment
     payment_method: Mapped[str] = mapped_column(
-        String(30),
-        default="manual"
+        String(30), default="manual"
     )  # manual, stripe, crypto, etc.
     status: Mapped[str] = mapped_column(
-        String(20),
-        default="pending",
-        index=True
+        String(20), default="pending", index=True
     )  # pending, paid, completed, failed, refunded
 
     # Timestamps
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
-        index=True
+        index=True,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        nullable=False
+        nullable=False,
     )
 
     # Note (admin can add notes)
@@ -1689,4 +1600,6 @@ class RechargeOrderDB(Base):
         return self.amount + self.bonus_amount
 
     def __repr__(self) -> str:
-        return f"<RechargeOrder {self.order_no} amount={self.amount} status={self.status}>"
+        return (
+            f"<RechargeOrder {self.order_no} amount={self.amount} status={self.status}>"
+        )

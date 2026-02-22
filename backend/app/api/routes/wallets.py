@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
 from ...core.dependencies import CurrentUserDep, DbSessionDep, PlatformAdminDep
@@ -15,8 +15,10 @@ router = APIRouter(prefix="/wallets", tags=["Wallets"])
 
 # ==================== Request/Response Models ====================
 
+
 class WalletResponse(BaseModel):
     """Wallet response"""
+
     user_id: str
     balance: float
     frozen_balance: float
@@ -27,6 +29,7 @@ class WalletResponse(BaseModel):
 
 class TransactionResponse(BaseModel):
     """Transaction response"""
+
     id: str
     type: str
     amount: float
@@ -41,6 +44,7 @@ class TransactionResponse(BaseModel):
 
 class TransactionSummaryResponse(BaseModel):
     """Transaction summary response"""
+
     recharge: float = 0.0
     consume: float = 0.0
     refund: float = 0.0
@@ -50,6 +54,7 @@ class TransactionSummaryResponse(BaseModel):
 
 class InviteInfoResponse(BaseModel):
     """Invite info response"""
+
     invite_code: Optional[str] = None
     referrer_id: Optional[str] = None
     channel_id: Optional[str] = None
@@ -57,6 +62,7 @@ class InviteInfoResponse(BaseModel):
 
 
 # ==================== User Wallet Routes ====================
+
 
 @router.get("/me", response_model=WalletResponse)
 async def get_my_wallet(
@@ -69,8 +75,7 @@ async def get_my_wallet(
 
     if not wallet:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Wallet not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found"
         )
 
     return WalletResponse(
@@ -152,6 +157,7 @@ async def get_my_transaction_summary(
 
 # ==================== Invite Info ====================
 
+
 @router.get("/me/invite", response_model=InviteInfoResponse)
 async def get_my_invite_info(
     db: DbSessionDep,
@@ -165,8 +171,7 @@ async def get_my_invite_info(
 
     if not info:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     return InviteInfoResponse(
@@ -182,6 +187,7 @@ async def get_my_invite_info(
 
 class GiftBalanceRequest(BaseModel):
     """Gift balance request"""
+
     user_id: str = Field(..., description="User ID to gift balance to")
     amount: float = Field(..., gt=0, description="Amount to gift")
     description: str = Field("System gift", max_length=500)
@@ -189,6 +195,7 @@ class GiftBalanceRequest(BaseModel):
 
 class AdjustBalanceRequest(BaseModel):
     """Adjust balance request"""
+
     user_id: str = Field(..., description="User ID to adjust")
     amount: float = Field(..., description="Amount to adjust (positive or negative)")
     description: str = Field(..., min_length=1, max_length=500)
@@ -209,10 +216,7 @@ async def gift_balance(
     )
 
     if error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     await db.commit()
 
@@ -223,7 +227,9 @@ async def gift_balance(
         balance_before=transaction.balance_before,
         balance_after=transaction.balance_after,
         reference_type=transaction.reference_type,
-        reference_id=str(transaction.reference_id) if transaction.reference_id else None,
+        reference_id=(
+            str(transaction.reference_id) if transaction.reference_id else None
+        ),
         commission_info=transaction.commission_info,
         description=transaction.description,
         created_at=transaction.created_at,
@@ -245,7 +251,7 @@ async def adjust_balance(
         if balance < abs(request.amount):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient balance for adjustment. Current: {balance}"
+                detail=f"Insufficient balance for adjustment. Current: {balance}",
             )
 
     # Use gift_balance for positive, refund for negative
@@ -265,10 +271,7 @@ async def adjust_balance(
         )
 
     if error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     await db.commit()
 
@@ -279,7 +282,9 @@ async def adjust_balance(
         balance_before=transaction.balance_before,
         balance_after=transaction.balance_after,
         reference_type=transaction.reference_type,
-        reference_id=str(transaction.reference_id) if transaction.reference_id else None,
+        reference_id=(
+            str(transaction.reference_id) if transaction.reference_id else None
+        ),
         commission_info=transaction.commission_info,
         description=transaction.description,
         created_at=transaction.created_at,

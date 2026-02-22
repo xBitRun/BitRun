@@ -1,11 +1,9 @@
 """Channel repository for database operations"""
 
 import uuid
-from datetime import datetime, UTC
 from typing import Optional, List
-from decimal import Decimal
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -128,11 +126,7 @@ class ChannelRepository:
         result = await self.session.execute(query)
         return result.scalar() or 0
 
-    async def update(
-        self,
-        channel_id: uuid.UUID,
-        **kwargs
-    ) -> Optional[ChannelDB]:
+    async def update(self, channel_id: uuid.UUID, **kwargs) -> Optional[ChannelDB]:
         """
         Update channel fields.
 
@@ -144,9 +138,13 @@ class ChannelRepository:
             return None
 
         allowed_fields = {
-            "name", "commission_rate", "status",
-            "contact_name", "contact_email", "contact_phone",
-            "admin_user_id"
+            "name",
+            "commission_rate",
+            "status",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "admin_user_id",
         }
         for key, value in kwargs.items():
             if key in allowed_fields:
@@ -157,9 +155,7 @@ class ChannelRepository:
         return channel
 
     async def update_status(
-        self,
-        channel_id: uuid.UUID,
-        status: str
+        self, channel_id: uuid.UUID, status: str
     ) -> Optional[ChannelDB]:
         """Update channel status (active, suspended, closed)"""
         return await self.update(channel_id, status=status)

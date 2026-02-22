@@ -116,6 +116,7 @@ class NameCheckService:
 
         # 如果超过最大尝试次数，使用时间戳作为后缀
         import time
+
         timestamp = int(time.time())
         return add_numeric_suffix(base_name, timestamp)
 

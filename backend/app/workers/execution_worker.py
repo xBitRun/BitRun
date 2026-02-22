@@ -26,21 +26,18 @@ from typing import Dict, Optional
 
 from ..core.config import get_settings
 from ..db.database import AsyncSessionLocal
-from ..db.models import AgentDB, DecisionRecordDB, ExchangeAccountDB, StrategyDB
+from ..db.models import AgentDB, ExchangeAccountDB
 from ..db.repositories.account import AccountRepository
 from ..db.repositories.agent import AgentRepository
-from ..db.repositories.decision import DecisionRepository
-from ..db.repositories.strategy import StrategyRepository
-from ..services.ai import BaseAIClient, get_ai_client
+from ..services.ai import BaseAIClient
 from ..services.worker_heartbeat import (
     get_worker_instance_id,
     update_heartbeat,
     clear_heartbeat,
-    is_agent_running,
 )
 from ..services.strategy_engine import StrategyEngine
 from ..traders.base import BaseTrader, TradeError
-from ..traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
+from ..traders.ccxt_trader import create_trader_from_account
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +100,9 @@ class ExecutionWorker:
             async with AsyncSessionLocal() as session:
                 await update_heartbeat(session, self.agent_id, self._worker_instance_id)
         except Exception as e:
-            logger.warning(f"Failed to send initial heartbeat for agent {self.agent_id}: {e}")
+            logger.warning(
+                f"Failed to send initial heartbeat for agent {self.agent_id}: {e}"
+            )
 
         self._task = asyncio.create_task(self._run_loop())
         logger.info(f"Started worker for agent {self.agent_id}")
@@ -116,7 +115,9 @@ class ExecutionWorker:
             try:
                 await asyncio.wait_for(self._task, timeout=timeout)
             except asyncio.TimeoutError:
-                logger.warning(f"Worker for agent {self.agent_id} did not stop within {timeout}s, forcing")
+                logger.warning(
+                    f"Worker for agent {self.agent_id} did not stop within {timeout}s, forcing"
+                )
             except asyncio.CancelledError:
                 pass
 
@@ -153,7 +154,9 @@ class ExecutionWorker:
                 self._error_count += 1
 
                 if self._error_count >= self._max_errors:
-                    error_msg = f"Execution failed after {self._error_count} retries: {str(e)}"
+                    error_msg = (
+                        f"Execution failed after {self._error_count} retries: {str(e)}"
+                    )
                     logger.error(f"Too many errors, stopping agent {self.agent_id}")
                     await self._update_agent_status("error", error_msg)
                     break
@@ -185,7 +188,9 @@ class ExecutionWorker:
                 return
 
             if agent.status != "active":
-                logger.info(f"Agent {self.agent_id} is not active (status={agent.status}), stopping")
+                logger.info(
+                    f"Agent {self.agent_id} is not active (status={agent.status}), stopping"
+                )
                 self._running = False
                 return
 
@@ -198,6 +203,7 @@ class ExecutionWorker:
             # Create agent position service
             from ..services.redis_service import get_redis_service
             from ..services.agent_position_service import AgentPositionService
+
             try:
                 redis_service = await get_redis_service()
             except Exception:
@@ -223,7 +229,8 @@ class ExecutionWorker:
                 agent.id,
                 agent.user_id,
                 last_run_at=datetime.now(UTC),
-                next_run_at=datetime.now(UTC) + timedelta(minutes=self.interval_minutes),
+                next_run_at=datetime.now(UTC)
+                + timedelta(minutes=self.interval_minutes),
             )
 
             await session.commit()
@@ -236,8 +243,9 @@ class ExecutionWorker:
                 f"latency={cycle_result['latency_ms']}ms"
             )
 
-
-    async def _update_agent_status(self, status: str, error: Optional[str] = None) -> None:
+    async def _update_agent_status(
+        self, status: str, error: Optional[str] = None
+    ) -> None:
         """Update agent status in database."""
         async with AsyncSessionLocal() as session:
             agent_repo = AgentRepository(session)
@@ -289,6 +297,7 @@ class WorkerManager:
         if self._distributed:
             # Initialize task queue service
             from .queue import get_task_queue_service
+
             self._task_queue = await get_task_queue_service()
             logger.info("Worker manager started in DISTRIBUTED mode (ARQ)")
         else:
@@ -307,6 +316,7 @@ class WorkerManager:
         if self._distributed:
             # Close task queue
             from .queue import close_task_queue
+
             await close_task_queue()
             self._task_queue = None
         else:
@@ -351,7 +361,9 @@ class WorkerManager:
 
             job_id = await self._task_queue.start_agent(agent_id)
             if job_id:
-                logger.info(f"Scheduled agent {agent_id} via task queue (job: {job_id})")
+                logger.info(
+                    f"Scheduled agent {agent_id} via task queue (job: {job_id})"
+                )
                 return True
             return False
 
@@ -381,7 +393,9 @@ class WorkerManager:
                     return False
 
                 if agent.status != "active":
-                    logger.warning(f"Agent {agent_id} is not active (status={agent.status})")
+                    logger.warning(
+                        f"Agent {agent_id} is not active (status={agent.status})"
+                    )
                     return False
 
                 strategy = agent.strategy
@@ -393,17 +407,26 @@ class WorkerManager:
                 if agent.execution_mode == "mock":
                     # Mock mode: create MockTrader
                     from .tasks import create_mock_trader
-                    trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+
+                    trader, error = await create_mock_trader(
+                        agent, session, symbols=strategy.symbols
+                    )
                     if error:
                         logger.error(error)
-                        await self._set_agent_error(agent.id, f"Worker startup failed: {error}", session)
+                        await self._set_agent_error(
+                            agent.id, f"Worker startup failed: {error}", session
+                        )
                         return False
                 else:
                     # Live mode: require account
                     if not agent.account_id:
                         error_msg = f"Agent {agent_id} has no account configured"
                         logger.error(error_msg)
-                        await self._set_agent_error(agent.id, f"Worker startup failed: No exchange account", session)
+                        await self._set_agent_error(
+                            agent.id,
+                            "Worker startup failed: No exchange account",
+                            session,
+                        )
                         return False
 
                     # Get account if not provided
@@ -413,7 +436,11 @@ class WorkerManager:
                         if not account:
                             error_msg = f"Account {agent.account_id} not found for agent {agent_id}"
                             logger.error(error_msg)
-                            await self._set_agent_error(agent.id, f"Worker startup failed: Account not found", session)
+                            await self._set_agent_error(
+                                agent.id,
+                                "Worker startup failed: Account not found",
+                                session,
+                            )
                             return False
 
                     # Get credentials if not provided
@@ -425,7 +452,11 @@ class WorkerManager:
                         if not credentials:
                             error_msg = f"Failed to get credentials for account {agent.account_id}"
                             logger.error(error_msg)
-                            await self._set_agent_error(agent.id, "Worker startup failed: Invalid API credentials", session)
+                            await self._set_agent_error(
+                                agent.id,
+                                "Worker startup failed: Invalid API credentials",
+                                session,
+                            )
                             return False
 
                     # Create trader using the helper function
@@ -434,7 +465,9 @@ class WorkerManager:
                         await trader.initialize()
                     except ValueError as e:
                         error_msg = f"Trader initialization failed: {str(e)}"
-                        logger.error(f"Failed to create trader for agent {agent_id}: {e}")
+                        logger.error(
+                            f"Failed to create trader for agent {agent_id}: {e}"
+                        )
                         if trader:
                             try:
                                 await trader.close()
@@ -444,7 +477,9 @@ class WorkerManager:
                         return False
                     except TradeError as e:
                         error_msg = f"Trader initialization failed: {e.message}"
-                        logger.error(f"Failed to initialize trader for agent {agent_id}: {e.message}")
+                        logger.error(
+                            f"Failed to initialize trader for agent {agent_id}: {e.message}"
+                        )
                         if trader:
                             try:
                                 await trader.close()
@@ -524,10 +559,15 @@ class WorkerManager:
         # Find active agents for this strategy
         async with AsyncSessionLocal() as session:
             from sqlalchemy import select
-            stmt = select(AgentDB).where(
-                AgentDB.strategy_id == uuid.UUID(strategy_id),
-                AgentDB.status == "active",
-            ).limit(1)
+
+            stmt = (
+                select(AgentDB)
+                .where(
+                    AgentDB.strategy_id == uuid.UUID(strategy_id),
+                    AgentDB.status == "active",
+                )
+                .limit(1)
+            )
             result = await session.execute(stmt)
             agent = result.scalar_one_or_none()
 
@@ -603,7 +643,9 @@ class WorkerManager:
                         .options(selectinload(AgentDB.strategy))
                     )
                     if user_id:
-                        agent_stmt = agent_stmt.where(AgentDB.user_id == uuid.UUID(user_id))
+                        agent_stmt = agent_stmt.where(
+                            AgentDB.user_id == uuid.UUID(user_id)
+                        )
                 else:
                     # Backward compatibility: find first active agent by strategy
                     agent_stmt = (
@@ -629,13 +671,19 @@ class WorkerManager:
                 if agent.execution_mode == "mock":
                     # Mock mode: use MockTrader
                     from .tasks import create_mock_trader
-                    trader, error = await create_mock_trader(agent, session, symbols=strategy.symbols)
+
+                    trader, error = await create_mock_trader(
+                        agent, session, symbols=strategy.symbols
+                    )
                     if error:
                         return {"success": False, "error": error}
                 else:
                     # Live mode: use exchange credentials
                     if not agent.account_id:
-                        return {"success": False, "error": "Agent has no account configured"}
+                        return {
+                            "success": False,
+                            "error": "Agent has no account configured",
+                        }
 
                     account_repo = AccountRepository(session)
                     account = await account_repo.get_by_id(agent.account_id)
@@ -643,10 +691,14 @@ class WorkerManager:
                         return {"success": False, "error": "Account not found"}
 
                     credentials = await account_repo.get_decrypted_credentials(
-                        agent.account_id, agent.user_id,
+                        agent.account_id,
+                        agent.user_id,
                     )
                     if not credentials:
-                        return {"success": False, "error": "Failed to decrypt account credentials"}
+                        return {
+                            "success": False,
+                            "error": "Failed to decrypt account credentials",
+                        }
 
                     trader = create_trader_from_account(account, credentials)
                     await trader.initialize()
@@ -654,6 +706,7 @@ class WorkerManager:
                 # Create agent position service
                 from ..services.redis_service import get_redis_service
                 from ..services.agent_position_service import AgentPositionService
+
                 try:
                     redis_service = await get_redis_service()
                 except Exception:
@@ -724,7 +777,7 @@ class WorkerManager:
                 logger.info(f"Marked {stale_count} stale agents as error")
 
             # Phase 2: Clear all heartbeats for active agents (clean slate)
-            cleared = await clear_all_heartbeats_for_active_agents(session)
+            await clear_all_heartbeats_for_active_agents(session)
 
             # Phase 3: Query active agents with their strategies
             account_repo = AccountRepository(session)
@@ -752,13 +805,17 @@ class WorkerManager:
                     if success:
                         logger.info(f"Auto-started worker for mock agent {agent.id}")
                     else:
-                        logger.error(f"Failed to auto-start worker for mock agent {agent.id}")
+                        logger.error(
+                            f"Failed to auto-start worker for mock agent {agent.id}"
+                        )
                     await asyncio.sleep(1)
                     continue
 
                 # Live mode - requires account
                 if not agent.account_id:
-                    logger.warning(f"Agent {agent.id} is live mode but has no account, skipping")
+                    logger.warning(
+                        f"Agent {agent.id} is live mode but has no account, skipping"
+                    )
                     continue
 
                 account = agent.account
@@ -767,11 +824,12 @@ class WorkerManager:
                     continue
 
                 credentials = await account_repo.get_decrypted_credentials(
-                    agent.account_id,
-                    agent.user_id
+                    agent.account_id, agent.user_id
                 )
                 if not credentials:
-                    logger.warning(f"Failed to get credentials for agent {agent.id}, skipping")
+                    logger.warning(
+                        f"Failed to get credentials for agent {agent.id}, skipping"
+                    )
                     continue
 
                 # Start the worker
@@ -793,7 +851,10 @@ class WorkerManager:
         """Monitor workers and sync with database (legacy mode only)"""
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
-        from ..services.worker_heartbeat import detect_stale_agents, mark_stale_agents_as_error
+        from ..services.worker_heartbeat import (
+            detect_stale_agents,
+            mark_stale_agents_as_error,
+        )
 
         while self._running:
             try:
@@ -806,7 +867,9 @@ class WorkerManager:
                         agent_id_str = str(agent.id)
                         if agent_id_str in self._workers:
                             # Worker in memory but heartbeat timed out - likely hung
-                            logger.warning(f"Worker for agent {agent_id_str} appears hung, stopping")
+                            logger.warning(
+                                f"Worker for agent {agent_id_str} appears hung, stopping"
+                            )
                             await self.stop_agent(agent_id_str)
 
                     # Mark any remaining stale agents as error
@@ -867,7 +930,9 @@ class WorkerManager:
 
         # Live mode - requires account
         if not agent.account_id:
-            logger.warning(f"Agent {agent.id} is live mode but has no account, skipping")
+            logger.warning(
+                f"Agent {agent.id} is live mode but has no account, skipping"
+            )
             return
 
         account = agent.account

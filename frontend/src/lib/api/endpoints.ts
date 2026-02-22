@@ -10,7 +10,6 @@ import type {
   StrategyVisibility,
   AgentStatus,
   ExecutionMode,
-  TradingMode,
   ExchangeType,
   DashboardStats,
 } from "@/types";
@@ -605,7 +604,7 @@ export const quantStrategiesApi = {
 
   get: (id: string) => agentsApi.get(id),
 
-  create: (_data: CreateQuantStrategyRequest) => {
+  create: () => {
     throw new Error(
       "quantStrategiesApi.create is deprecated. Use strategiesApi.create + agentsApi.create instead.",
     );
@@ -1152,12 +1151,9 @@ export const dashboardApi = {
         openPositions: response.open_positions,
         todayTrades: response.today_executed_decisions,
       };
-    } catch (_error) {
+    } catch {
       // Fallback to local aggregation if backend endpoint fails
-      const [_accounts, agents] = await Promise.all([
-        accountsApi.list(),
-        agentsApi.list(),
-      ]);
+      const agents = await agentsApi.list();
 
       const activeAgents = agents.filter((a) => a.status === "active").length;
 

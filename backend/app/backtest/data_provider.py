@@ -10,8 +10,8 @@ Supports multiple data sources:
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Literal, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import ccxt.async_support as ccxt
 
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OHLCV:
     """OHLCV candle data"""
+
     timestamp: datetime
     open: float
     high: float
@@ -54,6 +55,7 @@ class OHLCV:
 @dataclass
 class MarketSnapshot:
     """Market snapshot at a point in time"""
+
     timestamp: datetime
     prices: Dict[str, float]  # symbol -> price
     candles: Dict[str, OHLCV] = field(default_factory=dict)  # symbol -> latest candle
@@ -124,7 +126,9 @@ class DataProvider:
             "binance": lambda: ccxt.binance({"enableRateLimit": True, **proxy_cfg}),
             "bybit": lambda: ccxt.bybit({"enableRateLimit": True, **proxy_cfg}),
             "okx": lambda: ccxt.okx({"enableRateLimit": True, **proxy_cfg}),
-            "hyperliquid": lambda: ccxt.hyperliquid({"enableRateLimit": True, **proxy_cfg}),
+            "hyperliquid": lambda: ccxt.hyperliquid(
+                {"enableRateLimit": True, **proxy_cfg}
+            ),
         }
 
         factory = exchange_factories.get(self.exchange_name)
@@ -193,15 +197,20 @@ class DataProvider:
                         exchange=self.exchange_name,
                     )
                     if cached_data:
-                        candles = [OHLCV(
-                            timestamp=datetime.fromisoformat(c["timestamp"]),
-                            open=c["open"],
-                            high=c["high"],
-                            low=c["low"],
-                            close=c["close"],
-                            volume=c["volume"],
-                        ) for c in cached_data]
-                        logger.debug(f"Loaded {len(candles)} cached candles for {symbol}")
+                        candles = [
+                            OHLCV(
+                                timestamp=datetime.fromisoformat(c["timestamp"]),
+                                open=c["open"],
+                                high=c["high"],
+                                low=c["low"],
+                                close=c["close"],
+                                volume=c["volume"],
+                            )
+                            for c in cached_data
+                        ]
+                        logger.debug(
+                            f"Loaded {len(candles)} cached candles for {symbol}"
+                        )
 
                 # Fetch from exchange if not cached
                 if not candles:
@@ -259,20 +268,23 @@ class DataProvider:
                     if ts > end_date:
                         break
 
-                    candles.append(OHLCV(
-                        timestamp=ts,
-                        open=float(c[1]),
-                        high=float(c[2]),
-                        low=float(c[3]),
-                        close=float(c[4]),
-                        volume=float(c[5]),
-                    ))
+                    candles.append(
+                        OHLCV(
+                            timestamp=ts,
+                            open=float(c[1]),
+                            high=float(c[2]),
+                            low=float(c[3]),
+                            close=float(c[4]),
+                            volume=float(c[5]),
+                        )
+                    )
 
                 # Move to next batch
                 since = raw_candles[-1][0] + self.TIMEFRAME_MS.get(timeframe, 3600000)
 
                 # Rate limiting
                 import asyncio
+
                 await asyncio.sleep(0.5)
 
             except Exception as e:
@@ -313,11 +325,13 @@ class DataProvider:
                         break
 
             if prices:  # Only add if we have at least one price
-                self._snapshots.append(MarketSnapshot(
-                    timestamp=ts,
-                    prices=prices,
-                    candles=candles,
-                ))
+                self._snapshots.append(
+                    MarketSnapshot(
+                        timestamp=ts,
+                        prices=prices,
+                        candles=candles,
+                    )
+                )
 
     def iterate(self) -> List[MarketSnapshot]:
         """Get all market snapshots for iteration"""
@@ -367,7 +381,9 @@ class DataProvider:
                 quote = mkt.get("quote", "")
 
                 # type rank: swap/perp preferred for backtesting
-                type_rank = 0 if mkt_type == "swap" else (1 if mkt_type == "spot" else 2)
+                type_rank = (
+                    0 if mkt_type == "swap" else (1 if mkt_type == "spot" else 2)
+                )
                 # quote rank: preferred stablecoins first
                 try:
                     quote_rank = self.PREFERRED_QUOTES.index(quote)
@@ -400,14 +416,16 @@ class DataProvider:
         with open(filepath, "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                candles.append(OHLCV(
-                    timestamp=datetime.fromisoformat(row["timestamp"]),
-                    open=float(row["open"]),
-                    high=float(row["high"]),
-                    low=float(row["low"]),
-                    close=float(row["close"]),
-                    volume=float(row["volume"]),
-                ))
+                candles.append(
+                    OHLCV(
+                        timestamp=datetime.fromisoformat(row["timestamp"]),
+                        open=float(row["open"]),
+                        high=float(row["high"]),
+                        low=float(row["low"]),
+                        close=float(row["close"]),
+                        volume=float(row["volume"]),
+                    )
+                )
 
         provider._data[symbol] = candles
         provider._build_snapshots()

@@ -8,7 +8,7 @@ based on strategy type.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Protocol
+from typing import Optional, Protocol
 
 logger = logging.getLogger(__name__)
 

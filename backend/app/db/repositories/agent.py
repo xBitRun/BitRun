@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from ..models import AgentDB, StrategyDB
 
 if TYPE_CHECKING:
-    from ...services.name_check_service import NameCheckService
+    pass
 
 
 class AgentRepository:
@@ -49,6 +49,7 @@ class AgentRepository:
         """
         # Ensure name is unique across strategies and agents
         from ...services.name_check_service import NameCheckService
+
         name_check = NameCheckService(self.session)
         unique_name = await name_check.generate_unique_name(
             name=name,
@@ -179,18 +180,27 @@ class AgentRepository:
             return None
 
         allowed_fields = {
-            "name", "ai_model",
-            "execution_mode", "account_id", "mock_initial_balance",
-            "allocated_capital", "allocated_capital_percent",
-            "execution_interval_minutes", "auto_execute",
+            "name",
+            "ai_model",
+            "execution_mode",
+            "account_id",
+            "mock_initial_balance",
+            "allocated_capital",
+            "allocated_capital_percent",
+            "execution_interval_minutes",
+            "auto_execute",
             "runtime_state",
             "trade_type",
-            "debate_enabled", "debate_models", "debate_consensus_mode", "debate_min_participants",
+            "debate_enabled",
+            "debate_models",
+            "debate_consensus_mode",
+            "debate_min_participants",
         }
 
         # Handle name deduplication if name is being updated
         if "name" in kwargs and kwargs["name"] is not None:
             from ...services.name_check_service import NameCheckService
+
             name_check = NameCheckService(self.session)
             kwargs["name"] = await name_check.generate_unique_name(
                 name=kwargs["name"],
@@ -218,11 +228,7 @@ class AgentRepository:
             "error_message": error_message,
             "updated_at": datetime.now(UTC),
         }
-        stmt = (
-            update(AgentDB)
-            .where(AgentDB.id == agent_id)
-            .values(**values)
-        )
+        stmt = update(AgentDB).where(AgentDB.id == agent_id).values(**values)
         result = await self.session.execute(stmt)
         await self.session.flush()
         return result.rowcount > 0

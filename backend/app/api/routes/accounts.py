@@ -7,7 +7,12 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ...core.dependencies import CryptoDep, CurrentUserDep, DbSessionDep, RateLimitAccountDep
+from ...core.dependencies import (
+    CryptoDep,
+    CurrentUserDep,
+    DbSessionDep,
+    RateLimitAccountDep,
+)
 from ...core.errors import (
     exchange_api_error,
     exchange_connection_error,
@@ -15,8 +20,8 @@ from ...core.errors import (
 )
 from ...db.repositories.account import AccountRepository
 from ...services.redis_service import get_redis_service
-from ...traders import BaseTrader, TradeError
-from ...traders.ccxt_trader import CCXTTrader, EXCHANGE_ID_MAP, create_trader_from_account
+from ...traders import TradeError
+from ...traders.ccxt_trader import create_trader_from_account
 from ...traders.hyperliquid import mnemonic_to_private_key
 
 logger = logging.getLogger(__name__)
@@ -47,9 +52,7 @@ async def _close_strategy_positions(
 
     trader = None
     try:
-        credentials = await account_repo.get_decrypted_credentials(
-            account_id, user_id
-        )
+        credentials = await account_repo.get_decrypted_credentials(account_id, user_id)
         if not credentials:
             logger.warning(
                 f"Cannot close positions for strategy {strategy_id}: "
@@ -64,22 +67,16 @@ async def _close_strategy_positions(
         await trader.initialize()
         for pos_record in open_positions:
             try:
-                close_result = await trader.close_position(
-                    symbol=pos_record.symbol
-                )
+                close_result = await trader.close_position(symbol=pos_record.symbol)
                 if close_result.success:
                     await ps.close_position_record(
                         position_id=pos_record.id,
                         close_price=close_result.filled_price or 0.0,
                     )
             except Exception as close_err:
-                logger.error(
-                    f"Error closing position {pos_record.symbol}: {close_err}"
-                )
+                logger.error(f"Error closing position {pos_record.symbol}: {close_err}")
     except Exception as e:
-        logger.error(
-            f"Error closing positions for strategy {strategy_id}: {e}"
-        )
+        logger.error(f"Error closing positions for strategy {strategy_id}: {e}")
     finally:
         if trader:
             try:
@@ -90,10 +87,14 @@ async def _close_strategy_positions(
 
 # ==================== Request/Response Models ====================
 
+
 class AccountCreate(BaseModel):
     """Create exchange account request"""
+
     name: str = Field(..., min_length=1, max_length=100)
-    exchange: str = Field(..., description="Exchange type: hyperliquid, binance, bybit, okx")
+    exchange: str = Field(
+        ..., description="Exchange type: hyperliquid, binance, bybit, okx"
+    )
     is_testnet: bool = False
     api_key: Optional[str] = None
     api_secret: Optional[str] = None
@@ -104,6 +105,7 @@ class AccountCreate(BaseModel):
 
 class AccountUpdate(BaseModel):
     """Update exchange account request"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     is_testnet: Optional[bool] = None
     api_key: Optional[str] = None
@@ -115,6 +117,7 @@ class AccountUpdate(BaseModel):
 
 class AccountResponse(BaseModel):
     """Exchange account response (no credentials)"""
+
     id: str
     name: str
     exchange: str
@@ -131,6 +134,7 @@ class AccountResponse(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.post("", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
 async def create_account(
@@ -152,7 +156,7 @@ async def create_account(
     if data.exchange.lower() not in valid_exchanges:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid exchange. Must be one of: {', '.join(valid_exchanges)}"
+            detail=f"Invalid exchange. Must be one of: {', '.join(valid_exchanges)}",
         )
 
     # For Hyperliquid, convert mnemonic to private key if provided
@@ -163,14 +167,15 @@ async def create_account(
     #    more than needed for trading (principle of least privilege).
     # 2. The derived private key is sufficient for all exchange operations.
     # 3. Users are expected to keep their own mnemonic backups.
-    if data.exchange.lower() == "hyperliquid" and data.mnemonic and not data.private_key:
+    if (
+        data.exchange.lower() == "hyperliquid"
+        and data.mnemonic
+        and not data.private_key
+    ):
         try:
             private_key = mnemonic_to_private_key(data.mnemonic)
         except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     # Create account
     account = await repo.create(
@@ -243,8 +248,7 @@ async def get_account(
 
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     return AccountResponse(
@@ -281,8 +285,7 @@ async def update_account(
     existing_account = await repo.get_by_id(uuid.UUID(account_id), uuid.UUID(user_id))
     if not existing_account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -296,20 +299,16 @@ async def update_account(
                 update_data["private_key"] = mnemonic_to_private_key(mnemonic)
             except ValueError as e:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=str(e)
+                    status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
                 )
 
     account = await repo.update(
-        uuid.UUID(account_id),
-        uuid.UUID(user_id),
-        **update_data
+        uuid.UUID(account_id), uuid.UUID(user_id), **update_data
     )
 
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     return AccountResponse(
@@ -348,7 +347,6 @@ async def delete_account(
     from ...db.repositories.agent import AgentRepository
     from ...services.agent_position_service import AgentPositionService
 
-    account_repo = AccountRepository(db)
     pos_svc = AgentPositionService(db=db)
 
     # ── 1. Stop all agents bound to this account ──
@@ -365,21 +363,25 @@ async def delete_account(
 
     for agent in bound_agents:
         logger.info(
-            f"Account delete: stopping agent {agent.id} "
-            f"(status={agent.status})"
+            f"Account delete: stopping agent {agent.id} " f"(status={agent.status})"
         )
         try:
             from ...workers.queue import TaskQueueService
+
             queue = TaskQueueService()
             await queue.stop_strategy(str(agent.id))
         except Exception as e:
             logger.warning(f"Failed to stop worker for agent {agent.id}: {e}")
 
         # Close all open positions for this agent
-        open_positions = await pos_svc.get_agent_positions(agent.id, status_filter="open")
+        open_positions = await pos_svc.get_agent_positions(
+            agent.id, status_filter="open"
+        )
         for pos in open_positions:
             try:
-                await pos_svc.close_position_record(pos.id, close_price=0.0, realized_pnl=0.0)
+                await pos_svc.close_position_record(
+                    pos.id, close_price=0.0, realized_pnl=0.0
+                )
             except Exception as e:
                 logger.warning(f"Failed to close position {pos.id}: {e}")
 
@@ -394,8 +396,7 @@ async def delete_account(
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
 
@@ -418,14 +419,12 @@ async def test_connection(
     account = await repo.get_by_id(uuid.UUID(account_id), uuid.UUID(user_id))
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     # Get decrypted credentials
     credentials = await repo.get_decrypted_credentials(
-        uuid.UUID(account_id),
-        uuid.UUID(user_id)
+        uuid.UUID(account_id), uuid.UUID(user_id)
     )
 
     trader = None
@@ -441,9 +440,7 @@ async def test_connection(
 
         # Update connection status - success
         await repo.update_connection_status(
-            uuid.UUID(account_id),
-            is_connected=True,
-            error=None
+            uuid.UUID(account_id), is_connected=True, error=None
         )
 
         return {
@@ -455,41 +452,40 @@ async def test_connection(
         # Missing credentials or unsupported exchange
         error_message = str(e)
         await repo.update_connection_status(
-            uuid.UUID(account_id),
-            is_connected=False,
-            error=error_message
+            uuid.UUID(account_id), is_connected=False, error=error_message
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_message  # ValueError messages are safe to expose
+            detail=error_message,  # ValueError messages are safe to expose
         )
 
     except TradeError as e:
         # Exchange-specific error - log and sanitize
-        error_code = getattr(e, 'code', None)
-        error_message = getattr(e, 'message', str(e))
-        
+        error_code = getattr(e, "code", None)
+        error_message = getattr(e, "message", str(e))
+
         logger.warning(
             f"Exchange error testing connection for account {account_id}: "
             f"code={error_code}, message={error_message}"
         )
-        
+
         await repo.update_connection_status(
-            uuid.UUID(account_id),
-            is_connected=False,
-            error=error_message
+            uuid.UUID(account_id), is_connected=False, error=error_message
         )
-        
+
         # exchange_api_error will handle the specific error code and provide appropriate message
         raise exchange_api_error(e, operation="connection test")
 
     except Exception as e:
         # General error - log and sanitize
-        logger.error(f"Unexpected error testing connection for account {account_id}: {e}", exc_info=True)
+        logger.error(
+            f"Unexpected error testing connection for account {account_id}: {e}",
+            exc_info=True,
+        )
         await repo.update_connection_status(
             uuid.UUID(account_id),
             is_connected=False,
-            error=sanitize_error_message(e, "Connection test failed")
+            error=sanitize_error_message(e, "Connection test failed"),
         )
         raise exchange_connection_error(e, exchange=account.exchange)
 
@@ -499,13 +495,17 @@ async def test_connection(
             try:
                 await trader.close()
             except Exception:
-                logger.debug(f"Error closing trader connection for account {account_id}")
+                logger.debug(
+                    f"Error closing trader connection for account {account_id}"
+                )
 
 
 # ==================== Balance & Position Endpoints ====================
 
+
 class PositionResponse(BaseModel):
     """Position response"""
+
     symbol: str
     side: str  # 'long' or 'short'
     size: float
@@ -520,6 +520,7 @@ class PositionResponse(BaseModel):
 
 class AccountBalanceResponse(BaseModel):
     """Account balance response"""
+
     account_id: str
     equity: float
     available_balance: float
@@ -548,8 +549,7 @@ async def get_account_balance(
     account = await repo.get_by_id(uuid.UUID(account_id), uuid.UUID(user_id))
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     # Try cache first (unless bypassed)
@@ -565,8 +565,7 @@ async def get_account_balance(
 
     # Get decrypted credentials
     credentials = await repo.get_decrypted_credentials(
-        uuid.UUID(account_id),
-        uuid.UUID(user_id)
+        uuid.UUID(account_id), uuid.UUID(user_id)
     )
 
     trader = None
@@ -599,9 +598,7 @@ async def get_account_balance(
 
         # Update connection status to connected
         await repo.update_connection_status(
-            uuid.UUID(account_id),
-            is_connected=True,
-            error=None
+            uuid.UUID(account_id), is_connected=True, error=None
         )
 
         response = AccountBalanceResponse(
@@ -629,26 +626,29 @@ async def get_account_balance(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)  # ValueError messages are safe to expose
+            detail=str(e),  # ValueError messages are safe to expose
         )
 
     except TradeError as e:
         # Update connection status on error
-        logger.warning(f"Exchange error fetching balance for account {account_id}: {e.message}")
+        logger.warning(
+            f"Exchange error fetching balance for account {account_id}: {e.message}"
+        )
         await repo.update_connection_status(
-            uuid.UUID(account_id),
-            is_connected=False,
-            error=str(e.message)
+            uuid.UUID(account_id), is_connected=False, error=str(e.message)
         )
         raise exchange_api_error(e, operation="fetch balance")
 
     except Exception as e:
         # Update connection status on error
-        logger.error(f"Unexpected error fetching balance for account {account_id}: {e}", exc_info=True)
+        logger.error(
+            f"Unexpected error fetching balance for account {account_id}: {e}",
+            exc_info=True,
+        )
         await repo.update_connection_status(
             uuid.UUID(account_id),
             is_connected=False,
-            error=sanitize_error_message(e, "Balance fetch failed")
+            error=sanitize_error_message(e, "Balance fetch failed"),
         )
         raise exchange_connection_error(e, exchange=account.exchange)
 
@@ -658,7 +658,9 @@ async def get_account_balance(
             try:
                 await trader.close()
             except Exception:
-                logger.debug(f"Error closing trader connection for account {account_id}")
+                logger.debug(
+                    f"Error closing trader connection for account {account_id}"
+                )
 
 
 @router.get("/{account_id}/positions", response_model=list[PositionResponse])
@@ -679,14 +681,12 @@ async def get_account_positions(
     account = await repo.get_by_id(uuid.UUID(account_id), uuid.UUID(user_id))
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
 
     # Get decrypted credentials
     credentials = await repo.get_decrypted_credentials(
-        uuid.UUID(account_id),
-        uuid.UUID(user_id)
+        uuid.UUID(account_id), uuid.UUID(user_id)
     )
 
     trader = None
@@ -720,15 +720,20 @@ async def get_account_positions(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)  # ValueError messages are safe to expose
+            detail=str(e),  # ValueError messages are safe to expose
         )
 
     except TradeError as e:
-        logger.warning(f"Exchange error fetching positions for account {account_id}: {e.message}")
+        logger.warning(
+            f"Exchange error fetching positions for account {account_id}: {e.message}"
+        )
         raise exchange_api_error(e, operation="fetch positions")
 
     except Exception as e:
-        logger.error(f"Unexpected error fetching positions for account {account_id}: {e}", exc_info=True)
+        logger.error(
+            f"Unexpected error fetching positions for account {account_id}: {e}",
+            exc_info=True,
+        )
         raise exchange_connection_error(e, exchange=account.exchange)
 
     finally:
@@ -737,4 +742,6 @@ async def get_account_positions(
             try:
                 await trader.close()
             except Exception:
-                logger.debug(f"Error closing trader connection for account {account_id}")
+                logger.debug(
+                    f"Error closing trader connection for account {account_id}"
+                )

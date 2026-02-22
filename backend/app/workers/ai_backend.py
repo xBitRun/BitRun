@@ -22,7 +22,6 @@ from .lifecycle import (
     release_ownership,
     acquire_execution_lock,
     release_execution_lock,
-    OWNER_TTL_SECONDS,
 )
 from ..core.config import get_settings
 from ..core.retry_utils import (
@@ -120,11 +119,14 @@ class AIExecutionWorker:
         try:
             async with AsyncSessionLocal() as session:
                 from ..services.worker_heartbeat import update_heartbeat_with_retry
+
                 await update_heartbeat_with_retry(
                     session, self.agent_id, self._worker_instance_id
                 )
         except Exception as e:
-            logger.warning(f"Background heartbeat failed for AI agent {self.agent_id}: {e}")
+            logger.warning(
+                f"Background heartbeat failed for AI agent {self.agent_id}: {e}"
+            )
 
     async def stop(self, timeout: float = 30.0) -> None:
         """Stop the worker gracefully with timeout."""
@@ -177,7 +179,9 @@ class AIExecutionWorker:
                 break
             except Exception as e:
                 error_type = classify_error(e)
-                logger.error(f"Error in AI agent {self.agent_id}: {e} (type: {error_type.value})")
+                logger.error(
+                    f"Error in AI agent {self.agent_id}: {e} (type: {error_type.value})"
+                )
 
                 # Permanent errors: stop immediately
                 if error_type == ErrorType.PERMANENT:
@@ -197,7 +201,9 @@ class AIExecutionWorker:
                         f"({self._error_window.error_count} errors in "
                         f"{self._error_window.window_seconds}s): {str(e)}"
                     )
-                    logger.error(f"Error threshold reached, stopping agent {self.agent_id}")
+                    logger.error(
+                        f"Error threshold reached, stopping agent {self.agent_id}"
+                    )
                     await self._update_agent_status("error", error_msg)
                     break
 
@@ -242,6 +248,7 @@ class AIExecutionWorker:
         async with AsyncSessionLocal() as session:
             # Update heartbeat at start of cycle with retry
             from ..services.worker_heartbeat import update_heartbeat_with_retry
+
             heartbeat_ok = await update_heartbeat_with_retry(
                 session, self.agent_id, self._worker_instance_id
             )
@@ -303,7 +310,8 @@ class AIExecutionWorker:
                 agent.id,
                 agent.user_id,
                 last_run_at=datetime.now(UTC),
-                next_run_at=datetime.now(UTC) + timedelta(minutes=self.interval_minutes),
+                next_run_at=datetime.now(UTC)
+                + timedelta(minutes=self.interval_minutes),
             )
 
             await session.commit()
@@ -444,6 +452,7 @@ class AIWorkerBackend(BaseWorkerBackend):
                 trader = None
                 if agent.execution_mode == "mock":
                     from .tasks import create_mock_trader
+
                     trader, error = await create_mock_trader(
                         agent, session, symbols=strategy.symbols
                     )
@@ -461,7 +470,9 @@ class AIWorkerBackend(BaseWorkerBackend):
                         error_msg = f"AI agent {agent_id} has no account configured"
                         logger.error(error_msg)
                         await self._set_agent_error(
-                            agent.id, "Worker startup failed: No exchange account", session
+                            agent.id,
+                            "Worker startup failed: No exchange account",
+                            session,
                         )
                         if self._distributed_safety:
                             await release_ownership(agent_id)
@@ -473,7 +484,9 @@ class AIWorkerBackend(BaseWorkerBackend):
                         error_msg = f"Account {agent.account_id} not found"
                         logger.error(error_msg)
                         await self._set_agent_error(
-                            agent.id, "Worker startup failed: Account not found", session
+                            agent.id,
+                            "Worker startup failed: Account not found",
+                            session,
                         )
                         if self._distributed_safety:
                             await release_ownership(agent_id)
@@ -483,10 +496,14 @@ class AIWorkerBackend(BaseWorkerBackend):
                         agent.account_id, agent.user_id
                     )
                     if not credentials:
-                        error_msg = f"Failed to get credentials for account {agent.account_id}"
+                        error_msg = (
+                            f"Failed to get credentials for account {agent.account_id}"
+                        )
                         logger.error(error_msg)
                         await self._set_agent_error(
-                            agent.id, "Worker startup failed: Invalid API credentials", session
+                            agent.id,
+                            "Worker startup failed: Invalid API credentials",
+                            session,
                         )
                         if self._distributed_safety:
                             await release_ownership(agent_id)
@@ -497,7 +514,9 @@ class AIWorkerBackend(BaseWorkerBackend):
                         await trader.initialize()
                     except (ValueError, TradeError) as e:
                         error_msg = f"Trader initialization failed: {str(e)}"
-                        logger.error(f"Failed to create trader for agent {agent_id}: {e}")
+                        logger.error(
+                            f"Failed to create trader for agent {agent_id}: {e}"
+                        )
                         if trader:
                             await close_trader_safely(trader, agent.id)
                         await self._set_agent_error(agent.id, error_msg, session)
@@ -520,9 +539,7 @@ class AIWorkerBackend(BaseWorkerBackend):
                 self._workers[agent_id] = worker
 
                 mode = "mock" if agent.execution_mode == "mock" else "live"
-                logger.info(
-                    f"Started AI worker for agent {agent_id} ({mode} mode)"
-                )
+                logger.info(f"Started AI worker for agent {agent_id} ({mode} mode)")
                 return True
 
         except Exception as e:
@@ -568,9 +585,7 @@ class AIWorkerBackend(BaseWorkerBackend):
                     .options(selectinload(AgentDB.strategy))
                 )
                 if user_id:
-                    agent_stmt = agent_stmt.where(
-                        AgentDB.user_id == uuid.UUID(user_id)
-                    )
+                    agent_stmt = agent_stmt.where(AgentDB.user_id == uuid.UUID(user_id))
 
                 agent_result = await session.execute(agent_stmt)
                 agent = agent_result.scalar_one_or_none()
@@ -585,6 +600,7 @@ class AIWorkerBackend(BaseWorkerBackend):
                 # Create trader
                 if agent.execution_mode == "mock":
                     from .tasks import create_mock_trader
+
                     trader, error = await create_mock_trader(
                         agent, session, symbols=strategy.symbols
                     )
@@ -722,8 +738,6 @@ class AIWorkerBackend(BaseWorkerBackend):
             # Stale detection happens via heartbeat timeout in worker_heartbeat service.
 
             # Query active AI agents
-            account_repo = AccountRepository(session)
-
             stmt = (
                 select(AgentDB)
                 .where(AgentDB.status == "active")
@@ -745,9 +759,7 @@ class AIWorkerBackend(BaseWorkerBackend):
                 if success:
                     logger.info(f"Auto-started AI worker for agent {agent.id}")
                 else:
-                    logger.error(
-                        f"Failed to auto-start AI worker for agent {agent.id}"
-                    )
+                    logger.error(f"Failed to auto-start AI worker for agent {agent.id}")
 
                 await asyncio.sleep(1)
 
@@ -779,6 +791,6 @@ class AIWorkerBackend(BaseWorkerBackend):
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception:
                 logger.exception("AI worker sync error")
                 await asyncio.sleep(30)

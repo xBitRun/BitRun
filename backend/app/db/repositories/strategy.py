@@ -6,10 +6,9 @@ no status, no performance metrics (those live on Agent).
 """
 
 import uuid
-from datetime import UTC, datetime
 from typing import Optional
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -45,6 +44,7 @@ class StrategyRepository:
         """
         # Ensure name is unique across strategies and agents
         from ...services.name_check_service import NameCheckService
+
         name_check = NameCheckService(self.session)
         unique_name = await name_check.generate_unique_name(
             name=name,
@@ -153,9 +153,7 @@ class StrategyRepository:
 
         # Fetch page with user relationship eagerly loaded
         query = (
-            select(StrategyDB)
-            .where(*filters)
-            .options(selectinload(StrategyDB.user))
+            select(StrategyDB).where(*filters).options(selectinload(StrategyDB.user))
         )
 
         # Secondary sort by id for stable ordering when primary sort field is equal
@@ -190,22 +188,29 @@ class StrategyRepository:
         # Determine if we need to snapshot (config, symbols, or description changed)
         versioned_fields = {"config", "symbols", "description", "name"}
         needs_snapshot = any(
-            key in versioned_fields and kwargs.get(key) is not None
-            for key in kwargs
+            key in versioned_fields and kwargs.get(key) is not None for key in kwargs
         )
 
         if needs_snapshot:
             await self._create_version_snapshot(strategy, change_note)
 
         allowed_fields = {
-            "name", "description", "symbols", "config",
-            "visibility", "category", "tags",
-            "is_paid", "price_monthly", "pricing_model",
+            "name",
+            "description",
+            "symbols",
+            "config",
+            "visibility",
+            "category",
+            "tags",
+            "is_paid",
+            "price_monthly",
+            "pricing_model",
         }
 
         # Handle name deduplication if name is being updated
         if "name" in kwargs and kwargs["name"] is not None:
             from ...services.name_check_service import NameCheckService
+
             name_check = NameCheckService(self.session)
             kwargs["name"] = await name_check.generate_unique_name(
                 name=kwargs["name"],
@@ -241,6 +246,7 @@ class StrategyRepository:
 
         # Ensure name is unique across strategies and agents
         from ...services.name_check_service import NameCheckService
+
         name_check = NameCheckService(self.session)
         unique_name = await name_check.generate_unique_name(
             name=requested_name,
@@ -289,6 +295,7 @@ class StrategyRepository:
 
         # Ensure name is unique across strategies and agents
         from ...services.name_check_service import NameCheckService
+
         name_check = NameCheckService(self.session)
         unique_name = await name_check.generate_unique_name(
             name=requested_name,
@@ -427,8 +434,12 @@ class StrategyRepository:
         # Apply old version's state
         strategy.name = version_snapshot.name
         strategy.description = version_snapshot.description
-        strategy.symbols = version_snapshot.symbols.copy() if version_snapshot.symbols else []
-        strategy.config = version_snapshot.config.copy() if version_snapshot.config else {}
+        strategy.symbols = (
+            version_snapshot.symbols.copy() if version_snapshot.symbols else []
+        )
+        strategy.config = (
+            version_snapshot.config.copy() if version_snapshot.config else {}
+        )
 
         await self.session.flush()
         await self.session.refresh(strategy)

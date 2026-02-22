@@ -9,23 +9,22 @@ Coordinates:
 - Logging and audit trail
 """
 
-import asyncio
 import logging
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import Optional, Union
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import get_settings
-from ..db.models import AgentDB, DecisionRecordDB, StrategyDB
+from ..db.models import AgentDB, StrategyDB
 from ..db.repositories.agent import AgentRepository
 from ..db.repositories.decision import DecisionRepository
-from ..models.decision import ActionType, DecisionResponse, RiskControls
+from ..models.decision import ActionType, DecisionResponse
 from ..models.debate import ConsensusMode, DebateConfig, DebateResult
 from ..models.market_context import MarketContext
-from ..models.strategy import AIStrategyConfig, StrategyConfig, TradingMode
+from ..models.strategy import AIStrategyConfig, TradingMode
 from ..traders.base import AccountState, BaseTrader, MarketData, OrderResult
 from .ai import BaseAIClient, get_ai_client, resolve_provider_credentials
 from ..core.security import get_crypto_service
@@ -46,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 class StrategyExecutionError(Exception):
     """Error during strategy execution"""
+
     pass
 
 
@@ -101,7 +101,11 @@ class StrategyEngine:
         self.position_service = position_service
 
         # Parse AI config from strategy.config
-        self.config = AIStrategyConfig(**self.strategy.config) if self.strategy.config else AIStrategyConfig()
+        self.config = (
+            AIStrategyConfig(**self.strategy.config)
+            if self.strategy.config
+            else AIStrategyConfig()
+        )
 
         # Respect both constructor param and config.auto_execute
         self.auto_execute = auto_execute and (agent.auto_execute if agent else True)
@@ -117,7 +121,11 @@ class StrategyEngine:
         self._ai_model_id = self._get_effective_model_id()
 
         # Initialize components
-        trading_mode = TradingMode(self.config.trading_mode) if hasattr(self.config, 'trading_mode') else TradingMode.CONSERVATIVE
+        trading_mode = (
+            TradingMode(self.config.trading_mode)
+            if hasattr(self.config, "trading_mode")
+            else TradingMode.CONSERVATIVE
+        )
         self.prompt_builder = PromptBuilder(
             config=self.config,
             trading_mode=trading_mode,
@@ -136,16 +144,22 @@ class StrategyEngine:
                 )
                 logger.info(f"Enhanced context enabled for strategy {self.strategy.id}")
             except Exception as e:
-                logger.warning(f"Failed to initialize DataAccessLayer: {e}, falling back to basic context")
+                logger.warning(
+                    f"Failed to initialize DataAccessLayer: {e}, falling back to basic context"
+                )
                 self.data_access_layer = None
 
         # Initialize debate engine if enabled (config from Agent, not Strategy)
         self.debate_engine: Optional[DebateEngine] = None
         if self.agent:
-            debate_enabled = getattr(self.agent, 'debate_enabled', False) or False
-            debate_models = getattr(self.agent, 'debate_models', None) or []
-            debate_consensus_mode = getattr(self.agent, 'debate_consensus_mode', None) or 'majority_vote'
-            debate_min_participants = getattr(self.agent, 'debate_min_participants', 2) or 2
+            debate_enabled = getattr(self.agent, "debate_enabled", False) or False
+            debate_models = getattr(self.agent, "debate_models", None) or []
+            debate_consensus_mode = (
+                getattr(self.agent, "debate_consensus_mode", None) or "majority_vote"
+            )
+            debate_min_participants = (
+                getattr(self.agent, "debate_min_participants", 2) or 2
+            )
 
             if debate_enabled and len(debate_models) >= 2:
                 debate_config = DebateConfig(
@@ -292,7 +306,9 @@ class StrategyEngine:
                         latency_ms=result["latency_ms"],
                         debate_result=None,
                     )
-                    result["decision_record_id"] = str(decision_record_id) if decision_record_id else None
+                    result["decision_record_id"] = (
+                        str(decision_record_id) if decision_record_id else None
+                    )
                     self._last_decision_record_id = decision_record_id
                 except Exception as e:
                     logger.error(f"Failed to save risk-limit decision record: {e}")
@@ -303,7 +319,7 @@ class StrategyEngine:
             # 4. Build prompts
             system_prompt = self.prompt_builder.build_system_prompt()
             market_contexts = None
-            
+
             if self.data_access_layer is not None:
                 # Use enhanced context with K-lines and technical indicators
                 market_contexts = await self._get_market_contexts()
@@ -381,14 +397,18 @@ class StrategyEngine:
 
             # 7. Execute decisions (if enabled)
             if self.auto_execute:
-                execution_results = await self._execute_decisions(decision, account_state)
+                execution_results = await self._execute_decisions(
+                    decision, account_state
+                )
                 result["executed"] = execution_results
 
             result["success"] = True
 
         except DecisionParseError as e:
             result["error"] = f"Failed to parse AI response: {e.message}"
-            logger.warning(f"Decision parse error for strategy {self.strategy.id}: {e.message}")
+            logger.warning(
+                f"Decision parse error for strategy {self.strategy.id}: {e.message}"
+            )
         except Exception as e:
             result["error"] = str(e)
             logger.error(f"Strategy cycle error for {self.strategy.id}: {e}")
@@ -424,7 +444,9 @@ class StrategyEngine:
                 market_contexts=market_contexts,
                 account_state=account_state,
             )
-            result["decision_record_id"] = str(decision_record_id) if decision_record_id else None
+            result["decision_record_id"] = (
+                str(decision_record_id) if decision_record_id else None
+            )
             self._last_decision_record_id = decision_record_id
 
             # Update agent performance for executed closes (realized PnL)
@@ -444,7 +466,9 @@ class StrategyEngine:
                                 f"realized_pnl={pnl:.2f} is_win={pnl > 0}"
                             )
                         except Exception as perf_e:
-                            logger.warning(f"Failed to update agent performance: {perf_e}")
+                            logger.warning(
+                                f"Failed to update agent performance: {perf_e}"
+                            )
                 await self.db_session.flush()
         except Exception as e:
             logger.error(f"Failed to save decision record: {e}")
@@ -463,8 +487,10 @@ class StrategyEngine:
         """Publish decision to WebSocket for real-time client updates"""
         try:
             # Get user_id from agent
-            user_id = str(self.agent.user_id) if self.agent else (
-                str(self.strategy.user_id) if self.strategy.user_id else None
+            user_id = (
+                str(self.agent.user_id)
+                if self.agent
+                else (str(self.strategy.user_id) if self.strategy.user_id else None)
             )
             if not user_id:
                 return
@@ -485,20 +511,26 @@ class StrategyEngine:
             }
 
             if decision:
-                decision_data.update({
-                    "overall_confidence": decision.overall_confidence,
-                    "market_assessment": decision.market_assessment[:200] if decision.market_assessment else "",
-                    "decisions": [
-                        {
-                            "symbol": d.symbol,
-                            "action": d.action.value,
-                            "confidence": d.confidence,
-                            "leverage": d.leverage,
-                            "position_size_usd": d.position_size_usd,
-                        }
-                        for d in decision.decisions
-                    ],
-                })
+                decision_data.update(
+                    {
+                        "overall_confidence": decision.overall_confidence,
+                        "market_assessment": (
+                            decision.market_assessment[:200]
+                            if decision.market_assessment
+                            else ""
+                        ),
+                        "decisions": [
+                            {
+                                "symbol": d.symbol,
+                                "action": d.action.value,
+                                "confidence": d.confidence,
+                                "leverage": d.leverage,
+                                "position_size_usd": d.position_size_usd,
+                            }
+                            for d in decision.decisions
+                        ],
+                    }
+                )
 
             # Add execution results
             if result.get("executed"):
@@ -511,15 +543,19 @@ class StrategyEngine:
             )
 
             # If trades were executed, also publish position update
-            executed_trades = [e for e in result.get("executed", []) if e.get("executed")]
+            executed_trades = [
+                e for e in result.get("executed", []) if e.get("executed")
+            ]
             if executed_trades and self._last_account_state:
                 # Re-fetch positions after execution (agent-isolated when possible)
                 try:
                     if self.position_service and self.agent:
-                        agent_state = await self.position_service.get_agent_account_state(
-                            agent_id=self.agent.id,
-                            agent=self.agent,
-                            account_equity=self._last_account_state.equity,
+                        agent_state = (
+                            await self.position_service.get_agent_account_state(
+                                agent_id=self.agent.id,
+                                agent=self.agent,
+                                account_equity=self._last_account_state.equity,
+                            )
                         )
                         positions_data = [
                             {
@@ -545,7 +581,11 @@ class StrategyEngine:
                         ]
 
                     # Get account_id from agent
-                    ws_account_id = str(self.agent.account_id) if self.agent and self.agent.account_id else "unknown"
+                    ws_account_id = (
+                        str(self.agent.account_id)
+                        if self.agent and self.agent.account_id
+                        else "unknown"
+                    )
 
                     await publish_position_update(
                         user_id=user_id,
@@ -653,18 +693,20 @@ class StrategyEngine:
         decisions_json = []
         if decision:
             for d in decision.decisions:
-                decisions_json.append({
-                    "symbol": d.symbol,
-                    "action": d.action.value,
-                    "leverage": d.leverage,
-                    "position_size_usd": d.position_size_usd,
-                    "entry_price": d.entry_price,
-                    "stop_loss": d.stop_loss,
-                    "take_profit": d.take_profit,
-                    "confidence": d.confidence,
-                    "risk_usd": d.risk_usd,
-                    "reasoning": d.reasoning,
-                })
+                decisions_json.append(
+                    {
+                        "symbol": d.symbol,
+                        "action": d.action.value,
+                        "leverage": d.leverage,
+                        "position_size_usd": d.position_size_usd,
+                        "entry_price": d.entry_price,
+                        "stop_loss": d.stop_loss,
+                        "take_profit": d.take_profit,
+                        "confidence": d.confidence,
+                        "risk_usd": d.risk_usd,
+                        "reasoning": d.reasoning,
+                    }
+                )
 
         # Prepare debate-specific fields
         is_debate = debate_result is not None
@@ -689,14 +731,18 @@ class StrategyEngine:
                     "chain_of_thought": p.chain_of_thought if p.succeeded else None,
                     "market_assessment": p.market_assessment if p.succeeded else None,
                     # 决策详情
-                    "decisions": [
-                        {
-                            "symbol": d.symbol,
-                            "action": d.action.value,
-                            "confidence": d.confidence,
-                        }
-                        for d in p.decisions
-                    ] if p.succeeded else [],
+                    "decisions": (
+                        [
+                            {
+                                "symbol": d.symbol,
+                                "action": d.action.value,
+                                "confidence": d.confidence,
+                            }
+                            for d in p.decisions
+                        ]
+                        if p.succeeded
+                        else []
+                    ),
                 }
                 for p in debate_result.participants
             ]
@@ -714,8 +760,7 @@ class StrategyEngine:
         if market_contexts:
             try:
                 market_snapshot = [
-                    ctx.to_dict(kline_limit=5)
-                    for ctx in market_contexts.values()
+                    ctx.to_dict(kline_limit=5) for ctx in market_contexts.values()
                 ]
             except Exception as e:
                 logger.warning(f"Failed to serialize market snapshot: {e}")
@@ -756,7 +801,8 @@ class StrategyEngine:
             agent_id=agent_id,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            raw_response=raw_response or (debate_result.combined_chain_of_thought if debate_result else ""),
+            raw_response=raw_response
+            or (debate_result.combined_chain_of_thought if debate_result else ""),
             chain_of_thought=decision.chain_of_thought if decision else "",
             market_assessment=decision.market_assessment if decision else "",
             decisions=decisions_json,
@@ -787,7 +833,9 @@ class StrategyEngine:
 
         await self.db_session.commit()
 
-        logger.info(f"Saved decision record {record.id} for strategy {self.strategy.id}")
+        logger.info(
+            f"Saved decision record {record.id} for strategy {self.strategy.id}"
+        )
         return record.id
 
     async def _check_risk_limits(self, account: AccountState) -> tuple[bool, str]:
@@ -846,14 +894,20 @@ class StrategyEngine:
         # safety net – even if this strategy has room, the account
         # might be fully margined)
         if account.margin_usage_percent >= rc.max_total_exposure * 100:
-            return False, f"Margin usage {account.margin_usage_percent:.1f}% exceeds limit"
+            return (
+                False,
+                f"Margin usage {account.margin_usage_percent:.1f}% exceeds limit",
+            )
 
         # Check drawdown - compare current unrealized PnL against equity
         # If we have significant unrealized losses, we might be in drawdown
         if account.equity > 0 and account.unrealized_pnl < 0:
             drawdown_percent = abs(account.unrealized_pnl) / account.equity
             if drawdown_percent >= rc.max_drawdown_percent:
-                return False, f"Drawdown {drawdown_percent*100:.1f}% exceeds max {rc.max_drawdown_percent*100:.1f}%"
+                return (
+                    False,
+                    f"Drawdown {drawdown_percent*100:.1f}% exceeds max {rc.max_drawdown_percent*100:.1f}%",
+                )
 
         return True, "OK"
 
@@ -871,17 +925,17 @@ class StrategyEngine:
                 continue
 
         return market_data
-    
+
     async def _get_market_contexts(self) -> dict[str, MarketContext]:
         """
         Get enhanced market contexts with K-lines and technical indicators.
-        
+
         Uses DataAccessLayer to fetch:
         - Real-time market data
         - K-lines for configured timeframes
         - Technical indicators (EMA, RSI, MACD, ATR, Bollinger Bands)
         - Funding rate history
-        
+
         Returns:
             Dict mapping symbol to MarketContext
         """
@@ -892,20 +946,22 @@ class StrategyEngine:
                 symbol: MarketContext(symbol=symbol, current=data)
                 for symbol, data in market_data.items()
             }
-        
+
         symbols = self.prompt_builder.get_symbols()
-        
+
         try:
             return await self.data_access_layer.get_market_contexts(symbols)
         except Exception as e:
-            logger.warning(f"Failed to get market contexts: {e}, falling back to basic data")
+            logger.warning(
+                f"Failed to get market contexts: {e}, falling back to basic data"
+            )
             # Fallback to basic market data on failure
             market_data = await self._get_market_data()
             return {
                 symbol: MarketContext(symbol=symbol, current=data)
                 for symbol, data in market_data.items()
             }
-    
+
     def get_last_market_contexts(self) -> Optional[dict[str, MarketContext]]:
         """Get the last fetched market contexts"""
         return self._last_market_contexts
@@ -969,33 +1025,37 @@ class StrategyEngine:
         sorted_decisions = sorted(
             decision.decisions,
             key=lambda d: (
-                0 if d.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT) else
-                1 if d.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT) else
-                2
-            )
+                0
+                if d.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT)
+                else (
+                    1
+                    if d.action in (ActionType.OPEN_LONG, ActionType.OPEN_SHORT)
+                    else 2
+                )
+            ),
         )
 
         # Get configured watchlist for symbol validation
-        configured_symbols = {
-            s.upper() for s in self.prompt_builder.get_symbols()
-        }
+        configured_symbols = {s.upper() for s in self.prompt_builder.get_symbols()}
 
         for d in sorted_decisions:
             # Validate symbol is in strategy's configured watchlist
             if configured_symbols and d.symbol.upper() not in configured_symbols:
-                results.append({
-                    "symbol": d.symbol,
-                    "action": d.action.value,
-                    "confidence": d.confidence,
-                    "executed": False,
-                    "reason": (
-                        f"Symbol {d.symbol} not in strategy watchlist "
-                        f"({', '.join(sorted(configured_symbols))})"
-                    ),
-                    "requested_size_usd": d.position_size_usd,
-                    "actual_size_usd": None,
-                    "order_result": None,
-                })
+                results.append(
+                    {
+                        "symbol": d.symbol,
+                        "action": d.action.value,
+                        "confidence": d.confidence,
+                        "executed": False,
+                        "reason": (
+                            f"Symbol {d.symbol} not in strategy watchlist "
+                            f"({', '.join(sorted(configured_symbols))})"
+                        ),
+                        "requested_size_usd": d.position_size_usd,
+                        "actual_size_usd": None,
+                        "order_result": None,
+                    }
+                )
                 logger.warning(
                     f"[Execution] SKIP {d.symbol} {d.action.value}: "
                     f"symbol not in watchlist"
@@ -1051,7 +1111,9 @@ class StrategyEngine:
 
             # Apply position size limits (margin-based)
             position_size = self._apply_position_limits(
-                d.position_size_usd, account, leverage=d.leverage,
+                d.position_size_usd,
+                account,
+                leverage=d.leverage,
             )
             exec_result["actual_size_usd"] = position_size
 
@@ -1071,7 +1133,9 @@ class StrategyEngine:
                     f"(requested ${d.position_size_usd:.2f})"
                 )
                 exec_result["reason"] = reason
-                logger.warning(f"[Execution] SKIP {d.symbol} {d.action.value}: {reason}")
+                logger.warning(
+                    f"[Execution] SKIP {d.symbol} {d.action.value}: {reason}"
+                )
                 results.append(exec_result)
                 continue
 
@@ -1141,9 +1205,13 @@ class StrategyEngine:
                                     )
                                     if db_pos and close_price > 0:
                                         if db_pos.side == "long":
-                                            realized_pnl = (close_price - db_pos.entry_price) * db_pos.size
+                                            realized_pnl = (
+                                                close_price - db_pos.entry_price
+                                            ) * db_pos.size
                                         else:
-                                            realized_pnl = (db_pos.entry_price - close_price) * db_pos.size
+                                            realized_pnl = (
+                                                db_pos.entry_price - close_price
+                                            ) * db_pos.size
                                         position_leverage = db_pos.leverage
                                         position_size_usd = db_pos.size_usd
                                         logger.info(
@@ -1263,7 +1331,11 @@ class StrategyEngine:
         ps = self.position_service  # may be None (backward compatible)
 
         # Get account_id from agent (None for mock agents)
-        account_id = self.agent.account_id if self.agent else getattr(self.strategy, 'account_id', None)
+        account_id = (
+            self.agent.account_id
+            if self.agent
+            else getattr(self.strategy, "account_id", None)
+        )
         agent_id = self.agent.id if self.agent else self.strategy.id
 
         # ------ OPEN LONG / SHORT ------
@@ -1314,7 +1386,7 @@ class StrategyEngine:
                         stop_loss=decision.stop_loss,
                         take_profit=decision.take_profit,
                     )
-            except Exception as e:
+            except Exception:
                 # Before releasing the claim, check if the order might have
                 # actually executed on the exchange (network timeout scenario).
                 if ps and claim:
@@ -1356,7 +1428,9 @@ class StrategyEngine:
                     # if filled_size is None (some exchanges report fills async).
                     # Use the estimated size as fallback so the claim isn't released
                     # for a position that actually exists on the exchange.
-                    estimated_size = result.filled_size or (position_size / (result.filled_price or 1.0))
+                    estimated_size = result.filled_size or (
+                        position_size / (result.filled_price or 1.0)
+                    )
                     try:
                         await ps.confirm_position(
                             position_id=claim.id,
@@ -1383,9 +1457,7 @@ class StrategyEngine:
             # Look up the agent's position record (if isolation is enabled)
             pos_record = None
             if ps:
-                pos_record = await ps.get_agent_position_for_symbol(
-                    agent_id, symbol
-                )
+                pos_record = await ps.get_agent_position_for_symbol(agent_id, symbol)
                 if not pos_record:
                     logger.warning(
                         f"[Execution] No position record for {symbol} owned by "
@@ -1401,11 +1473,19 @@ class StrategyEngine:
                 close_price = result.filled_price or 0.0
                 realized_pnl = 0.0
 
-                if close_price > 0 and pos_record.entry_price > 0 and pos_record.size > 0:
+                if (
+                    close_price > 0
+                    and pos_record.entry_price > 0
+                    and pos_record.size > 0
+                ):
                     if pos_record.side == "long":
-                        realized_pnl = (close_price - pos_record.entry_price) * pos_record.size
+                        realized_pnl = (
+                            close_price - pos_record.entry_price
+                        ) * pos_record.size
                     else:
-                        realized_pnl = (pos_record.entry_price - close_price) * pos_record.size
+                        realized_pnl = (
+                            pos_record.entry_price - close_price
+                        ) * pos_record.size
                     logger.info(
                         f"[Execution] Calculated realized_pnl for {symbol}: "
                         f"${realized_pnl:.2f} (entry={pos_record.entry_price:.2f}, "

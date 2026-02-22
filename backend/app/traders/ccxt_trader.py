@@ -86,6 +86,7 @@ def _build_ccxt_config(
             cfg["walletAddress"] = wallet
         elif private_key:
             from eth_account import Account
+
             cfg["walletAddress"] = Account.from_key(private_key).address
         # Hyperliquid does not use apiKey / secret
 
@@ -413,24 +414,25 @@ class CCXTTrader(BaseTrader):
                 raw_symbol = pos.get("symbol", "")
                 base_symbol = self._base_symbol(raw_symbol)
 
-                positions.append(Position(
-                    symbol=base_symbol,
-                    side="long" if pos.get("side") == "long" else "short",
-                    size=abs(size),
-                    size_usd=abs(notional) if notional else abs(size) * mark_price,
-                    entry_price=entry_price,
-                    mark_price=mark_price,
-                    leverage=int(pos.get("leverage", 1) or 1),
-                    unrealized_pnl=unrealized_pnl,
-                    unrealized_pnl_percent=(
-                        (unrealized_pnl / abs(notional)) * 100
-                        if notional else 0
-                    ),
-                    liquidation_price=(
-                        float(pos.get("liquidationPrice", 0) or 0) or None
-                    ),
-                    margin_used=margin_used,
-                ))
+                positions.append(
+                    Position(
+                        symbol=base_symbol,
+                        side="long" if pos.get("side") == "long" else "short",
+                        size=abs(size),
+                        size_usd=abs(notional) if notional else abs(size) * mark_price,
+                        entry_price=entry_price,
+                        mark_price=mark_price,
+                        leverage=int(pos.get("leverage", 1) or 1),
+                        unrealized_pnl=unrealized_pnl,
+                        unrealized_pnl_percent=(
+                            (unrealized_pnl / abs(notional)) * 100 if notional else 0
+                        ),
+                        liquidation_price=(
+                            float(pos.get("liquidationPrice", 0) or 0) or None
+                        ),
+                        margin_used=margin_used,
+                    )
+                )
 
             # Determine quote currency key for balance
             quote = "USDC" if self._exchange_id == "hyperliquid" else "USDT"
@@ -518,7 +520,8 @@ class CCXTTrader(BaseTrader):
                 funding_rate=funding_rate,
                 open_interest=(
                     float(ticker.get("openInterest", 0) or 0)
-                    if ticker.get("openInterest") else None
+                    if ticker.get("openInterest")
+                    else None
                 ),
             )
         except TradeError:
@@ -531,14 +534,19 @@ class CCXTTrader(BaseTrader):
     # ------------------------------------------------------------------
 
     async def get_klines(
-        self, symbol: str, timeframe: str = "1h", limit: int = 100,
+        self,
+        symbol: str,
+        timeframe: str = "1h",
+        limit: int = 100,
     ) -> list[OHLCV]:
         self._ensure_initialized()
         ccxt_symbol = self._to_ccxt_symbol(symbol)
         max_limit = _KLINE_MAX.get(self._exchange_id, 1000)
         try:
             data = await self._exchange.fetch_ohlcv(
-                ccxt_symbol, timeframe=timeframe, limit=min(limit, max_limit),
+                ccxt_symbol,
+                timeframe=timeframe,
+                limit=min(limit, max_limit),
             )
             if not data:
                 return []
@@ -548,7 +556,9 @@ class CCXTTrader(BaseTrader):
             return []
 
     async def get_funding_history(
-        self, symbol: str, limit: int = 24,
+        self,
+        symbol: str,
+        limit: int = 24,
     ) -> list[FundingRate]:
         self._ensure_initialized()
 
@@ -560,7 +570,8 @@ class CCXTTrader(BaseTrader):
         ccxt_symbol = self._to_ccxt_symbol(symbol)
         try:
             data = await self._exchange.fetch_funding_rate_history(
-                ccxt_symbol, limit=limit,
+                ccxt_symbol,
+                limit=limit,
             )
             if not data:
                 return []
@@ -577,10 +588,12 @@ class CCXTTrader(BaseTrader):
                 else:
                     timestamp = datetime.now(UTC)
 
-                rates.append(FundingRate(
-                    timestamp=timestamp,
-                    rate=float(item.get("fundingRate", 0) or 0),
-                ))
+                rates.append(
+                    FundingRate(
+                        timestamp=timestamp,
+                        rate=float(item.get("fundingRate", 0) or 0),
+                    )
+                )
 
             rates.sort(key=lambda r: r.timestamp, reverse=True)
             return rates
@@ -652,7 +665,11 @@ class CCXTTrader(BaseTrader):
                 params["slippage"] = slippage or self.default_slippage
 
             order = await self._exchange.create_market_order(
-                ccxt_symbol, side, size, price=price, params=params,
+                ccxt_symbol,
+                side,
+                size,
+                price=price,
+                params=params,
             )
 
             return OrderResult(
@@ -664,16 +681,19 @@ class CCXTTrader(BaseTrader):
                 raw_response=order,
             )
 
-        except ccxt.RateLimitExceeded as e:
+        except ccxt.RateLimitExceeded:
             # Retry once after a short backoff for rate limits
             logger.warning(
-                f"Rate limit hit for {ccxt_symbol} {side} {size}, "
-                "retrying in 2s..."
+                f"Rate limit hit for {ccxt_symbol} {side} {size}, " "retrying in 2s..."
             )
             await asyncio.sleep(2)
             try:
                 order = await self._exchange.create_market_order(
-                    ccxt_symbol, side, size, price=price, params=params,
+                    ccxt_symbol,
+                    side,
+                    size,
+                    price=price,
+                    params=params,
                 )
                 return OrderResult(
                     success=True,
@@ -723,7 +743,11 @@ class CCXTTrader(BaseTrader):
                 params["postOnly"] = True
 
             order = await self._exchange.create_limit_order(
-                ccxt_symbol, side, size, price, params=params,
+                ccxt_symbol,
+                side,
+                size,
+                price,
+                params=params,
             )
 
             return OrderResult(
@@ -760,7 +784,12 @@ class CCXTTrader(BaseTrader):
                 params["triggerType"] = "last"
 
             order = await self._exchange.create_order(
-                ccxt_symbol, "market", side, size, None, params=params,
+                ccxt_symbol,
+                "market",
+                side,
+                size,
+                None,
+                params=params,
             )
             return OrderResult(
                 success=True,
@@ -794,7 +823,12 @@ class CCXTTrader(BaseTrader):
                 params["triggerType"] = "last"
 
             order = await self._exchange.create_order(
-                ccxt_symbol, "market", side, size, None, params=params,
+                ccxt_symbol,
+                "market",
+                side,
+                size,
+                None,
+                params=params,
             )
             return OrderResult(
                 success=True,
@@ -829,7 +863,8 @@ class CCXTTrader(BaseTrader):
                 for order in open_orders:
                     try:
                         await self._exchange.cancel_order(
-                            order["id"], order["symbol"],
+                            order["id"],
+                            order["symbol"],
                         )
                         count += 1
                     except Exception as e:
@@ -865,8 +900,12 @@ class CCXTTrader(BaseTrader):
             price = await self.get_market_price(symbol)
 
             return await self.place_market_order(
-                symbol, close_side, close_size,
-                reduce_only=True, slippage=slippage, price=price,
+                symbol,
+                close_side,
+                close_size,
+                reduce_only=True,
+                slippage=slippage,
+                price=price,
             )
         except Exception as e:
             return OrderResult(success=False, error=str(e))
@@ -881,7 +920,9 @@ class CCXTTrader(BaseTrader):
     # ------------------------------------------------------------------
 
     async def _safe_set_leverage(
-        self, ccxt_symbol: str, leverage: int,
+        self,
+        ccxt_symbol: str,
+        leverage: int,
     ) -> bool:
         """Set margin mode + leverage, distinguishing benign from critical errors."""
         try:

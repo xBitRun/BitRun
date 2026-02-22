@@ -24,14 +24,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Literal, Optional
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.models import AgentDB, AgentPositionDB
 from ..models.agent import AgentAccountState, AgentPosition
 from ..services.redis_service import RedisService
-from ..traders.base import AccountState, Position
+from ..traders.base import Position
 
 # Import PnLService lazily to avoid circular import
 # from ..services.pnl_service import PnLService
@@ -225,9 +225,7 @@ class AgentPositionService:
 
         lock = None
         if self.redis:
-            lock = self.redis.redis.lock(
-                lock_key, timeout=_LOCK_TIMEOUT_SECONDS
-            )
+            lock = self.redis.redis.lock(lock_key, timeout=_LOCK_TIMEOUT_SECONDS)
             acquired = await lock.acquire(blocking=True, blocking_timeout=5)
             if not acquired:
                 raise PositionConflictError(symbol, agent_id)
@@ -395,8 +393,8 @@ class AgentPositionService:
         total_size = old_size + additional_size
         if total_size > 0 and fill_price > 0:
             new_entry = (
-                (old_size * old_entry + additional_size * fill_price) / total_size
-            )
+                old_size * old_entry + additional_size * fill_price
+            ) / total_size
         else:
             new_entry = fill_price or old_entry
 
@@ -460,6 +458,7 @@ class AgentPositionService:
         # Record P&L (lazy import to avoid circular dependency)
         try:
             from ..services.pnl_service import PnLService
+
             pnl_service = PnLService(self.db)
             await pnl_service.record_pnl_from_position(
                 position=position,
@@ -486,9 +485,7 @@ class AgentPositionService:
         status_filter: Optional[str] = None,
     ) -> list[AgentPositionDB]:
         """Get all position records for an agent."""
-        stmt = select(AgentPositionDB).where(
-            AgentPositionDB.agent_id == agent_id
-        )
+        stmt = select(AgentPositionDB).where(AgentPositionDB.agent_id == agent_id)
         if status_filter:
             stmt = stmt.where(AgentPositionDB.status == status_filter)
         result = await self.db.execute(stmt)
@@ -557,11 +554,13 @@ class AgentPositionService:
                 net[sym]["long_size"] += pos.size
             else:
                 net[sym]["short_size"] += pos.size
-            net[sym]["agents"].append({
-                "agent_id": str(pos.agent_id),
-                "side": pos.side,
-                "size": pos.size,
-            })
+            net[sym]["agents"].append(
+                {
+                    "agent_id": str(pos.agent_id),
+                    "side": pos.side,
+                    "size": pos.size,
+                }
+            )
         for sym in net:
             net[sym]["net_size"] = net[sym]["long_size"] - net[sym]["short_size"]
         return net
@@ -650,9 +649,11 @@ class AgentPositionService:
             for pos in all_positions:
                 if pos.symbol.upper() == sym:
                     # Grace period check
-                    if pos.opened_at and (
-                        now - pos.opened_at
-                    ).total_seconds() < _ZOMBIE_GRACE_PERIOD_SECONDS:
+                    if (
+                        pos.opened_at
+                        and (now - pos.opened_at).total_seconds()
+                        < _ZOMBIE_GRACE_PERIOD_SECONDS
+                    ):
                         summary["details"].append(
                             f"SKIP_ZOMBIE: {sym} (agent {pos.agent_id}) "
                             f"opened recently – within grace period"
@@ -675,9 +676,7 @@ class AgentPositionService:
             summary["details"].append(
                 f"ORPHAN: {sym} exists on exchange but not tracked by any agent"
             )
-            logger.warning(
-                f"[Reconciliation] Orphan: {sym} on account {account_id}"
-            )
+            logger.warning(f"[Reconciliation] Orphan: {sym} on account {account_id}")
 
         # Case 3: Both exist - compare aggregate size
         for sym in app_symbols & exchange_symbols:

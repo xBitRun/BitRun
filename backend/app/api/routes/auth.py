@@ -1,6 +1,8 @@
 """Authentication routes with database integration"""
 
+import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,9 +11,15 @@ from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
 
 from ...core.config import get_settings
-from ...core.dependencies import CurrentTokenDep, CurrentUserDep, DbSessionDep
+from ...core.dependencies import (
+    CurrentTokenDep,
+    CurrentUserDep,
+    DbSessionDep,
+    RateLimitAuthDep,
+)
 from ...core.errors import ErrorCode, auth_error
 from ...core.security import (
+    TokenData,
     create_access_token,
     create_refresh_token,
     verify_token,
@@ -19,24 +27,31 @@ from ...core.security import (
 from ...db.repositories.user import UserRepository
 from ...db.repositories.wallet import WalletRepository
 from ...services.invite_service import InviteService
+from ...services.redis_service import get_redis_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 # ==================== Request/Response Models ====================
 
+
 class UserCreate(BaseModel):
     """User registration request"""
+
     email: EmailStr
     # bcrypt has a 72-byte limit on passwords; enforce max_length to avoid silent truncation
     password: str = Field(..., min_length=8, max_length=72)
     name: str = Field(..., min_length=1, max_length=100)
     # Invitation code is required for registration
-    invite_code: str = Field(..., min_length=6, max_length=20, description="Invitation code (required)")
+    invite_code: str = Field(
+        ..., min_length=6, max_length=20, description="Invitation code (required)"
+    )
 
 
 class UserResponse(BaseModel):
     """User response (without sensitive data)"""
+
     id: str
     email: str
     name: str
@@ -47,6 +62,7 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     """JWT token response"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -56,24 +72,56 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     """Token refresh request"""
+
     refresh_token: str
 
 
 class ProfileUpdateRequest(BaseModel):
     """Profile update request"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
 
 
 class ChangePasswordRequest(BaseModel):
     """Change password request"""
+
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8, max_length=72)
 
 
 # ==================== Routes ====================
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: DbSessionDep):
+
+def _token_ttl_seconds(token_data: TokenData) -> int:
+    """Calculate remaining token lifetime in seconds for blacklist TTL."""
+    ttl = int((token_data.exp - datetime.now(timezone.utc)).total_seconds())
+    return max(1, ttl)
+
+
+async def _is_token_blacklisted(token_data: TokenData) -> bool:
+    """Check whether the given token is blacklisted."""
+    if not token_data.jti:
+        return False
+    redis = await get_redis_service()
+    return await redis.is_token_blacklisted(token_data.jti)
+
+
+async def _blacklist_token(token_data: TokenData) -> None:
+    """Blacklist a token by JTI until it naturally expires."""
+    if not token_data.jti:
+        return
+    redis = await get_redis_service()
+    await redis.blacklist_token(
+        token_data.jti, expires_in=_token_ttl_seconds(token_data)
+    )
+
+
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
+async def register(
+    user_data: UserCreate, db: DbSessionDep, _rate_limit: RateLimitAuthDep = None
+):
     """
     Register a new user.
 
@@ -119,6 +167,7 @@ async def register(user_data: UserCreate, db: DbSessionDep):
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DbSessionDep,
+    _rate_limit: RateLimitAuthDep = None,
 ):
     """
     Login with email and password.
@@ -158,14 +207,12 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshRequest):
+async def refresh_token(request: RefreshRequest, _rate_limit: RateLimitAuthDep = None):
     """
     Refresh access token using refresh token.
 
     Returns a new token pair.
     """
-    settings = get_settings()
-
     # Verify refresh token
     try:
         token_data = verify_token(request.refresh_token, token_type="refresh")
@@ -176,9 +223,40 @@ async def refresh_token(request: RefreshRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    settings = get_settings()
+    try:
+        if await _is_token_blacklisted(token_data):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Redis unavailable for refresh-token blacklist check: {e}")
+        if settings.environment == "production":
+            raise auth_error(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Retry-After": "5"},
+            )
+
     # Create new tokens
     access_token = create_access_token(token_data.sub)
     new_refresh_token = create_refresh_token(token_data.sub)
+
+    # Rotate refresh tokens: blacklist the old refresh token so it cannot be reused.
+    try:
+        await _blacklist_token(token_data)
+    except Exception as e:
+        logger.error(f"Failed to blacklist old refresh token: {e}")
+        if settings.environment == "production":
+            raise auth_error(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Retry-After": "5"},
+            )
 
     return TokenResponse(
         access_token=access_token,
@@ -189,13 +267,25 @@ async def refresh_token(request: RefreshRequest):
 
 @router.post("/logout")
 async def logout(
-    _: CurrentTokenDep,
+    token_data: CurrentTokenDep,
 ):
     """
     Logout user.
 
-    Client should discard tokens after this call.
+    Access token JTI is blacklisted until expiry.
+    Client should discard local tokens after this call.
     """
+    settings = get_settings()
+    try:
+        await _blacklist_token(token_data)
+    except Exception as e:
+        logger.error(f"Failed to blacklist access token on logout: {e}")
+        if settings.environment == "production":
+            raise auth_error(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Retry-After": "5"},
+            )
     return {"message": "Logged out successfully"}
 
 
@@ -214,14 +304,12 @@ async def get_current_user(
     user = await repo.get_by_id(uuid.UUID(user_id))
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled"
         )
 
     return UserResponse(
@@ -250,14 +338,12 @@ async def update_profile(
     user = await repo.get_by_id(uuid.UUID(user_id))
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled"
         )
 
     # Build update kwargs from non-None fields
@@ -295,29 +381,28 @@ async def change_password(
     user = await repo.get_by_id(uuid.UUID(user_id))
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled"
         )
 
     # Verify current password (async to avoid blocking event loop)
     from ...core.security import verify_password_async
+
     if not await verify_password_async(request.current_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
+            detail="Current password is incorrect",
         )
 
     # Check new password is different
     if await verify_password_async(request.new_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be different from current password"
+            detail="New password must be different from current password",
         )
 
     # Change password
@@ -325,7 +410,7 @@ async def change_password(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to change password"
+            detail="Failed to change password",
         )
 
     await db.commit()

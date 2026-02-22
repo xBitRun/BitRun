@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 
 # ==================== Response Models ====================
 
+
 class WorkerStatus(BaseModel):
     """Individual worker status"""
+
     strategy_id: str
     running: bool
     last_run: Optional[str] = None
@@ -26,6 +28,7 @@ class WorkerStatus(BaseModel):
 
 class QueueInfo(BaseModel):
     """Task queue information"""
+
     queue_name: str
     queued: int = 0
     in_progress: int = 0
@@ -35,6 +38,7 @@ class QueueInfo(BaseModel):
 
 class WorkerManagerStatus(BaseModel):
     """Worker manager status"""
+
     running: bool
     distributed: bool
     total_workers: int
@@ -43,6 +47,7 @@ class WorkerManagerStatus(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.get("/status", response_model=WorkerManagerStatus)
 async def get_workers_status(
@@ -62,13 +67,15 @@ async def get_workers_status(
     for strategy_id in worker_ids:
         worker_status = worker_manager.get_worker_status(strategy_id)
         if worker_status:
-            workers.append(WorkerStatus(
-                strategy_id=strategy_id,
-                running=worker_status["running"],
-                last_run=worker_status.get("last_run"),
-                error_count=worker_status.get("error_count", 0),
-                mode=worker_status.get("mode", "legacy"),
-            ))
+            workers.append(
+                WorkerStatus(
+                    strategy_id=strategy_id,
+                    running=worker_status["running"],
+                    last_run=worker_status.get("last_run"),
+                    error_count=worker_status.get("error_count", 0),
+                    mode=worker_status.get("mode", "legacy"),
+                )
+            )
 
     # Get queue info if in distributed mode
     queue_info = None
@@ -103,7 +110,7 @@ async def start_worker(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to start worker. Check that the strategy exists, is active, and has a valid account."
+            detail="Failed to start worker. Check that the strategy exists, is active, and has a valid account.",
         )
 
     return {"message": f"Worker started for strategy {strategy_id}"}
@@ -158,6 +165,7 @@ async def trigger_execution(
 
 class JobStatus(BaseModel):
     """Distributed job status"""
+
     job_id: str
     function: Optional[str] = None
     status: str
@@ -210,7 +218,7 @@ async def get_job_status(
     if not worker_manager.is_distributed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job status only available in distributed mode"
+            detail="Job status only available in distributed mode",
         )
 
     job_info = await worker_manager.get_distributed_status(strategy_id)

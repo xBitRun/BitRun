@@ -61,9 +61,7 @@ async def send_initial_heartbeat(
                 session, agent_id, worker_instance_id
             )
     except Exception as e:
-        logger.warning(
-            f"Failed to send initial heartbeat for agent {agent_id}: {e}"
-        )
+        logger.warning(f"Failed to send initial heartbeat for agent {agent_id}: {e}")
         return False
 
 
@@ -88,9 +86,7 @@ async def clear_heartbeat_on_stop(agent_id: uuid.UUID) -> bool:
             await clear_heartbeat(session, agent_id)
         return True
     except Exception as e:
-        logger.warning(
-            f"Failed to clear heartbeat for agent {agent_id}: {e}"
-        )
+        logger.warning(f"Failed to clear heartbeat for agent {agent_id}: {e}")
         return False
 
 
@@ -108,9 +104,7 @@ async def close_trader_safely(trader, agent_id: uuid.UUID) -> None:
     try:
         await trader.close()
     except Exception as e:
-        logger.warning(
-            f"Error closing trader for agent {agent_id}: {e}"
-        )
+        logger.warning(f"Error closing trader for agent {agent_id}: {e}")
 
 
 async def try_acquire_ownership(
@@ -135,6 +129,7 @@ async def try_acquire_ownership(
 
     try:
         from ..services.redis_service import get_redis_service
+
         redis_service = await get_redis_service()
         key = f"{WORKER_OWNER_PREFIX}{agent_id}"
         claimed = await redis_service.redis.set(
@@ -195,12 +190,16 @@ async def refresh_ownership(
 
     try:
         from ..services.redis_service import get_redis_service
+
         redis_service = await get_redis_service()
         key = f"{WORKER_OWNER_PREFIX}{agent_id}"
 
         result = await redis_service.redis.eval(
-            _REFRESH_LUA, 1, key,
-            instance_id, OWNER_TTL_SECONDS,
+            _REFRESH_LUA,
+            1,
+            key,
+            instance_id,
+            OWNER_TTL_SECONDS,
         )
 
         if result == 1:
@@ -239,11 +238,10 @@ async def release_ownership(
 
     try:
         from ..services.redis_service import get_redis_service
+
         redis_service = await get_redis_service()
         key = f"{WORKER_OWNER_PREFIX}{agent_id}"
-        await redis_service.redis.eval(
-            _RELEASE_LUA, 1, key, instance_id
-        )
+        await redis_service.redis.eval(_RELEASE_LUA, 1, key, instance_id)
     except Exception:
         pass  # Best-effort; TTL will clean up
 
@@ -263,6 +261,7 @@ async def acquire_execution_lock(agent_id: str) -> Tuple[bool, Optional[str]]:
     """
     try:
         from ..services.redis_service import get_redis_service
+
         redis_service = await get_redis_service()
         lock_key = f"{EXEC_LOCK_PREFIX}{agent_id}"
         acquired = await redis_service.redis.set(
@@ -270,9 +269,7 @@ async def acquire_execution_lock(agent_id: str) -> Tuple[bool, Optional[str]]:
         )
         return bool(acquired), lock_key if acquired else None
     except Exception as e:
-        logger.warning(
-            f"Failed to acquire exec lock for {agent_id}: {e}"
-        )
+        logger.warning(f"Failed to acquire exec lock for {agent_id}: {e}")
         # Fail-safe: do NOT proceed without lock to prevent duplicate execution
         return False, None
 
@@ -289,6 +286,7 @@ async def release_execution_lock(lock_key: str) -> None:
 
     try:
         from ..services.redis_service import get_redis_service
+
         redis_service = await get_redis_service()
         await redis_service.redis.delete(lock_key)
     except Exception:
@@ -334,18 +332,14 @@ async def try_reconnect_trader(
             account_repo = AccountRepository(session)
             account = await account_repo.get_by_id(account_id, user_id)
             if not account:
-                logger.error(
-                    f"Account {account_id} not found during reconnect"
-                )
+                logger.error(f"Account {account_id} not found during reconnect")
                 return None
 
             credentials = await account_repo.get_decrypted_credentials(
                 account_id, user_id
             )
             if not credentials:
-                logger.error(
-                    f"Failed to get credentials during reconnect"
-                )
+                logger.error("Failed to get credentials during reconnect")
                 return None
 
             new_trader = create_trader_from_account(

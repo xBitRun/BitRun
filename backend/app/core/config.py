@@ -5,9 +5,8 @@ import secrets
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator, model_validator
+from pydantic import Field, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 # Marker to detect if JWT_SECRET was auto-generated vs explicitly set
 _JWT_SECRET_AUTO_GENERATED = secrets.token_urlsafe(32)
@@ -62,9 +61,7 @@ class Settings(BaseSettings):
     # Security - Data Encryption
     # 32-byte key for AES-256, base64 encoded
     # Generate with: python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-    data_encryption_key: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(32)
-    )
+    data_encryption_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
 
     # Security - JWT
     # Random secret generated at startup if not provided (recommended for dev only)
@@ -88,13 +85,13 @@ class Settings(BaseSettings):
             if not jwt_secret_from_env:
                 raise ValueError(
                     "JWT_SECRET must be explicitly set in production environment. "
-                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                    'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
                 )
 
             if len(jwt_secret_from_env) < 32:
                 raise ValueError(
                     "JWT_SECRET must be at least 32 characters long for security. "
-                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                    'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
                 )
 
             # Check data encryption key in production
@@ -102,7 +99,7 @@ class Settings(BaseSettings):
             if not data_key_from_env:
                 raise ValueError(
                     "DATA_ENCRYPTION_KEY must be explicitly set in production environment. "
-                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                    'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
                 )
 
         return self
@@ -122,8 +119,12 @@ class Settings(BaseSettings):
 
     # Execution worker settings
     worker_enabled: bool = True  # Enable/disable automatic strategy execution
-    worker_distributed: bool = False  # Use distributed task queue (ARQ) instead of in-process workers
-    worker_max_concurrent_jobs: int = 10  # Max concurrent jobs per worker (distributed mode)
+    worker_distributed: bool = (
+        False  # Use distributed task queue (ARQ) instead of in-process workers
+    )
+    worker_max_concurrent_jobs: int = (
+        10  # Max concurrent jobs per worker (distributed mode)
+    )
     worker_job_timeout: int = 300  # Job timeout in seconds (distributed mode)
 
     # Worker error handling settings
@@ -150,7 +151,7 @@ class Settings(BaseSettings):
     discord_webhook_url: str = ""
     resend_api_key: str = ""
     resend_from: str = ""  # Sender email (must be verified domain in Resend)
-    
+
     # Proxy (for geo-restricted exchange APIs)
     proxy_url: str = ""  # e.g. http://host.docker.internal:6152
 
@@ -161,7 +162,9 @@ class Settings(BaseSettings):
 
     def get_cors_origins(self) -> list[str]:
         """Parse CORS origins from comma-separated string"""
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
 
 
 @lru_cache

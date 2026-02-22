@@ -20,27 +20,40 @@ logger = logging.getLogger(__name__)
 
 # ==================== Request/Response Models ====================
 
+
 class NotificationStatus(BaseModel):
     """Notification service status"""
+
     enabled: bool
     configured_channels: list[str]
 
 
 class TestNotificationRequest(BaseModel):
     """Request to send a test notification"""
-    channel: Optional[str] = Field(None, description="Channel to test (telegram, discord, email). If not specified, tests all configured channels.")
-    message: str = Field(default="This is a test notification from BITRUN.", description="Test message to send")
+
+    channel: Optional[str] = Field(
+        None,
+        description="Channel to test (telegram, discord, email). If not specified, tests all configured channels.",
+    )
+    message: str = Field(
+        default="This is a test notification from BITRUN.",
+        description="Test message to send",
+    )
 
 
 class TestNotificationResponse(BaseModel):
     """Test notification result"""
+
     success: bool
     results: dict[str, bool]
 
 
 class ConfigureChannelRequest(BaseModel):
     """Request to configure a notification channel"""
-    channel: str = Field(..., description="Channel to configure (telegram, discord, email)")
+
+    channel: str = Field(
+        ..., description="Channel to configure (telegram, discord, email)"
+    )
     # Telegram
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
@@ -56,6 +69,7 @@ class ConfigureChannelRequest(BaseModel):
 
 
 # ==================== Routes ====================
+
 
 @router.get("/status", response_model=NotificationStatus)
 async def get_notification_status(
@@ -94,7 +108,7 @@ async def test_notification(
     if not service.is_any_configured():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No notification channels configured"
+            detail="No notification channels configured",
         )
 
     # Create test notification
@@ -117,7 +131,7 @@ async def test_notification(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid channel: {data.channel}. Valid options: telegram, discord, email"
+                detail=f"Invalid channel: {data.channel}. Valid options: telegram, discord, email",
             )
 
     # Send test notification
@@ -144,12 +158,14 @@ async def list_channels(
     channels = []
     for channel in NotificationChannel:
         provider = service.providers.get(channel)
-        channels.append({
-            "id": channel.value,
-            "name": channel.value.title(),
-            "configured": provider.is_configured() if provider else False,
-            "description": _get_channel_description(channel),
-        })
+        channels.append(
+            {
+                "id": channel.value,
+                "name": channel.value.title(),
+                "configured": provider.is_configured() if provider else False,
+                "description": _get_channel_description(channel),
+            }
+        )
 
     return {"channels": channels}
 

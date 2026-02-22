@@ -30,6 +30,7 @@ def _get_openai():
     if openai is None:
         try:
             import openai as _openai
+
             openai = _openai
         except ImportError:
             raise AIClientError(
@@ -156,15 +157,15 @@ class CustomOpenAIClient(BaseAIClient):
             # Calculate tokens (may not be available from all endpoints)
             input_tokens = 0
             output_tokens = 0
-            if hasattr(response, 'usage') and response.usage:
-                input_tokens = getattr(response.usage, 'prompt_tokens', 0) or 0
-                output_tokens = getattr(response.usage, 'completion_tokens', 0) or 0
+            if hasattr(response, "usage") and response.usage:
+                input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+                output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
 
             latency_ms = int((time.time() - start_time) * 1000)
 
             return AIResponse(
                 content=content,
-                model=getattr(response, 'model', self.config.model),
+                model=getattr(response, "model", self.config.model),
                 provider=self.provider,
                 tokens_used=input_tokens + output_tokens,
                 input_tokens=input_tokens,

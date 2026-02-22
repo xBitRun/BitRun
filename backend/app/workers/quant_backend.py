@@ -26,7 +26,6 @@ from .lifecycle import (
     release_execution_lock,
     try_reconnect_trader,
     clear_heartbeats_for_quant_strategies,
-    OWNER_TTL_SECONDS,
 )
 from ..core.config import get_settings
 from ..core.retry_utils import (
@@ -36,22 +35,21 @@ from ..core.retry_utils import (
     calculate_backoff_delay,
 )
 from ..db.database import AsyncSessionLocal
-from ..db.models import AgentDB
 from ..db.repositories.account import AccountRepository
 from ..db.repositories.quant_strategy import QuantStrategyRepository
 from ..db.repositories.decision import DecisionRepository
 from ..services.quant_engine import create_engine
 from ..services.worker_heartbeat import get_worker_instance_id
-from ..traders.base import BaseTrader, TradeError
+from ..traders.base import BaseTrader
 from ..traders.ccxt_trader import create_trader_from_account
 
 logger = logging.getLogger(__name__)
 
 # Default cycle intervals per strategy type (minutes)
 DEFAULT_INTERVALS = {
-    "grid": 1,    # Grid checks every minute
-    "dca": 60,    # DCA default: check every hour
-    "rsi": 5,     # RSI checks every 5 minutes
+    "grid": 1,  # Grid checks every minute
+    "dca": 60,  # DCA default: check every hour
+    "rsi": 5,  # RSI checks every 5 minutes
 }
 
 
@@ -130,18 +128,23 @@ class QuantExecutionWorker:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"Heartbeat error for quant strategy {self.agent_id}: {e}")
+                logger.warning(
+                    f"Heartbeat error for quant strategy {self.agent_id}: {e}"
+                )
 
     async def _send_background_heartbeat(self) -> None:
         """Send background heartbeat independent of execution cycle."""
         try:
             async with AsyncSessionLocal() as session:
                 from ..services.worker_heartbeat import update_heartbeat_with_retry
+
                 await update_heartbeat_with_retry(
                     session, self.agent_id, self._worker_instance_id
                 )
         except Exception as e:
-            logger.warning(f"Background heartbeat failed for quant strategy {self.agent_id}: {e}")
+            logger.warning(
+                f"Background heartbeat failed for quant strategy {self.agent_id}: {e}"
+            )
 
     async def stop(self, timeout: float = 30.0) -> None:
         """Stop the worker gracefully with timeout."""
@@ -194,14 +197,14 @@ class QuantExecutionWorker:
             except asyncio.CancelledError:
                 break
             except asyncio.TimeoutError:
-                logger.error(
-                    f"Quant strategy {self.agent_id} cycle timed out (>300s)"
-                )
+                logger.error(f"Quant strategy {self.agent_id} cycle timed out (>300s)")
                 self._error_count += 1
                 self._error_window.record_error()
 
                 if self._error_window.should_stop:
-                    await self._update_status("error", "Cycle execution timed out repeatedly")
+                    await self._update_status(
+                        "error", "Cycle execution timed out repeatedly"
+                    )
                     break
 
                 delay = calculate_backoff_delay(
@@ -217,7 +220,9 @@ class QuantExecutionWorker:
                 await asyncio.sleep(delay)
             except Exception as e:
                 error_type = classify_error(e)
-                logger.exception(f"Error in quant strategy {self.agent_id} (type: {error_type.value})")
+                logger.exception(
+                    f"Error in quant strategy {self.agent_id} (type: {error_type.value})"
+                )
 
                 # Permanent errors: stop immediately
                 if error_type == ErrorType.PERMANENT:
@@ -235,7 +240,9 @@ class QuantExecutionWorker:
                         f"({self._error_window.error_count} errors in "
                         f"{self._error_window.window_seconds}s): {str(e)}"
                     )
-                    logger.error(f"Error threshold reached, pausing quant strategy {self.agent_id}")
+                    logger.error(
+                        f"Error threshold reached, pausing quant strategy {self.agent_id}"
+                    )
                     await self._update_status("error", error_msg)
                     break
 
@@ -260,9 +267,7 @@ class QuantExecutionWorker:
         if not self._account_id or not self._user_id:
             return
 
-        logger.info(
-            f"Quant worker {self.agent_id}: attempting trader reconnection"
-        )
+        logger.info(f"Quant worker {self.agent_id}: attempting trader reconnection")
 
         new_trader = await try_reconnect_trader(
             self.trader,
@@ -287,6 +292,7 @@ class QuantExecutionWorker:
 
         try:
             from ..services.redis_service import get_redis_service
+
             try:
                 redis_service = await get_redis_service()
             except Exception:
@@ -303,6 +309,7 @@ class QuantExecutionWorker:
         async with AsyncSessionLocal() as session:
             # Update heartbeat at start of cycle with retry
             from ..services.worker_heartbeat import update_heartbeat_with_retry
+
             heartbeat_ok = await update_heartbeat_with_retry(
                 session, self.agent_id, self._worker_instance_id
             )
@@ -366,7 +373,8 @@ class QuantExecutionWorker:
                 self.agent_id,
                 strategy.user_id,
                 last_run_at=datetime.now(UTC),
-                next_run_at=datetime.now(UTC) + timedelta(minutes=self.interval_minutes),
+                next_run_at=datetime.now(UTC)
+                + timedelta(minutes=self.interval_minutes),
             )
 
             await session.commit()
@@ -376,9 +384,7 @@ class QuantExecutionWorker:
                 f"{result.get('message', 'completed')}"
             )
 
-    async def _save_decision_record(
-        self, session, strategy, result: dict
-    ) -> None:
+    async def _save_decision_record(self, session, strategy, result: dict) -> None:
         """Save a decision record for the quant execution."""
         try:
             decision_repo = DecisionRepository(session)
@@ -419,15 +425,17 @@ class QuantExecutionWorker:
                     f"交易对: {strategy.symbol}\n"
                     f"执行状态: {'成功' if success else '失败'}"
                 ),
-                decisions=[{
-                    "action": action,
-                    "symbol": strategy.symbol,
-                    "confidence": 100,
-                    "reasoning": action_desc,
-                    "leverage": leverage,
-                    "position_size_usd": total_size_usd,
-                    "risk_usd": 0,
-                }],
+                decisions=[
+                    {
+                        "action": action,
+                        "symbol": strategy.symbol,
+                        "confidence": 100,
+                        "reasoning": action_desc,
+                        "leverage": leverage,
+                        "position_size_usd": total_size_usd,
+                        "risk_usd": 0,
+                    }
+                ],
                 overall_confidence=100,
                 ai_model=f"quant:{strategy.strategy_type}",
                 tokens_used=0,
@@ -436,9 +444,7 @@ class QuantExecutionWorker:
         except Exception as e:
             logger.warning(f"Failed to save quant decision record: {e}")
 
-    async def _update_status(
-        self, status: str, error: Optional[str] = None
-    ) -> None:
+    async def _update_status(self, status: str, error: Optional[str] = None) -> None:
         """Update strategy status in database."""
         async with AsyncSessionLocal() as session:
             repo = QuantStrategyRepository(session)
@@ -548,15 +554,14 @@ class QuantWorkerBackend(BaseWorkerBackend):
                 if strategy.execution_mode == "mock":
                     # Mock mode: create MockTrader
                     from .tasks import create_mock_trader
+
                     symbols = [strategy.symbol] if strategy.symbol else ["BTC"]
                     trader, error = await create_mock_trader(
                         strategy, session, symbols=symbols
                     )
                     if error:
                         logger.error(error)
-                        await repo.update_status(
-                            uuid.UUID(agent_id), "error", error
-                        )
+                        await repo.update_status(uuid.UUID(agent_id), "error", error)
                         await session.commit()
                         await release_ownership(agent_id)
                         return False
@@ -615,7 +620,8 @@ class QuantWorkerBackend(BaseWorkerBackend):
                     interval_minutes=interval,
                     account_id=(
                         strategy.account_id
-                        if strategy.execution_mode != "mock" else None
+                        if strategy.execution_mode != "mock"
+                        else None
                     ),
                     user_id=strategy.user_id,
                     trade_type=strategy.trade_type,
@@ -630,7 +636,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
                 )
                 return True
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"Failed to start quant worker for {agent_id}")
             await release_ownership(agent_id)
             return False
@@ -661,7 +667,6 @@ class QuantWorkerBackend(BaseWorkerBackend):
         """Trigger a single execution cycle for a quant strategy."""
         from ..services.agent_position_service import AgentPositionService
         from ..services.redis_service import get_redis_service
-        from ..traders.mock_trader import MockTrader
 
         try:
             async with AsyncSessionLocal() as session:
@@ -681,6 +686,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
                 trader = None
                 if strategy.execution_mode == "mock":
                     from .tasks import create_mock_trader
+
                     symbols = [strategy.symbol] if strategy.symbol else ["BTC"]
                     trader, error = await create_mock_trader(
                         strategy, session, symbols=symbols
@@ -805,7 +811,7 @@ class QuantWorkerBackend(BaseWorkerBackend):
                     if sid not in self._workers:
                         await self.start_agent(sid)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to load active quant strategies")
 
     async def _periodic_sync(self) -> None:
@@ -839,6 +845,6 @@ class QuantWorkerBackend(BaseWorkerBackend):
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception:
                 logger.exception("Quant worker sync error")
                 await asyncio.sleep(30)

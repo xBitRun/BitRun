@@ -10,14 +10,14 @@ Provides:
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import redis.asyncio as redis
 
-logger = logging.getLogger(__name__)
-
 from ..core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class RedisService:
@@ -41,18 +41,14 @@ class RedisService:
 
     # Login lockout settings
     LOGIN_FAILURE_THRESHOLD = 5  # Lock after 5 failures
-    LOGIN_FAILURE_WINDOW = 900   # 15 minutes window
+    LOGIN_FAILURE_WINDOW = 900  # 15 minutes window
 
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
 
     # ==================== JWT Blacklist ====================
 
-    async def blacklist_token(
-        self,
-        token_jti: str,
-        expires_in: int = 3600
-    ) -> bool:
+    async def blacklist_token(self, token_jti: str, expires_in: int = 3600) -> bool:
         """
         Add a JWT token to the blacklist.
 
@@ -84,10 +80,7 @@ class RedisService:
     # ==================== Strategy Status Cache ====================
 
     async def set_strategy_status(
-        self,
-        strategy_id: str,
-        status: str,
-        ttl: int = 300
+        self, strategy_id: str, status: str, ttl: int = 300
     ) -> bool:
         """
         Cache strategy status for quick lookup.
@@ -115,10 +108,7 @@ class RedisService:
     # ==================== User Session ====================
 
     async def set_user_session(
-        self,
-        user_id: str,
-        session_data: dict,
-        ttl: int = 86400
+        self, user_id: str, session_data: dict, ttl: int = 86400
     ) -> bool:
         """
         Store user session data.
@@ -240,10 +230,7 @@ class RedisService:
     # ==================== Rate Limiting ====================
 
     async def check_rate_limit(
-        self,
-        identifier: str,
-        max_requests: int,
-        window_seconds: int
+        self, identifier: str, max_requests: int, window_seconds: int
     ) -> tuple[bool, int]:
         """
         Check and update rate limit.
@@ -276,12 +263,7 @@ class RedisService:
 
     # ==================== General Cache ====================
 
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: Optional[int] = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """
         Set a cache value.
 
@@ -337,10 +319,7 @@ class RedisService:
     # ==================== Dashboard Cache ====================
 
     async def cache_dashboard_stats(
-        self,
-        user_id: str,
-        stats: dict,
-        ttl: int = 30  # 30 seconds default
+        self, user_id: str, stats: dict, ttl: int = 30  # 30 seconds default
     ) -> bool:
         """
         Cache dashboard statistics for quick retrieval.
@@ -357,10 +336,7 @@ class RedisService:
         await self.redis.setex(key, ttl, json.dumps(stats))
         return True
 
-    async def get_cached_dashboard_stats(
-        self,
-        user_id: str
-    ) -> Optional[dict]:
+    async def get_cached_dashboard_stats(self, user_id: str) -> Optional[dict]:
         """
         Get cached dashboard statistics.
 
@@ -385,7 +361,7 @@ class RedisService:
         symbol: str,
         exchange: str,
         price: float,
-        ttl: int = 10  # 10 seconds default
+        ttl: int = 10,  # 10 seconds default
     ) -> bool:
         """
         Cache market price for quick lookup.
@@ -401,9 +377,7 @@ class RedisService:
         return True
 
     async def get_cached_market_price(
-        self,
-        symbol: str,
-        exchange: str
+        self, symbol: str, exchange: str
     ) -> Optional[float]:
         """Get cached market price."""
         key = f"market:{exchange}:{symbol}:price"
@@ -417,7 +391,7 @@ class RedisService:
         symbol: str,
         exchange: str,
         data: dict,
-        ttl: int = 15  # 15 seconds default
+        ttl: int = 15,  # 15 seconds default
     ) -> bool:
         """Cache full market data."""
         key = f"market:{exchange}:{symbol}:data"
@@ -425,9 +399,7 @@ class RedisService:
         return True
 
     async def get_cached_market_data(
-        self,
-        symbol: str,
-        exchange: str
+        self, symbol: str, exchange: str
     ) -> Optional[dict]:
         """Get cached market data."""
         key = f"market:{exchange}:{symbol}:data"
@@ -441,10 +413,7 @@ class RedisService:
     PREFIX_ACCOUNT_BALANCE = "account:balance:"
 
     async def cache_account_balance(
-        self,
-        account_id: str,
-        balance_data: dict,
-        ttl: int = 10  # 10 seconds default
+        self, account_id: str, balance_data: dict, ttl: int = 10  # 10 seconds default
     ) -> bool:
         """
         Cache account balance + positions for short-term reuse.
@@ -490,7 +459,7 @@ class RedisService:
         date: str,
         equity: float,
         account_breakdown: Optional[dict] = None,
-        ttl: int = 172800  # 48 hours - keep yesterday's snapshot
+        ttl: int = 172800,  # 48 hours - keep yesterday's snapshot
     ) -> bool:
         """
         Store daily equity snapshot for P&L calculations.
@@ -514,11 +483,7 @@ class RedisService:
         await self.redis.setex(key, ttl, json.dumps(data))
         return True
 
-    async def get_daily_equity(
-        self,
-        user_id: str,
-        date: str
-    ) -> Optional[dict]:
+    async def get_daily_equity(self, user_id: str, date: str) -> Optional[dict]:
         """
         Get daily equity snapshot.
 
@@ -536,10 +501,7 @@ class RedisService:
             return json.loads(result.decode())
         return None
 
-    async def get_today_start_equity(
-        self,
-        user_id: str
-    ) -> Optional[float]:
+    async def get_today_start_equity(self, user_id: str) -> Optional[float]:
         """
         Get equity at start of today (midnight UTC).
 

@@ -13,7 +13,6 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Optional
 
-from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,7 +24,6 @@ from ..db.models import (
     DailyAgentSnapshotDB,
     ExchangeAccountDB,
     PnlRecordDB,
-    UserDB,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,10 +162,22 @@ class PnLService:
             "total_trades": total_trades,
             "winning_trades": len(winning_trades),
             "losing_trades": len(losing_trades),
-            "win_rate": round((len(winning_trades) / total_trades) * 100, 2) if total_trades > 0 else 0.0,
-            "avg_win": round(total_wins / len(winning_trades), 2) if winning_trades else 0.0,
-            "avg_loss": round(total_losses / len(losing_trades), 2) if losing_trades else 0.0,
-            "profit_factor": round(total_wins / total_losses, 2) if total_losses > 0 else float('inf') if total_wins > 0 else 0.0,
+            "win_rate": (
+                round((len(winning_trades) / total_trades) * 100, 2)
+                if total_trades > 0
+                else 0.0
+            ),
+            "avg_win": (
+                round(total_wins / len(winning_trades), 2) if winning_trades else 0.0
+            ),
+            "avg_loss": (
+                round(total_losses / len(losing_trades), 2) if losing_trades else 0.0
+            ),
+            "profit_factor": (
+                round(total_wins / total_losses, 2)
+                if total_losses > 0
+                else float("inf") if total_wins > 0 else 0.0
+            ),
             "total_fees": round(total_fees, 2),
         }
 
@@ -230,8 +240,16 @@ class PnLService:
             "total_trades": total_trades,
             "winning_trades": len(winning_trades),
             "losing_trades": len(losing_trades),
-            "win_rate": round((len(winning_trades) / total_trades) * 100, 2) if total_trades > 0 else 0.0,
-            "profit_factor": round(total_wins / total_losses, 2) if total_losses > 0 else float('inf') if total_wins > 0 else 0.0,
+            "win_rate": (
+                round((len(winning_trades) / total_trades) * 100, 2)
+                if total_trades > 0
+                else 0.0
+            ),
+            "profit_factor": (
+                round(total_wins / total_losses, 2)
+                if total_losses > 0
+                else float("inf") if total_wins > 0 else 0.0
+            ),
         }
 
     # =========================================================================
@@ -295,14 +313,16 @@ class PnLService:
                 else 0.0
             )
 
-            data_points.append({
-                "date": snapshot.snapshot_date.isoformat(),
-                "equity": round(snapshot.equity, 2),
-                "daily_pnl": round(snapshot.daily_pnl, 2),
-                "daily_pnl_percent": round(snapshot.daily_pnl_percent, 2),
-                "cumulative_pnl": round(cumulative_pnl, 2),
-                "cumulative_pnl_percent": round(cumulative_pnl_percent, 2),
-            })
+            data_points.append(
+                {
+                    "date": snapshot.snapshot_date.isoformat(),
+                    "equity": round(snapshot.equity, 2),
+                    "daily_pnl": round(snapshot.daily_pnl, 2),
+                    "daily_pnl_percent": round(snapshot.daily_pnl_percent, 2),
+                    "cumulative_pnl": round(cumulative_pnl, 2),
+                    "cumulative_pnl_percent": round(cumulative_pnl_percent, 2),
+                }
+            )
 
         return data_points
 
@@ -541,8 +561,10 @@ class PnLService:
             Tuple of (records, total_count)
         """
         # Count total
-        count_stmt = select(func.count()).select_from(PnlRecordDB).where(
-            PnlRecordDB.agent_id == agent_id
+        count_stmt = (
+            select(func.count())
+            .select_from(PnlRecordDB)
+            .where(PnlRecordDB.agent_id == agent_id)
         )
         count_result = await self.db.execute(count_stmt)
         total = count_result.scalar() or 0
@@ -599,29 +621,39 @@ class PnLService:
             daily_pnl = snapshot.daily_pnl if snapshot else 0.0
 
             # Get open positions count
-            positions_stmt = select(func.count()).select_from(AgentPositionDB).where(
-                and_(
-                    AgentPositionDB.agent_id == agent.id,
-                    AgentPositionDB.status.in_(["open", "pending"]),
+            positions_stmt = (
+                select(func.count())
+                .select_from(AgentPositionDB)
+                .where(
+                    and_(
+                        AgentPositionDB.agent_id == agent.id,
+                        AgentPositionDB.status.in_(["open", "pending"]),
+                    )
                 )
             )
             positions_result = await self.db.execute(positions_stmt)
             open_positions = positions_result.scalar() or 0
 
-            performances.append({
-                "agent_id": str(agent.id),
-                "agent_name": agent.name,
-                "strategy_name": agent.strategy.name if agent.strategy else "Unknown",
-                "strategy_type": agent.strategy.type if agent.strategy else "unknown",
-                "status": agent.status,
-                "total_pnl": round(agent.total_pnl, 2),
-                "daily_pnl": round(daily_pnl, 2),
-                "win_rate": round(agent.win_rate, 2),
-                "total_trades": agent.total_trades,
-                "winning_trades": agent.winning_trades,
-                "losing_trades": agent.losing_trades,
-                "max_drawdown": round(agent.max_drawdown, 2),
-                "open_positions": open_positions,
-            })
+            performances.append(
+                {
+                    "agent_id": str(agent.id),
+                    "agent_name": agent.name,
+                    "strategy_name": (
+                        agent.strategy.name if agent.strategy else "Unknown"
+                    ),
+                    "strategy_type": (
+                        agent.strategy.type if agent.strategy else "unknown"
+                    ),
+                    "status": agent.status,
+                    "total_pnl": round(agent.total_pnl, 2),
+                    "daily_pnl": round(daily_pnl, 2),
+                    "win_rate": round(agent.win_rate, 2),
+                    "total_trades": agent.total_trades,
+                    "winning_trades": agent.winning_trades,
+                    "losing_trades": agent.losing_trades,
+                    "max_drawdown": round(agent.max_drawdown, 2),
+                    "open_positions": open_positions,
+                }
+            )
 
         return performances

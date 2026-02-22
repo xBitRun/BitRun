@@ -40,8 +40,7 @@ def mnemonic_to_private_key(mnemonic: str, account_index: int = 0) -> str:
         # Derive account using standard Ethereum path
         # m/44'/60'/0'/0/account_index
         account = Account.from_mnemonic(
-            mnemonic,
-            account_path=f"m/44'/60'/0'/0/{account_index}"
+            mnemonic, account_path=f"m/44'/60'/0'/0/{account_index}"
         )
 
         return account.key.hex()

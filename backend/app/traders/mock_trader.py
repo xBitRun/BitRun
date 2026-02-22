@@ -117,19 +117,24 @@ class MockTrader(BaseTrader):
                 )
                 exchange_class = ccxt.hyperliquid
 
-            self._ccxt = exchange_class({
-                "enableRateLimit": True,
-                "options": {"defaultType": "swap"},  # perpetual futures
-                **get_ccxt_proxy_config(),  # proxy support for geo-restricted exchanges
-            })
+            self._ccxt = exchange_class(
+                {
+                    "enableRateLimit": True,
+                    "options": {"defaultType": "swap"},  # perpetual futures
+                    **get_ccxt_proxy_config(),  # proxy support for geo-restricted exchanges
+                }
+            )
 
             # Initialize shared cache if enabled
             if self._use_shared_cache:
                 try:
                     from ..services.shared_price_cache import get_shared_price_cache
+
                     self._shared_cache = get_shared_price_cache()
                 except Exception as e:
-                    logger.warning(f"SharedPriceCache init failed, using local cache only: {e}")
+                    logger.warning(
+                        f"SharedPriceCache init failed, using local cache only: {e}"
+                    )
 
             # Warm up prices
             await self._refresh_prices()
@@ -281,9 +286,7 @@ class MockTrader(BaseTrader):
 
         # Check shared cache if enabled
         if self._shared_cache is not None:
-            shared_price = await self._shared_cache.get_price(
-                self._exchange_id, symbol
-            )
+            shared_price = await self._shared_cache.get_price(self._exchange_id, symbol)
             if shared_price is not None:
                 self._price_cache[symbol] = (shared_price, now)
                 self._last_prices[symbol] = shared_price
@@ -336,9 +339,7 @@ class MockTrader(BaseTrader):
 
         # Check shared cache if enabled
         if self._shared_cache is not None:
-            shared_price = await self._shared_cache.get_price(
-                self._exchange_id, symbol
-            )
+            shared_price = await self._shared_cache.get_price(self._exchange_id, symbol)
             if shared_price is not None:
                 self._price_cache[symbol] = (shared_price, now)
                 self._last_prices[symbol] = shared_price
@@ -409,7 +410,10 @@ class MockTrader(BaseTrader):
             )
 
     async def get_klines(
-        self, symbol: str, timeframe: str = "1h", limit: int = 100,
+        self,
+        symbol: str,
+        timeframe: str = "1h",
+        limit: int = 100,
     ) -> list[OHLCV]:
         """Fetch K-line data from public API."""
         if not self._ccxt:
@@ -418,7 +422,9 @@ class MockTrader(BaseTrader):
         ccxt_symbol = self._to_ccxt_symbol(symbol)
         try:
             data = await self._ccxt.fetch_ohlcv(
-                ccxt_symbol, timeframe=timeframe, limit=min(limit, 1000),
+                ccxt_symbol,
+                timeframe=timeframe,
+                limit=min(limit, 1000),
             )
             if not data:
                 return []
@@ -428,7 +434,9 @@ class MockTrader(BaseTrader):
             return []
 
     async def get_funding_history(
-        self, symbol: str, limit: int = 24,
+        self,
+        symbol: str,
+        limit: int = 24,
     ) -> list[FundingRate]:
         """Fetch funding rate history from public API."""
         if not self._ccxt:
@@ -441,7 +449,8 @@ class MockTrader(BaseTrader):
         ccxt_symbol = self._to_ccxt_symbol(symbol)
         try:
             data = await self._ccxt.fetch_funding_rate_history(
-                ccxt_symbol, limit=limit,
+                ccxt_symbol,
+                limit=limit,
             )
             if not data:
                 return []
@@ -482,7 +491,13 @@ class MockTrader(BaseTrader):
     ) -> OrderResult:
         await self._refresh_prices()
         return await self._sim.place_market_order(
-            symbol, side, size, leverage, reduce_only, slippage, price,
+            symbol,
+            side,
+            size,
+            leverage,
+            reduce_only,
+            slippage,
+            price,
         )
 
     async def place_limit_order(
@@ -497,7 +512,13 @@ class MockTrader(BaseTrader):
     ) -> OrderResult:
         await self._refresh_prices()
         return await self._sim.place_limit_order(
-            symbol, side, size, price, leverage, reduce_only, post_only,
+            symbol,
+            side,
+            size,
+            price,
+            leverage,
+            reduce_only,
+            post_only,
         )
 
     async def place_stop_loss(
@@ -509,7 +530,11 @@ class MockTrader(BaseTrader):
         reduce_only: bool = True,
     ) -> OrderResult:
         return await self._sim.place_stop_loss(
-            symbol, side, size, trigger_price, reduce_only,
+            symbol,
+            side,
+            size,
+            trigger_price,
+            reduce_only,
         )
 
     async def place_take_profit(
@@ -521,7 +546,11 @@ class MockTrader(BaseTrader):
         reduce_only: bool = True,
     ) -> OrderResult:
         return await self._sim.place_take_profit(
-            symbol, side, size, trigger_price, reduce_only,
+            symbol,
+            side,
+            size,
+            trigger_price,
+            reduce_only,
         )
 
     async def cancel_order(self, symbol: str, order_id: str) -> bool:

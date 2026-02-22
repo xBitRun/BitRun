@@ -176,10 +176,12 @@ class MetricsCollector:
 
     def set_app_info(self, version: str, environment: str) -> None:
         """Set application info"""
-        self.app_info.info({
-            "version": version,
-            "environment": environment,
-        })
+        self.app_info.info(
+            {
+                "version": version,
+                "environment": environment,
+            }
+        )
 
     # ==================== HTTP Tracking ====================
 
@@ -366,8 +368,10 @@ def get_metrics_collector() -> MetricsCollector:
 
 # ==================== Decorators ====================
 
+
 def track_request(func: Callable) -> Callable:
     """Decorator to track HTTP request metrics"""
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         start = time.time()
@@ -385,6 +389,7 @@ def track_request(func: Callable) -> Callable:
         )
 
         return response
+
     return wrapper
 
 
@@ -400,6 +405,7 @@ def track_decision(func: Callable) -> Callable:
 
     Can also extract strategy_id from kwargs or first positional arg.
     """
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         start = time.time()
@@ -421,11 +427,14 @@ def track_decision(func: Callable) -> Callable:
             if isinstance(result, dict):
                 decision = result.get("decision")
                 tokens_used = result.get("tokens_used", 0)
-                latency_ms = result.get("latency_ms", int(latency * 1000))
 
                 if decision and hasattr(decision, "decisions"):
                     for d in decision.decisions:
-                        action = d.action.value if hasattr(d.action, "value") else str(d.action)
+                        action = (
+                            d.action.value
+                            if hasattr(d.action, "value")
+                            else str(d.action)
+                        )
                         collector.track_decision(
                             strategy_id=str(strategy_id),
                             action=action,
@@ -449,9 +458,13 @@ def track_decision(func: Callable) -> Callable:
         except Exception as e:
             # Don't let metrics tracking break the main flow
             import logging
-            logging.getLogger(__name__).warning(f"Failed to track decision metrics: {e}")
+
+            logging.getLogger(__name__).warning(
+                f"Failed to track decision metrics: {e}"
+            )
 
         return result
+
     return wrapper
 
 
@@ -467,6 +480,7 @@ def track_trade(func: Callable) -> Callable:
 
     Can extract symbol, side from kwargs.
     """
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         result = await func(*args, **kwargs)
@@ -511,7 +525,9 @@ def track_trade(func: Callable) -> Callable:
                 filled_size = 0
                 filled_price = 0
 
-            volume_usd = filled_size * filled_price if filled_size and filled_price else 0
+            volume_usd = (
+                filled_size * filled_price if filled_size and filled_price else 0
+            )
             status = "success" if success else "failed"
 
             collector.track_trade(
@@ -524,7 +540,9 @@ def track_trade(func: Callable) -> Callable:
         except Exception as e:
             # Don't let metrics tracking break the main flow
             import logging
+
             logging.getLogger(__name__).warning(f"Failed to track trade metrics: {e}")
 
         return result
+
     return wrapper
