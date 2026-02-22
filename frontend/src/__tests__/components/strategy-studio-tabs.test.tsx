@@ -258,7 +258,7 @@ describe("StrategyStudioTabs", () => {
     expect(riskPanel).toBeInTheDocument();
     expect(riskPanel).toHaveAttribute("data-trading-mode", "balanced");
     expect(riskPanel).toHaveAttribute("data-risk-profile", "conservative");
-    expect(riskPanel).toHaveAttribute("data-time-horizon", "long");
+    expect(riskPanel).toHaveAttribute("data-time-horizon", "position");
   });
 
   it("renders prompt tab content", () => {

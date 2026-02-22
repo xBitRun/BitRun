@@ -51,9 +51,18 @@ jest.mock("@/types", () => {
     customPrompt: "",
   };
 
+  const DEFAULT_RISK_CONTROLS = DEFAULT_STRATEGY_STUDIO_CONFIG.riskControls;
+
   return {
     __esModule: true,
     DEFAULT_STRATEGY_STUDIO_CONFIG,
+    DEFAULT_RISK_CONTROLS,
+    getDefaultPromptSections: jest.fn(() => ({
+      roleDefinition: "",
+      tradingFrequency: "",
+      entryStandards: "",
+      decisionProcess: "",
+    })),
     getStrategyPreset: jest.fn((riskProfile: string, timeHorizon: string) => {
       if (riskProfile === "aggressive" && timeHorizon === "scalp") {
         return {

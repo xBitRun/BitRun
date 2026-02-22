@@ -21,12 +21,22 @@ jest.mock("@/lib/api", () => ({
     isAuthenticated: jest.fn(() => false),
     refreshAccessToken: jest.fn(() => Promise.resolve(false)),
   },
-  AuthError: class AuthError extends Error {},
-  ApiError: class ApiError extends Error {
-    code: string;
-    details: Record<string, unknown> | null;
-    constructor(message: string, code = "UNKNOWN", details: Record<string, unknown> | null = null) {
+  AuthError: class AuthError extends Error {
+    status: number;
+    constructor(message: string = "Authentication required") {
       super(message);
+      this.name = "AuthError";
+      this.status = 401;
+    }
+  },
+  ApiError: class ApiError extends Error {
+    status: number;
+    code?: string;
+    details?: Record<string, unknown>;
+    constructor(message: string, status: number, code?: string, details?: Record<string, unknown>) {
+      super(message);
+      this.name = "ApiError";
+      this.status = status;
       this.code = code;
       this.details = details;
     }
@@ -192,6 +202,9 @@ describe("Auth Store", () => {
       remaining_attempts: 2,
       remaining_minutes: 5,
     });
+    // Verify the error was constructed correctly
+    expect(apiError.status).toBe(401);
+    expect(apiError.code).toBe("AUTH_INVALID_CREDENTIALS");
 
     mockAuthApi.login.mockRejectedValue(apiError);
 
@@ -274,6 +287,7 @@ describe("Auth Store", () => {
       email: "new@example.com",
       password: "password123",
       name: "New User",
+      invite_code: "TEST123",
     });
     expect(mockAuthApi.login).toHaveBeenCalledWith({
       email: "new@example.com",
@@ -284,6 +298,9 @@ describe("Auth Store", () => {
   it("should handle register failure with ApiError", async () => {
     const { ApiError } = await import("@/lib/api");
     const apiError = new ApiError("Email exists", 400, "AUTH_EMAIL_EXISTS");
+    // Verify the error was constructed correctly
+    expect(apiError.status).toBe(400);
+    expect(apiError.code).toBe("AUTH_EMAIL_EXISTS");
 
     mockAuthApi.register.mockRejectedValue(apiError);
 

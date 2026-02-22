@@ -154,6 +154,17 @@ jest.mock("@/hooks", () => ({
     };
     return map[id] || id;
   }),
+  getModelDisplayName: jest.fn((modelId: string | null | undefined, models: { id: string; name: string }[]) => {
+    if (!modelId) return '';
+    const model = models.find(m => m.id === modelId);
+    if (model) return model.name;
+    // Parse provider:model format
+    const parts = modelId.split(':');
+    if (parts.length === 2) {
+      return `${parts[0].charAt(0).toUpperCase() + parts[0].slice(1)} - ${parts[1]}`;
+    }
+    return modelId;
+  }),
 }));
 
 // Mock sub-components used by StrategyStudioTabs

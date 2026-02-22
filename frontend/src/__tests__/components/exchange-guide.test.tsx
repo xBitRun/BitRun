@@ -10,12 +10,18 @@ jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
     const translations: Record<string, string> = {
       title: "API Setup Guide",
+      titleCex: "API Setup Guide",
+      titleDex: "Wallet Setup Guide",
       showGuide: "Show Guide",
       hideGuide: "Hide Guide",
       registerLink: "Register",
       officialDocs: "Official Docs",
       stepsTitle: "Setup Steps",
       permissionsTitle: "Required Permissions",
+      securityTitle: "Security Tips",
+      tipPassphrase: "Passphrase required",
+      tipTestnet: "Use testnet first",
+      tipSecret: "Keep your secret safe",
       // Binance
       "binance.step1": "Log in to Binance",
       "binance.step2": "Go to API Management",
@@ -83,6 +89,7 @@ jest.mock("next-intl", () => ({
       "gate.perm1": "Read",
       "gate.perm2": "Trade",
       "gate.perm3": "Withdraw",
+      "gate.passphraseNote": "Passphrase required",
       "gate.note": "Important note",
     };
     return translations[key] || key;
@@ -155,7 +162,7 @@ describe("ExchangeGuide", () => {
     fireEvent.click(header!);
 
     expect(screen.getByText("Log in to Binance")).toBeInTheDocument();
-    expect(screen.getByText("IP whitelist required")).toBeInTheDocument();
+    expect(screen.getByText("Spot Trading")).toBeInTheDocument();
   });
 
   it("should render Bybit-specific guide", () => {
@@ -165,7 +172,7 @@ describe("ExchangeGuide", () => {
     fireEvent.click(header!);
 
     expect(screen.getByText("Log in to Bybit")).toBeInTheDocument();
-    expect(screen.getByText("Proxy note")).toBeInTheDocument();
+    expect(screen.getByText("Trading")).toBeInTheDocument();
   });
 
   it("should render OKX-specific guide", () => {
@@ -175,13 +182,14 @@ describe("ExchangeGuide", () => {
     fireEvent.click(header!);
 
     expect(screen.getByText("Log in to OKX")).toBeInTheDocument();
-    expect(screen.getByText("Passphrase note")).toBeInTheDocument();
+    expect(screen.getByText("Trade")).toBeInTheDocument();
   });
 
   it("should render Hyperliquid-specific guide", () => {
     render(<ExchangeGuide exchange="hyperliquid" />);
 
-    const header = screen.getByText("API Setup Guide").closest("button");
+    // Hyperliquid is a DEX, uses titleDex
+    const header = screen.getByText("Wallet Setup Guide").closest("button");
     fireEvent.click(header!);
 
     expect(screen.getByText("Hyperliquid Guide")).toBeInTheDocument();
@@ -230,7 +238,8 @@ describe("ExchangeGuide", () => {
   it("should not render API docs link for Hyperliquid", () => {
     render(<ExchangeGuide exchange="hyperliquid" />);
 
-    const header = screen.getByText("API Setup Guide").closest("button");
+    // Hyperliquid is a DEX, so it uses titleDex
+    const header = screen.getByText("Wallet Setup Guide").closest("button");
     fireEvent.click(header!);
 
     // Hyperliquid has no API docs

@@ -42,6 +42,23 @@ jest.mock("next/image", () => ({
   ),
 }));
 
+// Mock brand-context
+jest.mock("@/lib/brand-context", () => ({
+  useBrand: () => ({
+    config: {
+      identity: { name: "BitRun", shortName: "BitRun" },
+      assets: { logo: { default: "/logo.svg", alt: "BitRun" } },
+    },
+    name: "BitRun",
+    shortName: "BitRun",
+    logo: { default: "/logo.svg", alt: "BitRun" },
+    getLogoSrc: () => "/logo.svg",
+    getLogoAlt: () => "BitRun",
+  }),
+  useBrandName: () => "BitRun",
+  useTheme: () => ({ colors: { primary: "#000" } }),
+}));
+
 // Mock Sheet component
 jest.mock("@/components/ui/sheet", () => ({
   Sheet: ({ children, open }: { children: React.ReactNode; open: boolean }) => (

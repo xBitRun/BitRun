@@ -399,8 +399,7 @@ class TestAIStrategyConfig:
         assert cfg.symbols == ["BTC", "ETH"]
         assert cfg.timeframes == ["15m", "1h", "4h"]
         assert cfg.trading_mode == TradingMode.CONSERVATIVE
-        assert cfg.debate_enabled is False
-        assert cfg.debate_consensus_mode == "majority_vote"
+        assert cfg.prompt_mode == "simple"
 
     def test_strategy_config_alias(self):
         """StrategyConfig is an alias for AIStrategyConfig."""
@@ -412,12 +411,10 @@ class TestAIStrategyConfig:
         assert cfg.indicators["macd_fast"] == 12
 
     def test_debate_min_participants_bounds(self):
-        with pytest.raises(ValidationError):
-            AIStrategyConfig(debate_min_participants=1)
-        with pytest.raises(ValidationError):
-            AIStrategyConfig(debate_min_participants=6)
-        AIStrategyConfig(debate_min_participants=2)  # lower bound ok
-        AIStrategyConfig(debate_min_participants=5)  # upper bound ok
+        """Debate config is on AgentCreate, not AIStrategyConfig."""
+        # Debate config moved to Agent model - test there instead
+        cfg = AIStrategyConfig()
+        assert not hasattr(cfg, "debate_min_participants")
 
     def test_prompt_field(self):
         cfg = AIStrategyConfig(prompt="Custom AI prompt for trading")
@@ -730,7 +727,7 @@ class TestAgentCreate:
         assert ac.execution_mode == ExecutionMode.MOCK
         assert ac.mock_initial_balance == 10000.0
         assert ac.auto_execute is True
-        assert ac.execution_interval_minutes == 30
+        assert ac.execution_interval_minutes == 15  # default changed to 15
 
     def test_live_mode_requires_account(self):
         with pytest.raises(ValidationError):

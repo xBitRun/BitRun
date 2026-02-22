@@ -36,6 +36,7 @@ def _mock_trader(mark_price: float = 50000.0):
     trader = AsyncMock()
     market_data = MagicMock()
     market_data.mark_price = mark_price
+    market_data.mid_price = mark_price  # quant_engine uses mid_price
     trader.get_market_data = AsyncMock(return_value=market_data)
     trader.open_long = AsyncMock(return_value=OrderResult(success=True))
     trader.close_position = AsyncMock(return_value=OrderResult(success=True))
@@ -1130,20 +1131,16 @@ class TestSpotModeConstraints:
             trade_type="crypto_spot",
         )
 
-        # Spy on _open_with_isolation to verify leverage
-        original_open = engine._open_with_isolation
-        captured_leverage = []
-
-        async def mock_open(size_usd, leverage=1, side="long"):
-            captured_leverage.append(leverage)
-            return await original_open(size_usd, leverage, side)
-
-        engine._open_with_isolation = mock_open
-
         await engine.run_cycle()
 
-        # All calls should have leverage=1 (forced by spot mode)
-        assert all(lev == 1 for lev in captured_leverage)
+        # Verify trader.open_long was called with leverage=1 (forced by spot mode)
+        # despite grid_config having leverage=2.0
+        assert trader.open_long.call_count > 0
+        for call in trader.open_long.call_args_list:
+            # call_args is a tuple of (args, kwargs)
+            kwargs = call.kwargs if call.kwargs else {}
+            leverage = kwargs.get("leverage", 1)
+            assert leverage == 1, f"Expected leverage=1 in spot mode, got {leverage}"
 
     @pytest.mark.asyncio
     async def test_spot_mode_rejects_short_selling(self):

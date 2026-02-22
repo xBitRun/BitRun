@@ -31,7 +31,7 @@ describe("logger", () => {
 
     beforeEach(() => {
       jest.resetModules();
-      process.env.NEXT_PUBLIC_DEBUG = "";
+      process.env.NEXT_PUBLIC_DEBUG = "true";
       // Re-import to pick up new env
       logger = require("@/lib/logger").logger;
     });
@@ -117,7 +117,7 @@ describe("wsLogger", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    process.env.NEXT_PUBLIC_DEBUG = "";
+    process.env.NEXT_PUBLIC_DEBUG = "true";
 
     consoleSpy = {
       log: jest.spyOn(console, "log").mockImplementation(),

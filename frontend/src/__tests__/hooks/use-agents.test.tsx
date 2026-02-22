@@ -393,7 +393,7 @@ describe("useDeleteAgent", () => {
 
     await result.current.trigger();
 
-    expect(mockedAgentsApi.delete).toHaveBeenCalledWith("agent-1");
+    expect(mockedAgentsApi.delete).toHaveBeenCalledWith("agent-1", undefined);
   });
 
   it("should handle deletion error", async () => {

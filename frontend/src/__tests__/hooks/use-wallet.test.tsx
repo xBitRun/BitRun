@@ -87,10 +87,10 @@ const mockSummary = {
 };
 
 const mockInviteInfo = {
-  invite_code: null,
+  invite_code: "ABC123XYZ",
   referrer_id: null,
   channel_id: null,
-  total_invited: 0,
+  total_invited: 5,
   channel_code: "ABC123XYZ",
 };
 

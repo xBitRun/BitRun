@@ -127,16 +127,16 @@ class TestExecutionWorker:
 
     @pytest.mark.asyncio
     async def test_worker_initialization(self, mock_trader):
-        """Worker should initialize with strategy ID and trader."""
-        strategy_id = str(uuid4())
-        
+        """Worker should initialize with agent ID and trader."""
+        agent_id = str(uuid4())
+
         worker = ExecutionWorker(
-            strategy_id=strategy_id,
+            agent_id=agent_id,
             trader=mock_trader,
             interval_minutes=15,
         )
-        
-        assert str(worker.strategy_id) == strategy_id
+
+        assert str(worker.agent_id) == agent_id
         assert worker.trader is mock_trader
         assert worker.interval_minutes == 15
         assert not worker._running
@@ -144,37 +144,37 @@ class TestExecutionWorker:
     @pytest.mark.asyncio
     async def test_worker_start_stop(self, mock_trader):
         """Worker should start and stop correctly."""
-        strategy_id = str(uuid4())
-        
+        agent_id = str(uuid4())
+
         worker = ExecutionWorker(
-            strategy_id=strategy_id,
+            agent_id=agent_id,
             trader=mock_trader,
             interval_minutes=1,
         )
-        
+
         # Mock the run cycle to prevent actual execution
         worker._run_cycle = AsyncMock()
-        
+
         await worker.start()
         assert worker._running
         assert worker._task is not None
-        
+
         await worker.stop()
         assert not worker._running
 
     @pytest.mark.asyncio
     async def test_worker_error_counting(self, mock_trader):
         """Worker should track consecutive errors."""
-        strategy_id = str(uuid4())
-        
+        agent_id = str(uuid4())
+
         worker = ExecutionWorker(
-            strategy_id=strategy_id,
+            agent_id=agent_id,
             trader=mock_trader,
             interval_minutes=1,
         )
-        
+
         assert worker._error_count == 0
-        
+
         # Simulate errors
         worker._error_count = 3
         assert worker._error_count == 3

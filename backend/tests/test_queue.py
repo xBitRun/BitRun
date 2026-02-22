@@ -284,6 +284,7 @@ class TestCreateTraderFromAccount:
                 credentials=credentials,
                 testnet=True,
                 margin_mode="isolated",
+                trade_type="crypto_perp",
             )
 
     def test_create_binance_trader(self):
@@ -302,6 +303,7 @@ class TestCreateTraderFromAccount:
                 credentials=credentials,
                 testnet=False,
                 margin_mode="isolated",
+                trade_type="crypto_perp",
             )
 
     def test_create_bybit_trader(self):
@@ -320,6 +322,7 @@ class TestCreateTraderFromAccount:
                 credentials=credentials,
                 testnet=True,
                 margin_mode="isolated",
+                trade_type="crypto_perp",
             )
 
     def test_create_okx_trader(self):
@@ -342,6 +345,7 @@ class TestCreateTraderFromAccount:
                 credentials=credentials,
                 testnet=False,
                 margin_mode="isolated",
+                trade_type="crypto_perp",
             )
 
     def test_create_unsupported_exchange(self):
