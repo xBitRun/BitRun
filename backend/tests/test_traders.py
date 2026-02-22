@@ -1312,3 +1312,262 @@ class TestSLTPValidation:
         # Verify SL is tighter than low leverage
         low_leverage_sl = 68122.55 * (1 - 0.5 / 5)  # 10% loss at 5x
         assert expected_adjusted_sl > low_leverage_sl  # Higher leverage = SL closer to entry
+
+
+# ============================================================================
+# MockTrader Price Cache Tests
+# ============================================================================
+
+class TestMockTraderPriceCache:
+    """Tests for MockTrader's local price caching."""
+
+    @pytest_asyncio.fixture
+    async def mock_trader_with_cache(self):
+        """Create a MockTrader with mocked CCXT for cache testing."""
+        from app.traders.mock_trader import MockTrader
+
+        trader = MockTrader(
+            initial_balance=10000.0,
+            symbols=["BTC", "ETH"],
+            exchange_id="hyperliquid",
+            use_shared_cache=False,
+        )
+
+        # Mock CCXT
+        trader._ccxt = MagicMock()
+        trader._ccxt.fetch_ticker = AsyncMock(side_effect=lambda symbol: {
+            "symbol": symbol,
+            "last": 50000.0 if "BTC" in symbol else 3000.0,
+            "bid": 49990.0 if "BTC" in symbol else 2999.0,
+            "ask": 50010.0 if "BTC" in symbol else 3001.0,
+            "quoteVolume": 1000000000.0,
+        })
+        trader._initialized = True
+
+        return trader
+
+    @pytest.mark.asyncio
+    async def test_price_caches_on_first_fetch(self, mock_trader_with_cache):
+        """Test that price is cached after first fetch."""
+        trader = mock_trader_with_cache
+
+        # First fetch - should call API
+        price1 = await trader.get_market_price("BTC")
+        assert price1 == 50000.0
+        assert trader._ccxt.fetch_ticker.call_count == 1
+
+        # Second fetch - should use cache
+        price2 = await trader.get_market_price("BTC")
+        assert price2 == 50000.0
+        assert trader._ccxt.fetch_ticker.call_count == 1  # No additional call
+
+    @pytest.mark.asyncio
+    async def test_cache_expires_after_ttl(self, mock_trader_with_cache):
+        """Test that cache expires after TTL."""
+        trader = mock_trader_with_cache
+        trader.PRICE_CACHE_TTL = 0.1  # 100ms for testing
+
+        # First fetch
+        price1 = await trader.get_market_price("BTC")
+        assert price1 == 50000.0
+
+        # Wait for TTL
+        import asyncio
+        await asyncio.sleep(0.15)
+
+        # Should fetch again after TTL
+        price2 = await trader.get_market_price("BTC")
+        assert price2 == 50000.0
+        assert trader._ccxt.fetch_ticker.call_count == 2  # New fetch
+
+    @pytest.mark.asyncio
+    async def test_refresh_prices_uses_cache(self, mock_trader_with_cache):
+        """Test that _refresh_prices uses cached values."""
+        trader = mock_trader_with_cache
+
+        # Pre-cache prices
+        import time
+        now = time.monotonic()
+        trader._price_cache["BTC"] = (50000.0, now)
+        trader._price_cache["ETH"] = (3000.0, now)
+
+        # Refresh should use cache
+        await trader._refresh_prices()
+
+        # Should not call API
+        assert trader._ccxt.fetch_ticker.call_count == 0
+
+        # Prices should be set in simulator
+        assert trader._last_prices["BTC"] == 50000.0
+        assert trader._last_prices["ETH"] == 3000.0
+
+    @pytest.mark.asyncio
+    async def test_get_market_data_uses_cache(self, mock_trader_with_cache):
+        """Test that get_market_data uses cached prices."""
+        trader = mock_trader_with_cache
+
+        # Pre-cache price
+        import time
+        trader._price_cache["BTC"] = (50000.0, time.monotonic())
+
+        # Should use cache, not call API
+        data = await trader.get_market_data("BTC")
+        assert data.mid_price == 50000.0
+        assert trader._ccxt.fetch_ticker.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_clear_price_cache(self, mock_trader_with_cache):
+        """Test clearing the price cache."""
+        trader = mock_trader_with_cache
+
+        # Cache some prices
+        import time
+        now = time.monotonic()
+        trader._price_cache["BTC"] = (50000.0, now)
+        trader._price_cache["ETH"] = (3000.0, now)
+
+        # Clear specific symbol
+        count = trader.clear_price_cache("BTC")
+        assert count == 1
+        assert "BTC" not in trader._price_cache
+        assert "ETH" in trader._price_cache
+
+        # Clear all
+        count = trader.clear_price_cache()
+        assert count == 1  # Only ETH left
+        assert len(trader._price_cache) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_cache_stats(self, mock_trader_with_cache):
+        """Test getting cache statistics."""
+        trader = mock_trader_with_cache
+
+        import time
+        now = time.monotonic()
+        trader._price_cache["BTC"] = (50000.0, now)
+        trader._price_cache["ETH"] = (3000.0, now)
+
+        stats = trader.get_cache_stats()
+
+        assert stats["l1_entries"] == 2
+        assert "BTC" in stats["symbols"]
+        assert "ETH" in stats["symbols"]
+        assert stats["use_shared_cache"] is False
+
+    @pytest.mark.asyncio
+    async def test_fallback_to_stale_cache_on_error(self, mock_trader_with_cache):
+        """Test fallback to stale cache when API fails."""
+        trader = mock_trader_with_cache
+
+        # Set up stale cache
+        import time
+        trader._last_prices["BTC"] = 50000.0  # Stale cache
+
+        # Make API fail
+        trader._ccxt.fetch_ticker = AsyncMock(side_effect=Exception("API error"))
+
+        # Should return stale cache
+        price = await trader.get_market_price("BTC")
+        assert price == 50000.0  # Stale value
+
+
+class TestMockTraderSharedCache:
+    """Tests for MockTrader's SharedPriceCache integration."""
+
+    @pytest_asyncio.fixture
+    async def mock_trader_with_shared_cache(self):
+        """Create a MockTrader with shared cache enabled."""
+        from app.traders.mock_trader import MockTrader
+
+        # Reset singleton to ensure fresh cache
+        from app.services.shared_price_cache import reset_shared_price_cache
+        reset_shared_price_cache()
+
+        trader = MockTrader(
+            initial_balance=10000.0,
+            symbols=["BTC"],
+            exchange_id="hyperliquid",
+            use_shared_cache=True,
+        )
+
+        # Mock CCXT
+        trader._ccxt = MagicMock()
+        trader._ccxt.fetch_ticker = AsyncMock(return_value={
+            "symbol": "BTC/USDC:USDC",
+            "last": 50000.0,
+            "bid": 49990.0,
+            "ask": 50010.0,
+            "quoteVolume": 1000000000.0,
+        })
+        trader._initialized = True
+
+        # Initialize shared cache
+        from app.services.shared_price_cache import get_shared_price_cache
+        trader._shared_cache = get_shared_price_cache()
+
+        return trader
+
+    def teardown_method(self):
+        """Reset singleton after each test."""
+        from app.services.shared_price_cache import reset_shared_price_cache
+        reset_shared_price_cache()
+
+    @pytest.mark.asyncio
+    async def test_shared_cache_updates_on_fetch(self, mock_trader_with_shared_cache):
+        """Test that fetching a price updates shared cache."""
+        trader = mock_trader_with_shared_cache
+
+        # Fetch price
+        price = await trader.get_market_price("BTC")
+        assert price == 50000.0
+
+        # Check shared cache was updated
+        shared_price = await trader._shared_cache.get_price("hyperliquid", "BTC")
+        assert shared_price == 50000.0
+
+    @pytest.mark.asyncio
+    async def test_shared_cache_hit_avoids_api_call(self, mock_trader_with_shared_cache):
+        """Test that shared cache hit avoids API call."""
+        trader = mock_trader_with_shared_cache
+
+        # Pre-populate shared cache
+        await trader._shared_cache.set_price("hyperliquid", "BTC", 55000.0)
+
+        # Fetch should use shared cache
+        price = await trader.get_market_price("BTC")
+        assert price == 55000.0  # From shared cache
+        assert trader._ccxt.fetch_ticker.call_count == 0  # No API call
+
+
+class TestMockTraderCacheStats:
+    """Tests for MockTrader cache statistics in real scenario."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_calls_reduce_api_count(self):
+        """Test that multiple price calls reduce API requests."""
+        from app.traders.mock_trader import MockTrader
+
+        trader = MockTrader(
+            initial_balance=10000.0,
+            symbols=["BTC"],
+            use_shared_cache=False,
+        )
+
+        trader._ccxt = MagicMock()
+        call_count = 0
+
+        async def mock_fetch(symbol):
+            nonlocal call_count
+            call_count += 1
+            return {"symbol": symbol, "last": 50000.0}
+
+        trader._ccxt.fetch_ticker = AsyncMock(side_effect=mock_fetch)
+        trader._initialized = True
+
+        # Multiple calls within TTL
+        for _ in range(5):
+            price = await trader.get_market_price("BTC")
+            assert price == 50000.0
+
+        # Only 1 API call due to caching
+        assert call_count == 1

@@ -20,7 +20,11 @@
       "Bash(npm install:*)",
       "Bash(docker compose exec:*)",
       "Bash(ls:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__railway__check-railway-status",
+      "mcp__railway__list-projects",
+      "Bash(railway status)",
+      "Bash(railway variables --service Postgres 2>/dev/null || railway variables 2>/dev/null | head -50)"
     ]
   }
 }

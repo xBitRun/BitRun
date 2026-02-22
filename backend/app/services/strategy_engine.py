@@ -1075,43 +1075,16 @@ class StrategyEngine:
                 results.append(exec_result)
                 continue
 
-            # For close actions, capture unrealized PnL as realized PnL when we close
-            # Also record the actual position's leverage and size for display purposes
+            # For close actions, capture position metadata for later realized PnL calculation
+            # We'll compute realized_pnl AFTER order execution using the actual fill price
             if d.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT):
                 pos = next((p for p in account.positions if p.symbol == d.symbol), None)
-                realized_pnl = pos.unrealized_pnl if pos else 0.0
                 position_leverage = pos.leverage if pos else d.leverage
                 position_size_usd = pos.size_usd if pos else 0.0
-
-                # For mock mode: if unrealized_pnl is 0 (stale state), recalculate from DB
-                if realized_pnl == 0 and self.position_service and self.agent:
-                    try:
-                        db_pos = await self.position_service.get_agent_position_for_symbol(
-                            self.agent.id, d.symbol
-                        )
-                        if db_pos:
-                            # Get current price
-                            md = await self.trader.get_market_data(d.symbol)
-                            if md and md.mid_price > 0:
-                                if db_pos.side == "long":
-                                    realized_pnl = (md.mid_price - db_pos.entry_price) * db_pos.size
-                                else:
-                                    realized_pnl = (db_pos.entry_price - md.mid_price) * db_pos.size
-                                position_leverage = db_pos.leverage
-                                position_size_usd = db_pos.size_usd
-                                logger.debug(
-                                    f"[Execution] Recalculated unrealized_pnl for {d.symbol}: "
-                                    f"${realized_pnl:.2f} (entry={db_pos.entry_price}, "
-                                    f"current={md.mid_price}, size={db_pos.size})"
-                                )
-                    except Exception as calc_err:
-                        logger.warning(
-                            f"[Execution] Failed to recalculate unrealized_pnl for {d.symbol}: {calc_err}"
-                        )
-
-                exec_result["realized_pnl"] = realized_pnl
-                exec_result["position_leverage"] = position_leverage
-                exec_result["position_size_usd"] = position_size_usd
+                # Store position info for realized_pnl calculation after order fills
+                exec_result["_position_entry_price"] = pos.entry_price if pos else 0.0
+                exec_result["_position_size"] = pos.size if pos else 0.0
+                exec_result["_position_side"] = pos.side if pos else "long"
 
             # Execute based on action type
             try:
@@ -1139,11 +1112,62 @@ class StrategyEngine:
                         f"filled_price={order_result.filled_price} "
                         f"status={order_result.status}"
                     )
+
+                    # Calculate realized_pnl using ACTUAL fill price (not cached current_prices)
+                    # This ensures accuracy even when market data API is rate-limited
+                    if d.action in (ActionType.CLOSE_LONG, ActionType.CLOSE_SHORT):
+                        entry_price = exec_result.pop("_position_entry_price", 0.0)
+                        pos_size = exec_result.pop("_position_size", 0.0)
+                        pos_side = exec_result.pop("_position_side", "long")
+                        close_price = order_result.filled_price or 0.0
+
+                        if entry_price > 0 and pos_size > 0 and close_price > 0:
+                            if pos_side == "long":
+                                realized_pnl = (close_price - entry_price) * pos_size
+                            else:
+                                realized_pnl = (entry_price - close_price) * pos_size
+                            logger.info(
+                                f"[Execution] Calculated realized_pnl for {d.symbol}: "
+                                f"${realized_pnl:.2f} (entry={entry_price:.2f}, "
+                                f"close={close_price:.2f}, size={pos_size:.6f})"
+                            )
+                        else:
+                            # Fallback: try to get from DB if available
+                            realized_pnl = 0.0
+                            if self.position_service and self.agent:
+                                try:
+                                    db_pos = await self.position_service.get_agent_position_for_symbol(
+                                        self.agent.id, d.symbol
+                                    )
+                                    if db_pos and close_price > 0:
+                                        if db_pos.side == "long":
+                                            realized_pnl = (close_price - db_pos.entry_price) * db_pos.size
+                                        else:
+                                            realized_pnl = (db_pos.entry_price - close_price) * db_pos.size
+                                        position_leverage = db_pos.leverage
+                                        position_size_usd = db_pos.size_usd
+                                        logger.info(
+                                            f"[Execution] Fallback realized_pnl from DB: "
+                                            f"${realized_pnl:.2f} (entry={db_pos.entry_price}, "
+                                            f"close={close_price}, size={db_pos.size})"
+                                        )
+                                except Exception as calc_err:
+                                    logger.warning(
+                                        f"[Execution] Failed fallback realized_pnl calc for {d.symbol}: {calc_err}"
+                                    )
+
+                        exec_result["realized_pnl"] = realized_pnl
+                        exec_result["position_leverage"] = position_leverage
+                        exec_result["position_size_usd"] = position_size_usd
                 else:
                     logger.warning(
                         f"[Execution] ORDER FAILED: {d.symbol} {d.action.value} "
                         f"error={order_result.error} status={order_result.status}"
                     )
+                    # Clean up temp fields on failure
+                    exec_result.pop("_position_entry_price", None)
+                    exec_result.pop("_position_size", None)
+                    exec_result.pop("_position_side", None)
 
             except Exception as e:
                 exec_result["reason"] = str(e)
@@ -1370,35 +1394,29 @@ class StrategyEngine:
 
             result = await self.trader.close_position(symbol=symbol)
 
-            # Mark record as closed
+            # Mark record as closed - ALWAYS use actual fill price for realized_pnl
             if ps and pos_record and result.success:
+                # Calculate realized_pnl using the ACTUAL fill price from the close order
+                # This ensures accuracy even when market data API is rate-limited
+                close_price = result.filled_price or 0.0
                 realized_pnl = 0.0
-                # Try to capture realized PnL from the position we found earlier
-                pos = next(
-                    (p for p in account.positions if p.symbol == symbol), None
-                )
-                if pos:
-                    realized_pnl = pos.unrealized_pnl
 
-                # For mock mode: if unrealized_pnl is 0 (stale state), recalculate from DB record
-                if realized_pnl == 0 and pos_record:
-                    try:
-                        # Use the actual fill price from the close order
-                        close_price = result.filled_price or 0.0
-                        if close_price > 0 and pos_record.entry_price > 0:
-                            if pos_record.side == "long":
-                                realized_pnl = (close_price - pos_record.entry_price) * pos_record.size
-                            else:
-                                realized_pnl = (pos_record.entry_price - close_price) * pos_record.size
-                            logger.debug(
-                                f"[Execution] Recalculated realized_pnl from DB record for {symbol}: "
-                                f"${realized_pnl:.2f} (entry={pos_record.entry_price}, "
-                                f"close={close_price}, size={pos_record.size})"
-                            )
-                    except Exception as calc_err:
-                        logger.warning(
-                            f"[Execution] Failed to recalculate realized_pnl for {symbol}: {calc_err}"
-                        )
+                if close_price > 0 and pos_record.entry_price > 0 and pos_record.size > 0:
+                    if pos_record.side == "long":
+                        realized_pnl = (close_price - pos_record.entry_price) * pos_record.size
+                    else:
+                        realized_pnl = (pos_record.entry_price - close_price) * pos_record.size
+                    logger.info(
+                        f"[Execution] Calculated realized_pnl for {symbol}: "
+                        f"${realized_pnl:.2f} (entry={pos_record.entry_price:.2f}, "
+                        f"close={close_price:.2f}, size={pos_record.size:.6f})"
+                    )
+                else:
+                    logger.warning(
+                        f"[Execution] Cannot calculate realized_pnl for {symbol}: "
+                        f"close_price={close_price}, entry_price={pos_record.entry_price}, "
+                        f"size={pos_record.size}"
+                    )
 
                 await ps.close_position_record(
                     position_id=pos_record.id,

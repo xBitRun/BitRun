@@ -2,8 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -16,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeRangeSelector, type TimeRange } from "./time-range-selector";
+import { PnLCell, PnLValue, formatPnL } from "@/components/pnl";
 import type { EquityDataPoint } from "@/lib/api/endpoints";
 
 interface EquityCurveTableProps {
@@ -37,21 +37,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatCurrency(value: number): string {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)}`;
-}
-
-function formatPercent(value: number): string {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-}
-
 export function EquityCurveTable({
   data,
   isLoading,
@@ -65,10 +50,13 @@ export function EquityCurveTable({
   const [currentPage, setCurrentPage] = useState(1);
 
   // Handle time range change and reset pagination in event handler
-  const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
-    setCurrentPage(1); // Reset to first page when time range changes
-    onTimeRangeChange(newRange);
-  }, [onTimeRangeChange]);
+  const handleTimeRangeChange = useCallback(
+    (newRange: TimeRange) => {
+      setCurrentPage(1); // Reset to first page when time range changes
+      onTimeRangeChange(newRange);
+    },
+    [onTimeRangeChange],
+  );
 
   // Sort data by date descending (newest first)
   const sortedData = useMemo(() => {
@@ -107,10 +95,7 @@ export function EquityCurveTable({
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg">{title ?? t("title")}</CardTitle>
-        <TimeRangeSelector
-          value={timeRange}
-          onChange={handleTimeRangeChange}
-        />
+        <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
       </CardHeader>
       <CardContent>
         {sortedData.length === 0 ? (
@@ -123,71 +108,54 @@ export function EquityCurveTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("columns.date")}</TableHead>
-                  <TableHead className="text-right">{t("columns.equity")}</TableHead>
-                  <TableHead className="text-right">{t("columns.dailyPnl")}</TableHead>
-                  <TableHead className="text-right">{t("columns.dailyPnlPercent")}</TableHead>
-                  <TableHead className="text-right">{t("columns.cumulativePnl")}</TableHead>
-                  <TableHead className="text-right">{t("columns.cumulativePnlPercent")}</TableHead>
+                  <TableHead className="text-right">
+                    {t("columns.equity")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("columns.dailyPnl")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("columns.dailyPnlPercent")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("columns.cumulativePnl")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("columns.cumulativePnlPercent")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.map((point, index) => {
-                  const isPositive = point.daily_pnl >= 0;
-                  const TrendIcon = isPositive ? TrendingUp : TrendingDown;
-
+                {paginatedData.map((point) => {
                   return (
                     <TableRow key={point.date}>
                       <TableCell className="font-medium">
                         {formatDate(point.date)}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(point.equity)}
+                        {formatPnL(point.equity, false)}
                       </TableCell>
+                      <PnLCell
+                        value={point.daily_pnl}
+                        showTrendIcon
+                        size="sm"
+                      />
                       <TableCell className="text-right font-mono">
-                        <span
-                          className={cn(
-                            "flex items-center justify-end gap-1",
-                            isPositive
-                              ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]",
-                          )}
-                        >
-                          <TrendIcon className="w-3 h-3" />
-                          {formatCurrency(point.daily_pnl)}
-                        </span>
+                        <PnLValue
+                          value={point.daily_pnl}
+                          percent={point.daily_pnl_percent}
+                          mode="percent"
+                          size="sm"
+                        />
                       </TableCell>
+                      <PnLCell value={point.cumulative_pnl} size="sm" />
                       <TableCell className="text-right font-mono">
-                        <span
-                          className={cn(
-                            isPositive
-                              ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]",
-                          )}
-                        >
-                          {formatPercent(point.daily_pnl_percent)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        <span
-                          className={cn(
-                            point.cumulative_pnl >= 0
-                              ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]",
-                          )}
-                        >
-                          {formatCurrency(point.cumulative_pnl)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        <span
-                          className={cn(
-                            point.cumulative_pnl_percent >= 0
-                              ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]",
-                          )}
-                        >
-                          {formatPercent(point.cumulative_pnl_percent)}
-                        </span>
+                        <PnLValue
+                          value={point.cumulative_pnl}
+                          percent={point.cumulative_pnl_percent}
+                          mode="percent"
+                          size="sm"
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -220,7 +188,9 @@ export function EquityCurveTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     <ChevronRight className="w-4 h-4" />

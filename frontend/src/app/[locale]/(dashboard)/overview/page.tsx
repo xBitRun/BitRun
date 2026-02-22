@@ -32,6 +32,7 @@ import {
 import type { AccountSummary, Position } from "@/hooks";
 import { useEffect, useState, useMemo } from "react";
 import type { ActivityItem } from "@/lib/api";
+import { PnLValue, formatPnL, formatPnLPercent } from "@/components/pnl";
 
 function formatTimeAgo(
   dateString: string,
@@ -50,30 +51,6 @@ function formatTimeAgo(
 
   const diffDays = Math.floor(diffHours / 24);
   return t("d_ago", { count: diffDays });
-}
-
-// Format currency values
-function formatCurrency(value: number, showSign = false): string {
-  const formatted = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(value));
-
-  if (showSign && value !== 0) {
-    return value >= 0 ? `+${formatted}` : `-${formatted}`;
-  }
-  return formatted;
-}
-
-// Format percentage values
-function formatPercent(value: number, showSign = false): string {
-  const formatted = `${Math.abs(value).toFixed(2)}%`;
-  if (showSign && value !== 0) {
-    return value >= 0 ? `+${formatted}` : `-${formatted}`;
-  }
-  return formatted;
 }
 
 // ==================== Skeleton Components ====================
@@ -257,27 +234,18 @@ function AccountsOverviewSection({
                 {t("totalEquity")}:{" "}
               </span>
               <span className="font-semibold">
-                {formatCurrency(totals.totalEquity)}
+                {formatPnL(totals.totalEquity, false)}
               </span>
             </span>
             <span>
               <span className="text-muted-foreground">{t("available")}: </span>
               <span className="font-semibold">
-                {formatCurrency(totals.totalAvailable)}
+                {formatPnL(totals.totalAvailable, false)}
               </span>
             </span>
-            <span>
+            <span className="flex items-center gap-1">
               <span className="text-muted-foreground">{t("todayPL")}: </span>
-              <span
-                className={cn(
-                  "font-semibold",
-                  totals.dailyPnl >= 0
-                    ? "text-[var(--profit)]"
-                    : "text-[var(--loss)]",
-                )}
-              >
-                {formatCurrency(totals.dailyPnl, true)}
-              </span>
+              <PnLValue value={totals.dailyPnl} size="sm" weight="semibold" />
             </span>
           </div>
         </div>
@@ -326,24 +294,18 @@ function AccountCard({
         <>
           {/* Total Equity */}
           <div className="text-lg font-bold">
-            {formatCurrency(account.totalEquity)}
+            {formatPnL(account.totalEquity, false)}
           </div>
 
           {/* Available */}
           <div className="text-sm text-muted-foreground">
-            {t("available")}: {formatCurrency(account.availableBalance)}
+            {t("available")}: {formatPnL(account.availableBalance, false)}
           </div>
 
           {/* Daily P/L */}
-          <div
-            className={cn(
-              "text-sm font-medium mt-1",
-              account.dailyPnl >= 0
-                ? "text-[var(--profit)]"
-                : "text-[var(--loss)]",
-            )}
-          >
-            {t("todayPL")}: {formatCurrency(account.dailyPnl, true)}
+          <div className="text-sm mt-1">
+            <span className="text-muted-foreground">{t("todayPL")}: </span>
+            <PnLValue value={account.dailyPnl} size="sm" />
           </div>
         </>
       ) : (
@@ -376,14 +338,14 @@ function OperationalCardsSection({
       // P/L Trend Card
       titleKey: "plTrend",
       icon: stats.dailyPnl >= 0 ? TrendingUp : TrendingDown,
-      mainValue: formatCurrency(stats.dailyPnl, true),
+      mainValue: formatPnL(stats.dailyPnl),
       mainLabel: t("dailyPL"),
       trend: stats.dailyPnl >= 0 ? "up" : "down",
       subItems: [
-        { label: t("weeklyPL"), value: formatCurrency(stats.weeklyPnl, true) },
+        { label: t("weeklyPL"), value: formatPnL(stats.weeklyPnl) },
         {
           label: t("monthlyPL"),
-          value: formatCurrency(stats.monthlyPnl, true),
+          value: formatPnL(stats.monthlyPnl),
         },
       ],
     },
@@ -456,12 +418,7 @@ function OperationalCardsSection({
                   ) : (
                     <ArrowDownRight className="w-3 h-3 mr-1" />
                   )}
-                  {formatPercent(
-                    card.trend === "up"
-                      ? stats.dailyPnlPercent
-                      : stats.dailyPnlPercent,
-                    true,
-                  )}
+                  {formatPnLPercent(stats.dailyPnlPercent)}
                 </Badge>
               )}
             </div>
@@ -630,16 +587,12 @@ function PositionsGroupedByAgent({
                           {tPositions(position.side)}
                         </Badge>
                       </div>
-                      <span
-                        className={cn(
-                          "font-mono font-semibold",
-                          position.unrealizedPnl >= 0
-                            ? "text-[var(--profit)]"
-                            : "text-[var(--loss)]",
-                        )}
-                      >
-                        {formatPercent(position.unrealizedPnlPercent, true)}
-                      </span>
+                      <PnLValue
+                        value={position.unrealizedPnl}
+                        percent={position.unrealizedPnlPercent}
+                        mode="percent"
+                        weight="semibold"
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
@@ -668,16 +621,11 @@ function PositionsGroupedByAgent({
                         <span className="text-muted-foreground">
                           {tPositions("pnl")}
                         </span>
-                        <p
-                          className={cn(
-                            "font-mono font-medium",
-                            position.unrealizedPnl >= 0
-                              ? "text-[var(--profit)]"
-                              : "text-[var(--loss)]",
-                          )}
-                        >
-                          {formatCurrency(position.unrealizedPnl, true)}
-                        </p>
+                        <PnLValue
+                          value={position.unrealizedPnl}
+                          size="sm"
+                          className="mt-0.5"
+                        />
                       </div>
                     </div>
                   </div>

@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PnLCell, formatPrice, formatDuration } from "@/components/pnl";
 import type { PnLTradeRecord } from "@/lib/api/endpoints";
 
 interface TradeHistoryTableProps {
@@ -31,23 +32,6 @@ interface TradeHistoryTableProps {
   className?: string;
 }
 
-function formatCurrency(value: number): string {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)}`;
-}
-
-function formatPrice(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 function formatDateTime(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleString("en-US", {
@@ -56,20 +40,6 @@ function formatDateTime(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours < 24) {
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  }
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 
 const exitReasonLabels: Record<string, string> = {
@@ -131,14 +101,6 @@ export function TradeHistoryTable({
         </TableHeader>
         <TableBody>
           {trades.map((trade) => {
-            const isProfit = trade.realized_pnl > 0;
-            const isLoss = trade.realized_pnl < 0;
-            const pnlColor = isProfit
-              ? "text-[var(--profit)]"
-              : isLoss
-                ? "text-[var(--loss)]"
-                : "text-muted-foreground";
-
             const SideIcon = trade.side === "long" ? TrendingUp : TrendingDown;
             const sideColor =
               trade.side === "long"
@@ -168,11 +130,7 @@ export function TradeHistoryTable({
                 <TableCell className="text-right font-mono">
                   ${formatPrice(trade.size_usd)}
                 </TableCell>
-                <TableCell className="text-right font-mono font-medium">
-                  <span className={pnlColor}>
-                    {formatCurrency(trade.realized_pnl)}
-                  </span>
-                </TableCell>
+                <PnLCell value={trade.realized_pnl} weight="semibold" />
                 <TableCell className="text-right font-mono text-muted-foreground">
                   {formatDuration(trade.duration_minutes)}
                 </TableCell>

@@ -1,15 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import {
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Pause,
-  Square,
-  AlertTriangle,
-  Loader2,
-} from "lucide-react";
+import { Activity, Pause, Square, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -21,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PnLCell, formatPnLPercent } from "@/components/pnl";
 import type { AgentPerformance } from "@/lib/api/endpoints";
 
 interface AgentPerformanceTableProps {
@@ -28,20 +21,6 @@ interface AgentPerformanceTableProps {
   isLoading?: boolean;
   onRowClick?: (agentId: string) => void;
   className?: string;
-}
-
-function formatCurrency(value: number): string {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)}`;
-}
-
-function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
 }
 
 const statusIcons: Record<string, React.ReactNode> = {
@@ -102,24 +81,25 @@ export function AgentPerformanceTable({
         <TableRow>
           <TableHead>{t("agents.columns.name")}</TableHead>
           <TableHead>{t("agents.columns.status")}</TableHead>
-          <TableHead className="text-right">{t("agents.columns.totalPnl")}</TableHead>
-          <TableHead className="text-right">{t("agents.columns.dailyPnl")}</TableHead>
-          <TableHead className="text-right">{t("agents.columns.winRate")}</TableHead>
-          <TableHead className="text-right">{t("agents.columns.trades")}</TableHead>
-          <TableHead className="text-right">{t("agents.columns.positions")}</TableHead>
+          <TableHead className="text-right">
+            {t("agents.columns.totalPnl")}
+          </TableHead>
+          <TableHead className="text-right">
+            {t("agents.columns.dailyPnl")}
+          </TableHead>
+          <TableHead className="text-right">
+            {t("agents.columns.winRate")}
+          </TableHead>
+          <TableHead className="text-right">
+            {t("agents.columns.trades")}
+          </TableHead>
+          <TableHead className="text-right">
+            {t("agents.columns.positions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {agents.map((agent) => {
-          const pnlColor =
-            agent.total_pnl > 0
-              ? "text-[var(--profit)]"
-              : agent.total_pnl < 0
-                ? "text-[var(--loss)]"
-                : "text-muted-foreground";
-
-          const TrendIcon = agent.daily_pnl > 0 ? TrendingUp : TrendingDown;
-
           return (
             <TableRow
               key={agent.agent_id}
@@ -133,7 +113,7 @@ export function AgentPerformanceTable({
                     <span
                       className={cn(
                         "text-xs px-1.5 py-0.5 rounded",
-                        strategyTypeColors[agent.strategy_type] ?? "bg-muted"
+                        strategyTypeColors[agent.strategy_type] ?? "bg-muted",
                       )}
                     >
                       {agent.strategy_type.toUpperCase()}
@@ -153,28 +133,10 @@ export function AgentPerformanceTable({
                   {tStatus(agent.status)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right font-mono font-medium">
-                <span className={pnlColor}>
-                  {formatCurrency(agent.total_pnl)}
-                </span>
-              </TableCell>
+              <PnLCell value={agent.total_pnl} weight="semibold" />
+              <PnLCell value={agent.daily_pnl} showTrendIcon size="sm" />
               <TableCell className="text-right font-mono">
-                <span
-                  className={cn(
-                    "flex items-center justify-end gap-1",
-                    agent.daily_pnl > 0
-                      ? "text-[var(--profit)]"
-                      : agent.daily_pnl < 0
-                        ? "text-[var(--loss)]"
-                        : "text-muted-foreground"
-                  )}
-                >
-                  <TrendIcon className="w-3 h-3" />
-                  {formatCurrency(agent.daily_pnl)}
-                </span>
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatPercent(agent.win_rate)}
+                {formatPnLPercent(agent.win_rate, false, 1)}
               </TableCell>
               <TableCell className="text-right font-mono">
                 {agent.total_trades}
