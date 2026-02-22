@@ -24,6 +24,9 @@ const config: Config = {
     "<rootDir>/tests/**/*.test.{ts,tsx}",
   ],
   
+  // Coverage reporters (json-summary for CI summary)
+  coverageReporters: ["json", "json-summary", "lcov", "text"],
+
   // Coverage configuration
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
